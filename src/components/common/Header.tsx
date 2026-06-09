@@ -20,13 +20,13 @@ import { AiOutlineInstagram, AiOutlineWhatsApp } from 'react-icons/ai';
 import { FaFacebookF } from 'react-icons/fa';
 import { MdLogout } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
-import logoImg from '../../assets/images/logo_dream_group.png';
 
 interface HeaderProps {
   onMobileMenuToggle: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
+  const logoImg = "/src/assets/images/logo_dream_group.png"; // ← real logo image (transparent bg) for best display on all themes/backgrounds
   const dispatch = useAppDispatch();
   const { mode } = useAppSelector((s) => s.theme);
   const { user, role } = useAppSelector((s) => s.auth);

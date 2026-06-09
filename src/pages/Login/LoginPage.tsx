@@ -16,15 +16,6 @@ import { ROUTES } from '../../constants';
 import { showAlert } from '../../utils';
 import Logo from '../../components/ui/Logo';
 
-// Carousel images — loaded from assets/images/carousel
-import img1 from '../../assets/images/carousel_1.png';
-import img2 from '../../assets/images/carousel_2.png';
-import img3 from '../../assets/images/carousel_3.png';
-import img4 from '../../assets/images/carousel_4.png';
-import img5 from '../../assets/images/carousel_5.png';
-import img6 from '../../assets/images/carousel_6.png';
-import img7 from '../../assets/images/carousel_7.png';
-
 import {
   TextField,
   InputAdornment,
@@ -32,6 +23,14 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { Visibility, VisibilityOff, Email, Lock, Person, Phone } from '@mui/icons-material';
+
+const img1 = "/src/assets/images/carousel_1.png";
+const img2 = "/src/assets/images/carousel_2.png";
+const img3 = "/src/assets/images/carousel_3.png";
+const img4 = "/src/assets/images/carousel_4.png";
+const img5 = "/src/assets/images/carousel_5.png";
+const img6 = "/src/assets/images/carousel_6.png";
+const img7 = "/src/assets/images/carousel_7.png";
 
 const carouselImages = [img1, img2, img3, img4, img5, img6, img7];
 

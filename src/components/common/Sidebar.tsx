@@ -14,7 +14,6 @@ import { toggleSidebar } from '../../redux/slices/uiSlice';
 import { ROUTES } from '../../constants';
 import Logo from '../ui/Logo';
 import { useNavigate } from 'react-router-dom';
-import logoImg from '../../assets/images/logo_dream_group.png';
 
 import {
   MdDashboard, MdBusiness, MdPeople, MdWork, MdAccountTree,
@@ -165,6 +164,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
+  const logoImg = "/src/assets/images/logo_dream_group.png"; // ← real logo image (transparent bg) for best display on all themes/backgrounds
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { sidebarCollapsed } = useAppSelector((s) => s.ui);
