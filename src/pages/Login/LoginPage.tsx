@@ -70,7 +70,7 @@ const glassFieldSx = {
     borderRadius: '10px',
     '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
     '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.4)' },
-    '&.Mui-focused fieldset': { borderColor: '#d97706' }, 
+    '&.Mui-focused fieldset': { borderColor: '#d97706' },
     '&.Mui-error fieldset': { borderColor: '#ef4444' },
   },
   '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.6)' },
@@ -201,15 +201,13 @@ const LoginPage: React.FC = () => {
             {carouselImages.map((img, index) => (
               <div
                 key={index}
-                className="absolute inset-0 transition-opacity duration-700"
+                className="carousel-image-wrapper transition-opacity duration-700"
                 style={{
                   opacity: currentSlide === index ? (isTransitioning ? 0 : 1) : 0,
                   zIndex: currentSlide === index ? 1 : 0,
                 }}
               >
-                <div className="carousel-image-wrapper">
-                  <img src={img} alt={`Dream Group Slide ${index + 1}`} className="carousel-image" />
-                </div>
+                <img src={img} alt={`Dream Group Slide ${index + 1}`} className="carousel-image" />
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/30" />
               </div>
             ))}
@@ -220,11 +218,10 @@ const LoginPage: React.FC = () => {
                 <button
                   key={i}
                   onClick={() => goToSlide(i)}
-                  className={`rounded-full transition-all duration-300 cursor-pointer ${
-                    currentSlide === i
+                  className={`rounded-full transition-all duration-300 cursor-pointer ${currentSlide === i
                       ? 'bg-yellow-400 w-8 h-2.5'
                       : 'bg-white/50 hover:bg-white/80 w-2.5 h-2.5'
-                  }`}
+                    }`}
                 />
               ))}
             </div>
