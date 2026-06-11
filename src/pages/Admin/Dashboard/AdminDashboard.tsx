@@ -62,7 +62,7 @@ const AdminDashboard: React.FC = () => {
         <div className="relative z-10">
           <p className="text-yellow-400 text-sm font-semibold mb-1">Welcome back 👋</p>
           <h1 className="font-display text-2xl font-bold text-white mb-2">
-            {user?.fullName || 'Admin'}
+            {user?.email || 'Admin'}
           </h1>
           <p className="text-white/70 text-sm">Here's what's happening at Dream Group CRM today.</p>
         </div>

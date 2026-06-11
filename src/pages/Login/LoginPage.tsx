@@ -83,7 +83,7 @@ const LoginPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { loading, error, isAuthenticated, role } = useAppSelector((s) => s.auth);
 
-  const [form, setForm] = useState({ fullName: '', mobile: '', email: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
@@ -267,34 +267,6 @@ const LoginPage: React.FC = () => {
 
             {/* Form */}
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
-              {/* Full Name (optional) */}
-              <TextField
-                fullWidth name="fullName" label="Full Name (Optional)"
-                value={form.fullName} onChange={handleChange} size="small"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Person sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 18 }} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={glassFieldSx}
-              />
-
-              {/* Mobile (optional) */}
-              <TextField
-                fullWidth name="mobile" label="Mobile Number (Optional)"
-                value={form.mobile} onChange={handleChange} size="small"
-                inputProps={{ maxLength: 10 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Phone sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 18 }} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={glassFieldSx}
-              />
 
               {/* Email (mandatory) */}
               <TextField

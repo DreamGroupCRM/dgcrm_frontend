@@ -3,12 +3,8 @@
   "message": "Profile fetched successfully",
   "data": {
     "id": "1",
-    "fullName": "Admin Sohel",
     "email": "admin.sohel@gmail.com",
-    "mobile": "9876543210",
     "role": "Admin",
-    "department": "Management",
-    "designation": "Administrator",
     "joinedAt": "2024-01-01T00:00:00.000Z",
     "avatar": null,
     "address": "Mumbai, Maharashtra",

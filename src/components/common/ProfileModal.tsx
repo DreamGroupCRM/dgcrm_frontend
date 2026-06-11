@@ -125,7 +125,7 @@ const ProfileModal: React.FC = () => {
             {loading ? (
               <CircularProgress size={22} sx={{ color: 'white' }} />
             ) : (
-              getInitials(profile?.fullName || 'DG')
+              getInitials(profile?.email || 'DG')
             )}
           </div>
         </div>
@@ -145,7 +145,7 @@ const ProfileModal: React.FC = () => {
                     isDark ? 'text-white' : 'text-gray-800'
                   }`}
                 >
-                  {profile.fullName}
+                  {profile.email?.split('@')[0]}
                 </h3>
                 <div className="flex items-center justify-center gap-2 mt-1">
                   <span
