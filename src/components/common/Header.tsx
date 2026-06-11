@@ -5,6 +5,7 @@
 // CHANGES IN THIS VERSION:
 //   1. Real logo image via <Logo> component (replaces inline SVG)
 //   2. Logo + text are clickable → navigates to Dashboard
+//   3. ✨ Sticky Notes panel added (just before social icons)
 
 import React from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks';
@@ -15,18 +16,20 @@ import { clearProfile } from '../../redux/slices/profileSlice';
 import { showAlert, getInitials } from '../../utils';
 import { SOCIAL_LINKS, ROUTES } from '../../constants';
 
-import { FiSun, FiMoon, FiMenu } from 'react-icons/fi';
+import { FiSun, FiMoon } from 'react-icons/fi';
 import { AiOutlineInstagram, AiOutlineWhatsApp } from 'react-icons/ai';
 import { FaFacebookF } from 'react-icons/fa';
 import { MdLogout } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
+
+import StickyNotesPanel from './StickyNotesPanel'; // ← new import
 
 interface HeaderProps {
   onMobileMenuToggle: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
-  const logoImg = "/src/assets/images/logo_dream_group.png"; // ← real logo image (transparent bg) for best display on all themes/backgrounds
+  const logoImg = "/src/assets/images/logo_dream_group.png";
   const dispatch = useAppDispatch();
   const { mode } = useAppSelector((s) => s.theme);
   const { user, role } = useAppSelector((s) => s.auth);
@@ -37,19 +40,18 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   const dashboardRoute =
     role === 'Admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
 
+  // Stable per-user key for sticky notes localStorage
+  const notesUserId = user?.id ?? user?.email ?? 'guest';
+
   const handleLogout = async () => {
     const result = await showAlert.confirm(
       'You will be Logged Out of Dream Group CRM.',
       'Logout?'
     );
     if (result.isConfirmed) {
-      // Show toast FIRST, wait for it to finish
       await showAlert.logoutSuccess();
-      // THEN dispatch logout (clears Redux + localStorage)
       dispatch(logoutThunk());
       dispatch(clearProfile());
-      // Use React Router navigate instead of window.location
-      // This does a client-side redirect — no page reload
       navigate('/login', { replace: true });
     }
   };
@@ -74,7 +76,6 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
           className={`p-2 rounded-lg md:hidden flex-shrink-0 ${isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
             }`}
         >
-          {/* Simple hamburger icon using react-icons already imported */}
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M3 6h14M3 12h14M3 18h14" strokeLinecap="round" />
           </svg>
@@ -124,6 +125,16 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
       </div>
 
       <div className="flex items-center gap-1">
+
+        {/* ✨ Sticky Notes — sits just before the social icons */}
+        <StickyNotesPanel isDark={isDark} userId={notesUserId} />
+
+        {/* Divider */}
+        <div
+          className={`hidden sm:block w-px h-5 mx-1 ${isDark ? 'bg-gray-700' : 'bg-gray-200'
+            }`}
+        />
+
         {/* Social Icons */}
         <div className="header-social-icons hidden sm:flex items-center gap-0.5 mr-1">
           <a
@@ -131,8 +142,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             target="_blank"
             rel="noreferrer"
             className={`p-2 rounded-lg transition-colors ${isDark
-              ? 'text-gray-400 hover:text-pink-400 hover:bg-gray-800'
-              : 'text-gray-500 hover:text-pink-500 hover:bg-gray-100'
+                ? 'text-gray-400 hover:text-pink-400 hover:bg-gray-800'
+                : 'text-gray-500 hover:text-pink-500 hover:bg-gray-100'
               }`}
             title="Instagram"
           >
@@ -143,8 +154,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             target="_blank"
             rel="noreferrer"
             className={`p-2 rounded-lg transition-colors ${isDark
-              ? 'text-gray-400 hover:text-blue-400 hover:bg-gray-800'
-              : 'text-gray-500 hover:text-blue-500 hover:bg-gray-100'
+                ? 'text-gray-400 hover:text-blue-400 hover:bg-gray-800'
+                : 'text-gray-500 hover:text-blue-500 hover:bg-gray-100'
               }`}
             title="Facebook"
           >
@@ -155,8 +166,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             target="_blank"
             rel="noreferrer"
             className={`p-2 rounded-lg transition-colors ${isDark
-              ? 'text-gray-400 hover:text-green-400 hover:bg-gray-800'
-              : 'text-gray-500 hover:text-green-500 hover:bg-gray-100'
+                ? 'text-gray-400 hover:text-green-400 hover:bg-gray-800'
+                : 'text-gray-500 hover:text-green-500 hover:bg-gray-100'
               }`}
             title="WhatsApp"
           >
@@ -174,8 +185,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
         <button
           onClick={() => dispatch(toggleTheme())}
           className={`p-2 rounded-lg transition-all ${isDark
-            ? 'text-yellow-400 hover:bg-gray-800'
-            : 'text-gray-500 hover:bg-gray-100'
+              ? 'text-yellow-400 hover:bg-gray-800'
+              : 'text-gray-500 hover:bg-gray-100'
             }`}
           title={isDark ? 'Switch to Light' : 'Switch to Dark'}
         >
@@ -220,8 +231,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
         <button
           onClick={handleLogout}
           className={`p-2 rounded-lg transition-colors ${isDark
-            ? 'text-gray-400 hover:text-red-400 hover:bg-gray-800'
-            : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
+              ? 'text-gray-400 hover:text-red-400 hover:bg-gray-800'
+              : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
             }`}
           title="Logout"
         >
