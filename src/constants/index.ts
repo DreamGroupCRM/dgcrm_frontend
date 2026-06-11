@@ -62,16 +62,12 @@ export const HARDCODED_USERS = [
     email: 'admin.sohel@gmail.com',
     password: 'Admin@123',
     role: 'Admin' as const,
-    fullName: 'Admin Sohel',
-    mobile: '9876543210',
     id: '1',
   },
   {
     email: 'employee.sohel@gmail.com',
     password: 'Employee@123',
     role: 'Employee' as const,
-    fullName: 'Employee Sohel',
-    mobile: '9876543211',
     id: '2',
   },
 ];

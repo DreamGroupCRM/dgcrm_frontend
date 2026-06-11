@@ -6,9 +6,7 @@ export type UserRole = 'Admin' | 'Employee';
 
 export interface User {
   id: string;
-  fullName: string;
   email: string;
-  mobile: string;
   role: UserRole;
   avatar: string | null;
   createdAt: string;
@@ -25,8 +23,6 @@ export interface UserProfile extends User {
 export interface LoginCredentials {
   email: string;
   password: string;
-  fullName?: string;
-  mobile?: string;
 }
 
 export interface LoginResponse {

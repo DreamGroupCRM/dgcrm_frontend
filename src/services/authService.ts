@@ -44,8 +44,6 @@ export const authService = {
           ...loginResponseData.data.user,
           email: matchedUser.email,
           role: matchedUser.role,
-          fullName: matchedUser.fullName,
-          mobile: matchedUser.mobile,
           id: matchedUser.id,
         },
       },

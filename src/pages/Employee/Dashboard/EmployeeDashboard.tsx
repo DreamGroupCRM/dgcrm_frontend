@@ -32,7 +32,7 @@ const EmployeeDashboard: React.FC = () => {
       >
         <div className="relative z-10">
           <p className="text-blue-300 text-sm font-semibold mb-1">Good day 👋</p>
-          <h1 className="font-display text-2xl font-bold text-white mb-2">{user?.fullName || 'Employee'}</h1>
+          <h1 className="font-display text-2xl font-bold text-white mb-2">{user?.email?.split('@')[0] || 'Employee'}</h1>
           <p className="text-white/70 text-sm">Here's your activity summary for today.</p>
         </div>
         <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white/5" />

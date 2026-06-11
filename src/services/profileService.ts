@@ -27,9 +27,7 @@ export const profileService = {
         ...profileResponseData,
         data: {
           ...profileResponseData.data,
-          fullName: user.fullName,
           email: user.email,
-          mobile: user.mobile,
           role: user.role,
         },
       } as ProfileResponse;

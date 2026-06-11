@@ -209,14 +209,14 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
             style={{ background: 'linear-gradient(135deg, #1a5c38, #d97706)' }}
           >
-            {getInitials(user?.fullName || 'DG')}
+            {getInitials(user?.email || 'DG')}
           </div>
           <div className="hidden md:block text-left">
             <p
               className={`text-xs font-semibold leading-none ${isDark ? 'text-gray-200' : 'text-gray-700'
                 }`}
             >
-              {user?.fullName?.split(' ')[0] || 'User'}
+              {user?.email?.split('@')[0] || 'User'}
             </p>
             <p
               className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'
