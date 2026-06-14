@@ -15,97 +15,75 @@ import { useNavigate } from 'react-router-dom';
 import { getTheme } from '../../styles/theme';
 
 import {
-  MdDashboard, MdBusiness, MdPeople, MdWork, MdAccountTree,
-  MdEventAvailable, MdLeaderboard, MdPayment, MdDeleteForever,
-  MdContactPage, MdDescription, MdArticle, MdAssignment,
-  MdCorporateFare, MdApartment, MdMapsHomeWork, MdLogout,
-  MdHistory, MdFacebook, MdCalculate, MdStorage,
+  MdDashboard, MdBusiness, MdPeople, MdContactPage,
+  MdHistory, MdCalculate, MdStorage,
+  MdEventAvailable, MdLeaderboard, MdPayment, MdAttachMoney,
+  MdApartment, MdAccountBalance, MdWork, MdAccountTree,
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
-  MdHome, MdAttachMoney, MdReceiptLong,
+  MdPersonAdd, MdReceiptLong,
 } from 'react-icons/md';
-import { FaFacebookF, FaKey } from 'react-icons/fa';
 
 interface NavItem {
-  label: string;
-  path?: string;
-  icon: React.ReactNode;
+  label    : string;
+  path?    : string;
+  icon     : React.ReactNode;
   children?: NavItem[];
 }
 
 const adminNavItems: NavItem[] = [
   { label: 'Dashboard', path: ROUTES.ADMIN.DASHBOARD, icon: <MdDashboard /> },
+
   {
-    label: 'Company', icon: <MdBusiness />,
+    label: 'Master', icon: <MdBusiness />,
     children: [
-      { label: 'Business Profile', path: ROUTES.ADMIN.BUSINESS_PROFILE, icon: <MdCorporateFare /> },
-      { label: 'Departments',      path: ROUTES.ADMIN.DEPARTMENTS,      icon: <MdAccountTree /> },
-      { label: 'Designations',     path: ROUTES.ADMIN.DESIGNATIONS,     icon: <MdWork /> },
-      { label: 'Functions',        path: ROUTES.ADMIN.FUNCTIONS,        icon: <MdAccountTree /> },
+      { label: 'Add Company',     path: ROUTES.ADMIN.ADD_COMPANY,     icon: <MdBusiness /> },
+      { label: 'Add Department',  path: ROUTES.ADMIN.ADD_DEPARTMENT,  icon: <MdAccountTree /> },
+      { label: 'Add Designation', path: ROUTES.ADMIN.ADD_DESIGNATION, icon: <MdWork /> },
+      { label: 'Add Roles',       path: ROUTES.ADMIN.ADD_ROLES,       icon: <MdAccountTree /> },
+      { label: 'Add Bank A/C',    path: ROUTES.ADMIN.ADD_BANK_AC,     icon: <MdAccountBalance /> },
+      { label: 'Add Building',    path: ROUTES.ADMIN.ADD_BUILDING,    icon: <MdApartment /> },
     ],
   },
+
   {
     label: 'Employee', icon: <MdPeople />,
     children: [
-      { label: 'Employees',  path: ROUTES.ADMIN.EMPLOYEES,  icon: <MdPeople /> },
-      { label: 'Attendance', path: ROUTES.ADMIN.ATTENDANCE, icon: <MdEventAvailable /> },
+      { label: 'Add Employee', path: ROUTES.ADMIN.ADD_EMPLOYEE, icon: <MdPersonAdd /> },
+      { label: 'Attendance',   path: ROUTES.ADMIN.ATTENDANCE,   icon: <MdEventAvailable /> },
     ],
   },
+
   {
     label: 'CRM', icon: <MdLeaderboard />,
     children: [
-      { label: 'Leads',            path: ROUTES.ADMIN.LEADS,            icon: <MdLeaderboard /> },
-      { label: 'Payment Due',      path: ROUTES.ADMIN.PAYMENT_DUE,      icon: <MdPayment /> },
-      { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
-      { label: 'Delete Logs',      path: ROUTES.ADMIN.DELETE_LOGS,      icon: <MdDeleteForever /> },
-      { label: 'Customer Details', path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage /> },
+      { label: 'Customer Details',  path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage /> },
+      { label: 'Leads Info',        path: ROUTES.ADMIN.LEADS_INFO,       icon: <MdLeaderboard /> },
+      { label: 'Payment Received',  path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
+      { label: 'Payment Dues',      path: ROUTES.ADMIN.PAYMENT_DUES,     icon: <MdPayment /> },
     ],
   },
-  {
-    label: 'Documents', icon: <MdDescription />,
-    children: [
-      { label: 'Booking Letter',   path: ROUTES.ADMIN.BOOKING_LETTER,   icon: <MdArticle /> },
-      { label: 'Declaration Form', path: ROUTES.ADMIN.DECLARATION_FORM, icon: <MdAssignment /> },
-      { label: 'Allotment Letter', path: ROUTES.ADMIN.ALLOTMENT_LETTER, icon: <MdDescription /> },
-    ],
-  },
-  {
-    label: 'Others', icon: <MdHome />,
-    children: [
-      { label: 'Company',        path: ROUTES.ADMIN.COMPANY,        icon: <MdCorporateFare /> },
-      { label: 'Wings',          path: ROUTES.ADMIN.WINGS,          icon: <MdApartment /> },
-      { label: 'Building Names', path: ROUTES.ADMIN.BUILDING_NAMES, icon: <MdMapsHomeWork /> },
-      { label: 'Flat Number',    path: ROUTES.ADMIN.FLAT_NUMBER,    icon: <MdLogout /> },
-    ],
-  },
-  { label: 'Activity History', path: ROUTES.ADMIN.ACTIVITY_HISTORY, icon: <MdHistory /> },
-  {
-    label: 'App Integration', icon: <MdFacebook />,
-    children: [
-      { label: 'Facebook',          path: ROUTES.ADMIN.FACEBOOK,          icon: <FaFacebookF /> },
-      { label: 'Facebook Pages',    path: ROUTES.ADMIN.FACEBOOK_PAGES,    icon: <MdFacebook /> },
-      { label: 'Long Lived Access', path: ROUTES.ADMIN.LONG_LIVED_ACCESS, icon: <FaKey /> },
-    ],
-  },
-  { label: 'Interest Free Calculator', path: ROUTES.ADMIN.INTEREST_CALCULATOR, icon: <MdCalculate /> },
-  { label: 'Backup Database',          path: ROUTES.ADMIN.BACKUP_DATABASE,     icon: <MdStorage /> },
+
+  { label: 'Audit History',           path: ROUTES.ADMIN.AUDIT_HISTORY,       icon: <MdHistory /> },
+  { label: 'Interest Free Calculator',path: ROUTES.ADMIN.INTEREST_CALCULATOR, icon: <MdCalculate /> },
+  { label: 'Backup Database',         path: ROUTES.ADMIN.BACKUP_DATABASE,     icon: <MdStorage /> },
 ];
 
 const employeeNavItems: NavItem[] = [
   { label: 'Dashboard',        path: ROUTES.EMPLOYEE.DASHBOARD,        icon: <MdDashboard /> },
-  { label: 'Leads',            path: ROUTES.EMPLOYEE.LEADS,            icon: <MdLeaderboard /> },
-  { label: 'My Attendance',    path: ROUTES.EMPLOYEE.ATTENDANCE,       icon: <MdEventAvailable /> },
   { label: 'Customer Details', path: ROUTES.EMPLOYEE.CUSTOMER_DETAILS, icon: <MdContactPage /> },
+  { label: 'Leads Info',       path: ROUTES.EMPLOYEE.LEADS_INFO,       icon: <MdLeaderboard /> },
+  { label: 'Payment Received', path: ROUTES.EMPLOYEE.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
   { label: 'Payment Dues',     path: ROUTES.EMPLOYEE.PAYMENT_DUES,     icon: <MdPayment /> },
-  { label: 'Payment Received', path: ROUTES.EMPLOYEE.PAYMENT_RECEIVED, icon: <MdReceiptLong /> },
+  { label: 'Attendance',       path: ROUTES.EMPLOYEE.ATTENDANCE,       icon: <MdEventAvailable /> },
 ];
 
 // ── NavItem — handles both parent (accordion) and leaf (NavLink) ──
 const NavItemComponent: React.FC<{
-  item: NavItem;
-  collapsed: boolean;
-  isDark: boolean;
+  item      : NavItem;
+  collapsed : boolean;
+  isDark    : boolean;
 }> = ({ item, collapsed, isDark }) => {
-  const t = getTheme(isDark);
+  const t        = getTheme(isDark);
   const location = useLocation();
   const [open, setOpen] = useState(() =>
     !!item.children?.some((c) => c.path && location.pathname.startsWith(c.path))
@@ -162,11 +140,11 @@ const NavItemComponent: React.FC<{
       title={collapsed ? item.label : undefined}
       className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 no-underline"
       style={({ isActive }) => ({
-        background  : isActive ? t.sidebarActiveBg   : 'transparent',
-        color       : isActive ? t.sidebarActiveText : t.sidebarText,
-        fontFamily  : t.fontFamily,
-        fontWeight  : isActive ? 600 : 400,
-        borderLeft  : isActive
+        background : isActive ? t.sidebarActiveBg   : 'transparent',
+        color      : isActive ? t.sidebarActiveText : t.sidebarText,
+        fontFamily : t.fontFamily,
+        fontWeight : isActive ? 600 : 400,
+        borderLeft : isActive
           ? `3px solid ${t.sidebarActiveBorder}`
           : '3px solid transparent',
       })}
@@ -197,8 +175,8 @@ const NavItemComponent: React.FC<{
 
 // ── Sidebar shell ──
 interface SidebarProps {
-  mobileOpen: boolean;
-  onMobileClose: () => void;
+  mobileOpen    : boolean;
+  onMobileClose : () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
@@ -209,9 +187,9 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
   const { role }             = useAppSelector((s) => s.auth);
   const { mode }             = useAppSelector((s) => s.theme);
 
-  const isDark       = mode === 'dark';
-  const t            = getTheme(isDark);
-  const navItems     = role === 'Admin' ? adminNavItems : employeeNavItems;
+  const isDark         = mode === 'dark';
+  const t              = getTheme(isDark);
+  const navItems       = role === 'Admin' ? adminNavItems : employeeNavItems;
   const dashboardRoute = role === 'Admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
 
   const SidebarContent = () => (
@@ -226,11 +204,11 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
           src={logoImg}
           alt="Dream Group"
           style={{
-            width      : sidebarCollapsed ? 28 : 34,
-            height     : sidebarCollapsed ? 28 : 34,
-            objectFit  : 'contain',
+            width       : sidebarCollapsed ? 28 : 34,
+            height      : sidebarCollapsed ? 28 : 34,
+            objectFit   : 'contain',
             mixBlendMode: isDark ? 'screen' : 'multiply',
-            flexShrink : 0,
+            flexShrink  : 0,
           }}
         />
         {!sidebarCollapsed && (
@@ -246,11 +224,11 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
           >
             <span
               style={{
-                fontFamily  : t.fontFamily,
-                fontSize    : 26,
-                fontWeight  : 700,
+                fontFamily   : t.fontFamily,
+                fontSize     : 26,
+                fontWeight   : 700,
                 letterSpacing: '0.06em',
-                color       : t.textPrimary,
+                color        : t.textPrimary,
               }}
             >
               DGCRM
@@ -321,7 +299,6 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
     </div>
   );
 
-  // Sidebar shell styles — driven entirely by theme tokens
   const shellStyle: React.CSSProperties = {
     background  : t.sidebarBg,
     borderRight : `1px solid ${t.sidebarBorder}`,
