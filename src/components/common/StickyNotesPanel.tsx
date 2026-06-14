@@ -37,7 +37,7 @@ const NOTE_COLORS = [
   // ── 3 Dark ──
   { bg: '#1e293b', border: '#475569', label: 'Slate'   }, // dark slate
   { bg: '#1a1a2e', border: '#6366f1', label: 'Indigo'  }, // deep indigo night
-  { bg: '#1c1917', border: '#d97706', label: 'Amber'   }, // dark amber/espresso
+  { bg: '#0f172a', border: '#334155', label: 'Dark'   }, // dark amber/espresso
 ];
 const DEFAULT_COLOR = NOTE_COLORS[0];
 
@@ -199,7 +199,7 @@ const StickyNotesPanel: React.FC<StickyNotesPanelProps> = ({ isDark, userId }) =
         className={`relative p-2 rounded-lg transition-all ${
           isDark
             ? open ? 'text-yellow-400 bg-gray-800' : 'text-gray-400 hover:text-yellow-400 hover:bg-gray-800'
-            : open ? 'text-amber-500 bg-amber-50'  : 'text-gray-500 hover:text-amber-500 hover:bg-amber-50'
+            : open ? 'text-blue-500 bg-blue-50'  : 'text-gray-500 hover:text-blue-500 hover:bg-blue-50'
         }`}
         title="Sticky Notes"
       >
@@ -207,7 +207,7 @@ const StickyNotesPanel: React.FC<StickyNotesPanelProps> = ({ isDark, userId }) =
         {noteCount > 0 && (
           <span
             className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
-            style={{ background: '#d97706' }}
+            style={{ background: '#2563eb' }}
           >
             {noteCount > 99 ? '99+' : noteCount}
           </span>
@@ -230,14 +230,14 @@ const StickyNotesPanel: React.FC<StickyNotesPanelProps> = ({ isDark, userId }) =
             }}
           >
             <div className="flex items-center gap-2">
-              <BsStickyFill size={16} style={{ color: '#d97706' }} />
+              <BsStickyFill size={16} style={{ color: '#2563eb' }} />
               <span className="font-semibold text-sm" style={{ color: isDark ? '#f9fafb' : '#111827' }}>
                 Sticky Notes
               </span>
               {noteCount > 0 && (
                 <span
                   className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                  style={{ background: isDark ? '#292524' : '#fef3c7', color: '#d97706' }}
+                  style={{ background: isDark ? '#292524' : '#fef3c7', color: '#2563eb' }}
                 >
                   {noteCount}
                 </span>
@@ -248,7 +248,7 @@ const StickyNotesPanel: React.FC<StickyNotesPanelProps> = ({ isDark, userId }) =
                 <button
                   onClick={() => { setEditId(null); setDeleteId(null); setComposing(true); }}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold"
-                  style={{ background: 'linear-gradient(135deg, #1a5c38, #d97706)', color: '#fff' }}
+                  style={{ background: 'linear-gradient(135deg, #1e3a5f, #2563eb)', color: '#fff' }}
                 >
                   <HiPlus size={14} /><span>New</span>
                 </button>
@@ -455,7 +455,7 @@ const StickyNotesPanel: React.FC<StickyNotesPanelProps> = ({ isDark, userId }) =
               <button
                 onClick={() => { if (window.confirm('Clear all sticky notes?')) setNotes([]); }}
                 className="text-xs font-medium"
-                style={{ color: isDark ? '#ef4444' : '#dc2626' }}
+                style={{ color: isDark ? '#f87171' : '#2563eb' }}
               >
                 Clear all
               </button>
@@ -522,7 +522,7 @@ const EmptyState: React.FC<{ isDark: boolean }> = ({ isDark }) => (
       className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3"
       style={{ background: isDark ? '#1f2937' : '#fef3c7' }}
     >
-      <BsStickies size={26} style={{ color: '#d97706' }} />
+      <BsStickies size={26} style={{ color: '#2563eb' }} />
     </div>
     <p className="text-sm font-semibold mb-1" style={{ color: isDark ? '#e5e7eb' : '#374151' }}>
       No notes yet

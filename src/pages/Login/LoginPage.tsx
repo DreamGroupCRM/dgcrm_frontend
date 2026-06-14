@@ -70,11 +70,11 @@ const glassFieldSx = {
     borderRadius: '10px',
     '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
     '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.4)' },
-    '&.Mui-focused fieldset': { borderColor: '#d97706' },
+    '&.Mui-focused fieldset': { borderColor: '#2563eb' },
     '&.Mui-error fieldset': { borderColor: '#ef4444' },
   },
   '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.6)' },
-  '& .MuiInputLabel-root.Mui-focused': { color: '#d97706' },
+  '& .MuiInputLabel-root.Mui-focused': { color: '#93c5fd' },
   '& .MuiFormHelperText-root': { color: '#fca5a5' },
 };
 
@@ -183,7 +183,7 @@ const LoginPage: React.FC = () => {
       <div
         className="absolute inset-0 z-0"
         style={{
-          background: 'linear-gradient(135deg, #0a1f12 0%, #1a3d25 30%, #0f2d1a 60%, #1c1a0e 100%)',
+          background: 'linear-gradient(135deg, #000000 0%, #000000 30%, #000000 60%, #000000 100%)',
         }}
       >
         <div
@@ -219,7 +219,7 @@ const LoginPage: React.FC = () => {
                   key={i}
                   onClick={() => goToSlide(i)}
                   className={`rounded-full transition-all duration-300 cursor-pointer ${currentSlide === i
-                      ? 'bg-yellow-400 w-8 h-2.5'
+                      ? 'bg-blue-400 w-8 h-2.5'
                       : 'bg-white/50 hover:bg-white/80 w-2.5 h-2.5'
                     }`}
                 />
@@ -344,24 +344,24 @@ const LoginPage: React.FC = () => {
                   disabled:cursor-not-allowed"
                 style={{
                   background: loading
-                    ? 'rgba(26,92,56,0.6)'
-                    : 'linear-gradient(135deg, #1a5c38 0%, #2d7a4f 100%)',
-                  boxShadow: loading ? 'none' : '0 4px 20px rgba(26,92,56,0.5)',
+                    ? 'rgba(30,58,95,0.6)'
+                    : 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)',
+                  boxShadow: loading ? 'none' : '0 4px 20px rgba(37,99,235,0.5)',
                 }}
                 onMouseEnter={(e) => {
                   if (!loading) {
                     (e.currentTarget as HTMLButtonElement).style.background =
-                      'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)';
+                      'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)';
                     (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                      '0 4px 20px rgba(217,119,6,0.5)';
+                      '0 4px 20px rgba(37,99,235,0.5)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!loading) {
                     (e.currentTarget as HTMLButtonElement).style.background =
-                      'linear-gradient(135deg, #1a5c38 0%, #2d7a4f 100%)';
+                      'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)';
                     (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                      '0 4px 20px rgba(26,92,56,0.5)';
+                      '0 4px 20px rgba(37,99,235,0.5)';
                   }
                 }}
               >
