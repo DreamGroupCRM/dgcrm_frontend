@@ -6,8 +6,7 @@ import { STORAGE_KEYS } from '../constants';
 
 // Create axios instance
 const axiosInstance = axios.create({
-  // PRODUCTION: baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
-  baseURL: '/', // Using local JSON for now
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
