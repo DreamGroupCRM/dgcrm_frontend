@@ -30,10 +30,11 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear session and redirect to login
+      // Token expired/invalid — clear the session and send the user back to login
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
       localStorage.removeItem(STORAGE_KEYS.USER);
       localStorage.removeItem(STORAGE_KEYS.ROLE);
+      localStorage.removeItem(STORAGE_KEYS.PERMISSIONS);
       window.location.href = '/login';
     }
     return Promise.reject(error);

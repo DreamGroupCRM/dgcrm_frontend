@@ -36,20 +36,20 @@ const adminNavItems: NavItem[] = [
   {
     label: 'Master', icon: <MdBusiness />,
     children: [
-      { label: 'Add Company',     path: ROUTES.ADMIN.ADD_COMPANY,     icon: <MdBusiness /> },
-      { label: 'Add Department',  path: ROUTES.ADMIN.ADD_DEPARTMENT,  icon: <MdAccountTree /> },
-      { label: 'Add Designation', path: ROUTES.ADMIN.ADD_DESIGNATION, icon: <MdWork /> },
-      { label: 'Add Roles',       path: ROUTES.ADMIN.ADD_ROLES,       icon: <MdAccountTree /> },
-      { label: 'Add Bank A/C',    path: ROUTES.ADMIN.ADD_BANK_AC,     icon: <MdAccountBalance /> },
-      { label: 'Add Building',    path: ROUTES.ADMIN.ADD_BUILDING,    icon: <MdApartment /> },
+      { label: 'Company',     path: ROUTES.ADMIN.COMPANY,     icon: <MdBusiness /> },
+      { label: 'Department',  path: ROUTES.ADMIN.DEPARTMENT,  icon: <MdAccountTree /> },
+      { label: 'Designation', path: ROUTES.ADMIN.DESIGNATION, icon: <MdWork /> },
+      { label: 'Roles',       path: ROUTES.ADMIN.ROLES,       icon: <MdAccountTree /> },
+      { label: 'Bank A/C',    path: ROUTES.ADMIN.BANK_AC,     icon: <MdAccountBalance /> },
+      { label: 'Building',    path: ROUTES.ADMIN.BUILDING,    icon: <MdApartment /> },
     ],
   },
 
   {
-    label: 'Employee', icon: <MdPeople />,
+    label: 'Employee Details', icon: <MdPeople />,
     children: [
-      { label: 'Add Employee', path: ROUTES.ADMIN.ADD_EMPLOYEE, icon: <MdPersonAdd /> },
-      { label: 'Attendance',   path: ROUTES.ADMIN.ATTENDANCE,   icon: <MdEventAvailable /> },
+      { label: 'Employee',   path: ROUTES.ADMIN.EMPLOYEE,   icon: <MdPersonAdd /> },
+      { label: 'Attendance', path: ROUTES.ADMIN.ATTENDANCE, icon: <MdEventAvailable /> },
     ],
   },
 
@@ -57,7 +57,7 @@ const adminNavItems: NavItem[] = [
     label: 'CRM', icon: <MdLeaderboard />,
     children: [
       { label: 'Customer Details',  path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage /> },
-      { label: 'Leads Info',        path: ROUTES.ADMIN.LEADS_INFO,       icon: <MdLeaderboard /> },
+      { label: 'Leads',             path: ROUTES.ADMIN.LEADS,            icon: <MdLeaderboard /> },
       { label: 'Payment Received',  path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
       { label: 'Payment Dues',      path: ROUTES.ADMIN.PAYMENT_DUES,     icon: <MdPayment /> },
     ],
@@ -71,7 +71,7 @@ const adminNavItems: NavItem[] = [
 const employeeNavItems: NavItem[] = [
   { label: 'Dashboard',        path: ROUTES.EMPLOYEE.DASHBOARD,        icon: <MdDashboard /> },
   { label: 'Customer Details', path: ROUTES.EMPLOYEE.CUSTOMER_DETAILS, icon: <MdContactPage /> },
-  { label: 'Leads Info',       path: ROUTES.EMPLOYEE.LEADS_INFO,       icon: <MdLeaderboard /> },
+  { label: 'Leads',             path: ROUTES.EMPLOYEE.LEADS,            icon: <MdLeaderboard /> },
   { label: 'Payment Received', path: ROUTES.EMPLOYEE.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
   { label: 'Payment Dues',     path: ROUTES.EMPLOYEE.PAYMENT_DUES,     icon: <MdPayment /> },
   { label: 'Attendance',       path: ROUTES.EMPLOYEE.ATTENDANCE,       icon: <MdEventAvailable /> },
@@ -189,8 +189,9 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
 
   const isDark         = mode === 'dark';
   const t              = getTheme(isDark);
-  const navItems       = role === 'Admin' ? adminNavItems : employeeNavItems;
-  const dashboardRoute = role === 'Admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
+  const navItems       = role === 'admin' ? adminNavItems : employeeNavItems;
+  const dashboardRoute = role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
+  const roleLabel      = role === 'admin' ? 'Admin' : 'Employee';
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full" style={{ width: sidebarCollapsed ? 70 : 260 }}>
@@ -249,7 +250,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
             }}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-current" />
-            {role} Panel
+            {roleLabel} Panel
           </span>
         </div>
       )}

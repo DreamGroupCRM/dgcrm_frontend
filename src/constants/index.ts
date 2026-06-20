@@ -6,73 +6,70 @@ export const APP_NAME = 'Dream Group CRM';
 export const APP_SUBTITLE = 'Interest Free Home For All Community People';
 export const APP_TAGLINE = 'Building Dreams. Building A Better Future.';
 
-// Storage Keys
+// Keys used to persist auth/session data in localStorage.
+// Only what is required to keep the user logged in across page refreshes is stored here.
 export const STORAGE_KEYS = {
   TOKEN: 'dgcrm_token',
-  USER:  'dgcrm_user',
+  USER: 'dgcrm_user',
+  PERMISSIONS: 'dgcrm_permissions',
   THEME: 'dgcrm_theme',
-  ROLE:  'dgcrm_role',
+  ROLE: 'dgcrm_role',
 } as const;
 
-// Routes
+// All app routes in one place — used by routers, sidebar links, and redirects.
+// URL style: lowercase, hyphenated, no "Add" verb prefixes (e.g. /admin/masters/company).
 export const ROUTES = {
   LOGIN: '/login',
 
   ADMIN: {
-    ROOT      : '/Admin',
-    DASHBOARD : '/Admin/Dashboard',
+    ROOT: '/admin',
+    DASHBOARD: '/admin/dashboard',
 
     // Master
-    ADD_COMPANY     : '/Admin/Master/AddCompany',
-    ADD_DEPARTMENT  : '/Admin/Master/AddDepartment',
-    ADD_DESIGNATION : '/Admin/Master/AddDesignation',
-    ADD_ROLES       : '/Admin/Master/AddRoles',
-    ADD_BANK_AC     : '/Admin/Master/AddBankAccount',
-    ADD_BUILDING    : '/Admin/Master/AddBuilding',
+    COMPANY: '/admin/masters/company',
+    DEPARTMENT: '/admin/masters/department',
+    DESIGNATION: '/admin/masters/designation',
+    ROLES: '/admin/masters/roles',
+    BANK_AC: '/admin/masters/bank-account',
+    BUILDING: '/admin/masters/building',
 
     // Employee
-    ADD_EMPLOYEE : '/Admin/Employee/AddEmployee',
-    ATTENDANCE   : '/Admin/Employee/Attendance',
+    EMPLOYEE: '/admin/employee-details/employee',
+    ATTENDANCE: '/admin/employee-details/attendance',
 
     // CRM
-    CUSTOMER_DETAILS  : '/Admin/CRM/CustomerDetails',
-    LEADS_INFO        : '/Admin/CRM/LeadsInfo',
-    PAYMENT_RECEIVED  : '/Admin/CRM/PaymentReceived',
-    PAYMENT_DUES      : '/Admin/CRM/PaymentDues',
+    CUSTOMER_DETAILS: '/admin/crm/customer-details',
+    LEADS: '/admin/crm/leads',
+    PAYMENT_RECEIVED: '/admin/crm/payment-received',
+    PAYMENT_DUES: '/admin/crm/payment-dues',
 
     // Standalone
-    AUDIT_HISTORY        : '/Admin/AuditHistory',
-    INTEREST_CALCULATOR  : '/Admin/InterestFreeCalculator',
-    BACKUP_DATABASE      : '/Admin/BackupDatabase',
+    AUDIT_HISTORY: '/admin/audit-history',
+    INTEREST_CALCULATOR: '/admin/interest-free-calculator',
+    BACKUP_DATABASE: '/admin/backup-database',
   },
 
   EMPLOYEE: {
-    ROOT             : '/Employee',
-    DASHBOARD        : '/Employee/Dashboard',
-    CUSTOMER_DETAILS : '/Employee/CustomerDetails',
-    LEADS_INFO       : '/Employee/LeadsInfo',
-    PAYMENT_RECEIVED : '/Employee/PaymentReceived',
-    PAYMENT_DUES     : '/Employee/PaymentDues',
-    ATTENDANCE       : '/Employee/Attendance',
+    ROOT: '/employee',
+    DASHBOARD: '/employee/dashboard',
+    CUSTOMER_DETAILS: '/employee/customer-details',
+    LEADS: '/employee/leads',
+    PAYMENT_RECEIVED: '/employee/payment-received',
+    PAYMENT_DUES: '/employee/payment-dues',
+    ATTENDANCE: '/employee/attendance',
   },
 } as const;
 
-// Hardcoded Users (replace with API in production)
-export const HARDCODED_USERS = [
-  { email: 'admin.sohel@gmail.com',    password: 'Admin@123',    role: 'Admin'    as const, id: '1' },
-  { email: 'employee.sohel@gmail.com', password: 'Employee@123', role: 'Employee' as const, id: '2' },
-];
-
-// Validation
+// Validation rules used by the login form
 export const VALIDATION = {
-  EMAIL_REGEX    : /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|co|in|org)$/,
-  PASSWORD_REGEX : /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/,
-  MOBILE_REGEX   : /^[6-9]\d{9}$/,
+  EMAIL_REGEX: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|co|in|org)$/,
+  PASSWORD_REGEX: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/,
+  MOBILE_REGEX: /^[6-9]\d{9}$/,
 };
 
 // Social Links
 export const SOCIAL_LINKS = {
-  INSTAGRAM : 'https://instagram.com/dreamgroup.co',
-  FACEBOOK  : 'https://facebook.com/dreamgroup',
-  WHATSAPP  : 'https://wa.me/918855996468',
+  INSTAGRAM: 'https://instagram.com/dreamgroup.co',
+  FACEBOOK: 'https://facebook.com/dreamgroup',
+  WHATSAPP: 'https://wa.me/918855996468',
 };

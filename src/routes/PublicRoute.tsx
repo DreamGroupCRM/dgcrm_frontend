@@ -24,7 +24,7 @@ const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
     // Already logged in — send to correct dashboard
     return (
       <Navigate
-        to={role === 'Admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD}
+        to={role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD}
         replace
       />
     );

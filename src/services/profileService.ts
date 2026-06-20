@@ -1,38 +1,17 @@
 // ==========================================
 // DREAM GROUP CRM - PROFILE SERVICE
 // ==========================================
+// Talks to the real backend profile endpoint. No mock/dummy data.
 import { ProfileResponse } from '../types';
-import { STORAGE_KEYS } from '../constants';
-import profileResponseData from '../assets/json/myProfileResponse.json';
-
-// PRODUCTION: import axiosInstance from './axiosConfig';
+import axiosInstance from './axiosConfig';
 
 export const profileService = {
   /**
-   * Get current user profile
-   * PRODUCTION: Replace with → axiosInstance.get('/auth/profile')
+   * Calls GET /api/auth/profile (protected — JWT auth header is attached
+   * automatically by the axios request interceptor in axiosConfig.ts).
    */
   getProfile: async (): Promise<ProfileResponse> => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // PRODUCTION:
-    // const response = await axiosInstance.get('/auth/profile');
-    // return response.data;
-
-    // Merge stored user data with mock profile
-    const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      return {
-        ...profileResponseData,
-        data: {
-          ...profileResponseData.data,
-          email: user.email,
-          role: user.role,
-        },
-      } as ProfileResponse;
-    }
-
-    return profileResponseData as ProfileResponse;
+    const response = await axiosInstance.get('/auth/profile');
+    return response.data as ProfileResponse;
   },
 };

@@ -55,24 +55,28 @@ export const showAlert = {
       cancelButtonText: 'No',
     });
   },
-  loginSuccess: () => {
+  /** Shows "Admin Logged in Successfully" or "Employee Logged in Successfully" based on base_role */
+  loginSuccess: (baseRole: 'admin' | 'employee') => {
+    const roleLabel = baseRole === 'admin' ? 'Admin' : 'Employee';
     return Swal.fire({
       icon: 'success',
-      title: 'Logged In Successfully',
+      title: `${roleLabel} Logged in Successfully`,
       text: 'Welcome to Dream Group CRM!',
-      timer: 1000,
+      timer: 1500,
       showConfirmButton: false,
       position: 'top',
       toast: true,
       timerProgressBar: true,
     });
   },
-  logoutSuccess: () => {
+  /** Shows "Admin Logged out Successfully" or "Employee Logged out Successfully" based on base_role */
+  logoutSuccess: (baseRole: 'admin' | 'employee') => {
+    const roleLabel = baseRole === 'admin' ? 'Admin' : 'Employee';
     return Swal.fire({
       icon: 'success',
-      title: 'Logged Out Successfully',
+      title: `${roleLabel} Logged out Successfully`,
       text: 'You have been safely logged out.',
-      timer: 500,
+      timer: 1500,
       showConfirmButton: false,
       position: 'top',
       toast: true,

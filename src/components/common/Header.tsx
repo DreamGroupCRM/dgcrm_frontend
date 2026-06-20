@@ -88,16 +88,23 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   const t          = getTheme(isDark);
   const navigate   = useNavigate();
 
-  const dashboardRoute = role === 'Admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
+  const dashboardRoute = role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
   const notesUserId    = (user as any)?.id ?? user?.email ?? 'guest';
 
   const handleLogout = async () => {
     const result = await showAlert.confirm('You will be Logged Out of Dream Group CRM.', 'Logout?');
     if (result.isConfirmed) {
-      await showAlert.logoutSuccess();
-      dispatch(logoutThunk());
+      // Capture the role BEFORE clearing auth state, since it becomes null right after logout
+      const loggedOutRole = role ?? 'employee';
+
+      // Clear auth state (token/user/permissions) + any cached profile data
+      await dispatch(logoutThunk());
       dispatch(clearProfile());
-      navigate('/login', { replace: true });
+
+      await showAlert.logoutSuccess(loggedOutRole);
+
+      // replace: true so the user can't navigate "back" into a protected page after logout
+      navigate(ROUTES.LOGIN, { replace: true });
     }
   };
 
@@ -234,7 +241,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             </p>
             <p className="text-xs mt-0.5"
               style={{ color: t.textMuted, fontFamily: t.fontFamily }}>
-              {user?.role}
+              {user?.role?.name}
             </p>
           </div>
         </button>

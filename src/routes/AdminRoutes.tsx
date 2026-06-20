@@ -6,44 +6,44 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ROUTES } from '../constants';
 import ProtectedRoute from './ProtectedRoute';
 
-const DashboardLayout  = lazy(() => import('../layouts/DashboardLayout'));
-const AdminDashboard   = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
-const PlaceholderPage  = lazy(() => import('../components/common/PlaceholderPage'));
+const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
+const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
+const PlaceholderPage = lazy(() => import('../components/common/PlaceholderPage'));
 
 const AdminRoutes: React.FC = () => (
   <Routes>
     <Route
       element={
-        <ProtectedRoute allowedRoles={['Admin']}>
+        <ProtectedRoute allowedRoles={['admin']}>
           <DashboardLayout />
         </ProtectedRoute>
       }
     >
       <Route index element={<Navigate to={ROUTES.ADMIN.DASHBOARD} replace />} />
-      <Route path="Dashboard" element={<AdminDashboard />} />
+      <Route path="dashboard" element={<AdminDashboard />} />
 
-      {/* Master */}
-      <Route path="Master/AddCompany"     element={<PlaceholderPage title="Add Company" />} />
-      <Route path="Master/AddDepartment"  element={<PlaceholderPage title="Add Department" />} />
-      <Route path="Master/AddDesignation" element={<PlaceholderPage title="Add Designation" />} />
-      <Route path="Master/AddRoles"       element={<PlaceholderPage title="Add Roles" />} />
-      <Route path="Master/AddBankAccount" element={<PlaceholderPage title="Add Bank A/C" />} />
-      <Route path="Master/AddBuilding"    element={<PlaceholderPage title="Add Building" />} />
+      {/* Masters */}
+      <Route path="masters/company" element={<PlaceholderPage title="Company" />} />
+      <Route path="masters/department" element={<PlaceholderPage title="Department" />} />
+      <Route path="masters/designation" element={<PlaceholderPage title="Designation" />} />
+      <Route path="masters/roles" element={<PlaceholderPage title="Roles" />} />
+      <Route path="masters/bank-account" element={<PlaceholderPage title="Bank A/C" />} />
+      <Route path="masters/building" element={<PlaceholderPage title="Building" />} />
 
-      {/* Employee */}
-      <Route path="Employee/AddEmployee" element={<PlaceholderPage title="Add Employee" />} />
-      <Route path="Employee/Attendance"  element={<PlaceholderPage title="Attendance" />} />
+      {/* Employee-Details */}
+      <Route path="employee-details/employee" element={<PlaceholderPage title="Employee" />} />
+      <Route path="employee-details/attendance" element={<PlaceholderPage title="Attendance" />} />
 
       {/* CRM */}
-      <Route path="CRM/CustomerDetails" element={<PlaceholderPage title="Customer Details" />} />
-      <Route path="CRM/LeadsInfo"       element={<PlaceholderPage title="Leads Info" />} />
-      <Route path="CRM/PaymentReceived" element={<PlaceholderPage title="Payment Received" />} />
-      <Route path="CRM/PaymentDues"     element={<PlaceholderPage title="Payment Dues" />} />
+      <Route path="crm/customer-details" element={<PlaceholderPage title="Customer Details" />} />
+      <Route path="crm/leads" element={<PlaceholderPage title="Leads" />} />
+      <Route path="crm/payment-received" element={<PlaceholderPage title="Payment Received" />} />
+      <Route path="crm/payment-dues" element={<PlaceholderPage title="Payment Dues" />} />
 
       {/* Standalone */}
-      <Route path="AuditHistory"            element={<PlaceholderPage title="Audit History" />} />
-      <Route path="InterestFreeCalculator"  element={<PlaceholderPage title="Interest Free Calculator" />} />
-      <Route path="BackupDatabase"          element={<PlaceholderPage title="Backup Database" />} />
+      <Route path="audit-history" element={<PlaceholderPage title="Audit History" />} />
+      <Route path="interest-free-calculator" element={<PlaceholderPage title="Interest Free Calculator" />} />
+      <Route path="backup-database" element={<PlaceholderPage title="Backup Database" />} />
     </Route>
   </Routes>
 );
