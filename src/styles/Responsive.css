@@ -1,35 +1,45 @@
 /* ==========================================
-   LOGIN PAGE
-========================================== */
+   DREAM GROUP CRM — RESPONSIVE CSS
+   ==========================================
+   Covers: Login page layout, Header, Sidebar,
+   Profile modal, Tables, Dashboard cards.
+   Theme colors are handled in theme.ts / MUI.
+   This file: layout & breakpoints ONLY.
+   ========================================== */
 
 /* ==========================================
    LOGIN PAGE
-========================================== */
+   ========================================== */
 
 .login-page-container {
-  min-height: 100vh;
-  padding: 10px;
+  height: 100vh;
+  width: 100vw;
+  padding: 20px;
   display: flex;
   justify-content: center;
   align-items: center;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .login-frame {
-  width: min(1700px, 98vw);
-  max-height: 920px;
+  width: 100%;
+  height: 100%;
+  max-width: 1700px;
   display: flex;
+  gap: 16px;
   border-radius: 24px;
   background: rgba(255, 255, 255, .03);
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .login-left {
   flex: 1.6;
   position: relative;
-  border-radius: 24px;
+  border-radius: 20px;
   overflow: hidden;
-  background: rgba(9, 19, 48, 0.02);
+  min-height: 0;
 }
 
 .login-right {
@@ -37,7 +47,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 24px;
+  border-radius: 20px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .carousel-card {
@@ -52,25 +64,22 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  border-radius: 24px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0a1a0f;
+  background: #050510;
 }
 
 .carousel-image {
   width: 100%;
   height: 100%;
-  object-fit: contain;     /* CHANGED: full image always visible, no cropping */
+  object-fit: contain;
   object-position: center;
   display: block;
 }
 
-/* ==========================================
-   REMOVE WHITE AUTOFILL BG
-========================================== */
-
+/* Remove white autofill background */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -82,78 +91,67 @@ select:-webkit-autofill {
 }
 
 /* ==========================================
-   TABLET
-========================================== */
+   TABLET (≤1024px)
+   ========================================== */
 
 @media (max-width: 1024px) {
   .login-frame {
-    gap: 10px;
-    padding: 10px;
+    gap: 12px;
   }
 
-  .login-left {
-    flex: 1.5;
-  }
-
-  .login-right {
-    flex: 1;
-
-  }
+  .login-left  { flex: 1.5; }
+  .login-right { flex: 1; }
 }
 
 /* ==========================================
-   MOBILE
-========================================== */
+   MOBILE (≤768px)
+   ========================================== */
 
-@media (max-width:768px) {
-
+@media (max-width: 768px) {
   .login-page-container {
+    height: auto;
+    min-height: 100vh;
     padding: 12px;
+    overflow-y: auto;
+    align-items: flex-start;
   }
 
   .login-frame {
     flex-direction: column;
     height: auto;
-    min-height: calc(100vh - 24px);
-    padding: 10px;
-    gap: 10px;
+    overflow: visible;
+    gap: 12px;
   }
 
   .login-left {
-    height: 320px;
+    height: 300px;
     flex: none;
   }
 
   .login-right {
-    padding: 12px;
+    flex: none;
+    overflow: visible;
+    padding: 4px;
   }
 }
 
 /* ==========================================
-   SMALL MOBILE
-========================================== */
+   SMALL MOBILE (≤480px)
+   ========================================== */
 
 @media (max-width: 480px) {
-  .login-left {
-    height: 260px;
-  }
-  .login-right {
-    padding: 12px;
-  }
+  .login-page-container { padding: 10px; }
+  .login-left { height: 240px; }
 }
+
 /* ==========================================
    SIDEBAR
-========================================== */
-
-/* Sidebar visibility is now controlled by Tailwind classes in Sidebar.tsx:
-   - Desktop/Tablet (≥768px): hidden md:flex  → real flex child
-   - Mobile (<768px): fixed drawer via translate-x
-   No CSS overrides needed here.*/
-
+   (visibility via Tailwind in Sidebar.tsx)
+   ========================================== */
 
 /* ==========================================
    HEADER
-========================================== */
+   ========================================== */
 
 @media (max-width: 640px) {
   .header-social-icons,
@@ -163,8 +161,8 @@ select:-webkit-autofill {
 }
 
 /* ==========================================
-   PROFILE
-========================================== */
+   PROFILE MODAL
+   ========================================== */
 
 @media (max-width: 480px) {
   .profile-modal {
@@ -175,7 +173,7 @@ select:-webkit-autofill {
 
 /* ==========================================
    TABLES
-========================================== */
+   ========================================== */
 
 @media (max-width: 768px) {
   .responsive-table {
@@ -185,8 +183,8 @@ select:-webkit-autofill {
 }
 
 /* ==========================================
-   DASHBOARD CARDS
-========================================== */
+   DASHBOARD STAT CARDS
+   ========================================== */
 
 @media (max-width: 640px) {
   .stat-card-grid {

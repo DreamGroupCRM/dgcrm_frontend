@@ -1,5 +1,9 @@
 /* ==========================================
    DREAM GROUP CRM - GLOBAL STYLES
+   ==========================================
+   Font: Inter, Georgia, serif (global)
+   Scrollbar: neutral gray tones
+   SweetAlert2: z-index fix
    ========================================== */
 
 @tailwind base;
@@ -9,41 +13,40 @@
 @layer base {
   * {
     box-sizing: border-box;
+    font-family: "Inter", "Georgia", serif;
   }
 
   html, body {
     margin: 0;
     padding: 0;
-    font-family: 'DM Sans', sans-serif;
+    font-family: "Inter", "Georgia", serif;
   }
 
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
+  /* Neutral scrollbar — works in both themes */
+  ::-webkit-scrollbar       { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    background: rgba(26, 92, 56, 0.4);
-    border-radius: 999px;
+    background    : rgba(100, 116, 139, 0.35);
+    border-radius : 999px;
   }
-
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(26, 92, 56, 0.7);
+    background: rgba(100, 116, 139, 0.6);
   }
 
   /* SweetAlert2 z-index fix */
-  .swal2-container {
-    z-index: 99999 !important;
-  }
+  .swal2-container { z-index: 99999 !important; }
 }
 
 @layer utilities {
-  .no-underline {
-    text-decoration: none !important;
+  .no-underline { text-decoration: none !important; }
+
+  /* Fade-in animation used in DashboardLayout */
+  .animate-fade-in {
+    animation: fadeIn 0.35s ease-out both;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 }

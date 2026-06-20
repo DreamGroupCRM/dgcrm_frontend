@@ -2,22 +2,50 @@
 // DREAM GROUP CRM - TYPE DEFINITIONS
 // ==========================================
 
-export type UserRole = 'Admin' | 'Employee';
+// The backend sends the role as lowercase: "admin" | "employee"
+export type BaseRole = 'admin' | 'employee';
 
-export interface User {
-  id: string;
-  email: string;
-  role: UserRole;
-  avatar: string | null;
-  createdAt: string;
+// Detailed role record (comes nested inside user.role from the login API)
+export interface RoleInfo {
+  id: number;
+  company_id: number;
+  name: string;
+  slug: string;
+  base_role: BaseRole;
+  description: string | null;
+  is_active: boolean;
+  is_delete?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: number | null;
+  updated_by?: number | null;
 }
 
-export interface UserProfile extends User {
-  department?: string;
-  designation?: string;
-  joinedAt?: string;
-  address?: string;
-  isActive?: boolean;
+// Logged-in user, exactly as returned by POST /api/auth/login
+export interface User {
+  id: number;
+  company_id: number;
+  role_id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  base_role: BaseRole;
+  allow_login: boolean;
+  is_active: boolean;
+  last_login_at: string | null;
+  created_at: string;
+  updated_at: string;
+  role: RoleInfo;
+}
+
+// Module-level permission flags, e.g. permissions.leads.create
+export interface ModulePermissions {
+  [action: string]: boolean;
+}
+
+export interface Permissions {
+  [module: string]: ModulePermissions;
 }
 
 export interface LoginCredentials {
@@ -25,24 +53,40 @@ export interface LoginCredentials {
   password: string;
 }
 
+// POST /api/auth/login response — success/token/user/permissions are top-level
 export interface LoginResponse {
   success: boolean;
-  message: string;
-  data: {
-    token: string;
-    user: User;
-  };
+  message?: string;
+  token: string;
+  user: User;
+  permissions: Permissions;
 }
 
+// POST /api/auth/logout response
 export interface LogoutResponse {
   success: boolean;
-  message: string;
+  message?: string;
 }
 
+// GET /api/auth/profile response
 export interface ProfileResponse {
   success: boolean;
-  message: string;
+  message?: string;
   data: UserProfile;
+}
+
+export interface UserProfile {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  role: string;
+  department?: string;
+  designation?: string;
+  joinedAt?: string;
+  address?: string;
+  isActive?: boolean;
 }
 
 export interface ApiResponse<T = unknown> {
@@ -51,26 +95,8 @@ export interface ApiResponse<T = unknown> {
   data?: T;
 }
 
-// Legacy: kept for backward compatibility
+// Light/dark UI theme toggle (header sun/moon icon)
 export type ThemeMode = 'light' | 'dark';
-
-// Multi-theme support — 5 themes available
-export type ThemeName =
-  | 'corporate-blue'
-  | 'dark-professional'
-  | 'emerald-green'
-  | 'royal-purple'
-  | 'modern-orange';
-
-export interface ThemeConfig {
-  name: ThemeName;
-  label: string;
-  primaryColor: string;
-  accentColor: string;
-  sidebarBg: string;
-  isDark: boolean;
-  preview: string; // CSS gradient string for preview swatch
-}
 
 export interface SidebarItem {
   label: string;

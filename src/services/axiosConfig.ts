@@ -6,8 +6,7 @@ import { STORAGE_KEYS } from '../constants';
 
 // Create axios instance
 const axiosInstance = axios.create({
-  // PRODUCTION: baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
-  baseURL: '/', // Using local JSON for now
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -31,10 +30,11 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear session and redirect to login
+      // Token expired/invalid — clear the session and send the user back to login
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
       localStorage.removeItem(STORAGE_KEYS.USER);
       localStorage.removeItem(STORAGE_KEYS.ROLE);
+      localStorage.removeItem(STORAGE_KEYS.PERMISSIONS);
       window.location.href = '/login';
     }
     return Promise.reject(error);

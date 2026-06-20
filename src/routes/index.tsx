@@ -50,10 +50,10 @@ const AppRoutes: React.FC = () => (
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* Admin pages: /Admin/... */}
-        <Route path="/Admin/*" element={<AdminRoutes />} />
+        <Route path="/admin/*" element={<AdminRoutes />} />
 
         {/* Employee pages: /Employee/... */}
-        <Route path="/Employee/*" element={<EmployeeRoutes />} />
+        <Route path="/employee/*" element={<EmployeeRoutes />} />
 
         {/* 404 fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />

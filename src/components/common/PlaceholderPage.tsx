@@ -5,46 +5,58 @@ import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { setPageTitle } from '../../redux/slices/uiSlice';
+import { getTheme } from '../../styles/theme';
 import { MdConstruction } from 'react-icons/md';
 
 interface PlaceholderPageProps {
-  title: string;
+  title       : string;
   description?: string;
 }
 
 const PlaceholderPage: React.FC<PlaceholderPageProps> = ({ title, description }) => {
-  const dispatch = useAppDispatch();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const location = useLocation();
+  const dispatch  = useAppDispatch();
+  const { mode }  = useAppSelector((s) => s.theme);
+  const isDark    = mode === 'dark';
+  const t         = getTheme(isDark);
+  const location  = useLocation();
 
-  useEffect(() => {
-    dispatch(setPageTitle(title));
-  }, [dispatch, title]);
+  useEffect(() => { dispatch(setPageTitle(title)); }, [dispatch, title]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+    <div
+      className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4"
+      style={{ fontFamily: t.fontFamily }}
+    >
       <div
-        className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-6 ${
-          isDark ? 'bg-gray-800' : 'bg-green-50'
-        }`}
+        className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
+        style={{ background: t.insetBg }}
       >
-        <MdConstruction size={40} className="text-green-600" />
+        <MdConstruction size={40} style={{ color: isDark ? '#3b82f6' : '#2563eb' }} />
       </div>
-      <h1
-        className={`font-display text-2xl font-bold mb-3 ${isDark ? 'text-white' : 'text-gray-800'}`}
-      >
+
+      <h1 className="text-2xl font-bold mb-3" style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>
         {title}
       </h1>
-      <p className={`max-w-sm mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-        {description || `This module is under active development. Connect your backend API to bring this section to life.`}
+
+      <p className="max-w-sm mb-2" style={{ color: t.textSecondary }}>
+        {description || 'This module is under active development. Connect your backend API to bring this section to life.'}
       </p>
-      <p className={`text-xs font-mono mt-2 px-3 py-1 rounded-full ${isDark ? 'bg-gray-800 text-gray-500' : 'bg-gray-100 text-gray-400'}`}>
+
+      <p
+        className="text-xs font-mono mt-2 px-3 py-1 rounded-full"
+        style={{ background: t.insetBg, color: t.textMuted }}
+      >
         {location.pathname}
       </p>
+
       <div
         className="mt-6 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-        style={{ background: 'linear-gradient(135deg, #1a5c38, #2d7a4f)' }}
+        style={{
+          background: isDark
+            ? 'linear-gradient(135deg, #1e3a5f, #2563eb)'
+            : 'linear-gradient(135deg, #1d4ed8, #2563eb)',
+          fontFamily: t.fontFamily,
+        }}
       >
         Dream Group CRM — Coming Soon
       </div>
