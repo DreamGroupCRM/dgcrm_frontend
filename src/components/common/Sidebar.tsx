@@ -46,9 +46,9 @@ const adminNavItems: NavItem[] = [
   },
 
   {
-    label: 'Employee Details', icon: <MdPeople />,
+    label: 'Employee', icon: <MdPeople />,
     children: [
-      { label: 'Employee',   path: ROUTES.ADMIN.EMPLOYEE,   icon: <MdPersonAdd /> },
+      { label: 'Employee Details',   path: ROUTES.ADMIN.EMPLOYEE_DETAILS,   icon: <MdPersonAdd /> },
       { label: 'Attendance', path: ROUTES.ADMIN.ATTENDANCE, icon: <MdEventAvailable /> },
     ],
   },

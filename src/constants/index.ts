@@ -34,8 +34,8 @@ export const ROUTES = {
     BUILDING: '/admin/masters/building',
 
     // Employee
-    EMPLOYEE: '/admin/employee-details/employee',
-    ATTENDANCE: '/admin/employee-details/attendance',
+    EMPLOYEE_DETAILS: '/admin/employee/employee-details',
+    ATTENDANCE: '/admin/employee/attendance',
 
     // CRM
     CUSTOMER_DETAILS: '/admin/crm/customer-details',

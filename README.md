@@ -56,11 +56,7 @@ src/
 ├── assets/
 │   ├── images/carousel/    ← 7 carousel images (1.png–7.png)
 │   ├── logo/
-│   └── json/               ← Mock API responses
-│       ├── loginResponse.json
-│       ├── logoutResponse.json
-│       └── myProfileResponse.json
-│
+│ │
 ├── app/
 │   └── store.ts            ← Redux store
 │
