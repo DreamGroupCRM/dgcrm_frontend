@@ -30,9 +30,9 @@ const AdminRoutes: React.FC = () => (
       <Route path="masters/bank-account" element={<PlaceholderPage title="Bank A/C" />} />
       <Route path="masters/building" element={<PlaceholderPage title="Building" />} />
 
-      {/* Employee-Details */}
-      <Route path="employee-details/employee" element={<PlaceholderPage title="Employee" />} />
-      <Route path="employee-details/attendance" element={<PlaceholderPage title="Attendance" />} />
+      {/* Employee */}
+      <Route path="employee/employee-details" element={<PlaceholderPage title="Employee Details" />} />
+      <Route path="employee/attendance" element={<PlaceholderPage title="Attendance" />} />
 
       {/* CRM */}
       <Route path="crm/customer-details" element={<PlaceholderPage title="Customer Details" />} />
