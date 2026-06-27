@@ -158,7 +158,7 @@ const ProfileModal: React.FC = () => {
                     }}
                   >
                     {/* Show the human-readable role name e.g. "Super Admin" */}
-                    {profile.role_name || profile.base_role || '-'}
+                    {profile.first_name + ' ' + profile.last_name}
                   </span>
                 </div>
               </div>
