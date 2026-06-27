@@ -76,18 +76,18 @@ export interface ProfileResponse {
 }
 
 export interface UserProfile {
-	 id: number;
-	 first_name: string;
-	 last_name: string;
-	 email: string;
-	 phone: string | null;
-	 base_role: string;
-	 last_login_at: string | null;
-	 created_at: string;
-	 role_name: string;
-	 role_slug: string;
-	 company_name: string;
-	 company_logo: string | null;
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  base_role: string;
+  last_login_at: string | null;
+  created_at: string;
+  role_name: string;
+  role_slug: string;
+  company_name: string;
+  company_logo: string | null;
 }
 
 export interface ApiResponse<T = unknown> {
@@ -110,4 +110,39 @@ export interface NotificationState {
   open: boolean;
   message: string;
   type: 'success' | 'error' | 'warning' | 'info';
+}
+
+// ── Company Master ────────────────────────────────────────────────────────────
+export interface Company {
+  id: string;
+  name: string;
+  company_code?: string;
+  sort_order?: number;
+  email: string;
+  phone: string;
+  whatsapp_number?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  pincode?: string | null;
+  pan?: string | null;
+  gst?: string | null;
+  logo_url?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+export interface CompanyListResponse {
+  success: boolean;
+  message?: string;
+  rows: Company[];                 // API uses "rows", not "data"
+  total: number;                   // top-level, not inside pagination
+  page: number;
+  limit: number;
+}
+
+export interface CompanySingleResponse {
+  success: boolean;
+  message?: string;
+  data: Company;
 }
