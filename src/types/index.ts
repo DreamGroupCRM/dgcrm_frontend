@@ -76,17 +76,18 @@ export interface ProfileResponse {
 }
 
 export interface UserProfile {
-  id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-  role: string;
-  department?: string;
-  designation?: string;
-  joinedAt?: string;
-  address?: string;
-  isActive?: boolean;
+	 id: number;
+	 first_name: string;
+	 last_name: string;
+	 email: string;
+	 phone: string | null;
+	 base_role: string;
+	 last_login_at: string | null;
+	 created_at: string;
+	 role_name: string;
+	 role_slug: string;
+	 company_name: string;
+	 company_logo: string | null;
 }
 
 export interface ApiResponse<T = unknown> {

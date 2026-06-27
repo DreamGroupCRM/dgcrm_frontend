@@ -91,19 +91,18 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   const dashboardRoute = role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
   const notesUserId    = (user as any)?.id ?? user?.email ?? 'guest';
 
-  const handleLogout = async () => {
+const handleLogout = async () => {
     const result = await showAlert.confirm('You will be Logged Out of Dream Group CRM.', 'Logout?');
     if (result.isConfirmed) {
-      // Capture the role BEFORE clearing auth state, since it becomes null right after logout
       const loggedOutRole = role ?? 'employee';
 
-      // Clear auth state (token/user/permissions) + any cached profile data
++     // Clear all localStorage data (token, user, theme, etc.) on logout
++     localStorage.clear();
+
       await dispatch(logoutThunk());
       dispatch(clearProfile());
 
       await showAlert.logoutSuccess(loggedOutRole);
-
-      // replace: true so the user can't navigate "back" into a protected page after logout
       navigate(ROUTES.LOGIN, { replace: true });
     }
   };

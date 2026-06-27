@@ -97,6 +97,33 @@ export const formatDate = (dateString: string): string => {
   });
 };
 
+// Formats last_login_at from ISO string → "20th June 2026, 08:30:54 AM"
+export const formatLastLogin = (isoString: string | null): string => {
+  if (!isoString) return '-';
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return '-';
+
+  // Get ordinal suffix: 1st, 2nd, 3rd, 4th...
+  const day = date.getDate();
+  const suffix =
+    day % 10 === 1 && day !== 11 ? 'st'
+    : day % 10 === 2 && day !== 12 ? 'nd'
+    : day % 10 === 3 && day !== 13 ? 'rd'
+    : 'th';
+
+  const month = date.toLocaleString('en-IN', { month: 'long' });
+  const year  = date.getFullYear();
+  const time  = date.toLocaleString('en-IN', {
+    hour  : '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  }).toUpperCase();
+
+  return `${day}${suffix} ${month} ${year}, ${time}`;
+};
+
+
 /**
  * Get user initials for avatar
  */
