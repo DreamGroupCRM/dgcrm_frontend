@@ -22,8 +22,8 @@ export const getTheme = (isDark: boolean) => ({
   // ── Typography ───────────────────────────────────────────────────────────
   fontFamily    : '"Inter", "Georgia", serif',
   textPrimary   : isDark ? '#ffffff' : '#000000',
-  textSecondary : isDark ? '#a3a3a3' : '#4b5563',
-  textMuted     : isDark ? '#525252' : '#9ca3af',
+  textSecondary : isDark ? '#a3a3a3' : '#111827',
+  textMuted     : isDark ? '#525252' : '#374151',
 
   // ── Hover / Active states ────────────────────────────────────────────────
   hoverBg       : isDark ? '#1a1a1a' : '#eff6ff',   // dark=dark-gray, light=light-blue
