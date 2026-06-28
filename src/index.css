@@ -1,7 +1,7 @@
 /* ==========================================
    DREAM GROUP CRM - GLOBAL STYLES
    ==========================================
-   Font: Inter, Georgia, serif (global)
+   Font: Inter, Arial, serif (global)
    Scrollbar: neutral gray tones
    SweetAlert2: z-index fix
    ========================================== */
@@ -13,13 +13,13 @@
 @layer base {
   * {
     box-sizing: border-box;
-    font-family: "Inter", "Georgia", serif;
+    font-family: "Inter", "Arial", serif;
   }
 
   html, body {
     margin: 0;
     padding: 0;
-    font-family: "Inter", "Georgia", serif;
+    font-family: "Inter", "Arial", serif;
   }
 
   /* Neutral scrollbar — works in both themes */
