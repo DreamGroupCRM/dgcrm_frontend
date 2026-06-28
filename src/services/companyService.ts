@@ -3,6 +3,23 @@
 // ==========================================
 import axiosInstance from './axiosConfig';
 
+// JSON payload shape for create and update
+export interface CompanyPayload {
+  name            : string;
+  email           : string;
+  phone           : string;
+  is_active       : boolean;
+  company_code?   : string;
+  whatsapp_number?: string;
+  city?           : string;
+  state?          : string;
+  country?        : string;
+  pincode?        : string;
+  pan?            : string;
+  gst?            : string;
+  logo_url?       : string; // file path / folder path passed as a string
+}
+
 export const companyService = {
 
   /** GET /api/company?is_active=true&page=1&limit=10 */
@@ -21,29 +38,16 @@ export const companyService = {
     return res.data;
   },
 
-  /**
-   * POST /api/company
-   * Sends FormData so the logo file can be included.
-   * Axios automatically sets Content-Type: multipart/form-data with
-   * the correct boundary — do NOT set it manually.
-   *
-   * ⚠️  BACKEND NOTE: The backend must use multer (or equivalent) to
-   *     parse multipart/form-data. The file arrives as req.file (field
-   *     name: "logo"). After saving the file, return logo_url in the
-   *     response so the frontend can display it in the table.
-   */
-  create: async (formData: FormData) => {
-    const res = await axiosInstance.post('/company', formData);
+  /** POST /api/company — JSON body */
+  create: async (payload: CompanyPayload) => {
+    const res = await axiosInstance.post('/company', payload);
     console.log('Create Company Response:', res.data);
     return res.data;
   },
 
-  /**
-   * PUT /api/company/:id
-   * Same multipart approach as create.
-   */
-  update: async (id: string, formData: FormData) => {
-    const res = await axiosInstance.put(`/company/${id}`, formData);
+  /** PUT /api/company/:id — JSON body */
+  update: async (id: string, payload: CompanyPayload) => {
+    const res = await axiosInstance.put(`/company/${id}`, payload);
     console.log('Update Company Response:', res.data);
     return res.data;
   },
