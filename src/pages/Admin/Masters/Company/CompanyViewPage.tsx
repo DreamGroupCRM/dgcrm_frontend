@@ -1,8 +1,6 @@
 // ==========================================
 // DREAM GROUP CRM - COMPANY VIEW PAGE
 // ==========================================
-// Read-only page. Layout identical to CompanyFormPage
-// but all fields are disabled and only Go Back is shown.
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -15,12 +13,12 @@ import { Company } from '../../../../types';
 import { ROUTES } from '../../../../constants';
 
 const CompanyViewPage: React.FC = () => {
-  const dispatch   = useAppDispatch();
-  const navigate   = useNavigate();
-  const { id }     = useParams<{ id: string }>();
-  const { mode }   = useAppSelector((s) => s.theme);
-  const isDark     = mode === 'dark';
-  const t          = getTheme(isDark);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { id }   = useParams<{ id: string }>();
+  const { mode } = useAppSelector((s) => s.theme);
+  const isDark   = mode === 'dark';
+  const t        = getTheme(isDark);
 
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,18 +49,17 @@ const CompanyViewPage: React.FC = () => {
   };
 
   const fieldStyle: React.CSSProperties = {
-    width: '100%', background: t.insetBg,
     border: `1px solid ${t.inputBorder}`, borderRadius: 10,
     padding: '10px 14px', fontSize: 14, color: t.textPrimary,
     outline: 'none', boxSizing: 'border-box',
     fontFamily: t.fontFamily, cursor: 'not-allowed', opacity: 0.85,
   };
 
-  // Field is defined inside here (safe — no user typing, no re-render loop)
+  // Safe inside view page — no typing, so no focus/remount issue
   const Field = ({ label, value }: { label: string; value?: string | null }) => (
     <div>
       <label style={labelStyle}>{label}</label>
-      <input type="text" readOnly disabled value={value ?? ''} style={fieldStyle} />
+      <input type="text" readOnly disabled value={value ?? '—'} style={fieldStyle} />
     </div>
   );
 
@@ -102,23 +99,23 @@ const CompanyViewPage: React.FC = () => {
           <Field label="Pincode"         value={company.pincode} />
           <Field label="PAN"             value={company.pan} />
           <Field label="GST"             value={company.gst} />
-          <Field label="Company Logo"    value={company.logo_url} />
         </div>
 
+        {/* Logo */}
         {/* <div className="mb-8">
           <label style={labelStyle}>Company Logo</label>
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0"
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}` }}>
               {company.logo_url && company.logo_url !== 'string' ? (
-                <img src={company.logo_url} alt="logo" className="w-full h-full object-contain" />
+                <img src={company.logo_url} alt="Company logo" className="w-full h-full object-contain" />
               ) : (
                 <MdBusiness size={28} style={{ color: '#2563eb' }} />
               )}
             </div>
             <input type="text" readOnly disabled
               value={company.logo_url && company.logo_url !== 'string' ? company.logo_url : 'No logo uploaded'}
-              style={{ ...fieldStyle, flex: 1 }} />
+              style={{ ...fieldStyle }} />
           </div>
         </div> */}
 
