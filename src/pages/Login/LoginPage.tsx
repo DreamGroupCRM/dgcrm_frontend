@@ -279,7 +279,7 @@ const LoginPage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Email sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 18 }} />
+                      <Email sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 20 }} />
                     </InputAdornment>
                   ),
                 }}
@@ -298,7 +298,7 @@ const LoginPage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Lock sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 18 }} />
+                      <Lock sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 20 }} />
                     </InputAdornment>
                   ),
                   endAdornment: (

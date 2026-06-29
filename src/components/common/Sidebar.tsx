@@ -226,7 +226,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
             <span
               style={{
                 fontFamily   : t.fontFamily,
-                fontSize     : 26,
+                fontSize     : 28,
                 fontWeight   : 700,
                 letterSpacing: '0.06em',
                 color        : t.textPrimary,

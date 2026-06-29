@@ -33,7 +33,7 @@ const CompanyListPage: React.FC = () => {
   const [search, setSearch]       = useState('');
   const [loading, setLoading]     = useState(false);
   const [page, setPage]           = useState(1);
-  const [limit, setLimit]         = useState(10);
+  const [limit, setLimit]         = useState(5);
   const [total, setTotal]         = useState(0);
 
   useEffect(() => { dispatch(setPageTitle('Company')); }, [dispatch]);
@@ -45,7 +45,7 @@ const CompanyListPage: React.FC = () => {
       if (res.success) {
         setCompanies(res.rows ?? []);
         setTotal(res.total ?? 0);
-        toast.success('Company Fetched Successfully', { autoClose: 1000 });
+        // toast.success('Company Fetched Successfully', { autoClose: 1000 });
       } else {
         toast.error(res.message || 'Failed to fetch companies');
       }
@@ -90,6 +90,8 @@ const CompanyListPage: React.FC = () => {
     const a   = Object.assign(document.createElement('a'), { href: url, download: 'companies.csv' });
     a.click();
     URL.revokeObjectURL(url);
+    toast.success('Company List CSV Exported Successfully', { autoClose: 1000 });
+    console.log('[CompanyListPage] CSV exported, rows:', filtered.length);
   };
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -101,7 +103,7 @@ const CompanyListPage: React.FC = () => {
   // Same dark-grey for all 3 action icons
   const iconBtn: React.CSSProperties = {
     background: 'none', border: 'none', cursor: 'pointer',
-    color: ACTION_ICON_COLOR, padding: 6, borderRadius: 6,
+    padding: 6, borderRadius: 6,
     display: 'inline-flex', alignItems: 'center',
   };
 
@@ -144,7 +146,7 @@ const CompanyListPage: React.FC = () => {
                 {['ID', 'Company', 'Email', 'Phone', 'Created At'].map((h) => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
-                    fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+                    fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
                     letterSpacing: '0.05em', color: t.textPrimary,
                     borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   }}>{h}</th>
@@ -153,7 +155,7 @@ const CompanyListPage: React.FC = () => {
                 {/* STICKY Actions — vertical left border marks the sticky boundary */}
                 <th style={{
                   padding: '12px 16px', textAlign: 'center',
-                  fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+                  fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
                   letterSpacing: '0.05em', color: t.textPrimary,
                   borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   position: 'sticky', right: 0, zIndex: 2,
@@ -182,7 +184,7 @@ const CompanyListPage: React.FC = () => {
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
 
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.id}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.id}</td>
 
                       <td style={{ padding: '12px 16px' }}>
                         <div className="flex items-center gap-3">
@@ -200,9 +202,9 @@ const CompanyListPage: React.FC = () => {
                         </div>
                       </td>
 
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{company.email || '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.phone || '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(company.created_at)}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary }}>{company.email || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.phone || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(company.created_at)}</td>
 
                       {/* STICKY Actions cell */}
                       <td style={{
@@ -228,28 +230,28 @@ const CompanyListPage: React.FC = () => {
 
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" style={{ borderTop: `1px solid ${t.divider}` }}>
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 13, color: t.textPrimary }}>Rows per page:</span>
+            <span style={{ fontSize: 14, color: t.textPrimary }}>Rows per page:</span>
             <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 14, cursor: 'pointer', outline: 'none' }}>
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
 
-          <span style={{ fontSize: 13, color: t.textPrimary }}>
+          <span style={{ fontSize: 14, color: t.textPrimary }}>
             Showing {filtered.length === 0 ? 0 : (page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
           </span>
 
           <div className="flex items-center gap-1">
             <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-              style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: page === 1 ? t.textPrimary : t.textPrimary, cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: 13 }}>Prev</button>
+              style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: page === 1 ? t.textPrimary : t.textPrimary, cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: 14 }}>Prev</button>
             {pageBtns().map((pg) => (
               <button key={pg} onClick={() => setPage(pg)}
-                style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${pg === page ? '#2563eb' : t.surfaceBorder}`, background: pg === page ? '#2563eb' : t.btnSecondaryBg, color: pg === page ? '#fff' : t.textPrimary, cursor: 'pointer', fontSize: 13, fontWeight: pg === page ? 700 : 400 }}>
+                style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${pg === page ? '#2563eb' : t.surfaceBorder}`, background: pg === page ? '#2563eb' : t.btnSecondaryBg, color: pg === page ? '#fff' : t.textPrimary, cursor: 'pointer', fontSize: 14, fontWeight: pg === page ? 700 : 400 }}>
                 {pg}
               </button>
             ))}
             <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
-              style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: page >= totalPages ? t.textPrimary : t.textPrimary, cursor: page >= totalPages ? 'not-allowed' : 'pointer', fontSize: 13 }}>Next</button>
+              style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: page >= totalPages ? t.textPrimary : t.textPrimary, cursor: page >= totalPages ? 'not-allowed' : 'pointer', fontSize: 14 }}>Next</button>
           </div>
         </div>
       </div>

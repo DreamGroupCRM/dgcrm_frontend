@@ -5,16 +5,19 @@ import React, { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ROUTES } from '../constants';
 import ProtectedRoute from './ProtectedRoute';
-import DepartmentCrudPage from '@/pages/Admin/Masters/Department/DepartmentCrudPage';
+// Company Master — single file handles add / edit / view
+const CompanyListPage = lazy(() => import('../pages/Admin/Masters/Company/CompanyListPage'));
+const CompanyCrudPage = lazy(() => import('../pages/Admin/Masters/Company/CompanyCrudPage'));
+
 import DepartmentListPage from '@/pages/Admin/Masters/Department/DepartmentListPage';
+import DepartmentCrudPage from '@/pages/Admin/Masters/Department/DepartmentCrudPage';
+
+import RoleListPage from '../pages/Admin/Masters/Roles/RoleListPage'
+import RoleCrudPage from '../pages/Admin/Masters/Roles/RoleCrudPage';
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
 const PlaceholderPage = lazy(() => import('../components/common/PlaceholderPage'));
-
-// Company Master — single file handles add / edit / view
-const CompanyListPage = lazy(() => import('../pages/Admin/Masters/Company/CompanyListPage'));
-const CompanyCrudPage = lazy(() => import('../pages/Admin/Masters/Company/CompanyCrudPage'));
 
 const AdminRoutes: React.FC = () => (
   <Routes>
@@ -31,6 +34,11 @@ const AdminRoutes: React.FC = () => (
       <Route path="masters/department/add" element={<DepartmentCrudPage mode="add" />} />
       <Route path="masters/department/view/:id" element={<DepartmentCrudPage mode="view" />} />
       <Route path="masters/department/edit/:id" element={<DepartmentCrudPage mode="edit" />} />
+
+      <Route path="masters/roles" element={<RoleListPage />} />
+      <Route path="masters/roles/add" element={<RoleCrudPage mode="add" />} />
+      <Route path="masters/roles/view/:id" element={<RoleCrudPage mode="view" />} />
+      <Route path="masters/roles/edit/:id" element={<RoleCrudPage mode="edit" />} />
 
       <Route path="masters/designation" element={<PlaceholderPage title="Designation" />} />
       <Route path="masters/roles" element={<PlaceholderPage title="Roles" />} />
