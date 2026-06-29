@@ -61,7 +61,7 @@ const Field: React.FC<FieldProps> = ({
     <Typography
       variant="body2"
       sx={{
-        color: textSec,
+        color: textPrim,
         fontWeight: 600,
         mb: 0.75,
         fontSize: '0.82rem',
@@ -236,7 +236,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
         >
           {pageTitle}
         </Typography>
-        <Typography variant="body2" sx={{ color: textSec, mt: 0.5 }}>
+        <Typography variant="body2" sx={{ color: textPrim, mt: 0.5 }}>
           {pageSubtitle}
         </Typography>
       </Box>
@@ -341,7 +341,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
             onClick={() => navigate('/admin/masters/department')}
             sx={{
               borderColor: borderC,
-              color: textSec,
+              color: textPrim,
               borderRadius: 2,
               textTransform: 'none',
               fontWeight: 600,

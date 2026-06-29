@@ -31,7 +31,7 @@ const DepartmentListPage: React.FC = () => {
   const [search, setSearch]       = useState('');
   const [loading, setLoading]     = useState(false);
   const [page, setPage]           = useState(1);
-  const [limit, setLimit]         = useState(10);
+  const [limit, setLimit]         = useState(5);
   const [total, setTotal]         = useState(0);
 
   useEffect(() => { dispatch(setPageTitle('Department')); }, [dispatch]);
@@ -44,7 +44,7 @@ const DepartmentListPage: React.FC = () => {
       if (res.success) {
         setAllDepts(res.rows ?? []);
         setTotal(res.total ?? 0);
-        toast.success('Department Fetched Successfully', { autoClose: 1000 });
+        // toast.success('Department Fetched Successfully', { autoClose: 1000 });
       } else {
         toast.error('Failed to Fetch Departments');
       }
@@ -121,7 +121,7 @@ const DepartmentListPage: React.FC = () => {
   // ── same iconBtn style as Company page ───────────────────────────────────
   const iconBtn: React.CSSProperties = {
     background: 'none', border: 'none', cursor: 'pointer',
-    color: ACTION_ICON_COLOR, padding: 6, borderRadius: 6,
+    padding: 6, borderRadius: 6,
     display: 'inline-flex', alignItems: 'center',
   };
 
@@ -134,7 +134,7 @@ const DepartmentListPage: React.FC = () => {
       alignItems: 'center',
       padding: '2px 10px',
       borderRadius: 20,
-      fontSize: 12,
+      fontSize: 14,
       fontWeight: 500,
       background: isActive
         ? isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7'
@@ -197,7 +197,7 @@ const DepartmentListPage: React.FC = () => {
               background: t.insetBg,
               border: `1px solid ${t.surfaceBorder}`,
               cursor: 'pointer',
-              color: t.textSecondary,
+              color: t.textPrimary,
             }}
           >
             <MdDownload size={18} />
@@ -211,7 +211,7 @@ const DepartmentListPage: React.FC = () => {
               background: t.insetBg,
               border: `1px solid ${t.surfaceBorder}`,
               cursor: 'pointer',
-              color: t.textSecondary,
+              color: t.textPrimary,
             }}
           >
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
@@ -234,7 +234,7 @@ const DepartmentListPage: React.FC = () => {
                 {['ID', 'Department Name', 'Status', 'Created At', 'Updated At'].map((h) => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
-                    fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+                    fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
                     letterSpacing: '0.05em', color: t.textPrimary,
                     borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   }}>
@@ -245,7 +245,7 @@ const DepartmentListPage: React.FC = () => {
                 {/* STICKY Actions header */}
                 <th style={{
                   padding: '12px 16px', textAlign: 'center',
-                  fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+                  fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
                   letterSpacing: '0.05em', color: t.textPrimary,
                   borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   position: 'sticky', right: 0, zIndex: 2,
@@ -286,7 +286,7 @@ const DepartmentListPage: React.FC = () => {
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}
                     >
                       {/* ID */}
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         {dept.id}
                       </td>
 
@@ -301,12 +301,12 @@ const DepartmentListPage: React.FC = () => {
                       </td>
 
                       {/* Created At */}
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         {formatDate(dept.created_at)}
                       </td>
 
                       {/* Updated At */}
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         {formatDate(dept.updated_at)}
                       </td>
 
@@ -357,14 +357,14 @@ const DepartmentListPage: React.FC = () => {
         >
           {/* Rows per page */}
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 13, color: t.textPrimary }}>Rows per page:</span>
+            <span style={{ fontSize: 14, color: t.textPrimary }}>Rows per page:</span>
             <select
               value={limit}
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
               style={{
                 background: t.inputBg, border: `1px solid ${t.inputBorder}`,
                 color: t.inputText, borderRadius: 8, padding: '4px 8px',
-                fontSize: 13, cursor: 'pointer', outline: 'none',
+                fontSize: 14, cursor: 'pointer', outline: 'none',
               }}
             >
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
@@ -372,7 +372,7 @@ const DepartmentListPage: React.FC = () => {
           </div>
 
           {/* Showing X–Y of Z */}
-          <span style={{ fontSize: 13, color: t.textPrimary }}>
+          <span style={{ fontSize: 14, color: t.textPrimary }}>
             Showing {showingFrom}–{showingTo} of {totalFiltered}
           </span>
 
@@ -387,7 +387,7 @@ const DepartmentListPage: React.FC = () => {
                 background: t.btnSecondaryBg,
                 color: safePage === 1 ? t.textPrimary : t.textPrimary,
                 cursor: safePage === 1 ? 'not-allowed' : 'pointer',
-                fontSize: 13,
+                fontSize: 14,
               }}
             >
               Prev
@@ -402,7 +402,7 @@ const DepartmentListPage: React.FC = () => {
                   border: `1px solid ${pg === safePage ? '#2563eb' : t.surfaceBorder}`,
                   background: pg === safePage ? '#2563eb' : t.btnSecondaryBg,
                   color: pg === safePage ? '#fff' : t.textPrimary,
-                  cursor: 'pointer', fontSize: 13,
+                  cursor: 'pointer', fontSize: 14,
                   fontWeight: pg === safePage ? 700 : 400,
                 }}
               >
@@ -419,7 +419,7 @@ const DepartmentListPage: React.FC = () => {
                 background: t.btnSecondaryBg,
                 color: safePage >= totalPages ? t.textPrimary : t.textPrimary,
                 cursor: safePage >= totalPages ? 'not-allowed' : 'pointer',
-                fontSize: 13,
+                fontSize: 14,
               }}
             >
               Next

@@ -31,14 +31,14 @@ interface FieldProps {
 const Field: React.FC<FieldProps> = ({ label, required, error, t, children }) => (
   <div>
     <label style={{
-      display: 'block', fontWeight: 700, fontSize: 13,
+      display: 'block', fontWeight: 700, fontSize: 14,
       marginBottom: 6, color: t.textPrimary, fontFamily: t.fontFamily,
     }}>
       {label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
     </label>
     {children}
     {error && (
-      <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4, fontFamily: t.fontFamily }}>
+      <p style={{ color: '#ef4444', fontSize: 14, marginTop: 4, fontFamily: t.fontFamily }}>
         {error}
       </p>
     )}
@@ -469,7 +469,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
                   Choose File
                 </button>
                 <span style={{
-                  fontSize     : 13,
+                  fontSize     : 14,
                   color        : t.textPrimary,
                   flex         : 1,
                   overflow     : 'hidden',
