@@ -8,7 +8,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { MdArrowBack, MdBusiness } from 'react-icons/md';
+import { MdArrowBack, MdBusiness, MdClose } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
@@ -21,11 +21,11 @@ import { ROUTES, VALIDATION } from '../../../../constants';
 // Defining it inside causes React to create a new component type every render
 // → input unmounts/remounts on every keystroke → cursor disappears.
 interface FieldProps {
-  label    : string;
+  label: string;
   required?: boolean;
-  error?   : string;
-  t        : AppTheme;
-  children : React.ReactNode;
+  error?: string;
+  t: AppTheme;
+  children: React.ReactNode;
 }
 
 const Field: React.FC<FieldProps> = ({ label, required, error, t, children }) => (
@@ -50,30 +50,30 @@ type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
 
 interface FormState {
-  name            : string;
-  email           : string;
-  phone           : string;
-  whatsapp_number : string;
-  city            : string;
-  state           : string;
-  country         : string;
-  pincode         : string;
-  pan             : string;
-  gst             : string;
-  company_code    : string;
+  name: string;
+  email: string;
+  phone: string;
+  whatsapp_number: string;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+  pan: string;
+  gst: string;
+  company_code: string;
 }
 
 interface FormErrors {
-  name?           : string;
-  email?          : string;
-  phone?          : string;
+  name?: string;
+  email?: string;
+  phone?: string;
   whatsapp_number?: string;
-  city?           : string;
-  state?          : string;
-  country?        : string;
+  city?: string;
+  state?: string;
+  country?: string;
 }
 
-const ALPHA_REGEX   = /^[a-zA-Z\s]*$/;
+const ALPHA_REGEX = /^[a-zA-Z\s]*$/;
 const NUMERIC_REGEX = /^\d*$/;
 
 const empty: FormState = {
@@ -82,44 +82,44 @@ const empty: FormState = {
 };
 
 const fromCompany = (d: Company): FormState => ({
-  name            : d.name            ?? '',
-  email           : d.email           ?? '',
-  phone           : d.phone === 'string' ? '' : (d.phone ?? ''),
-  whatsapp_number : d.whatsapp_number ?? '',
-  city            : d.city            ?? '',
-  state           : d.state           ?? '',
-  country         : d.country         ?? '',
-  pincode         : d.pincode         ?? '',
-  pan             : d.pan             ?? '',
-  gst             : d.gst             ?? '',
-  company_code    : d.company_code    ?? '',
+  name: d.name ?? '',
+  email: d.email ?? '',
+  phone: d.phone === 'string' ? '' : (d.phone ?? ''),
+  whatsapp_number: d.whatsapp_number ?? '',
+  city: d.city ?? '',
+  state: d.state ?? '',
+  country: d.country ?? '',
+  pincode: d.pincode ?? '',
+  pan: d.pan ?? '',
+  gst: d.gst ?? '',
+  company_code: d.company_code ?? '',
 });
 
 const PAGE_TITLES: Record<Mode, string> = {
-  add : 'Add Company',
+  add: 'Add Company',
   edit: 'Edit Company',
   view: 'View Company',
 };
 
 const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
-  const dispatch         = useAppDispatch();
-  const navigate         = useNavigate();
-  const { id }           = useParams<{ id: string }>();
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const { mode: uiMode } = useAppSelector((s) => s.theme);
-  const isDark           = uiMode === 'dark';
-  const t                = getTheme(isDark);
+  const isDark = uiMode === 'dark';
+  const t = getTheme(isDark);
 
   const isView = mode === 'view';
   const isEdit = mode === 'edit';
-  const isAdd  = mode === 'add';
+  const isAdd = mode === 'add';
 
-  const [form, setForm]                       = useState<FormState>(empty);
-  const [errors, setErrors]                   = useState<FormErrors>({});
-  const [logoFile, setLogoFile]               = useState<File | null>(null);
+  const [form, setForm] = useState<FormState>(empty);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [existingLogoUrl, setExistingLogoUrl] = useState<string>('');
-  const [saving, setSaving]                   = useState(false);
-  const [loadingData, setLoadingData]         = useState(!isAdd);
-  const fileRef                               = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
+  const [loadingData, setLoadingData] = useState(!isAdd);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { dispatch(setPageTitle(PAGE_TITLES[mode])); }, [dispatch, mode]);
 
@@ -148,15 +148,15 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
   // ── Validation ────────────────────────────────────────────────────────────
   const validateAll = (): FormErrors => {
     const e: FormErrors = {};
-    if (!form.name.trim())  e.name  = 'Company name is required.';
+    if (!form.name.trim()) e.name = 'Company name is required.';
     if (!form.email.trim()) e.email = 'Email is required.';
     else if (!VALIDATION.EMAIL_REGEX.test(form.email)) e.email = 'Enter a valid email address.';
     if (!form.phone.trim()) e.phone = 'Phone number is required.';
     else if (!/^\d{10}$/.test(form.phone)) e.phone = 'Phone must be exactly 10 digits.';
     if (form.whatsapp_number && !/^\d{10}$/.test(form.whatsapp_number))
       e.whatsapp_number = 'WhatsApp must be exactly 10 digits.';
-    if (form.city    && !ALPHA_REGEX.test(form.city))    e.city    = 'City must contain letters only.';
-    if (form.state   && !ALPHA_REGEX.test(form.state))   e.state   = 'State must contain letters only.';
+    if (form.city && !ALPHA_REGEX.test(form.city)) e.city = 'City must contain letters only.';
+    if (form.state && !ALPHA_REGEX.test(form.state)) e.state = 'State must contain letters only.';
     if (form.country && !ALPHA_REGEX.test(form.country)) e.country = 'Country must contain letters only.';
     return e;
   };
@@ -181,26 +181,9 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
     setLogoFile(e.target.files?.[0] ?? null);
   };
 
-  // ── Build JSON payload ────────────────────────────────────────────────────
-  // logo_url: if a new file is selected, pass the file name as the path.
-  // If editing with no new file, pass the existing URL back unchanged.
-  const buildPayload = (): CompanyPayload => ({
-    name            : form.name.trim(),
-    email           : form.email.trim(),
-    phone           : form.phone.trim(),
-    is_active       : true,
-    company_code    : form.company_code,
-    whatsapp_number : form.whatsapp_number,
-    city            : form.city,
-    state           : form.state,
-    country         : form.country,
-    pincode         : form.pincode,
-    pan             : form.pan,
-    gst             : form.gst,
-    // Pass selected file name as the logo path, or keep existing URL
-    logo_url        : logoFile ? logoFile.name : existingLogoUrl,
-  });
 
+
+  // ── Submit ────────────────────────────────────────────────────────────────
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     const errs = validateAll();
@@ -208,7 +191,32 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
 
     setSaving(true);
     try {
-      const payload = buildPayload();
+      const fields: Record<string, string | boolean> = {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        is_active: true,
+        company_code: form.company_code,
+        whatsapp_number: form.whatsapp_number,
+        city: form.city,
+        state: form.state,
+        country: form.country,
+        pincode: form.pincode,
+        pan: form.pan,
+        gst: form.gst,
+      };
+
+      let payload: CompanyPayload | FormData;
+
+      if (logoFile) {
+        const fd = new FormData();
+        Object.entries(fields).forEach(([key, value]) => fd.append(key, String(value)));
+        fd.append('logo', logoFile);
+        payload = fd;
+      } else {
+        payload = { ...fields, logo_url: existingLogoUrl } as CompanyPayload;
+      }
+
       const res = isEdit
         ? await companyService.update(id!, payload)
         : await companyService.create(payload);
@@ -231,18 +239,18 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
 
   // ── Field style ────────────────────────────────────────────────────────────
   const fieldStyle = (hasError?: boolean): React.CSSProperties => ({
-    width       : '100%',
-    background  : isView ? t.insetBg : t.inputBg,
-    border      : `1px solid ${hasError ? '#ef4444' : t.inputBorder}`,
+    width: '100%',
+    background: isView ? t.insetBg : t.inputBg,
+    border: `1px solid ${hasError ? '#ef4444' : t.inputBorder}`,
     borderRadius: 10,
-    padding     : '10px 14px',
-    fontSize    : 14,
-    color       : t.inputText,
-    outline     : 'none',
-    boxSizing   : 'border-box',
-    fontFamily  : t.fontFamily,
-    cursor      : isView ? 'not-allowed' : 'text',
-    opacity     : isView ? 0.85 : 1,
+    padding: '10px 14px',
+    fontSize: 14,
+    color: t.inputText,
+    outline: 'none',
+    boxSizing: 'border-box',
+    fontFamily: t.fontFamily,
+    cursor: isView ? 'not-allowed' : 'text',
+    opacity: isView ? 0.85 : 1,
   });
 
   if (loadingData) {
@@ -257,9 +265,9 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
     <div style={{ fontFamily: t.fontFamily }}>
       <div style={{
         background: t.surfaceBg,
-        border    : `1px solid ${t.surfaceBorder}`,
+        border: `1px solid ${t.surfaceBorder}`,
         borderRadius: 14,
-        padding   : 28,
+        padding: 28,
       }}>
 
         {/* ── Field grid ── */}
@@ -429,6 +437,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
 
           {/* ── Logo ── */}
+          {/* ── Logo ── */}
           <Field label="Company Logo" t={t}>
             {isView ? (
               /* View mode: thumbnail + path */
@@ -452,29 +461,49 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
                 />
               </div>
             ) : (
-              /* Add / Edit mode: compact file picker */
-              <div className="flex items-center gap-3">
+              /* Add / Edit mode: file picker styled like other fields */
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                background: t.inputBg,
+                border: `1px solid ${t.inputBorder}`,
+                borderRadius: 10,
+                padding: '6px 10px 6px 6px',
+                boxSizing: 'border-box',
+                width: '100%',
+              }}>
+                {/* Choose File button — sits inside the field box */}
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="flex-shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium"
                   style={{
+                    flexShrink: 0,
                     background: t.insetBg,
-                    border    : `1px solid ${t.inputBorder}`,
-                    color     : t.textSecondary,
-                    cursor    : 'pointer',
+                    border: `1px solid ${t.inputBorder}`,
+                    borderRadius: 7,
+                    padding: '5px 12px',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: t.textSecondary,
+                    cursor: 'pointer',
                     whiteSpace: 'nowrap',
+                    fontFamily: t.fontFamily,
+                    lineHeight: '20px',
                   }}
                 >
                   Choose File
                 </button>
+
+                {/* Filename text — fills remaining space */}
                 <span style={{
-                  fontSize     : 14,
-                  color        : t.textPrimary,
-                  flex         : 1,
-                  overflow     : 'hidden',
-                  textOverflow : 'ellipsis',
-                  whiteSpace   : 'nowrap',
+                  flex: 1,
+                  fontSize: 14,
+                  color: logoFile ? t.textPrimary : t.textSecondary,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontFamily: t.fontFamily,
                 }}>
                   {logoFile
                     ? logoFile.name
@@ -482,6 +511,35 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
                       ? `Current: ${existingLogoUrl.split('/').pop()}`
                       : 'No file chosen'}
                 </span>
+
+                {/* ✕ cancel — only when a new file is selected */}
+                {logoFile && (
+                  <button
+                    type="button"
+                    title="Remove selected file"
+                    onClick={() => {
+                      setLogoFile(null);
+                      if (fileRef.current) fileRef.current.value = '';
+                    }}
+                    style={{
+                      flexShrink: 0,
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: t.textSecondary,
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: 2,
+                      borderRadius: 4,
+                      lineHeight: 1,
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = t.textSecondary)}
+                  >
+                    <MdClose size={17} />
+                  </button>
+                )}
+
                 <input
                   ref={fileRef}
                   type="file"
@@ -504,9 +562,9 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold"
             style={{
               background: t.btnSecondaryBg,
-              color     : t.btnSecondaryText,
-              border    : `1px solid ${t.surfaceBorder}`,
-              cursor    : 'pointer',
+              color: t.btnSecondaryText,
+              border: `1px solid ${t.surfaceBorder}`,
+              cursor: 'pointer',
             }}
           >
             <MdArrowBack size={16} /> Go Back
@@ -521,8 +579,8 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
                 background: !isMandatoryValid || saving
                   ? '#6b7280'
                   : 'linear-gradient(135deg,#1d4ed8,#2563eb)',
-                border : 'none',
-                cursor : !isMandatoryValid || saving ? 'not-allowed' : 'pointer',
+                border: 'none',
+                cursor: !isMandatoryValid || saving ? 'not-allowed' : 'pointer',
                 opacity: saving ? 0.7 : 1,
               }}
             >
