@@ -126,11 +126,11 @@ const CompanyListPage: React.FC = () => {
             <MdAdd size={18} /> Add Company
           </button>
           <button onClick={exportCSV} title="Export CSV" className="p-2 rounded-xl"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}>
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}>
             <MdDownload size={18} />
           </button>
           <button onClick={() => fetchCompanies(page, limit)} title="Refresh" className="p-2 rounded-xl"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}>
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
@@ -182,7 +182,7 @@ const CompanyListPage: React.FC = () => {
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
 
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{company.id}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.id}</td>
 
                       <td style={{ padding: '12px 16px' }}>
                         <div className="flex items-center gap-3">
@@ -200,9 +200,9 @@ const CompanyListPage: React.FC = () => {
                         </div>
                       </td>
 
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{company.email || '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{company.phone || '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDate(company.created_at)}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{company.email || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.phone || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(company.created_at)}</td>
 
                       {/* STICKY Actions cell */}
                       <td style={{
