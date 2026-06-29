@@ -137,7 +137,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
         } else {
           toast.error(res.message || 'Failed to load company');
         }
-      } catch {
+      } catch (e) {
         toast.error('Failed to load company data');
       } finally {
         setLoadingData(false);
@@ -182,9 +182,6 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
   };
 
 
-
-  // ── Submit ────────────────────────────────────────────────────────────────
-  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     const errs = validateAll();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
@@ -235,28 +232,8 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
     } finally {
       setSaving(false);
     }
+  };
 
-    const res = isEdit
-      ? await companyService.update(id!, payload)
-      : await companyService.create(payload);
-
-    if (res.success) {
-      toast.success(
-        isEdit ? 'Company Updated Successfully' : 'Company Created Successfully',
-        { autoClose: 1000 }
-      );
-      navigate(ROUTES.ADMIN.COMPANY);
-    } else {
-      toast.error(res.message || 'Operation failed');
-    }
-  } catch {
-    toast.error('Something went wrong. Please try again.');
-  } finally {
-    setSaving(false);
-  }
-};
-
-  // ── Field style ────────────────────────────────────────────────────────────
   const fieldStyle = (hasError?: boolean): React.CSSProperties => ({
     width: '100%',
     background: isView ? t.insetBg : t.inputBg,
