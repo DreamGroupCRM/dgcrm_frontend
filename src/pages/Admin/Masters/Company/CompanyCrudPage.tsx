@@ -437,7 +437,6 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
 
           {/* ── Logo ── */}
-          {/* ── Logo ── */}
           <Field label="Company Logo" t={t}>
             {isView ? (
               /* View mode: thumbnail + path */
