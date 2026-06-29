@@ -100,7 +100,7 @@ const DepartmentListPage: React.FC = () => {
     const a   = Object.assign(document.createElement('a'), { href: url, download: 'departments.csv' });
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('CSV Exported Successfully', { autoClose: 1000 });
+    toast.success('Department List CSV Exported Successfully', { autoClose: 1000 });
     console.log('[DepartmentListPage] CSV exported, rows:', filtered.length);
   };
 

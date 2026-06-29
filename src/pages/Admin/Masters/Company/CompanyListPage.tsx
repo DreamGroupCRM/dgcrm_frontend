@@ -90,6 +90,8 @@ const CompanyListPage: React.FC = () => {
     const a   = Object.assign(document.createElement('a'), { href: url, download: 'companies.csv' });
     a.click();
     URL.revokeObjectURL(url);
+    toast.success('Company List CSV Exported Successfully', { autoClose: 1000 });
+    console.log('[CompanyListPage] CSV exported, rows:', filtered.length);
   };
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
