@@ -182,3 +182,41 @@ export interface UpdateDepartmentPayload {
   is_active: boolean;
 }
 
+
+// Role interfaces
+export interface Role {
+  id: string;
+  name: string;
+  slug: string;
+  base_role: string;
+  description: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RoleListResponse {
+  success: boolean;
+  rows: Role[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface RoleResponse {
+  success: boolean;
+  data: Role;
+  message?: string;
+}
+
+export interface CreateRolePayload {
+  name: string;
+  base_role: string;
+  is_active: boolean;
+}
+
+export interface UpdateRolePayload {
+  name: string;
+  base_role: string;
+  is_active: boolean;
+}
