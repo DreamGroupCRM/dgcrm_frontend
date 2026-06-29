@@ -120,7 +120,7 @@ const AdminDashboard: React.FC = () => {
                   <th
                     key={h}
                     className="text-left px-6 py-3 text-xs uppercase font-semibold tracking-wider"
-                    style={{ color: t.textMuted, fontFamily: t.fontFamily }}
+                    style={{ color: t.textPrimary, fontFamily: t.fontFamily }}
                   >
                     {h}
                   </th>
@@ -136,7 +136,7 @@ const AdminDashboard: React.FC = () => {
                   onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.tableRowHover)}
                   onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
                 >
-                  <td className="px-6 py-3.5 text-sm" style={{ color: t.textMuted }}>
+                  <td className="px-6 py-3.5 text-sm" style={{ color: t.textPrimary }}>
                     {String(i + 1).padStart(2, '0')}
                   </td>
                   <td className="px-6 py-3.5 text-sm font-semibold" style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>

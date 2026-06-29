@@ -146,3 +146,39 @@ export interface CompanySingleResponse {
   message?: string;
   data: Company;
 }
+
+
+// src/types/departmentTypes.ts
+
+export interface Department {
+  id: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DepartmentListResponse {
+  success: boolean;
+  rows: Department[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface DepartmentResponse {
+  success: boolean;
+  data: Department;
+  message?: string;
+}
+
+export interface CreateDepartmentPayload {
+  name: string;
+  is_active: boolean;
+}
+
+export interface UpdateDepartmentPayload {
+  name: string;
+  is_active: boolean;
+}
+

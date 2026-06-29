@@ -47,7 +47,7 @@ const ProfileModal: React.FC = () => {
       <span className="text-lg flex-shrink-0" style={{ color: '#2563eb' }}>{icon}</span>
       <div className="min-w-0">
         <p className="text-xs font-medium leading-none mb-0.5"
-          style={{ color: t.textMuted, fontFamily: t.fontFamily }}>
+          style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>
           {label}
         </p>
         <p className="text-sm font-semibold truncate"
@@ -180,7 +180,7 @@ const ProfileModal: React.FC = () => {
 
           {/* Fallback: no data, no error, not loading */}
           {!loading && !error && !profile && (
-            <p className="text-center py-4 text-sm" style={{ color: t.textMuted }}>
+            <p className="text-center py-4 text-sm" style={{ color: t.textPrimary }}>
               Failed to load profile. Please try again.
             </p>
           )}
