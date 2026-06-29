@@ -38,19 +38,19 @@ export const companyService = {
     return res.data;
   },
 
-  /** POST /api/company — JSON body */
-  create: async (payload: CompanyPayload) => {
-    const res = await axiosInstance.post('/company', payload);
-    console.log('Create Company Response:', res.data);
-    return res.data;
-  },
+/** POST /api/company — JSON body, or multipart/form-data when a logo file is included */
+create: async (payload: CompanyPayload | FormData) => {
+  const res = await axiosInstance.post('/company', payload);
+  console.log('Create Company Response:', res.data);
+  return res.data;
+},
 
-  /** PUT /api/company/:id — JSON body */
-  update: async (id: string, payload: CompanyPayload) => {
-    const res = await axiosInstance.put(`/company/${id}`, payload);
-    console.log('Update Company Response:', res.data);
-    return res.data;
-  },
+/** PUT /api/company/:id — JSON body, or multipart/form-data when a logo file is included */
+update: async (id: string, payload: CompanyPayload | FormData) => {
+  const res = await axiosInstance.put(`/company/${id}`, payload);
+  console.log('Update Company Response:', res.data);
+  return res.data;
+},
 
   /** DELETE /api/company/:id */
   remove: async (id: string) => {
