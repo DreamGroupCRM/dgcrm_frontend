@@ -181,53 +181,61 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
     setLogoFile(e.target.files?.[0] ?? null);
   };
 
-  // ── Build JSON payload ────────────────────────────────────────────────────
-  // logo_url: if a new file is selected, pass the file name as the path.
-  // If editing with no new file, pass the existing URL back unchanged.
-  const buildPayload = (): CompanyPayload => ({
-    name            : form.name.trim(),
-    email           : form.email.trim(),
-    phone           : form.phone.trim(),
-    is_active       : true,
-    company_code    : form.company_code,
-    whatsapp_number : form.whatsapp_number,
-    city            : form.city,
-    state           : form.state,
-    country         : form.country,
-    pincode         : form.pincode,
-    pan             : form.pan,
-    gst             : form.gst,
-    // Pass selected file name as the logo path, or keep existing URL
-    logo_url        : logoFile ? logoFile.name : existingLogoUrl,
-  });
+ 
 
   // ── Submit ────────────────────────────────────────────────────────────────
-  const handleSubmit = async () => {
-    const errs = validateAll();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+  // ── Submit ────────────────────────────────────────────────────────────────
+const handleSubmit = async () => {
+  const errs = validateAll();
+  if (Object.keys(errs).length > 0) { setErrors(errs); return; }
 
-    setSaving(true);
-    try {
-      const payload = buildPayload();
-      const res = isEdit
-        ? await companyService.update(id!, payload)
-        : await companyService.create(payload);
+  setSaving(true);
+  try {
+    const fields: Record<string, string | boolean> = {
+      name            : form.name.trim(),
+      email           : form.email.trim(),
+      phone           : form.phone.trim(),
+      is_active       : true,
+      company_code    : form.company_code,
+      whatsapp_number : form.whatsapp_number,
+      city            : form.city,
+      state           : form.state,
+      country         : form.country,
+      pincode         : form.pincode,
+      pan             : form.pan,
+      gst             : form.gst,
+    };
 
-      if (res.success) {
-        toast.success(
-          isEdit ? 'Company Updated Successfully' : 'Company Created Successfully',
-          { autoClose: 1000 }
-        );
-        navigate(ROUTES.ADMIN.COMPANY);
-      } else {
-        toast.error(res.message || 'Operation failed');
-      }
-    } catch {
-      toast.error('Something went wrong. Please try again.');
-    } finally {
-      setSaving(false);
+    let payload: CompanyPayload | FormData;
+
+    if (logoFile) {
+      const fd = new FormData();
+      Object.entries(fields).forEach(([key, value]) => fd.append(key, String(value)));
+      fd.append('logo', logoFile);
+      payload = fd;
+    } else {
+      payload = { ...fields, logo_url: existingLogoUrl } as CompanyPayload;
     }
-  };
+
+    const res = isEdit
+      ? await companyService.update(id!, payload)
+      : await companyService.create(payload);
+
+    if (res.success) {
+      toast.success(
+        isEdit ? 'Company Updated Successfully' : 'Company Created Successfully',
+        { autoClose: 1000 }
+      );
+      navigate(ROUTES.ADMIN.COMPANY);
+    } else {
+      toast.error(res.message || 'Operation failed');
+    }
+  } catch {
+    toast.error('Something went wrong. Please try again.');
+  } finally {
+    setSaving(false);
+  }
+};
 
   // ── Field style ────────────────────────────────────────────────────────────
   const fieldStyle = (hasError?: boolean): React.CSSProperties => ({
