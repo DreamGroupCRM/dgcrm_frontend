@@ -45,7 +45,7 @@ const CompanyListPage: React.FC = () => {
       if (res.success) {
         setCompanies(res.rows ?? []);
         setTotal(res.total ?? 0);
-        toast.success('Company list fetched successfully', { autoClose: 1000 });
+        toast.success('Company Fetched Successfully', { autoClose: 1000 });
       } else {
         toast.error(res.message || 'Failed to fetch companies');
       }
@@ -113,7 +113,7 @@ const CompanyListPage: React.FC = () => {
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
           style={{ flex: '1 1 200px', maxWidth: 320, background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
-          <MdSearch size={18} style={{ color: t.textMuted, flexShrink: 0 }} />
+          <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input type="text" placeholder="Search by company name..." value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 14, width: '100%' }} />
@@ -126,11 +126,11 @@ const CompanyListPage: React.FC = () => {
             <MdAdd size={18} /> Add Company
           </button>
           <button onClick={exportCSV} title="Export CSV" className="p-2 rounded-xl"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}>
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}>
             <MdDownload size={18} />
           </button>
           <button onClick={() => fetchCompanies(page, limit)} title="Refresh" className="p-2 rounded-xl"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}>
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
@@ -145,7 +145,7 @@ const CompanyListPage: React.FC = () => {
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
                     fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
-                    letterSpacing: '0.05em', color: t.textMuted,
+                    letterSpacing: '0.05em', color: t.textPrimary,
                     borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   }}>{h}</th>
                 ))}
@@ -154,11 +154,11 @@ const CompanyListPage: React.FC = () => {
                 <th style={{
                   padding: '12px 16px', textAlign: 'center',
                   fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
-                  letterSpacing: '0.05em', color: t.textMuted,
+                  letterSpacing: '0.05em', color: t.textPrimary,
                   borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   position: 'sticky', right: 0, zIndex: 2,
-                  // background: t.tableHeaderBg,
-                  // borderLeft: `2px solid ${t.divider}`,
+                  background: t.tableHeaderBg,
+                  borderLeft: `2px solid ${t.divider}`,
                   boxShadow: '-4px 0 8px rgba(0,0,0,0.06)',
                 }}>
                   Actions
@@ -168,9 +168,9 @@ const CompanyListPage: React.FC = () => {
 
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: t.textMuted }}>Loading...</td></tr>
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: t.textMuted }}>
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>
                   {search ? 'No companies match your search.' : 'No companies found.'}
                 </td></tr>
               ) : (
@@ -182,7 +182,7 @@ const CompanyListPage: React.FC = () => {
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
 
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{company.id}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.id}</td>
 
                       <td style={{ padding: '12px 16px' }}>
                         <div className="flex items-center gap-3">
@@ -200,16 +200,16 @@ const CompanyListPage: React.FC = () => {
                         </div>
                       </td>
 
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{company.email || '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{company.phone || '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDate(company.created_at)}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{company.email || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.phone || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(company.created_at)}</td>
 
                       {/* STICKY Actions cell */}
                       <td style={{
                         padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
                         position: 'sticky', right: 0, zIndex: 1,
-                        // background: stickyBg,
-                        // borderLeft: `2px solid ${t.divider}`,
+                        background: stickyBg,
+                        borderLeft: `2px solid ${t.divider}`,
                         boxShadow: '-4px 0 8px rgba(0,0,0,0.06)',
                       }}>
                         <div className="flex items-center justify-center gap-1">
@@ -228,20 +228,20 @@ const CompanyListPage: React.FC = () => {
 
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" style={{ borderTop: `1px solid ${t.divider}` }}>
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 13, color: t.textMuted }}>Rows per page:</span>
+            <span style={{ fontSize: 13, color: t.textPrimary }}>Rows per page:</span>
             <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
               style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
 
-          <span style={{ fontSize: 13, color: t.textMuted }}>
+          <span style={{ fontSize: 13, color: t.textPrimary }}>
             Showing {filtered.length === 0 ? 0 : (page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
           </span>
 
           <div className="flex items-center gap-1">
             <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-              style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: page === 1 ? t.textMuted : t.textPrimary, cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: 13 }}>Prev</button>
+              style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: page === 1 ? t.textPrimary : t.textPrimary, cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: 13 }}>Prev</button>
             {pageBtns().map((pg) => (
               <button key={pg} onClick={() => setPage(pg)}
                 style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${pg === page ? '#2563eb' : t.surfaceBorder}`, background: pg === page ? '#2563eb' : t.btnSecondaryBg, color: pg === page ? '#fff' : t.textPrimary, cursor: 'pointer', fontSize: 13, fontWeight: pg === page ? 700 : 400 }}>
@@ -249,7 +249,7 @@ const CompanyListPage: React.FC = () => {
               </button>
             ))}
             <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
-              style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: page >= totalPages ? t.textMuted : t.textPrimary, cursor: page >= totalPages ? 'not-allowed' : 'pointer', fontSize: 13 }}>Next</button>
+              style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: page >= totalPages ? t.textPrimary : t.textPrimary, cursor: page >= totalPages ? 'not-allowed' : 'pointer', fontSize: 13 }}>Next</button>
           </div>
         </div>
       </div>

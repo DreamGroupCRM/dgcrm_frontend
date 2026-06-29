@@ -44,7 +44,7 @@ const PlaceholderPage: React.FC<PlaceholderPageProps> = ({ title, description })
 
       <p
         className="text-xs font-mono mt-2 px-3 py-1 rounded-full"
-        style={{ background: t.insetBg, color: t.textMuted }}
+        style={{ background: t.insetBg, color: t.textPrimary }}
       >
         {location.pathname}
       </p>

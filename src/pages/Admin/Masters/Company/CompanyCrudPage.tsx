@@ -248,7 +248,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
   if (loadingData) {
     return (
       <div className="flex justify-center items-center min-h-[40vh]">
-        <p style={{ color: t.textMuted, fontFamily: t.fontFamily }}>Loading company data...</p>
+        <p style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>Loading company data...</p>
       </div>
     );
   }
@@ -470,7 +470,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
                 </button>
                 <span style={{
                   fontSize     : 13,
-                  color        : t.textMuted,
+                  color        : t.textPrimary,
                   flex         : 1,
                   overflow     : 'hidden',
                   textOverflow : 'ellipsis',

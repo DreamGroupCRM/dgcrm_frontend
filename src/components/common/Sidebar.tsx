@@ -292,7 +292,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
           ) : (
             <>
               <MdChevronLeft size={28} />
-              <span>Collapse</span>
+              <span style={{ color: t.textPrimary }}>Collapse</span>
             </>
           )}
         </button>

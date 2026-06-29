@@ -239,7 +239,7 @@ const handleLogout = async () => {
               {user?.email?.split('@')[0] || 'User'}
             </p>
             <p className="text-xs mt-0.5"
-              style={{ color: t.textMuted, fontFamily: t.fontFamily }}>
+              style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>
               {user?.role?.name}
             </p>
           </div>
