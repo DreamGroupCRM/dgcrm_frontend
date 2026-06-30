@@ -15,6 +15,9 @@ import DepartmentCrudPage from '@/pages/Admin/Masters/Department/DepartmentCrudP
 import RoleListPage from '../pages/Admin/Masters/Roles/RoleListPage'
 import RoleCrudPage from '../pages/Admin/Masters/Roles/RoleCrudPage';
 
+import BankAccountListPage from '../pages/Admin/Masters/BankAccount/BankAccountListPage';
+import BankAccountCrudPage from '../pages/Admin/Masters/BankAccount/BankAccountCrudPage';
+
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
 const PlaceholderPage = lazy(() => import('../components/common/PlaceholderPage'));
@@ -39,6 +42,11 @@ const AdminRoutes: React.FC = () => (
       <Route path="masters/roles/add" element={<RoleCrudPage mode="add" />} />
       <Route path="masters/roles/view/:id" element={<RoleCrudPage mode="view" />} />
       <Route path="masters/roles/edit/:id" element={<RoleCrudPage mode="edit" />} />
+
+      <Route path="masters/bank-account" element={<BankAccountListPage />} />
+      <Route path="masters/bank-account/add" element={<BankAccountCrudPage mode="add" />} />
+      <Route path="masters/bank-account/view/:id" element={<BankAccountCrudPage mode="view" />} />
+      <Route path="masters/bank-account/edit/:id" element={<BankAccountCrudPage mode="edit" />} />
 
       <Route path="masters/designation" element={<PlaceholderPage title="Designation" />} />
       <Route path="masters/roles" element={<PlaceholderPage title="Roles" />} />
