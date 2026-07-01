@@ -266,3 +266,43 @@ export interface UpdateBankAccountPayload {
   is_active     : boolean;
   sort_order    : number;
 }
+
+// Designation interfaces
+export interface Designation {
+  id           : string;
+  name         : string;
+  department_id: string;
+  department   : string;
+  is_active    : boolean;
+  sort_order   : number;
+  created_at   : string;
+  updated_at   : string;
+}
+
+export interface DesignationListResponse {
+  success: boolean;
+  rows   : Designation[];
+  total  : number;
+  page   : number;
+  limit  : number;
+}
+
+export interface DesignationResponse {
+  success : boolean;
+  data    : Designation;
+  message?: string;
+}
+
+export interface CreateDesignationPayload {
+  name         : string;
+  department_id: string;
+  is_active    : boolean;
+  sort_order   : number;
+}
+
+export interface UpdateDesignationPayload {
+  name         : string;
+  department_id: string;
+  is_active    : boolean;
+  sort_order   : number;
+}

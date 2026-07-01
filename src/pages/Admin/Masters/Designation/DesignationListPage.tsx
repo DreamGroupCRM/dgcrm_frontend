@@ -1,4 +1,4 @@
-// src/pages/masters/BankAccountListPage.tsx
+// src/pages/Admin/Masters/Designation/DesignationListPage.tsx
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -10,105 +10,102 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
-import { fetchBankAccountList, deleteBankAccount } from '../../../../services/bankAccountService';
-import { BankAccount } from '../../../../types/index';
+import { fetchDesignationList, deleteDesignation } from '../../../../services/designationService';
+import { Designation } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 const ACTION_ICON_COLOR = '#4b5563';
 
-const BankAccountListPage: React.FC = () => {
+const DesignationListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { mode } = useAppSelector((s) => s.theme);
   const isDark   = mode === 'dark';
   const t        = getTheme(isDark);
 
-  const [allBanks, setAllBanks]       = useState<BankAccount[]>([]);
-  const [filtered, setFiltered]       = useState<BankAccount[]>([]);
-  const [search, setSearch]           = useState('');
-  const [loading, setLoading]         = useState(false);
-  const [page, setPage]               = useState(1);
-  const [limit, setLimit]             = useState(5);
+  const [allDesignations, setAllDesignations] = useState<Designation[]>([]);
+  const [filtered, setFiltered]               = useState<Designation[]>([]);
+  const [search, setSearch]                   = useState('');
+  const [loading, setLoading]                 = useState(false);
+  const [page, setPage]                       = useState(1);
+  const [limit, setLimit]                     = useState(5);
 
-  useEffect(() => { dispatch(setPageTitle('Bank A/C')); }, [dispatch]);
+  useEffect(() => { dispatch(setPageTitle('Designation')); }, [dispatch]);
 
   // ── fetch ALL once — client-side search ────────────────────────────────
-  const fetchBanks = useCallback(async () => {
+  const fetchDesignations = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchBankAccountList(1, 1000);
+      const res = await fetchDesignationList(1, 1000);
       if (res.success) {
-        setAllBanks(res.rows ?? []);
+        setAllDesignations(res.rows ?? []);
       } else {
-        toast.error('Failed to Fetch Bank Accounts');
+        toast.error('Failed to Fetch Designations');
       }
     } catch (e) {
-      toast.error('Failed to fetch bank accounts. Please try again.');
+      toast.error('Failed to fetch designations. Please try again.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchBanks(); }, [fetchBanks]);
+  useEffect(() => { fetchDesignations(); }, [fetchDesignations]);
 
-  // ── instant client-side filter ─────────────────────────────────────────
+  // ── instant client-side filter — search by designation name ────────────
   useEffect(() => {
     const q = search.trim().toLowerCase();
     setFiltered(
       q
-        ? allBanks.filter(
-            (b) =>
-              b.name.toLowerCase().includes(q)
-              // b.branch_name.toLowerCase().includes(q) ||
-              // b.account_number.toLowerCase().includes(q) ||
-              // b.ifsc_code.toLowerCase().includes(q)
+        ? allDesignations.filter(
+            (d) =>
+              d.name.toLowerCase().includes(q) ||
+              (d.department ?? '').toLowerCase().includes(q)
           )
-        : allBanks
+        : allDesignations
     );
     setPage(1);
-  }, [search, allBanks]);
+  }, [search, allDesignations]);
 
   // ── delete ─────────────────────────────────────────────────────────────
-  const handleDelete = async (bank: BankAccount) => {
+  const handleDelete = async (desig: Designation) => {
     const result = await showAlert.confirm(
-      `Are you sure you want to delete "${bank.name}"?`,
-      'Delete Bank Account?'
+      `Are you sure you want to delete "${desig.name}"?`,
+      'Delete Designation?'
     );
     if (!result.isConfirmed) return;
     try {
-      const res = await deleteBankAccount(bank.id);
+      const res = await deleteDesignation(desig.id);
       if (res.success) {
-        toast.success('Bank Account Deleted Successfully', { autoClose: 1000 });
-        fetchBanks();
+        toast.success('Designation Deleted Successfully', { autoClose: 1000 });
+        fetchDesignations();
       } else {
         toast.error(res.message || 'Failed to Delete');
       }
     } catch (e) {
-      toast.error('Failed to delete bank account. Please try again.');
+      toast.error('Failed to delete designation. Please try again.');
     }
   };
 
   // ── export CSV ─────────────────────────────────────────────────────────
   const exportCSV = () => {
     if (filtered.length === 0) { toast.info('No data to Export'); return; }
-    const headers = ['ID', 'Bank Name', 'Account Number', 'Branch Name', 'IFSC Code', 'Status', 'Created At'];
-    const rows    = filtered.map((b) => [
-      b.id,
-      `"${b.name}"`,
-      b.account_number,
-      `"${b.branch_name}"`,
-      b.ifsc_code,
-      b.is_active ? 'Active' : 'Inactive',
-      formatDate(b.created_at),
+    const headers = ['ID', 'Designation Name', 'Department', 'Status', 'Created At', 'Updated At'];
+    const rows    = filtered.map((d) => [
+      d.id,
+      `"${d.name}"`,
+      `"${d.department ?? ''}"`,
+      d.is_active ? 'Active' : 'Inactive',
+      formatDate(d.created_at),
+      formatDate(d.updated_at),
     ]);
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    const a   = Object.assign(document.createElement('a'), { href: url, download: 'bank_accounts.csv' });
+    const a   = Object.assign(document.createElement('a'), { href: url, download: 'designations.csv' });
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Bank Account List CSV Exported Successfully', { autoClose: 1000 });
-    console.log('[BankAccountListPage] CSV exported, rows:', filtered.length);
+    toast.success('Designation List CSV Exported Successfully', { autoClose: 1000 });
+    console.log('[DesignationListPage] CSV exported, rows:', filtered.length);
   };
 
   // ── pagination ─────────────────────────────────────────────────────────
@@ -161,7 +158,7 @@ const BankAccountListPage: React.FC = () => {
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input
             type="text"
-            placeholder="Search by bank name, account no, IFSC..."
+            placeholder="Search by designation or department..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 14, width: '100%' }}
@@ -170,11 +167,11 @@ const BankAccountListPage: React.FC = () => {
 
         <div className="flex items-center gap-2 ml-auto flex-wrap">
           <button
-            onClick={() => navigate('/admin/masters/bank-account/add')}
+            onClick={() => navigate('/admin/masters/designation/add')}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
             style={{ background: 'linear-gradient(135deg,#1d4ed8,#2563eb)', border: 'none', cursor: 'pointer' }}
           >
-            <MdAdd size={18} /> Add Bank A/C
+            <MdAdd size={18} /> Add Designation
           </button>
 
           <button onClick={exportCSV} title="Export CSV" className="p-2 rounded-xl"
@@ -182,7 +179,7 @@ const BankAccountListPage: React.FC = () => {
             <MdDownload size={18} />
           </button>
 
-          <button onClick={fetchBanks} title="Refresh" className="p-2 rounded-xl"
+          <button onClick={fetchDesignations} title="Refresh" className="p-2 rounded-xl"
             style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -192,10 +189,10 @@ const BankAccountListPage: React.FC = () => {
       {/* ── Table card ──────────────────────────────────────────────────── */}
       <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto', position: 'relative' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 750 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
             <thead>
               <tr style={{ background: t.tableHeaderBg }}>
-                {['ID', 'Bank Name', 'Account Number', 'Branch Name', 'IFSC Code', 'Status', 'Created At'].map((h) => (
+                {['ID', 'Designation Name', 'Department', 'Status', 'Created At', 'Updated At'].map((h) => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
                     fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
@@ -222,28 +219,27 @@ const BankAccountListPage: React.FC = () => {
 
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
               ) : pageRows.length === 0 ? (
-                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>
-                  {search ? 'No bank accounts match your search.' : 'No bank accounts found.'}
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>
+                  {search ? 'No designations match your search.' : 'No designations found.'}
                 </td></tr>
               ) : (
-                pageRows.map((bank, idx) => {
+                pageRows.map((desig, idx) => {
                   const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
                   return (
                     <tr
-                      key={bank.id}
+                      key={desig.id}
                       style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`, transition: 'background 0.15s' }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}
                     >
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.id}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap', fontWeight: 500 }}>{bank.name}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.account_number}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.branch_name}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.ifsc_code}</td>
-                      <td style={{ padding: '12px 16px' }}>{statusBadge(bank.is_active)}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(bank.created_at)}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{desig.id}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500 }}>{desig.name}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{desig.department ?? '—'}</td>
+                      <td style={{ padding: '12px 16px' }}>{statusBadge(desig.is_active)}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(desig.created_at)}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(desig.updated_at)}</td>
 
                       {/* STICKY Actions */}
                       <td style={{
@@ -254,9 +250,9 @@ const BankAccountListPage: React.FC = () => {
                         boxShadow: '-4px 0 8px rgba(0,0,0,0.06)',
                       }}>
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => navigate(`/admin/masters/bank-account/view/${bank.id}`)} title="View"><MdVisibility size={18} /></button>
-                          <button onClick={() => navigate(`/admin/masters/bank-account/edit/${bank.id}`)} title="Edit"><MdEdit size={18} /></button>
-                          <button onClick={() => handleDelete(bank)} title="Delete"><MdDelete size={18} /></button>
+                          <button onClick={() => navigate(`/admin/masters/designation/view/${desig.id}`)} title="View"><MdVisibility size={18} /></button>
+                          <button onClick={() => navigate(`/admin/masters/designation/edit/${desig.id}`)} title="Edit"><MdEdit size={18} /></button>
+                          <button onClick={() => handleDelete(desig)} title="Delete"><MdDelete size={18} /></button>
                         </div>
                       </td>
                     </tr>
@@ -268,10 +264,7 @@ const BankAccountListPage: React.FC = () => {
         </div>
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
-        <div
-          className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-          style={{ borderTop: `1px solid ${t.divider}` }}
-        >
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" style={{ borderTop: `1px solid ${t.divider}` }}>
           <div className="flex items-center gap-2">
             <span style={{ fontSize: 13, color: t.textPrimary }}>Rows per page:</span>
             <select
@@ -310,4 +303,4 @@ const BankAccountListPage: React.FC = () => {
   );
 };
 
-export default BankAccountListPage;
+export default DesignationListPage;
