@@ -59,10 +59,10 @@ const BankAccountListPage: React.FC = () => {
       q
         ? allBanks.filter(
             (b) =>
-              b.name.toLowerCase().includes(q) ||
-              b.branch_name.toLowerCase().includes(q) ||
-              b.account_number.toLowerCase().includes(q) ||
-              b.ifsc_code.toLowerCase().includes(q)
+              b.name.toLowerCase().includes(q)
+              // b.branch_name.toLowerCase().includes(q) ||
+              // b.account_number.toLowerCase().includes(q) ||
+              // b.ifsc_code.toLowerCase().includes(q)
           )
         : allBanks
     );
@@ -237,13 +237,13 @@ const BankAccountListPage: React.FC = () => {
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}
                     >
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{bank.id}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.id}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap', fontWeight: 500 }}>{bank.name}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{bank.account_number}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{bank.branch_name}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{bank.ifsc_code}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.account_number}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.branch_name}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.ifsc_code}</td>
                       <td style={{ padding: '12px 16px' }}>{statusBadge(bank.is_active)}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDate(bank.created_at)}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(bank.created_at)}</td>
 
                       {/* STICKY Actions */}
                       <td style={{
@@ -254,9 +254,9 @@ const BankAccountListPage: React.FC = () => {
                         boxShadow: '-4px 0 8px rgba(0,0,0,0.06)',
                       }}>
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => navigate(`/admin/masters/bank-account/view/${bank.id}`)} title="View" style={iconBtn}><MdVisibility size={18} /></button>
-                          <button onClick={() => navigate(`/admin/masters/bank-account/edit/${bank.id}`)} title="Edit" style={iconBtn}><MdEdit size={18} /></button>
-                          <button onClick={() => handleDelete(bank)} title="Delete" style={iconBtn}><MdDelete size={18} /></button>
+                          <button onClick={() => navigate(`/admin/masters/bank-account/view/${bank.id}`)} title="View"><MdVisibility size={18} /></button>
+                          <button onClick={() => navigate(`/admin/masters/bank-account/edit/${bank.id}`)} title="Edit"><MdEdit size={18} /></button>
+                          <button onClick={() => handleDelete(bank)} title="Delete"><MdDelete size={18} /></button>
                         </div>
                       </td>
                     </tr>
