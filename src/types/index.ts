@@ -220,3 +220,49 @@ export interface UpdateRolePayload {
   base_role: string;
   is_active: boolean;
 }
+
+
+// Bank Account interfaces
+export interface BankAccount {
+  id            : string;
+  name          : string;
+  branch_name   : string;
+  ifsc_code     : string;
+  account_number: string;
+  is_active     : boolean;
+  sort_order    : number;
+  created_at    : string;
+  updated_at    : string;
+}
+
+export interface BankAccountListResponse {
+  success: boolean;
+  rows   : BankAccount[];
+  total  : number;
+  page   : number;
+  limit  : number;
+}
+
+export interface BankAccountResponse {
+  success : boolean;
+  data    : BankAccount;
+  message?: string;
+}
+
+export interface CreateBankAccountPayload {
+  name          : string;
+  account_number: string;
+  branch_name   : string;
+  ifsc_code     : string;
+  is_active     : boolean;
+  sort_order    : number;
+}
+
+export interface UpdateBankAccountPayload {
+  name          : string;
+  account_number: string;
+  branch_name   : string;
+  ifsc_code     : string;
+  is_active     : boolean;
+  sort_order    : number;
+}
