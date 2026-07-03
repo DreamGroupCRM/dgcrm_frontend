@@ -46,7 +46,6 @@ const AdminRoutes: React.FC = () => (
       <Route path="masters/designation/view/:id" element={<DesignationCrudPage mode="view" />} />
       <Route path="masters/designation/edit/:id" element={<DesignationCrudPage mode="edit" />} />
 
-
       <Route path="masters/roles" element={<RoleListPage />} />
       <Route path="masters/roles/add" element={<RoleCrudPage mode="add" />} />
       <Route path="masters/roles/view/:id" element={<RoleCrudPage mode="view" />} />
@@ -57,12 +56,9 @@ const AdminRoutes: React.FC = () => (
       <Route path="masters/bank-account/view/:id" element={<BankAccountCrudPage mode="view" />} />
       <Route path="masters/bank-account/edit/:id" element={<BankAccountCrudPage mode="edit" />} />
 
-      <Route path="masters/designation" element={<PlaceholderPage title="Designation" />} />
-      <Route path="masters/roles" element={<PlaceholderPage title="Roles" />} />
-      <Route path="masters/bank-account" element={<PlaceholderPage title="Bank A/C" />} />
       <Route path="masters/building" element={<PlaceholderPage title="Building" />} />
 
-      <Route path="employees/employee" element={<PlaceholderPage title="Employee" />} />
+      <Route path="employees/employee-details" element={<PlaceholderPage title="Employee Details" />} />
       <Route path="employees/attendance" element={<PlaceholderPage title="Attendance" />} />
 
       <Route path="crm/customer-details" element={<PlaceholderPage title="Customer Details" />} />

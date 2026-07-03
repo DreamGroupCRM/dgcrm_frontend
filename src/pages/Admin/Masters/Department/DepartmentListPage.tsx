@@ -166,7 +166,7 @@ const DepartmentListPage: React.FC = () => {
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input
             type="text"
-            placeholder="Search by department name..."
+            placeholder="Search by Department Name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{

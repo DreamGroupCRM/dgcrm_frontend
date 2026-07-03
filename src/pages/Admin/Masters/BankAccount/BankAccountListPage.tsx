@@ -161,7 +161,7 @@ const BankAccountListPage: React.FC = () => {
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input
             type="text"
-            placeholder="Search by bank name, account no, IFSC..."
+            placeholder="Search by Bank Name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 14, width: '100%' }}
@@ -178,12 +178,12 @@ const BankAccountListPage: React.FC = () => {
           </button>
 
           <button onClick={exportCSV} title="Export CSV" className="p-2 rounded-xl"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}>
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary}}>
             <MdDownload size={18} />
           </button>
 
           <button onClick={fetchBanks} title="Refresh" className="p-2 rounded-xl"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}>
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary}}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>

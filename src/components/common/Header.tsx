@@ -168,7 +168,7 @@ const handleLogout = async () => {
               fontFamily : t.fontFamily,
               fontSize   : 12,
               fontWeight : 500,
-              color      : isDark ? '#a3a3a3' : '#2563eb',
+              color      : isDark ? '#ffffff' : '#000000',
               margin     : 2,
               whiteSpace : 'nowrap',
             }}>
@@ -246,7 +246,7 @@ const handleLogout = async () => {
         </button>
 
         {/* Logout */}
-        <IconBtn onClick={handleLogout} title="Logout" isDark={isDark} hoverColor="#ef4444">
+        <IconBtn onClick={handleLogout} title="Logout" isDark={isDark}>
           <MdLogout size={19} />
         </IconBtn>
       </div>
