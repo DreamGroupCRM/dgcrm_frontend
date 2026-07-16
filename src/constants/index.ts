@@ -32,6 +32,7 @@ export const ROUTES = {
     ROLES: '/admin/masters/roles',
     BANK_AC: '/admin/masters/bank-account',
     BUILDING: '/admin/masters/building',
+    ACTION_MODULE: '/admin/masters/action-module',
 
     // Employee
     EMPLOYEE_DETAILS: '/admin/employees/employee-details',

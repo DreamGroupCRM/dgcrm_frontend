@@ -482,3 +482,77 @@ export interface UpdateFlatPayload {
   status?     : 'vacant' | 'occupied' | 'sold';
   is_active?  : boolean;
 }
+
+
+// Action Master interfaces — clean entity keys (getMany), no pagination on the API
+export interface ActionMaster {
+  id         : string | number;
+  name       : string;
+  code       : string;
+  description: string | null;
+  is_active  : boolean;
+  created_at : string;
+  updated_at : string;
+}
+
+export interface ActionMasterListResponse {
+  success: boolean;
+  rows   : ActionMaster[];
+  total  : number;
+}
+
+export interface ActionMasterResponse {
+  success : boolean;
+  data    : ActionMaster;
+  message?: string;
+}
+
+export interface CreateActionMasterPayload {
+  name       : string;
+  code?      : string;
+  description?: string;
+}
+
+export interface UpdateActionMasterPayload {
+  name?       : string;
+  code?       : string;
+  description?: string;
+  is_active?  : boolean;
+}
+
+
+// Module Master interfaces — raw aliased keys (m_*), no pagination on the API
+export interface ModuleMaster {
+  m_id        : string | number;
+  m_name      : string;
+  m_slug      : string;
+  m_sort_order: number;
+  m_is_active : boolean;
+  m_created_at: string;
+  m_updated_at: string;
+}
+
+export interface ModuleMasterListResponse {
+  success: boolean;
+  rows   : ModuleMaster[];
+  total  : number;
+}
+
+export interface ModuleMasterResponse {
+  success : boolean;
+  data    : ModuleMaster & { name?: string };
+  message?: string;
+}
+
+export interface CreateModuleMasterPayload {
+  name      : string;
+  slug?     : string;
+  sort_order: number;
+}
+
+export interface UpdateModuleMasterPayload {
+  name?     : string;
+  slug?     : string;
+  sort_order?: number;
+  is_active?: boolean;
+}

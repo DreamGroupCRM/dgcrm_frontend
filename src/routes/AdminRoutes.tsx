@@ -28,6 +28,10 @@ import WingCrudPage from '../pages/Admin/Masters/Building/WingCrudPage';
 import FloorCrudPage from '../pages/Admin/Masters/Building/FloorCrudPage';
 import FlatCrudPage from '../pages/Admin/Masters/Building/FlatCrudPage';
 
+import ActionModuleListPage from '../pages/Admin/Masters/ActionModule/ActionModuleListPage';
+import ActionMasterCrudPage from '../pages/Admin/Masters/ActionModule/ActionMasterCrudPage';
+import ModuleMasterCrudPage from '../pages/Admin/Masters/ActionModule/ModuleMasterCrudPage';
+
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
 const PlaceholderPage = lazy(() => import('../components/common/PlaceholderPage'));
@@ -79,6 +83,14 @@ const AdminRoutes: React.FC = () => (
       <Route path="masters/flat/add" element={<FlatCrudPage mode="add" />} />
       <Route path="masters/flat/view/:id" element={<FlatCrudPage mode="view" />} />
       <Route path="masters/flat/edit/:id" element={<FlatCrudPage mode="edit" />} />
+
+      <Route path="masters/action-module" element={<ActionModuleListPage />} />
+      <Route path="masters/action/add" element={<ActionMasterCrudPage mode="add" />} />
+      <Route path="masters/action/view/:id" element={<ActionMasterCrudPage mode="view" />} />
+      <Route path="masters/action/edit/:id" element={<ActionMasterCrudPage mode="edit" />} />
+      <Route path="masters/module/add" element={<ModuleMasterCrudPage mode="add" />} />
+      <Route path="masters/module/view/:id" element={<ModuleMasterCrudPage mode="view" />} />
+      <Route path="masters/module/edit/:id" element={<ModuleMasterCrudPage mode="edit" />} />
 
       <Route path="employees/employee-details" element={<PlaceholderPage title="Employee Details" />} />
       <Route path="employees/attendance" element={<PlaceholderPage title="Attendance" />} />
