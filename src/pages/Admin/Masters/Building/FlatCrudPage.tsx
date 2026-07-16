@@ -152,7 +152,7 @@ const FlatCrudPage: React.FC<Props> = ({ mode }) => {
     })();
   }, [mode, id]);
 
-  // once floors are loaded AND we know floorId (edit/view), derive wingId then buildingId
+  // derive wingId/buildingId once floors load (edit/view)
   useEffect(() => {
     if (!floorId || !allFloors.length) return;
     const fl = allFloors.find((fl) => String(fl.f_id) === String(floorId));
@@ -279,7 +279,7 @@ const FlatCrudPage: React.FC<Props> = ({ mode }) => {
     );
   }
 
-  // In edit/view mode, the flat's floor/wing/building are fixed — show as read-only text.
+  // edit/view: hierarchy is fixed, show read-only
   const lockedHierarchy = mode !== 'add';
 
   return (

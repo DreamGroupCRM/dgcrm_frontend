@@ -147,7 +147,7 @@ const FloorCrudPage: React.FC<Props> = ({ mode }) => {
     })();
   }, [mode, id]);
 
-  // once wings are loaded AND we know wingId (edit/view), derive buildingId for the dropdown
+  // derive buildingId once wings load (edit/view)
   useEffect(() => {
     if (!wingId || !allWings.length) return;
     const w = allWings.find((w) => String(w.w_id) === String(wingId));
