@@ -1,7 +1,7 @@
 // src/pages/Admin/Masters/ActionModule/ActionModuleListPage.tsx
 // Contains: Action Master accordion + Module Master accordion
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -9,35 +9,15 @@ import {
   MdSearch, MdVisibility, MdKeyboardArrowDown, MdSettings,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { useAccordion } from '../../../../hooks/useAccordion';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
+import { iconBtnStyle, getAccordionCardStyle, getAccordionHeaderStyle, StatusBadge } from '../../../../components/common/MasterListUI';
+import PaginationFooter from '../../../../components/common/PaginationFooter';
 import { fetchActionMasterList, deleteActionMaster } from '../../../../services/actionMasterService';
 import { fetchModuleMasterList, deleteModuleMaster } from '../../../../services/moduleMasterService';
 import { ActionMaster, ModuleMaster } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
-
-const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Reusable accordion hook
-// ─────────────────────────────────────────────────────────────────────────────
-const useAccordion = (defaultOpen = true) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [contentHeight, setContentHeight] = useState<number | string>(defaultOpen ? 'auto' : 0);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  const recalc = useCallback(() => {
-    if (contentRef.current) {
-      setContentHeight(isOpen ? contentRef.current.scrollHeight : 0);
-    }
-  }, [isOpen]);
-
-  useEffect(() => { recalc(); }, [recalc]);
-
-  const toggle = () => setIsOpen((p) => !p);
-
-  return { isOpen, toggle, contentRef, contentHeight, recalc };
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Page
@@ -52,45 +32,10 @@ const ActionModuleListPage: React.FC = () => {
   useEffect(() => { dispatch(setPageTitle('Action & Module')); }, [dispatch]);
 
   const stickyBg = isDark ? t.surfaceBg : '#ffffff';
-
-  const iconBtn: React.CSSProperties = {
-    background: 'none', border: 'none', cursor: 'pointer',
-    color: '#4b5563', padding: 6, borderRadius: 6,
-    display: 'inline-flex', alignItems: 'center',
-  };
-
-  const statusBadge = (isActive: boolean) => (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center',
-      padding: '2px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-      background: isActive
-        ? isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7'
-        : isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2',
-      color: isActive
-        ? isDark ? '#4ade80' : '#16a34a'
-        : isDark ? '#f87171' : '#dc2626',
-    }}>
-      {isActive ? 'Active' : 'Inactive'}
-    </span>
-  );
-
-  const accordionCard: React.CSSProperties = {
-    background: t.surfaceBg,
-    border: `1px solid ${t.surfaceBorder}`,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 24,
-  };
-
-  const accordionHeader = (isOpen: boolean): React.CSSProperties => ({
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '14px 16px',
-    flexWrap: 'wrap' as const,
-    gap: 12,
-    borderBottom: isOpen ? `1px solid ${t.divider}` : 'none',
-  });
+  const iconBtn = iconBtnStyle;
+  const statusBadge = (isActive: boolean) => <StatusBadge isActive={isActive} t={t} isDark={isDark} />;
+  const accordionCard = getAccordionCardStyle(t);
+  const accordionHeader = (isOpen: boolean) => getAccordionHeaderStyle(t, isOpen);
 
   // ══════════════════════════════════════════════════════════════════════
   // ACTION MASTER STATE
@@ -226,39 +171,6 @@ const ActionModuleListPage: React.FC = () => {
   const moduleTo = Math.min(moduleStart + moduleLimit, moduleTotal);
   const modulePageBtns = () => { const s = Math.max(1, Math.min(moduleSafePage - 2, moduleTotalPages - 4)); return Array.from({ length: Math.min(5, moduleTotalPages) }, (_, i) => s + i); };
 
-  // ── pagination footer renderer ─────────────────────────────────────────
-  const PaginationFooter = ({
-    limit, setLimit, setPage, safePage, totalPages,
-    from, to, total, pageBtns,
-  }: {
-    limit: number; setLimit: (n: number) => void; setPage: (p: number) => void;
-    safePage: number; totalPages: number; from: number; to: number; total: number;
-    pageBtns: () => number[];
-  }) => (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" style={{ borderTop: `1px solid ${t.divider}` }}>
-      <div className="flex items-center gap-2">
-        <span style={{ fontSize: 13, color: t.textPrimary }}>Rows per page:</span>
-        <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-          style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
-          {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-      </div>
-      <span style={{ fontSize: 13, color: t.textPrimary }}>Showing {from}–{to} of {total}</span>
-      <div className="flex items-center gap-1">
-        <button onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage === 1}
-          style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage === 1 ? 'not-allowed' : 'pointer', fontSize: 13 }}>Prev</button>
-        {pageBtns().map((pg) => (
-          <button key={pg} onClick={() => setPage(pg)}
-            style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${pg === safePage ? '#2563eb' : t.surfaceBorder}`, background: pg === safePage ? '#2563eb' : t.btnSecondaryBg, color: pg === safePage ? '#fff' : t.textPrimary, cursor: 'pointer', fontSize: 13, fontWeight: pg === safePage ? 700 : 400 }}>
-            {pg}
-          </button>
-        ))}
-        <button onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages}
-          style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', fontSize: 13 }}>Next</button>
-      </div>
-    </div>
-  );
-
   // ══════════════════════════════════════════════════════════════════════
   // RENDER
   // ══════════════════════════════════════════════════════════════════════
@@ -339,7 +251,7 @@ const ActionModuleListPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <PaginationFooter limit={moduleLimit} setLimit={setModuleLimit} setPage={setModulePage} safePage={moduleSafePage} totalPages={moduleTotalPages} from={moduleFrom} to={moduleTo} total={moduleTotal} pageBtns={modulePageBtns} />
+            <PaginationFooter t={t} limit={moduleLimit} setLimit={setModuleLimit} setPage={setModulePage} safePage={moduleSafePage} totalPages={moduleTotalPages} from={moduleFrom} to={moduleTo} total={moduleTotal} pageBtns={modulePageBtns} />
           </div>
         </div>
       </div>
@@ -418,7 +330,7 @@ const ActionModuleListPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <PaginationFooter limit={actionLimit} setLimit={setActionLimit} setPage={setActionPage} safePage={actionSafePage} totalPages={actionTotalPages} from={actionFrom} to={actionTo} total={actionTotal} pageBtns={actionPageBtns} />
+            <PaginationFooter t={t} limit={actionLimit} setLimit={setActionLimit} setPage={setActionPage} safePage={actionSafePage} totalPages={actionTotalPages} from={actionFrom} to={actionTo} total={actionTotal} pageBtns={actionPageBtns} />
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 // src/pages/Admin/Masters/Building/BuildingListPage.tsx
 // Contains: Building Details accordion + Wing Details accordion
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -9,38 +9,17 @@ import {
   MdSearch, MdVisibility, MdKeyboardArrowDown, MdBusiness,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { useAccordion } from '../../../../hooks/useAccordion';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
+import { iconBtnStyle, getAccordionCardStyle, getAccordionHeaderStyle, StatusBadge } from '../../../../components/common/MasterListUI';
+import PaginationFooter from '../../../../components/common/PaginationFooter';
 import { fetchBuildingList, deleteBuilding } from '../../../../services/buildingService';
 import { fetchWingList, deleteWing } from '../../../../services/wingService';
 import { fetchFloorList, deleteFloor } from '../../../../services/floorService';
 import { fetchFlatList, deleteFlat } from '../../../../services/flatService';
 import { Building, Wing, Floor, Flat } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
-
-const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
-const ACTION_ICON_COLOR = '#4b5563';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Reusable accordion hook
-// ─────────────────────────────────────────────────────────────────────────────
-const useAccordion = (defaultOpen = true) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [contentHeight, setContentHeight] = useState<number | string>(defaultOpen ? 'auto' : 0);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  const recalc = useCallback(() => {
-    if (contentRef.current) {
-      setContentHeight(isOpen ? contentRef.current.scrollHeight : 0);
-    }
-  }, [isOpen]);
-
-  useEffect(() => { recalc(); }, [recalc]);
-
-  const toggle = () => setIsOpen((p) => !p);
-
-  return { isOpen, toggle, contentRef, contentHeight, recalc };
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Page
@@ -56,46 +35,10 @@ const BuildingListPage: React.FC = () => {
 
   // ── theme helpers ──────────────────────────────────────────────────────
   const stickyBg = isDark ? t.surfaceBg : '#ffffff';
-
-  const iconBtn: React.CSSProperties = {
-    background: 'none', border: 'none', cursor: 'pointer',
-    color: ACTION_ICON_COLOR, padding: 6, borderRadius: 6,
-    display: 'inline-flex', alignItems: 'center',
-  };
-
-  const statusBadge = (isActive: boolean) => (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center',
-      padding: '2px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-      background: isActive
-        ? isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7'
-        : isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2',
-      color: isActive
-        ? isDark ? '#4ade80' : '#16a34a'
-        : isDark ? '#f87171' : '#dc2626',
-    }}>
-      {isActive ? 'Active' : 'Inactive'}
-    </span>
-  );
-
-  // ── accordion header shared style ──────────────────────────────────────
-  const accordionCard: React.CSSProperties = {
-    background: t.surfaceBg,
-    border: `1px solid ${t.surfaceBorder}`,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 24,
-  };
-
-  const accordionHeader = (isOpen: boolean): React.CSSProperties => ({
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '14px 16px',
-    flexWrap: 'wrap' as const,
-    gap: 12,
-    borderBottom: isOpen ? `1px solid ${t.divider}` : 'none',
-  });
+  const iconBtn = iconBtnStyle;
+  const statusBadge = (isActive: boolean) => <StatusBadge isActive={isActive} t={t} isDark={isDark} />;
+  const accordionCard = getAccordionCardStyle(t);
+  const accordionHeader = (isOpen: boolean) => getAccordionHeaderStyle(t, isOpen);
 
   // ══════════════════════════════════════════════════════════════════════
   // BUILDING STATE
@@ -398,39 +341,6 @@ const BuildingListPage: React.FC = () => {
     );
   };
 
-  // ── pagination footer renderer ─────────────────────────────────────────
-  const PaginationFooter = ({
-    limit, setLimit, setPage, safePage, totalPages,
-    from, to, total, pageBtns,
-  }: {
-    limit: number; setLimit: (n: number) => void; setPage: (p: number) => void;
-    safePage: number; totalPages: number; from: number; to: number; total: number;
-    pageBtns: () => number[];
-  }) => (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" style={{ borderTop: `1px solid ${t.divider}` }}>
-      <div className="flex items-center gap-2">
-        <span style={{ fontSize: 13, color: t.textPrimary }}>Rows per page:</span>
-        <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-          style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
-          {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-      </div>
-      <span style={{ fontSize: 13, color: t.textPrimary }}>Showing {from}–{to} of {total}</span>
-      <div className="flex items-center gap-1">
-        <button onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage === 1}
-          style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage === 1 ? 'not-allowed' : 'pointer', fontSize: 13 }}>Prev</button>
-        {pageBtns().map((pg) => (
-          <button key={pg} onClick={() => setPage(pg)}
-            style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${pg === safePage ? '#2563eb' : t.surfaceBorder}`, background: pg === safePage ? '#2563eb' : t.btnSecondaryBg, color: pg === safePage ? '#fff' : t.textPrimary, cursor: 'pointer', fontSize: 13, fontWeight: pg === safePage ? 700 : 400 }}>
-            {pg}
-          </button>
-        ))}
-        <button onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages}
-          style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', fontSize: 13 }}>Next</button>
-      </div>
-    </div>
-  );
-
   // ══════════════════════════════════════════════════════════════════════
   // RENDER
   // ══════════════════════════════════════════════════════════════════════
@@ -514,7 +424,7 @@ const BuildingListPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <PaginationFooter limit={bldgLimit} setLimit={setBldgLimit} setPage={setBldgPage} safePage={bldgSafePage} totalPages={bldgTotalPages} from={bldgFrom} to={bldgTo} total={bldgTotal} pageBtns={bldgPageBtns} />
+            <PaginationFooter t={t} limit={bldgLimit} setLimit={setBldgLimit} setPage={setBldgPage} safePage={bldgSafePage} totalPages={bldgTotalPages} from={bldgFrom} to={bldgTo} total={bldgTotal} pageBtns={bldgPageBtns} />
           </div>
         </div>
       </div>
@@ -598,7 +508,7 @@ const BuildingListPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <PaginationFooter limit={wingLimit} setLimit={setWingLimit} setPage={setWingPage} safePage={wingSafePage} totalPages={wingTotalPages} from={wingFrom} to={wingTo} total={wingTotal} pageBtns={wingPageBtns} />
+            <PaginationFooter t={t} limit={wingLimit} setLimit={setWingLimit} setPage={setWingPage} safePage={wingSafePage} totalPages={wingTotalPages} from={wingFrom} to={wingTo} total={wingTotal} pageBtns={wingPageBtns} />
           </div>
         </div>
       </div>
@@ -680,7 +590,7 @@ const BuildingListPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <PaginationFooter limit={floorLimit} setLimit={setFloorLimit} setPage={setFloorPage} safePage={floorSafePage} totalPages={floorTotalPages} from={floorFrom} to={floorTo} total={floorTotal} pageBtns={floorPageBtns} />
+            <PaginationFooter t={t} limit={floorLimit} setLimit={setFloorLimit} setPage={setFloorPage} safePage={floorSafePage} totalPages={floorTotalPages} from={floorFrom} to={floorTo} total={floorTotal} pageBtns={floorPageBtns} />
           </div>
         </div>
       </div>
@@ -765,7 +675,7 @@ const BuildingListPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <PaginationFooter limit={flatLimit} setLimit={setFlatLimit} setPage={setFlatPage} safePage={flatSafePage} totalPages={flatTotalPages} from={flatFrom} to={flatTo} total={flatTotal} pageBtns={flatPageBtns} />
+            <PaginationFooter t={t} limit={flatLimit} setLimit={setFlatLimit} setPage={setFlatPage} safePage={flatSafePage} totalPages={flatTotalPages} from={flatFrom} to={flatTo} total={flatTotal} pageBtns={flatPageBtns} />
           </div>
         </div>
       </div>
