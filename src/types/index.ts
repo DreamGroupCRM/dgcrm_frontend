@@ -306,3 +306,86 @@ export interface UpdateDesignationPayload {
   is_active    : boolean;
   sort_order   : number;
 }
+
+// Building interfaces
+export interface Building {
+  id        : string;
+  name      : string;
+  address   : string;
+  is_active : boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BuildingListResponse {
+  success: boolean;
+  rows   : Building[];
+  total  : number;
+  page   : number;
+  limit  : number;
+}
+
+export interface BuildingResponse {
+  success : boolean;
+  data    : Building;
+  message?: string;
+}
+
+export interface CreateBuildingPayload {
+  name      : string;
+  address   : string;
+  is_active : boolean;
+  sort_order: number;
+}
+
+export interface UpdateBuildingPayload {
+  name      : string;
+  address   : string;
+  is_active : boolean;
+  sort_order: number;
+}
+
+
+// Wing interfaces
+export interface Wing {
+  w_id        : string | number;
+  building    : string;
+  building_id : string | number;
+  w_name      : string;
+  floor_count : number;
+  flat_count  : number;
+  w_is_active : boolean;
+  w_created_at: string;
+  w_updated_at: string;
+}
+
+export interface WingListResponse {
+  success: boolean;
+  rows   : Wing[];
+  total  : number;
+  page   : number;
+  limit  : number;
+}
+
+export interface WingResponse {
+  success : boolean;
+  data    : Wing & { name?: string };
+  message?: string;
+}
+
+export interface CreateWingPayload {
+  name       : string;
+  building_id: string | number;
+  floor_count: number;
+  is_active  : boolean;
+  sort_order : number;
+}
+
+export interface UpdateWingPayload {
+  name       : string;
+  building_id: string | number;
+  floor_count: number;
+  is_active  : boolean;
+  sort_order : number;
+}

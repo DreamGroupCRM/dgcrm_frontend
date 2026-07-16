@@ -219,8 +219,8 @@ const LoginPage: React.FC = () => {
                   key={i}
                   onClick={() => goToSlide(i)}
                   className={`rounded-full transition-all duration-300 cursor-pointer ${currentSlide === i
-                      ? 'bg-blue-400 w-8 h-2.5'
-                      : 'bg-white/50 hover:bg-white/80 w-2.5 h-2.5'
+                    ? 'bg-blue-400 w-8 h-2.5'
+                    : 'bg-white/50 hover:bg-white/80 w-2.5 h-2.5'
                     }`}
                 />
               ))}
@@ -342,28 +342,7 @@ const LoginPage: React.FC = () => {
                 className="w-full mt-2 py-3 rounded-xl font-semibold text-white transition-all
                   duration-300 flex items-center justify-center gap-2 disabled:opacity-70
                   disabled:cursor-not-allowed"
-                style={{
-                  background: loading
-                    ? 'rgba(30,58,95,0.6)'
-                    : 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)',
-                  boxShadow: loading ? 'none' : '0 4px 20px rgba(37,99,235,0.5)',
-                }}
-                onMouseEnter={(e) => {
-                  if (!loading) {
-                    (e.currentTarget as HTMLButtonElement).style.background =
-                      'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)';
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                      '0 4px 20px rgba(37,99,235,0.5)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!loading) {
-                    (e.currentTarget as HTMLButtonElement).style.background =
-                      'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)';
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                      '0 4px 20px rgba(37,99,235,0.5)';
-                  }
-                }}
+                style={{background: "blue"}}
               >
                 {loading ? (
                   <>
