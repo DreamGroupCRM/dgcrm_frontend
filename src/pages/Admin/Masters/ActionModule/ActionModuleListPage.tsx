@@ -266,85 +266,6 @@ const ActionModuleListPage: React.FC = () => {
     <div style={{ fontFamily: t.fontFamily }}>
 
       {/* ════════════════════════════════════════
-          ACTION MASTER ACCORDION
-      ════════════════════════════════════════ */}
-      <div style={accordionCard}>
-        <div style={accordionHeader(actionAccordion.isOpen)}>
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
-            style={{ flex: '1 1 180px', maxWidth: 300, background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
-            <MdSearch size={16} style={{ color: t.textPrimary, flexShrink: 0 }} />
-            <input type="text" placeholder="Search by action name, code..."
-              value={actionSearch} onChange={(e) => setActionSearch(e.target.value)}
-              style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 13, width: '100%' }} />
-          </div>
-
-          <div className="flex items-center gap-2" onClick={actionAccordion.toggle} style={{ cursor: 'pointer', userSelect: 'none', flex: '0 0 auto' }}>
-            <MdSettings size={22} style={{ color: '#2563eb' }} />
-            <span style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, fontFamily: t.fontFamily }}>Action Master</span>
-            <MdKeyboardArrowDown size={22} style={{ color: t.textPrimary, transition: 'transform 0.3s ease', transform: actionAccordion.isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
-          </div>
-
-          <div className="flex items-center gap-2" style={{ flex: '0 0 auto' }}>
-            <button onClick={() => navigate('/admin/masters/action/add')}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-              style={{ background: 'linear-gradient(135deg,#1d4ed8,#2563eb)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              <MdAdd size={18} /> Add Action
-            </button>
-            <button onClick={exportActionCSV} title="Export CSV" className="p-2 rounded-xl"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}><MdDownload size={18} /></button>
-            <button onClick={fetchActions} title="Refresh" className="p-2 rounded-xl"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}><MdRefresh size={18} className={actionLoading ? 'animate-spin' : ''} /></button>
-          </div>
-        </div>
-
-        <div style={{ height: typeof actionAccordion.contentHeight === 'number' ? `${actionAccordion.contentHeight}px` : 'auto', overflow: 'hidden', transition: 'height 0.35s ease' }}>
-          <div ref={actionAccordion.contentRef}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
-                <thead>
-                  <tr style={{ background: t.tableHeaderBg }}>
-                    {['ID', 'Name', 'Code', 'Description', 'Status', 'Created At'].map((h) => (
-                      <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 2, background: t.tableHeaderBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {actionLoading ? (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
-                  ) : actionRows.length === 0 ? (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>{actionSearch ? 'No actions match your search.' : 'No actions found.'}</td></tr>
-                  ) : actionRows.map((a, idx) => {
-                    const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
-                    return (
-                      <tr key={a.id} style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`, transition: 'background 0.15s' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{a.id}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500 }}>{a.name}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{a.code}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{a.description || '—'}</td>
-                        <td style={{ padding: '12px 16px' }}>{statusBadge(a.is_active)}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDate(a.created_at)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 1, background: stickyBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>
-                          <div className="flex items-center justify-center gap-1">
-                            <button onClick={() => navigate(`/admin/masters/action/view/${a.id}`)} title="View" style={iconBtn}><MdVisibility size={18} /></button>
-                            <button onClick={() => navigate(`/admin/masters/action/edit/${a.id}`)} title="Edit" style={iconBtn}><MdEdit size={18} /></button>
-                            <button onClick={() => handleDeleteAction(a)} title="Delete" style={iconBtn}><MdDelete size={18} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <PaginationFooter limit={actionLimit} setLimit={setActionLimit} setPage={setActionPage} safePage={actionSafePage} totalPages={actionTotalPages} from={actionFrom} to={actionTo} total={actionTotal} pageBtns={actionPageBtns} />
-          </div>
-        </div>
-      </div>
-
-      {/* ════════════════════════════════════════
           MODULE MASTER ACCORDION
       ════════════════════════════════════════ */}
       <div style={accordionCard}>
@@ -419,6 +340,85 @@ const ActionModuleListPage: React.FC = () => {
               </table>
             </div>
             <PaginationFooter limit={moduleLimit} setLimit={setModuleLimit} setPage={setModulePage} safePage={moduleSafePage} totalPages={moduleTotalPages} from={moduleFrom} to={moduleTo} total={moduleTotal} pageBtns={modulePageBtns} />
+          </div>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════
+          ACTION MASTER ACCORDION
+      ════════════════════════════════════════ */}
+      <div style={accordionCard}>
+        <div style={accordionHeader(actionAccordion.isOpen)}>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+            style={{ flex: '1 1 180px', maxWidth: 300, background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
+            <MdSearch size={16} style={{ color: t.textPrimary, flexShrink: 0 }} />
+            <input type="text" placeholder="Search by action name, code..."
+              value={actionSearch} onChange={(e) => setActionSearch(e.target.value)}
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 13, width: '100%' }} />
+          </div>
+
+          <div className="flex items-center gap-2" onClick={actionAccordion.toggle} style={{ cursor: 'pointer', userSelect: 'none', flex: '0 0 auto' }}>
+            <MdSettings size={22} style={{ color: '#2563eb' }} />
+            <span style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, fontFamily: t.fontFamily }}>Action Master</span>
+            <MdKeyboardArrowDown size={22} style={{ color: t.textPrimary, transition: 'transform 0.3s ease', transform: actionAccordion.isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+          </div>
+
+          <div className="flex items-center gap-2" style={{ flex: '0 0 auto' }}>
+            <button onClick={() => navigate('/admin/masters/action/add')}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
+              style={{ background: 'linear-gradient(135deg,#1d4ed8,#2563eb)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <MdAdd size={18} /> Add Action
+            </button>
+            <button onClick={exportActionCSV} title="Export CSV" className="p-2 rounded-xl"
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}><MdDownload size={18} /></button>
+            <button onClick={fetchActions} title="Refresh" className="p-2 rounded-xl"
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}><MdRefresh size={18} className={actionLoading ? 'animate-spin' : ''} /></button>
+          </div>
+        </div>
+
+        <div style={{ height: typeof actionAccordion.contentHeight === 'number' ? `${actionAccordion.contentHeight}px` : 'auto', overflow: 'hidden', transition: 'height 0.35s ease' }}>
+          <div ref={actionAccordion.contentRef}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+                <thead>
+                  <tr style={{ background: t.tableHeaderBg }}>
+                    {['ID', 'Name', 'Code', 'Description', 'Status', 'Created At'].map((h) => (
+                      <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 2, background: t.tableHeaderBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {actionLoading ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
+                  ) : actionRows.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>{actionSearch ? 'No actions match your search.' : 'No actions found.'}</td></tr>
+                  ) : actionRows.map((a, idx) => {
+                    const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
+                    return (
+                      <tr key={a.id} style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`, transition: 'background 0.15s' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{a.id}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500 }}>{a.name}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{a.code}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{a.description || '—'}</td>
+                        <td style={{ padding: '12px 16px' }}>{statusBadge(a.is_active)}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDate(a.created_at)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 1, background: stickyBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>
+                          <div className="flex items-center justify-center gap-1">
+                            <button onClick={() => navigate(`/admin/masters/action/view/${a.id}`)} title="View" style={iconBtn}><MdVisibility size={18} /></button>
+                            <button onClick={() => navigate(`/admin/masters/action/edit/${a.id}`)} title="Edit" style={iconBtn}><MdEdit size={18} /></button>
+                            <button onClick={() => handleDeleteAction(a)} title="Delete" style={iconBtn}><MdDelete size={18} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <PaginationFooter limit={actionLimit} setLimit={setActionLimit} setPage={setActionPage} safePage={actionSafePage} totalPages={actionTotalPages} from={actionFrom} to={actionTo} total={actionTotal} pageBtns={actionPageBtns} />
           </div>
         </div>
       </div>
