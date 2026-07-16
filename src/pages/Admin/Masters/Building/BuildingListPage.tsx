@@ -139,6 +139,9 @@ const BuildingListPage: React.FC = () => {
       await deleteBuilding(String(building.id));
       toast.success('Building Deleted Successfully', { autoClose: 1000 });
       fetchBuildings();
+      fetchWings();   // cascades: building -> wing -> floor -> flat
+      fetchFloors();
+      fetchFlats();
     } catch (e: any) {
       console.error('[BuildingListPage] deleteBuilding error:', e);
       const msg = e?.response?.data?.message || 'Failed to delete building. Please try again.';
@@ -208,7 +211,9 @@ const BuildingListPage: React.FC = () => {
       console.log('[BuildingListPage] deleting wing id:', wing.w_id, typeof wing.w_id);
       await deleteWing(String(wing.w_id));
       toast.success('Wing Deleted Successfully', { autoClose: 1000 });
-      fetchWings();
+      fetchWings();   // cascades: wing -> floor -> flat
+      fetchFloors();
+      fetchFlats();
     } catch (e: any) {
       console.error('[BuildingListPage] deleteWing error:', e);
       const msg = e?.response?.data?.message || 'Failed to delete wing. Please try again.';
@@ -277,7 +282,9 @@ const BuildingListPage: React.FC = () => {
     try {
       await deleteFloor(String(floor.f_id));
       toast.success('Floor Deleted Successfully', { autoClose: 1000 });
-      fetchFloors();
+      fetchFloors();   // cascades: floor -> flat
+      fetchFlats();
+      fetchWings();    // refresh parent wing's floor_count/flat_count
     } catch (e: any) {
       const msg = e?.response?.data?.message || 'Failed to delete floor. Please try again.';
       toast.error(msg);
