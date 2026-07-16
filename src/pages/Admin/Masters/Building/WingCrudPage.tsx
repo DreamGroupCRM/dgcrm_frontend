@@ -7,7 +7,7 @@ import { MdArrowBack } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme, AppTheme } from '../../../../styles/theme';
-import { fetchWingById, createWing, updateWing, updateWingFloors } from '../../../../services/wingService';
+import { fetchWingById, createWing, updateWing, generateFloors } from '../../../../services/wingService';
 import { fetchBuildingList } from '../../../../services/buildingService';
 import { Building } from '../../../../types/index';
 
@@ -120,8 +120,7 @@ const WingCrudPage: React.FC<Props> = ({ mode }) => {
         if (res.success && res.data) {
           const d = res.data;
 
-          // ── FIX: use w_building_id (correct field from API response) ──
-          const bldId = String(d.w_building_id ?? d.building_id ?? '');
+          const bldId = String(d.w_building_id ?? '');
           const fc    = String(d.floor_count ?? '');
 
           setBuildingId(bldId);
@@ -201,25 +200,29 @@ const WingCrudPage: React.FC<Props> = ({ mode }) => {
           return;
         }
 
-        // ── Step 2: Call floors API ONLY if floor_count changed ──────────
-        const floorChanged = String(floorCount).trim() !== String(originalFloorCount).trim();
-        console.log('[WingCrudPage] floor_count changed:', floorChanged, `(${originalFloorCount} → ${floorCount})`);
+        // ── Step 2: Add more floors ONLY if the count increased ──────────
+        // Backend can only ADD floors, never remove them, so a decrease is
+        // not sent anywhere — the extra floors would need manual deletion.
+        const delta = Number(floorCount) - Number(originalFloorCount);
+        console.log('[WingCrudPage] floor_count delta:', delta, `(${originalFloorCount} → ${floorCount})`);
 
-        if (floorChanged) {
+        if (delta > 0) {
           try {
-            const floorsRes = await updateWingFloors(wingIdStr || id!);
-            console.log('[WingCrudPage] updateWingFloors response:', floorsRes);
+            const floorsRes = await generateFloors(wingIdStr || id!, delta);
+            console.log('[WingCrudPage] generateFloors response:', floorsRes);
             if (!floorsRes.success) {
-              toast.error(floorsRes.message || 'Wing updated but floor sync failed');
+              toast.error(floorsRes.message || 'Wing updated but adding floors failed');
               navigate('/admin/masters/building');
               return;
             }
           } catch (e) {
-            console.error('[WingCrudPage] updateWingFloors error:', e);
-            toast.error('Wing updated but failed to sync floors');
+            console.error('[WingCrudPage] generateFloors error:', e);
+            toast.error('Wing updated but failed to add floors');
             navigate('/admin/masters/building');
             return;
           }
+        } else if (delta < 0) {
+          toast.warning('Floor count was lowered, but existing floors can\'t be removed here — delete them individually from Floor Details if needed.', { autoClose: 4000 });
         }
 
         toast.success('Wing Updated Successfully', { autoClose: 1000 });

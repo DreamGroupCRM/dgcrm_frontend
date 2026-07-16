@@ -58,9 +58,11 @@ export const deleteWing = async (id: string): Promise<{ success: boolean; messag
   return res.data;
 };
 
-// ── Update wing floors (call only when floor_count changes) ────────────────
-export const updateWingFloors = async (wingId: string): Promise<{ success: boolean; message: string }> => {
-  const res = await axiosInstance.put(`/wings/${wingId}/floors`);
-  console.log('[wingService] updateWingFloors response:', res.data);
+// ── Add more floors to an existing wing (call only when floor_count increases) ──
+// Backend only supports ADDING floors — pass how many MORE floors to create,
+// not the new total. Numbering continues after the wing's current last floor.
+export const generateFloors = async (wingId: string, count: number): Promise<{ success: boolean; message: string; data?: unknown }> => {
+  const res = await axiosInstance.post(`/wings/${wingId}/floors`, { count });
+  console.log('[wingService] generateFloors response:', res.data);
   return res.data;
 };

@@ -347,17 +347,18 @@ export interface UpdateBuildingPayload {
 }
 
 
-// Wing interfaces
+// Wing interfaces — raw aliased keys (w_*) as actually returned by the API;
+// there is no bare "building_id" field, only w_building_id.
 export interface Wing {
-  w_id        : string | number;
-  building    : string;
-  building_id : string | number;
-  w_name      : string;
-  floor_count : number;
-  flat_count  : number;
-  w_is_active : boolean;
-  w_created_at: string;
-  w_updated_at: string;
+  w_id         : string | number;
+  building     : string;
+  w_building_id: string | number;
+  w_name       : string;
+  floor_count  : number;
+  flat_count   : number;
+  w_is_active  : boolean;
+  w_created_at : string;
+  w_updated_at : string;
 }
 
 export interface WingListResponse {
@@ -388,4 +389,96 @@ export interface UpdateWingPayload {
   floor_count: number;
   is_active  : boolean;
   sort_order : number;
+}
+
+
+// Floor interfaces — raw aliased keys (f_*) plus joined 'wing' name and live flat_count
+export interface Floor {
+  f_id          : string | number;
+  f_wing_id     : string | number;
+  wing          : string;
+  f_name        : string;
+  f_floor_number: number;
+  flat_count    : number;
+  f_is_active   : boolean;
+  f_created_at  : string;
+  f_updated_at  : string;
+}
+
+export interface FloorListResponse {
+  success: boolean;
+  rows   : Floor[];
+  total  : number;
+  page   : number;
+  limit  : number;
+}
+
+export interface FloorResponse {
+  success : boolean;
+  data    : Floor & { name?: string };
+  message?: string;
+}
+
+export interface CreateFloorPayload {
+  name        : string;
+  wing_id     : string | number;
+  floor_number: number;
+  flat_count  : number;
+  is_active   : boolean;
+  sort_order  : number;
+}
+
+export interface UpdateFloorPayload {
+  name        : string;
+  wing_id     : string | number;
+  floor_number: number;
+  is_active   : boolean;
+  sort_order  : number;
+}
+
+
+// Flat interfaces — raw aliased keys (fl_*) plus joined floor/wing/building names
+export interface Flat {
+  fl_id         : string | number;
+  fl_floor_id   : string | number;
+  floor         : string;
+  wing          : string;
+  building      : string;
+  fl_flat_number: string;
+  fl_flat_type  : string | null;
+  fl_area_sqft  : string | number | null;
+  fl_status     : 'vacant' | 'occupied' | 'sold';
+  fl_is_active  : boolean;
+  fl_created_at : string;
+  fl_updated_at : string;
+}
+
+export interface FlatListResponse {
+  success: boolean;
+  rows   : Flat[];
+  total  : number;
+  page   : number;
+  limit  : number;
+}
+
+export interface FlatResponse {
+  success : boolean;
+  data    : Flat;
+  message?: string;
+}
+
+export interface CreateFlatPayload {
+  flat_number: string;
+  floor_id   : string | number;
+  flat_type? : string;
+  area_sqft? : number;
+  status     : 'vacant' | 'occupied' | 'sold';
+}
+
+export interface UpdateFlatPayload {
+  flat_number?: string;
+  flat_type?  : string;
+  area_sqft?  : number;
+  status?     : 'vacant' | 'occupied' | 'sold';
+  is_active?  : boolean;
 }
