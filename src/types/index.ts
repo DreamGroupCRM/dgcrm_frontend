@@ -556,3 +556,33 @@ export interface UpdateModuleMasterPayload {
   sort_order?: number;
   is_active?: boolean;
 }
+
+// Module <-> Action mapping matrix (GET /api/module-action/matrix)
+export interface MappingModule {
+  id  : number;
+  name: string;
+  slug: string;
+}
+
+export interface MappingAction {
+  id  : number;
+  name: string;
+  code: string;
+}
+
+export interface MappingPair {
+  id              : number; // module_actions.id — needed to DELETE an unchecked cell
+  module_id       : number;
+  action_master_id: number;
+}
+
+export interface MappingMatrix {
+  modules : MappingModule[];
+  actions : MappingAction[];
+  mappings: MappingPair[];
+}
+
+export interface MappingMatrixResponse {
+  success: boolean;
+  data   : MappingMatrix;
+}

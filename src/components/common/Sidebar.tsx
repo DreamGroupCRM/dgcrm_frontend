@@ -20,7 +20,7 @@ import {
   MdEventAvailable, MdLeaderboard, MdPayment, MdAttachMoney,
   MdApartment, MdAccountBalance, MdWork, MdAccountTree,
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
-  MdPersonAdd, MdReceiptLong, MdSettings,
+  MdPersonAdd, MdReceiptLong, MdSettings, MdGridOn,
 } from 'react-icons/md';
 
 interface NavItem {
@@ -43,6 +43,7 @@ const adminNavItems: NavItem[] = [
       { label: 'Bank A/C',    path: ROUTES.ADMIN.BANK_AC,     icon: <MdAccountBalance /> },
       { label: 'Building',    path: ROUTES.ADMIN.BUILDING,    icon: <MdApartment /> },
       { label: 'Action & Module', path: ROUTES.ADMIN.ACTION_MODULE, icon: <MdSettings /> },
+      { label: 'Module Mapping', path: ROUTES.ADMIN.MODULE_MAPPING, icon: <MdGridOn /> },
     ],
   },
 

@@ -33,6 +33,7 @@ export const ROUTES = {
     BANK_AC: '/admin/masters/bank-account',
     BUILDING: '/admin/masters/building',
     ACTION_MODULE: '/admin/masters/action-module',
+    MODULE_MAPPING: '/admin/masters/module-mapping',
 
     // Employee
     EMPLOYEE_DETAILS: '/admin/employees/employee-details',
