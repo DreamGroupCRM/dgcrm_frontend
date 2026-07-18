@@ -240,8 +240,8 @@ const BuildingListPage: React.FC = () => {
 
   const exportFloorCSV = () => {
     if (floorFiltered.length === 0) { toast.info('No data to Export'); return; }
-    const headers = ['ID', 'Building Name', 'Wing Name', 'Floor Name', 'No. of Flats', 'Status'];
-    const rows = floorFiltered.map((f) => [f.f_id, `"${f.building ?? ''}"`, `"${f.wing ?? ''}"`, `"${f.f_name}"`, f.flat_count, f.f_is_active ? 'Active' : 'Inactive']);
+    const headers = ['ID', 'Building Name', 'Wing Name', 'Floor Number', 'No. of Flats', 'Status'];
+    const rows = floorFiltered.map((f) => [f.f_id, `"${f.building ?? ''}"`, `"${f.wing ?? ''}"`, f.f_floor_number, f.flat_count, f.f_is_active ? 'Active' : 'Inactive']);
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     Object.assign(document.createElement('a'), { href: url, download: 'floors.csv' }).click();
@@ -559,7 +559,7 @@ const BuildingListPage: React.FC = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 750 }}>
                 <thead>
                   <tr style={{ background: t.tableHeaderBg }}>
-                    {['ID', 'Building Name', 'Wing Name', 'Floor Name', 'No. of Flats', 'Status'].map((h) => (
+                    {['ID', 'Building Name', 'Wing Name', 'Floor Number', 'No. of Flats', 'Status'].map((h) => (
                       <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                     <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 2, background: t.tableHeaderBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>Actions</th>
@@ -579,7 +579,7 @@ const BuildingListPage: React.FC = () => {
                         <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{f.f_id}</td>
                         <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{f.building ?? '—'}</td>
                         <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{f.wing ?? '—'}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500 }}>{f.f_name}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500 }}>{f.f_floor_number}</td>
                         <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{f.flat_count ?? '—'}</td>
                         <td style={{ padding: '12px 16px' }}>{statusBadge(f.f_is_active)}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 1, background: stickyBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>
