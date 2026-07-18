@@ -213,7 +213,11 @@ const BuildingListPage: React.FC = () => {
 
   useEffect(() => {
     const q = floorSearch.trim().toLowerCase();
-    setFloorFiltered(q ? allFloors.filter((f) => (f.f_name ?? '').toLowerCase().includes(q) || (f.wing ?? '').toLowerCase().includes(q)) : allFloors);
+    setFloorFiltered(q ? allFloors.filter((f) =>
+      (f.f_name ?? '').toLowerCase().includes(q) ||
+      (f.wing ?? '').toLowerCase().includes(q) ||
+      (f.building ?? '').toLowerCase().includes(q)
+    ) : allFloors);
     setFloorPage(1);
   }, [floorSearch, allFloors]);
 
@@ -236,8 +240,8 @@ const BuildingListPage: React.FC = () => {
 
   const exportFloorCSV = () => {
     if (floorFiltered.length === 0) { toast.info('No data to Export'); return; }
-    const headers = ['ID', 'Wing Name', 'Floor Name', 'No. of Flats', 'Status'];
-    const rows = floorFiltered.map((f) => [f.f_id, `"${f.wing ?? ''}"`, `"${f.f_name}"`, f.flat_count, f.f_is_active ? 'Active' : 'Inactive']);
+    const headers = ['ID', 'Building Name', 'Wing Name', 'Floor Name', 'No. of Flats', 'Status'];
+    const rows = floorFiltered.map((f) => [f.f_id, `"${f.building ?? ''}"`, `"${f.wing ?? ''}"`, `"${f.f_name}"`, f.flat_count, f.f_is_active ? 'Active' : 'Inactive']);
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     Object.assign(document.createElement('a'), { href: url, download: 'floors.csv' }).click();
@@ -522,7 +526,7 @@ const BuildingListPage: React.FC = () => {
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
             style={{ flex: '1 1 180px', maxWidth: 300, background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
             <MdSearch size={16} style={{ color: t.textPrimary, flexShrink: 0 }} />
-            <input type="text" placeholder="Search by floor name, wing..."
+            <input type="text" placeholder="Search by floor name, wing, building..."
               value={floorSearch} onChange={(e) => setFloorSearch(e.target.value)}
               style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 13, width: '100%' }} />
           </div>
@@ -552,10 +556,10 @@ const BuildingListPage: React.FC = () => {
         <div style={{ height: typeof floorAccordion.contentHeight === 'number' ? `${floorAccordion.contentHeight}px` : 'auto', overflow: 'hidden', transition: 'height 0.35s ease' }}>
           <div ref={floorAccordion.contentRef}>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 650 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 750 }}>
                 <thead>
                   <tr style={{ background: t.tableHeaderBg }}>
-                    {['ID', 'Wing Name', 'Floor Name', 'No. of Flats', 'Status'].map((h) => (
+                    {['ID', 'Building Name', 'Wing Name', 'Floor Name', 'No. of Flats', 'Status'].map((h) => (
                       <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                     <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 2, background: t.tableHeaderBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>Actions</th>
@@ -563,9 +567,9 @@ const BuildingListPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {floorLoading ? (
-                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
                   ) : floorRows.length === 0 ? (
-                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>{floorSearch ? 'No floors match your search.' : 'No floors found.'}</td></tr>
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>{floorSearch ? 'No floors match your search.' : 'No floors found.'}</td></tr>
                   ) : floorRows.map((f, idx) => {
                     const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
                     return (
@@ -573,6 +577,7 @@ const BuildingListPage: React.FC = () => {
                         onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                         onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
                         <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{f.f_id}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{f.building ?? '—'}</td>
                         <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{f.wing ?? '—'}</td>
                         <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500 }}>{f.f_name}</td>
                         <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{f.flat_count ?? '—'}</td>

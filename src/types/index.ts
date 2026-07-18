@@ -397,6 +397,7 @@ export interface Floor {
   f_id          : string | number;
   f_wing_id     : string | number;
   wing          : string;
+  building      : string;
   f_name        : string;
   f_floor_number: number;
   flat_count    : number;
