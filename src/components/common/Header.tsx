@@ -14,6 +14,7 @@ import { clearProfile } from '../../redux/slices/profileSlice';
 import { showAlert, getInitials } from '../../utils';
 import { SOCIAL_LINKS, ROUTES } from '../../constants';
 import { getTheme } from '../../styles/theme';
+import favicon_logo from '../../assets/images/favicon_logo.png';
 
 import { FiSun, FiMoon } from 'react-icons/fi';
 import { AiOutlineInstagram, AiOutlineWhatsApp } from 'react-icons/ai';
@@ -80,7 +81,7 @@ const IconBtn: React.FC<{
 };
 
 const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
-  const logoImg    = '/src/assets/images/favicon_logo.png';
+  const logoImg    = favicon_logo;
   const dispatch   = useAppDispatch();
   const { mode }   = useAppSelector((s) => s.theme);
   const { user, role } = useAppSelector((s) => s.auth);

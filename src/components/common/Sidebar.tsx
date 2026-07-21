@@ -13,6 +13,7 @@ import { toggleSidebar } from '../../redux/slices/uiSlice';
 import { ROUTES } from '../../constants';
 import { useNavigate } from 'react-router-dom';
 import { getTheme } from '../../styles/theme';
+import favicon_logo from '../../assets/images/favicon_logo.png';
 
 import {
   MdDashboard, MdBusiness, MdPeople, MdContactPage,
@@ -182,7 +183,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
-  const logoImg = '/src/assets/images/favicon_logo.png';
+  const logoImg = favicon_logo;
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { sidebarCollapsed } = useAppSelector((s) => s.ui);
