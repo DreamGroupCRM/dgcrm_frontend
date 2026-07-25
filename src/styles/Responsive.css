@@ -1,163 +1,289 @@
-/* ==========================================
-   DREAM GROUP CRM — RESPONSIVE CSS
-   ==========================================
-   Covers: Login page layout, Header, Sidebar,
-   Profile modal, Tables, Dashboard cards.
-   Theme colors are handled in theme.ts / MUI.
-   This file: layout & breakpoints ONLY.
-   ========================================== */
-
-/* ==========================================
-   LOGIN PAGE
-   ========================================== */
+/* ===========================================================
+   LOGIN PAGE - PRODUCTION READY
+   =========================================================== */
 
 .login-page-container {
-  height: 100vh;
-  width: 100vw;
-  padding: 20px;
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  padding: clamp(12px, 2vw, 24px);
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow-x: hidden;
+  overflow-y: auto;
   box-sizing: border-box;
-  overflow: hidden;
+}
+
+.login-background {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 0;
+}
+
+.login-pattern {
+  position: absolute;
+  inset: 0;
+  opacity: .10;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d97706' fill-opacity='.35'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4z'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .login-frame {
-  width: 100%;
-  height: 100%;
-  max-width: 1700px;
-  display: flex;
-  gap: 16px;
-  background: rgba(255, 255, 255, .03);
-  box-sizing: border-box;
-  overflow: hidden;
+  width: min(1600px, 100%);
+  margin: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(420px, .9fr);
+  align-items: stretch;
+  gap: 24px;
 }
 
 .login-left {
-  flex: 1.6;
-  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  min-width: 0;
   overflow: hidden;
-  min-height: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .login-right {
-  flex: 1;
   display: flex;
-  align-items: center;
   justify-content: center;
-  min-height: 0;
-  overflow: hidden;
+  align-items: center;
+  width: 100%;
+  min-width: 420px;
+  max-width: 560px;
+  margin: auto;
+  position: relative;
+  z-index: 5;
+}
+
+.login-left,
+.login-right {
+  display: flex;
+  align-items: stretch;
 }
 
 .carousel-card {
-  position: relative;
   width: 100%;
   height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  position: relative;
+  border-radius: 25px;
+  overflow: hidden;
+  background: #050510;
+  aspect-ratio: 16 / 9;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, .45);
+  isolation: isolate;
 }
 
 .carousel-image-wrapper {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
   display: flex;
-  align-items: center;
   justify-content: center;
-  background: #050510;
+  align-items: center;
+  overflow: hidden;
+  border-radius: inherit;
 }
 
 .carousel-image {
   width: 100%;
   height: 100%;
+  border-radius: inherit;
   object-fit: contain;
   object-position: center;
+  user-select: none;
+  pointer-events: none;
   display: block;
+  transition: transform .4s ease;
 }
 
-/* Remove white autofill background */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-textarea:-webkit-autofill,
-select:-webkit-autofill {
-  -webkit-text-fill-color: #fff !important;
-  -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
-  transition: background-color 9999s ease-in-out 0s;
+.login-card {
+  width: 100%;
+  max-width: 520px;
+  padding: 32px;
+  border-radius: 28px;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
-/* ==========================================
-   TABLET (≤1024px)
-   ========================================== */
+.login-submit-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  border-radius: 12px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  transition: .3s;
+}
 
-@media (max-width: 1024px) {
+.login-submit-btn:hover {
+  background: #1d4ed8;
+}
+
+/* ===========================
+      LARGE DESKTOP
+=========================== */
+
+@media (max-width:1600px) {
   .login-frame {
-    gap: 12px;
+    max-width: 1450px;
+    gap: 24px;
+  }
+}
+
+/* ===========================
+      LAPTOP
+=========================== */
+
+@media(max-width:1366px) {
+  .login-frame {
+    grid-template-columns: 58% 42%;
   }
 
-  .login-left  { flex: 1.5; }
-  .login-right { flex: 1; }
+  .login-card {
+    max-width: 500px;
+  }
 }
 
-/* ==========================================
-   MOBILE (≤768px)
-   ========================================== */
-
-@media (max-width: 768px) {
-  .login-page-container {
-    min-height: 100vh;
-    padding: 12px;
-    overflow-y: auto;
-    align-items: flex-start;
-  }
-
+@media(max-width:1100px) {
   .login-frame {
-    flex-direction: column;
-    height: auto;
-    overflow: visible;
-    gap: 12px;
+    grid-template-columns: 1fr;
   }
 
   .login-left {
-    height: 300px;
-    flex: none;
+    min-height: 380px;
+    height: auto;
   }
 
   .login-right {
-    flex: none;
-    overflow: visible;
-    padding: 4px;
+    max-width: 100%;
+    min-width: 0;
   }
+
+  .login-card {
+    max-width: 650px;
+  }
+
 }
 
-/* ==========================================
-   SMALL MOBILE (≤480px)
-   ========================================== */
+/* ===========================
+      TABLET
+=========================== */
 
-@media (max-width: 480px) {
-  .login-page-container { padding: 10px; }
-  .login-left { height: 240px; }
+@media (max-width:1024px) {
+
+  .login-page-container {
+    padding: 18px;
+  }
+
+  .login-card {
+    padding: 28px;
+  }
+
 }
 
-/* ==========================================
-   SIDEBAR
-   (visibility via Tailwind in Sidebar.tsx)
-   ========================================== */
+/* ===========================
+      IPAD
+=========================== */
 
-/* ==========================================
-   HEADER
-   ========================================== */
+@media (max-width:900px) {
+
+  .login-frame {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .login-left {
+    min-height: 420px;
+    height: auto;
+  }
+
+  .login-right {
+    max-width: 100%;
+    min-width: 0;
+    padding-bottom: 20px;
+  }
+
+}
+
+/* ===========================
+      MOBILE
+=========================== */
+
+@media (max-width:768px) {
+
+  .login-page-container {
+    padding: 14px;
+  }
+
+  .login-left {
+    min-height: 280px;
+    height: auto;
+  }
+
+  .login-card {
+    padding: 22px;
+  }
+
+}
+
+/* ===========================
+      SMALL MOBILE
+=========================== */
+
+@media (max-width:480px) {
+
+  .login-page-container {
+    padding: 12px;
+  }
+
+  .login-left {
+    min-height: 230px;
+    height: auto;
+  }
+
+  .login-card {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+}
+
+/* ===========================
+      VERY SMALL MOBILE
+=========================== */
+
+@media (max-width:360px) {
+
+  .login-left {
+    min-height: 200px;
+    height: auto;
+  }
+
+  .login-card {
+    padding: 16px;
+  }
+
+}
+
+/* Header ::: */
 
 @media (max-width: 640px) {
+
   .header-social-icons,
   .header-brand-text {
     display: none !important;
   }
 }
-
-/* ==========================================
-   PROFILE MODAL
-   ========================================== */
 
 @media (max-width: 480px) {
   .profile-modal {
@@ -166,20 +292,12 @@ select:-webkit-autofill {
   }
 }
 
-/* ==========================================
-   TABLES
-   ========================================== */
-
 @media (max-width: 768px) {
   .responsive-table {
     display: block;
     overflow-x: auto;
   }
 }
-
-/* ==========================================
-   DASHBOARD STAT CARDS
-   ========================================== */
 
 @media (max-width: 640px) {
   .stat-card-grid {
@@ -191,4 +309,17 @@ select:-webkit-autofill {
   .stat-card-grid {
     grid-template-columns: 1fr !important;
   }
+}
+
+/* Remove Chrome Autofill Background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: white !important;
+  caret-color: white !important;
+  transition: background-color 999999s ease-in-out 0s;
+  -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.08) inset !important;
+  box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.08) inset !important;
 }
