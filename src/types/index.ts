@@ -224,15 +224,18 @@ export interface UpdateRolePayload {
 
 // Bank Account interfaces
 export interface BankAccount {
-  id            : string;
-  name          : string;
-  branch_name   : string;
-  ifsc_code     : string;
-  account_number: string;
-  is_active     : boolean;
-  sort_order    : number;
-  created_at    : string;
-  updated_at    : string;
+  id                  : string;
+  company_id          : string;
+  company_name        : string;
+  name                : string;
+  account_holder_name : string;
+  branch_name         : string;
+  ifsc_code           : string;
+  account_number      : string;
+  is_active           : boolean;
+  sort_order          : number;
+  created_at          : string;
+  updated_at          : string;
 }
 
 export interface BankAccountListResponse {
@@ -250,21 +253,25 @@ export interface BankAccountResponse {
 }
 
 export interface CreateBankAccountPayload {
-  name          : string;
-  account_number: string;
-  branch_name   : string;
-  ifsc_code     : string;
-  is_active     : boolean;
-  sort_order    : number;
+  company_id          : string;
+  name                : string;
+  account_holder_name : string;
+  account_number      : string;
+  branch_name         : string;
+  ifsc_code           : string;
+  is_active           : boolean;
+  sort_order          : number;
 }
 
 export interface UpdateBankAccountPayload {
-  name          : string;
-  account_number: string;
-  branch_name   : string;
-  ifsc_code     : string;
-  is_active     : boolean;
-  sort_order    : number;
+  company_id          : string;
+  name                : string;
+  account_holder_name : string;
+  account_number      : string;
+  branch_name         : string;
+  ifsc_code           : string;
+  is_active           : boolean;
+  sort_order          : number;
 }
 
 // Designation interfaces
@@ -305,4 +312,285 @@ export interface UpdateDesignationPayload {
   department_id: string;
   is_active    : boolean;
   sort_order   : number;
+}
+
+// Building interfaces
+export interface Building {
+  id        : string;
+  name      : string;
+  address   : string;
+  is_active : boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BuildingListResponse {
+  success: boolean;
+  rows   : Building[];
+  total  : number;
+  page   : number;
+  limit  : number;
+}
+
+export interface BuildingResponse {
+  success : boolean;
+  data    : Building;
+  message?: string;
+}
+
+export interface CreateBuildingPayload {
+  name      : string;
+  address   : string;
+  is_active : boolean;
+  sort_order: number;
+}
+
+export interface UpdateBuildingPayload {
+  name      : string;
+  address   : string;
+  is_active : boolean;
+  sort_order: number;
+}
+
+
+// Wing interfaces — raw aliased keys (w_*) as actually returned by the API;
+// there is no bare "building_id" field, only w_building_id.
+export interface Wing {
+  w_id         : string | number;
+  building     : string;
+  w_building_id: string | number;
+  w_name       : string;
+  floor_count  : number;
+  flat_count   : number;
+  w_is_active  : boolean;
+  w_created_at : string;
+  w_updated_at : string;
+}
+
+export interface WingListResponse {
+  success: boolean;
+  rows   : Wing[];
+  total  : number;
+  page   : number;
+  limit  : number;
+}
+
+export interface WingResponse {
+  success : boolean;
+  data    : Wing & { name?: string };
+  message?: string;
+}
+
+export interface CreateWingPayload {
+  name       : string;
+  building_id: string | number;
+  floor_count: number;
+  is_active  : boolean;
+  sort_order : number;
+}
+
+export interface UpdateWingPayload {
+  name       : string;
+  building_id: string | number;
+  floor_count: number;
+  is_active  : boolean;
+  sort_order : number;
+}
+
+
+// Floor interfaces — raw aliased keys (f_*) plus joined 'wing' name and live flat_count
+export interface Floor {
+  f_id          : string | number;
+  f_wing_id     : string | number;
+  wing          : string;
+  building      : string;
+  f_name        : string;
+  f_floor_number: number;
+  flat_count    : number;
+  f_is_active   : boolean;
+  f_created_at  : string;
+  f_updated_at  : string;
+}
+
+export interface FloorListResponse {
+  success: boolean;
+  rows   : Floor[];
+  total  : number;
+  page   : number;
+  limit  : number;
+}
+
+export interface FloorResponse {
+  success : boolean;
+  data    : Floor & { name?: string };
+  message?: string;
+}
+
+export interface CreateFloorPayload {
+  name        : string;
+  wing_id     : string | number;
+  floor_number: number;
+  flat_count  : number;
+  is_active   : boolean;
+  sort_order  : number;
+}
+
+export interface UpdateFloorPayload {
+  name        : string;
+  wing_id     : string | number;
+  floor_number: number;
+  is_active   : boolean;
+  sort_order  : number;
+}
+
+
+// Flat interfaces — raw aliased keys (fl_*) plus joined floor/wing/building names
+export interface Flat {
+  fl_id         : string | number;
+  fl_floor_id   : string | number;
+  floor         : string;
+  wing          : string;
+  building      : string;
+  fl_flat_number: string;
+  fl_flat_type  : string | null;
+  fl_area_sqft  : string | number | null;
+  fl_status     : 'vacant' | 'occupied' | 'sold';
+  fl_is_active  : boolean;
+  fl_created_at : string;
+  fl_updated_at : string;
+}
+
+export interface FlatListResponse {
+  success: boolean;
+  rows   : Flat[];
+  total  : number;
+  page   : number;
+  limit  : number;
+}
+
+export interface FlatResponse {
+  success : boolean;
+  data    : Flat;
+  message?: string;
+}
+
+export interface CreateFlatPayload {
+  flat_number: string;
+  floor_id   : string | number;
+  flat_type? : string;
+  area_sqft? : number;
+  status     : 'vacant' | 'occupied' | 'sold';
+}
+
+export interface UpdateFlatPayload {
+  flat_number?: string;
+  flat_type?  : string;
+  area_sqft?  : number;
+  status?     : 'vacant' | 'occupied' | 'sold';
+  is_active?  : boolean;
+}
+
+
+// Action Master interfaces — clean entity keys (getMany), no pagination on the API
+export interface ActionMaster {
+  id         : string | number;
+  name       : string;
+  code       : string;
+  description: string | null;
+  is_active  : boolean;
+  created_at : string;
+  updated_at : string;
+}
+
+export interface ActionMasterListResponse {
+  success: boolean;
+  rows   : ActionMaster[];
+  total  : number;
+}
+
+export interface ActionMasterResponse {
+  success : boolean;
+  data    : ActionMaster;
+  message?: string;
+}
+
+export interface CreateActionMasterPayload {
+  name       : string;
+  code?      : string;
+  description?: string;
+}
+
+export interface UpdateActionMasterPayload {
+  name?       : string;
+  code?       : string;
+  description?: string;
+  is_active?  : boolean;
+}
+
+
+// Module Master interfaces — raw aliased keys (m_*), no pagination on the API
+export interface ModuleMaster {
+  m_id        : string | number;
+  m_name      : string;
+  m_slug      : string;
+  m_sort_order: number;
+  m_is_active : boolean;
+  m_created_at: string;
+  m_updated_at: string;
+}
+
+export interface ModuleMasterListResponse {
+  success: boolean;
+  rows   : ModuleMaster[];
+  total  : number;
+}
+
+export interface ModuleMasterResponse {
+  success : boolean;
+  data    : ModuleMaster & { name?: string };
+  message?: string;
+}
+
+export interface CreateModuleMasterPayload {
+  name      : string;
+  slug?     : string;
+  sort_order: number;
+}
+
+export interface UpdateModuleMasterPayload {
+  name?     : string;
+  slug?     : string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+// Module <-> Action mapping matrix (GET /api/module-action/matrix)
+export interface MappingModule {
+  id  : number;
+  name: string;
+  slug: string;
+}
+
+export interface MappingAction {
+  id  : number;
+  name: string;
+  code: string;
+}
+
+export interface MappingPair {
+  id              : number; // module_actions.id — needed to DELETE an unchecked cell
+  module_id       : number;
+  action_master_id: number;
+}
+
+export interface MappingMatrix {
+  modules : MappingModule[];
+  actions : MappingAction[];
+  mappings: MappingPair[];
+}
+
+export interface MappingMatrixResponse {
+  success: boolean;
+  data   : MappingMatrix;
 }

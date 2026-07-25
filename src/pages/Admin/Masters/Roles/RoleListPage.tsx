@@ -157,7 +157,7 @@ const RoleListPage: React.FC = () => {
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input
             type="text"
-            placeholder="Search by role name..."
+            placeholder="Search by Role Name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{

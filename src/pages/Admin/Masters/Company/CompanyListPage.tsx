@@ -116,7 +116,7 @@ const CompanyListPage: React.FC = () => {
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
           style={{ flex: '1 1 200px', maxWidth: 320, background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
-          <input type="text" placeholder="Search by company name..." value={search}
+          <input type="text" placeholder="Search by Company Name..." value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 14, width: '100%' }} />
         </div>
