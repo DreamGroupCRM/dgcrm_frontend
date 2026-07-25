@@ -169,7 +169,7 @@ const ModuleMasterCrudPage: React.FC<Props> = ({ mode }) => {
               style={fieldStyle(!!errors.name)} />
           </Field>
 
-          <Field label="Slug" t={t}>
+          <Field label="Description" t={t}>
             <input type="text" placeholder="e.g. leads, employees"
               value={slug} readOnly={isView} disabled={isView}
               onChange={(e) => !isView && setSlug(e.target.value)}

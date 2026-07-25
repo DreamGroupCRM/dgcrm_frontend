@@ -1,4 +1,4 @@
-// src/pages/masters/BankAccountCrudPage.tsx
+// src/pages/Admin/Masters/BankAccount/BankAccountCrudPage.tsx
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -12,6 +12,7 @@ import {
   createBankAccount,
   updateBankAccount,
 } from '../../../../services/bankAccountService';
+import axiosInstance from '../../../../services/axiosConfig';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Field — MODULE LEVEL — prevents cursor loss on every keystroke
@@ -47,21 +48,33 @@ const Field: React.FC<FieldProps> = ({ label, required, error, t, children }) =>
 type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
 
+interface Company {
+  id  : string;
+  name: string;
+}
+
 interface FormState {
-  name          : string;
-  account_number: string;
-  branch_name   : string;
-  ifsc_code     : string;
+  company_id          : string;
+  name                : string;
+  account_holder_name : string;
+  account_number      : string;
+  branch_name         : string;
+  ifsc_code           : string;
 }
 
 interface FormErrors {
-  name?          : string;
-  account_number?: string;
-  branch_name?   : string;
-  ifsc_code?     : string;
+  company_id?         : string;
+  name?               : string;
+  account_holder_name?: string;
+  account_number?     : string;
+  branch_name?        : string;
+  ifsc_code?          : string;
 }
 
-const empty: FormState = { name: '', account_number: '', branch_name: '', ifsc_code: '' };
+const empty: FormState = {
+  company_id: '', name: '', account_holder_name: '',
+  account_number: '', branch_name: '', ifsc_code: '',
+};
 
 const PAGE_TITLES: Record<Mode, string> = {
   add : 'Add Bank A/C',
@@ -89,9 +102,35 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
   const [saving, setSaving]       = useState(false);
   const [loadingData, setLoading] = useState(mode !== 'add');
 
+  // ── companies dropdown ─────────────────────────────────────────────────
+  const [companies, setCompanies]       = useState<Company[]>([]);
+  const [companiesLoading, setCompaniesLoading] = useState(false);
+
   useEffect(() => { dispatch(setPageTitle(PAGE_TITLES[mode])); }, [dispatch, mode]);
 
-  // ── Load for edit / view ───────────────────────────────────────────────
+  // ── fetch companies on mount (all modes) ───────────────────────────────
+  useEffect(() => {
+    (async () => {
+      setCompaniesLoading(true);
+      try {
+        const res = await axiosInstance.get('/company', {
+          params: { is_active: true, page: 1, limit: 1000 },
+        });
+        console.log('[BankAccountCrudPage] fetchCompanies response:', res.data);
+        if (res.data?.success) {
+          setCompanies(res.data.rows ?? []);
+        } else {
+          toast.error('Failed to load companies');
+        }
+      } catch (e) {
+        toast.error('Failed to load companies. Please try again.');
+      } finally {
+        setCompaniesLoading(false);
+      }
+    })();
+  }, []);
+
+  // ── load bank data for edit / view ─────────────────────────────────────
   useEffect(() => {
     if (mode === 'add' || !id) return;
     (async () => {
@@ -99,10 +138,12 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
         const res = await fetchBankAccountById(id);
         if (res.success && res.data) {
           setForm({
-            name          : res.data.name           ?? '',
-            account_number: res.data.account_number ?? '',
-            branch_name   : res.data.branch_name    ?? '',
-            ifsc_code     : res.data.ifsc_code      ?? '',
+            company_id          : String(res.data.company_id ?? ''),
+            name                : res.data.name                ?? '',
+            account_holder_name : res.data.account_holder_name ?? '',
+            account_number      : res.data.account_number      ?? '',
+            branch_name         : res.data.branch_name         ?? '',
+            ifsc_code           : res.data.ifsc_code           ?? '',
           });
           setIsActive(res.data.is_active ?? true);
         } else {
@@ -118,13 +159,15 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
     })();
   }, [mode, id]);
 
-  // ── Validation ─────────────────────────────────────────────────────────
+  // ── validation ─────────────────────────────────────────────────────────
   const validateAll = (): FormErrors => {
     const e: FormErrors = {};
-    if (!form.name.trim())           e.name           = 'Bank name is required.';
-    if (!form.account_number.trim()) e.account_number = 'Account number is required.';
-    if (!form.branch_name.trim())    e.branch_name    = 'Branch name is required.';
-    if (!form.ifsc_code.trim())      e.ifsc_code      = 'IFSC code is required.';
+    if (!form.company_id)                e.company_id          = 'Please select a company.';
+    if (!form.name.trim())               e.name                = 'Bank name is required.';
+    if (!form.account_holder_name.trim()) e.account_holder_name = 'Account holder name is required.';
+    if (!form.account_number.trim())     e.account_number      = 'Account number is required.';
+    if (!form.branch_name.trim())        e.branch_name         = 'Branch name is required.';
+    if (!form.ifsc_code.trim())          e.ifsc_code           = 'IFSC code is required.';
     return e;
   };
 
@@ -139,12 +182,14 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
   };
 
   const isMandatoryValid =
+    form.company_id !== '' &&
     form.name.trim() !== '' &&
+    form.account_holder_name.trim() !== '' &&
     form.account_number.trim() !== '' &&
     form.branch_name.trim() !== '' &&
     form.ifsc_code.trim() !== '';
 
-  // ── Submit ─────────────────────────────────────────────────────────────
+  // ── submit ─────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     const errs = validateAll();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
@@ -152,12 +197,14 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
     setSaving(true);
     try {
       const payload = {
-        name          : form.name.trim(),
-        account_number: form.account_number.trim(),
-        branch_name   : form.branch_name.trim(),
-        ifsc_code     : form.ifsc_code.trim().toUpperCase(),
-        is_active     : isActive,
-        sort_order    : 0,
+        company_id          : form.company_id,
+        name                : form.name.trim(),
+        account_holder_name : form.account_holder_name.trim(),
+        account_number      : form.account_number.trim(),
+        branch_name         : form.branch_name.trim(),
+        ifsc_code           : form.ifsc_code.trim().toUpperCase(),
+        is_active           : isActive,
+        sort_order          : 0,
       };
 
       const res = isEdit
@@ -180,7 +227,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
     }
   };
 
-  // ── Field style ────────────────────────────────────────────────────────
+  // ── styles ─────────────────────────────────────────────────────────────
   const fieldStyle = (hasError?: boolean): React.CSSProperties => ({
     width       : '100%',
     background  : isView ? t.insetBg : t.inputBg,
@@ -196,10 +243,31 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
     opacity     : isView ? 0.85 : 1,
   });
 
-  if (loadingData) {
+  const selectStyle = (hasError?: boolean): React.CSSProperties => ({
+    width             : '100%',
+    background        : isView ? t.insetBg : t.inputBg,
+    border            : `1px solid ${hasError ? '#ef4444' : t.inputBorder}`,
+    borderRadius      : 10,
+    padding           : '10px 14px',
+    fontSize          : 14,
+    color             : form.company_id ? t.inputText : t.textSecondary,
+    outline           : 'none',
+    boxSizing         : 'border-box' as const,
+    fontFamily        : t.fontFamily,
+    cursor            : isView ? 'not-allowed' : 'pointer',
+    opacity           : isView ? 0.85 : 1,
+    appearance        : 'none' as const,
+    WebkitAppearance  : 'none' as const,
+    backgroundImage   : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+    backgroundRepeat  : 'no-repeat',
+    backgroundPosition: 'right 14px center',
+    paddingRight      : 36,
+  });
+
+  if (loadingData || companiesLoading) {
     return (
       <div className="flex justify-center items-center min-h-[40vh]">
-        <p style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>Loading bank account data...</p>
+        <p style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>Loading...</p>
       </div>
     );
   }
@@ -208,96 +276,98 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
     <div style={{ fontFamily: t.fontFamily }}>
       <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 28 }}>
 
-        {/* ── Field grid ──────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+
+          {/* Company Name */}
+          <Field label="Company Name" required={!isView} t={t} error={errors.company_id}>
+            {isView ? (
+              <input type="text" readOnly disabled
+                value={companies.find((c) => String(c.id) === String(form.company_id))?.name ?? form.company_id ?? '—'}
+                style={fieldStyle()} />
+            ) : (
+              <select
+                value={form.company_id}
+                onChange={(e) => { handleChange('company_id', e.target.value); }}
+                onBlur={() => handleBlur('company_id')}
+                style={selectStyle(!!errors.company_id)}
+              >
+                <option value="" disabled style={{ color: t.textSecondary }}>— Select Company —</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={String(c.id)} style={{ background: t.inputBg, color: t.inputText }}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
 
           {/* Bank Name */}
           <Field label="Bank Name" required={!isView} t={t} error={errors.name}>
-            <input
-              type="text"
-              placeholder="Enter bank name"
-              value={form.name}
-              readOnly={isView}
-              disabled={isView}
+            <input type="text" placeholder="Enter bank name"
+              value={form.name} readOnly={isView} disabled={isView}
               onChange={(e) => !isView && handleChange('name', e.target.value)}
               onBlur={() => !isView && handleBlur('name')}
-              style={fieldStyle(!!errors.name)}
-            />
+              style={fieldStyle(!!errors.name)} />
+          </Field>
+
+          {/* Account Holder Name */}
+          <Field label="Bank Account Holder Name" required={!isView} t={t} error={errors.account_holder_name}>
+            <input type="text" placeholder="Enter account holder name"
+              value={form.account_holder_name} readOnly={isView} disabled={isView}
+              onChange={(e) => !isView && handleChange('account_holder_name', e.target.value)}
+              onBlur={() => !isView && handleBlur('account_holder_name')}
+              style={fieldStyle(!!errors.account_holder_name)} />
           </Field>
 
           {/* Bank Account Number */}
           <Field label="Bank Account Number" required={!isView} t={t} error={errors.account_number}>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Enter bank account number"
-              value={form.account_number}
-              readOnly={isView}
-              disabled={isView}
+            <input type="text" inputMode="numeric" placeholder="Enter bank account number"
+              value={form.account_number} readOnly={isView} disabled={isView}
               onChange={(e) => !isView && handleChange('account_number', e.target.value)}
               onBlur={() => !isView && handleBlur('account_number')}
-              style={fieldStyle(!!errors.account_number)}
-            />
+              style={fieldStyle(!!errors.account_number)} />
           </Field>
 
           {/* Branch Name */}
           <Field label="Branch Name" required={!isView} t={t} error={errors.branch_name}>
-            <input
-              type="text"
-              placeholder="Enter branch name"
-              value={form.branch_name}
-              readOnly={isView}
-              disabled={isView}
+            <input type="text" placeholder="Enter branch name"
+              value={form.branch_name} readOnly={isView} disabled={isView}
               onChange={(e) => !isView && handleChange('branch_name', e.target.value)}
               onBlur={() => !isView && handleBlur('branch_name')}
-              style={fieldStyle(!!errors.branch_name)}
-            />
+              style={fieldStyle(!!errors.branch_name)} />
           </Field>
 
           {/* IFSC Code */}
           <Field label="Bank IFSC Code" required={!isView} t={t} error={errors.ifsc_code}>
-            <input
-              type="text"
-              placeholder="Enter IFSC code"
-              value={form.ifsc_code}
-              readOnly={isView}
-              disabled={isView}
+            <input type="text" placeholder="Enter IFSC code"
+              value={form.ifsc_code} readOnly={isView} disabled={isView}
               onChange={(e) => !isView && handleChange('ifsc_code', e.target.value.toUpperCase())}
               onBlur={() => !isView && handleBlur('ifsc_code')}
-              style={fieldStyle(!!errors.ifsc_code)}
-            />
+              style={fieldStyle(!!errors.ifsc_code)} />
           </Field>
 
         </div>
 
         {/* ── Buttons ─────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 8 }}>
-
-          <button
-            onClick={() => navigate('/admin/masters/bank-account')}
-            disabled={saving}
+          <button onClick={() => navigate('/admin/masters/bank-account')} disabled={saving}
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}
-          >
+            style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}>
             <MdArrowBack size={16} /> Go Back
           </button>
 
           {!isView && (
-            <button
-              onClick={handleSubmit}
-              disabled={!isMandatoryValid || saving}
+            <button onClick={handleSubmit} disabled={!isMandatoryValid || saving}
               className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
               style={{
                 background: !isMandatoryValid || saving ? '#6b7280' : 'linear-gradient(135deg,#1d4ed8,#2563eb)',
-                border : 'none',
-                cursor : !isMandatoryValid || saving ? 'not-allowed' : 'pointer',
+                border: 'none',
+                cursor: !isMandatoryValid || saving ? 'not-allowed' : 'pointer',
                 opacity: saving ? 0.7 : 1,
-              }}
-            >
+              }}>
               {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
             </button>
           )}
-
         </div>
       </div>
     </div>

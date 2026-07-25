@@ -224,15 +224,18 @@ export interface UpdateRolePayload {
 
 // Bank Account interfaces
 export interface BankAccount {
-  id            : string;
-  name          : string;
-  branch_name   : string;
-  ifsc_code     : string;
-  account_number: string;
-  is_active     : boolean;
-  sort_order    : number;
-  created_at    : string;
-  updated_at    : string;
+  id                  : string;
+  company_id          : string;
+  company_name        : string;
+  name                : string;
+  account_holder_name : string;
+  branch_name         : string;
+  ifsc_code           : string;
+  account_number      : string;
+  is_active           : boolean;
+  sort_order          : number;
+  created_at          : string;
+  updated_at          : string;
 }
 
 export interface BankAccountListResponse {
@@ -250,21 +253,25 @@ export interface BankAccountResponse {
 }
 
 export interface CreateBankAccountPayload {
-  name          : string;
-  account_number: string;
-  branch_name   : string;
-  ifsc_code     : string;
-  is_active     : boolean;
-  sort_order    : number;
+  company_id          : string;
+  name                : string;
+  account_holder_name : string;
+  account_number      : string;
+  branch_name         : string;
+  ifsc_code           : string;
+  is_active           : boolean;
+  sort_order          : number;
 }
 
 export interface UpdateBankAccountPayload {
-  name          : string;
-  account_number: string;
-  branch_name   : string;
-  ifsc_code     : string;
-  is_active     : boolean;
-  sort_order    : number;
+  company_id          : string;
+  name                : string;
+  account_holder_name : string;
+  account_number      : string;
+  branch_name         : string;
+  ifsc_code           : string;
+  is_active           : boolean;
+  sort_order          : number;
 }
 
 // Designation interfaces

@@ -32,7 +32,7 @@ const DashboardLayout: React.FC = () => {
       <Sidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
 
       <div className="flex flex-col flex-1 min-w-0 transition-all duration-300">
-        <Header onMobileMenuToggle={() => setMobileOpen((v) => !v)} />
+        <Header onMobileMenuToggle={() => setMobileOpen((prev) => !prev)} />
 
         <main
           className="flex-1 overflow-y-auto p-5 lg:p-6"

@@ -153,7 +153,7 @@ const ActionModuleListPage: React.FC = () => {
 
   const exportModuleCSV = () => {
     if (moduleFiltered.length === 0) { toast.info('No data to Export'); return; }
-    const headers = ['ID', 'Name', 'Slug', 'Sort Order', 'Status', 'Created At'];
+    const headers = ['ID', 'Name', 'Description', 'Sort Order', 'Status', 'Created At'];
     const rows = moduleFiltered.map((m) => [m.m_id, `"${m.m_name}"`, m.m_slug, m.m_sort_order, m.m_is_active ? 'Active' : 'Inactive', formatDate(m.m_created_at)]);
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
@@ -215,7 +215,7 @@ const ActionModuleListPage: React.FC = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 650 }}>
                 <thead>
                   <tr style={{ background: t.tableHeaderBg }}>
-                    {['ID', 'Name', 'Slug', 'Sort Order', 'Status', 'Created At'].map((h) => (
+                    {['ID', 'Name', 'Description', 'Sort Order', 'Status', 'Created At'].map((h) => (
                       <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                     <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 2, background: t.tableHeaderBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>Actions</th>
