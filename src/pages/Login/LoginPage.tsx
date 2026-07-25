@@ -182,10 +182,7 @@ const LoginPage: React.FC = () => {
       {/* Full-page background */}
       <div
         className="absolute inset-0 z-0"
-        style={{
-          background: 'linear-gradient(135deg, #000000 0%, #000000 30%, #000000 60%, #000000 100%)',
-        }}
-      >
+        style={{ background: '#000000', height: 'auto' }}>
         <div
           className="absolute inset-0 opacity-10"
           style={{
@@ -196,8 +193,8 @@ const LoginPage: React.FC = () => {
 
       <div className="login-frame">
         {/* ═══ LEFT — Carousel (60%) ═══ */}
-        <div className="login-left relative z-10">
-          <div className="carousel-card">
+        <div className="login-left">
+          <div className="carousel-card" >
             {carouselImages.map((img, index) => (
               <div
                 key={index}
@@ -342,7 +339,7 @@ const LoginPage: React.FC = () => {
                 className="w-full mt-2 py-3 rounded-xl font-semibold text-white transition-all
                   duration-300 flex items-center justify-center gap-2 disabled:opacity-70
                   disabled:cursor-not-allowed"
-                style={{background: "blue"}}
+                style={{ background: "blue" }}
               >
                 {loading ? (
                   <>
