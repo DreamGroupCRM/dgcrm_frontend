@@ -179,32 +179,32 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="login-page-container">
-      {/* Full-page background */}
-      <div
-        className="absolute inset-0 z-0"
-        style={{ background: '#000000', height: 'auto' }}>
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d97706' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }}
-        />
+
+      <div className="login-background">
+        <div className="login-pattern"></div>
       </div>
 
-      <div className="login-frame">
+      <div className="login-frame login-grid-layout">
         {/* ═══ LEFT — Carousel (60%) ═══ */}
         <div className="login-left">
-          <div className="carousel-card" >
+          <div className="carousel-card shadow-2xl" >
             {carouselImages.map((img, index) => (
               <div
                 key={index}
-                className="carousel-image-wrapper transition-opacity duration-700"
+                className={`carousel-image-wrapper transition-opacity duration-700 ${currentSlide === index ? "active-slide" : ""
+                  }`}
                 style={{
                   opacity: currentSlide === index ? (isTransitioning ? 0 : 1) : 0,
                   zIndex: currentSlide === index ? 1 : 0,
                 }}
               >
-                <img src={img} alt={`Dream Group Slide ${index + 1}`} className="carousel-image" />
+                <img
+                  src={img}
+                  alt={`Dream Group Slide ${index + 1}`}
+                  className="carousel-image"
+                  loading="lazy"
+                  draggable={false}
+                />
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/30" />
               </div>
             ))}
@@ -231,9 +231,9 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* ═══ RIGHT — Login Form (40%) ═══ */}
-        <div className="login-right relative z-10">
+        <div className="login-right">
           <div
-            className="w-full max-w-[520px] rounded-3xl p-8 shadow-2xl animate-fade-in"
+            className="login-card animate-fade-in"
             style={{
               background: 'rgba(255,255,255,0.08)',
               backdropFilter: 'blur(20px)',
@@ -338,9 +338,7 @@ const LoginPage: React.FC = () => {
                 disabled={loading}
                 className="w-full mt-2 py-3 rounded-xl font-semibold text-white transition-all
                   duration-300 flex items-center justify-center gap-2 disabled:opacity-70
-                  disabled:cursor-not-allowed"
-                style={{ background: "blue" }}
-              >
+                  disabled:cursor-not-allowed login-submit-btn">
                 {loading ? (
                   <>
                     <CircularProgress size={18} sx={{ color: 'white' }} />
