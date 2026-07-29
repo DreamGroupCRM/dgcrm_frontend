@@ -314,184 +314,6 @@ export interface UpdateDesignationPayload {
   sort_order   : number;
 }
 
-// Building interfaces
-export interface Building {
-  id        : string;
-  name      : string;
-  address   : string;
-  is_active : boolean;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface BuildingListResponse {
-  success: boolean;
-  rows   : Building[];
-  total  : number;
-  page   : number;
-  limit  : number;
-}
-
-export interface BuildingResponse {
-  success : boolean;
-  data    : Building;
-  message?: string;
-}
-
-export interface CreateBuildingPayload {
-  name      : string;
-  address   : string;
-  is_active : boolean;
-  sort_order: number;
-}
-
-export interface UpdateBuildingPayload {
-  name      : string;
-  address   : string;
-  is_active : boolean;
-  sort_order: number;
-}
-
-
-// Wing interfaces — raw aliased keys (w_*) as actually returned by the API;
-// there is no bare "building_id" field, only w_building_id.
-export interface Wing {
-  w_id         : string | number;
-  building     : string;
-  w_building_id: string | number;
-  w_name       : string;
-  floor_count  : number;
-  flat_count   : number;
-  w_is_active  : boolean;
-  w_created_at : string;
-  w_updated_at : string;
-}
-
-export interface WingListResponse {
-  success: boolean;
-  rows   : Wing[];
-  total  : number;
-  page   : number;
-  limit  : number;
-}
-
-export interface WingResponse {
-  success : boolean;
-  data    : Wing & { name?: string };
-  message?: string;
-}
-
-export interface CreateWingPayload {
-  name       : string;
-  building_id: string | number;
-  floor_count: number;
-  is_active  : boolean;
-  sort_order : number;
-}
-
-export interface UpdateWingPayload {
-  name       : string;
-  building_id: string | number;
-  floor_count: number;
-  is_active  : boolean;
-  sort_order : number;
-}
-
-
-// Floor interfaces — raw aliased keys (f_*) plus joined 'wing' name and live flat_count
-export interface Floor {
-  f_id          : string | number;
-  f_wing_id     : string | number;
-  wing          : string;
-  building      : string;
-  f_name        : string;
-  f_floor_number: number;
-  flat_count    : number;
-  f_is_active   : boolean;
-  f_created_at  : string;
-  f_updated_at  : string;
-}
-
-export interface FloorListResponse {
-  success: boolean;
-  rows   : Floor[];
-  total  : number;
-  page   : number;
-  limit  : number;
-}
-
-export interface FloorResponse {
-  success : boolean;
-  data    : Floor & { name?: string };
-  message?: string;
-}
-
-export interface CreateFloorPayload {
-  name        : string;
-  wing_id     : string | number;
-  floor_number: number;
-  flat_count  : number;
-  is_active   : boolean;
-  sort_order  : number;
-}
-
-export interface UpdateFloorPayload {
-  name        : string;
-  wing_id     : string | number;
-  floor_number: number;
-  is_active   : boolean;
-  sort_order  : number;
-}
-
-
-// Flat interfaces — raw aliased keys (fl_*) plus joined floor/wing/building names
-export interface Flat {
-  fl_id         : string | number;
-  fl_floor_id   : string | number;
-  floor         : string;
-  wing          : string;
-  building      : string;
-  fl_flat_number: string;
-  fl_flat_type  : string | null;
-  fl_area_sqft  : string | number | null;
-  fl_status     : 'vacant' | 'occupied' | 'sold';
-  fl_is_active  : boolean;
-  fl_created_at : string;
-  fl_updated_at : string;
-}
-
-export interface FlatListResponse {
-  success: boolean;
-  rows   : Flat[];
-  total  : number;
-  page   : number;
-  limit  : number;
-}
-
-export interface FlatResponse {
-  success : boolean;
-  data    : Flat;
-  message?: string;
-}
-
-export interface CreateFlatPayload {
-  flat_number: string;
-  floor_id   : string | number;
-  flat_type? : string;
-  area_sqft? : number;
-  status     : 'vacant' | 'occupied' | 'sold';
-}
-
-export interface UpdateFlatPayload {
-  flat_number?: string;
-  flat_type?  : string;
-  area_sqft?  : number;
-  status?     : 'vacant' | 'occupied' | 'sold';
-  is_active?  : boolean;
-}
-
-
 // Action Master interfaces — clean entity keys (getMany), no pagination on the API
 export interface ActionMaster {
   id         : string | number;
@@ -564,6 +386,72 @@ export interface UpdateModuleMasterPayload {
   sort_order?: number;
   is_active?: boolean;
 }
+
+// ── Building Master ────────────────────────────────────────────────────────
+// A Building has many Wings -> each Wing has many Floors -> each Floor has many Flats.
+export interface BuildingFlat {
+  id       : string;
+  flat_no  : string;
+  flat_type: string;            // '1 BHK' | '2 BHK' | '3 BHK' | 'Studio' | 'Other'
+  area_sqft: number | null;
+  is_active: boolean;
+}
+
+export interface BuildingFloor {
+  id        : string;
+  label     : string;           // 'Ground Floor' | '1st Floor' | '2nd Floor' ...
+  sort_order: number;
+  flats     : BuildingFlat[];
+}
+
+export interface BuildingWing {
+  id               : string;
+  name             : string;    // 'A Wing'
+  no_of_floors     : number;    // numbered floors, EXCLUDING ground floor
+  with_ground_floor: boolean;
+  floors           : BuildingFloor[];
+}
+
+export interface Building {
+  id           : string;
+  project_name : string;
+  location     : string;
+  building_name: string;
+  wings        : BuildingWing[];
+  is_active    : boolean;
+  created_at   : string;
+  updated_at?  : string;
+}
+
+export interface BuildingListResponse {
+  success : boolean;
+  message?: string;
+  rows    : Building[];
+  total   : number;
+  page    : number;
+  limit   : number;
+}
+
+export interface BuildingSingleResponse {
+  success : boolean;
+  message?: string;
+  data    : Building;
+}
+
+export interface BuildingDeleteResponse {
+  success : boolean;
+  message?: string;
+}
+
+export interface CreateBuildingPayload {
+  project_name : string;
+  location     : string;
+  building_name: string;
+  wings        : BuildingWing[];
+  is_active    : boolean;
+}
+
+export interface UpdateBuildingPayload extends CreateBuildingPayload {}
 
 // Module <-> Action mapping matrix (GET /api/module-action/matrix)
 export interface MappingModule {
