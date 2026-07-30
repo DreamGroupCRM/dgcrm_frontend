@@ -55,9 +55,9 @@ export const showAlert = {
       cancelButtonText: 'No',
     });
   },
-  /** Shows "Admin Logged in Successfully" or "Employee Logged in Successfully" based on base_role */
-  loginSuccess: (baseRole: 'admin' | 'employee') => {
-    const roleLabel = baseRole === 'admin' ? 'Admin' : 'Employee';
+  /** Shows "Admin/Super Admin/Employee Logged in Successfully" based on base_role */
+  loginSuccess: (baseRole: 'admin' | 'employee' | 'superadmin') => {
+    const roleLabel = baseRole === 'superadmin' ? 'Super Admin' : baseRole === 'admin' ? 'Admin' : 'Employee';
     return Swal.fire({
       icon: 'success',
       title: `${roleLabel} Logged in Successfully`,
@@ -70,8 +70,8 @@ export const showAlert = {
     });
   },
   /** Shows "Admin Logged out Successfully" or "Employee Logged out Successfully" based on base_role */
-  logoutSuccess: (baseRole: 'admin' | 'employee') => {
-    const roleLabel = baseRole === 'admin' ? 'Admin' : 'Employee';
+  logoutSuccess: (baseRole: 'admin' | 'employee' | 'superadmin') => {
+    const roleLabel = baseRole === 'superadmin' ? 'Super Admin' : baseRole === 'admin' ? 'Admin' : 'Employee';
     return Swal.fire({
       icon: 'success',
       title: `${roleLabel} Logged out Successfully`,

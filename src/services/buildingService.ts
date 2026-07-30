@@ -1,81 +1,57 @@
 // src/services/buildingService.ts
-// ==========================================
-// DREAM GROUP CRM - BUILDING SERVICE
-// ==========================================
-// No backend yet — endpoints/payload shapes below follow REST best practices
-// and mirror the existing master services (rows/total for list, data for single).
 
 import axiosInstance from './axiosConfig';
 import {
   BuildingListResponse,
-  BuildingSingleResponse,
   BuildingDeleteResponse,
-  CreateBuildingPayload,
-  UpdateBuildingPayload,
+  CreateFullBuildingPayload,
+  FullBuildingResponse,
 } from '../types/index';
 
-// ── Fetch list of all buildings ─────────────────────────────────────────────
-/** GET /api/building?is_active=true&page=1&limit=10&search=... */
+// ── Fetch list of all buildings (plain rows, project name + live counts) ────
 export const fetchBuildingList = async (
   page: number,
-  limit: number,
-  search?: string
+  limit: number
 ): Promise<BuildingListResponse> => {
   const params: Record<string, string | number | boolean> = {
     is_active: true,
     page,
     limit,
   };
-  if (search && search.trim()) {
-    params.search = search.trim();
-  }
-  const res = await axiosInstance.get('/building', { params });
+  const res = await axiosInstance.get('/buildings', { params });
   console.log('[buildingService] fetchBuildingList response:', res.data);
   return res.data;
 };
 
-// ── Fetch single building by ID (with wings -> floors -> flats) ────────────
-/** GET /api/building/:id */
-export const fetchBuildingById = async (id: string): Promise<BuildingSingleResponse> => {
-  const res = await axiosInstance.get(`/building/${id}`);
-  console.log('[buildingService] fetchBuildingById response:', res.data);
+// ── Fetch a building's full tree (wings -> floors -> flats) for view/edit ───
+export const fetchBuildingFullById = async (id: string): Promise<FullBuildingResponse> => {
+  const res = await axiosInstance.get(`/buildings/${id}/full`);
+  console.log('[buildingService] fetchBuildingFullById response:', res.data);
   return res.data;
 };
 
-// ── Create new building ─────────────────────────────────────────────────────
-/** POST /api/building */
-export const createBuilding = async (
-  payload: CreateBuildingPayload
-): Promise<BuildingSingleResponse> => {
-  const res = await axiosInstance.post('/building', payload);
-  console.log('[buildingService] createBuilding response:', res.data);
+// ── Building Master wizard: create Building + Wings + Floors + Flats in one call ──
+export const createFullBuilding = async (
+  payload: CreateFullBuildingPayload
+): Promise<FullBuildingResponse> => {
+  const res = await axiosInstance.post('/buildings/full', payload);
+  console.log('[buildingService] createFullBuilding response:', res.data);
   return res.data;
 };
 
-// ── Update existing building ────────────────────────────────────────────────
-/** PUT /api/building/:id */
-export const updateBuilding = async (
+// ── Building Master wizard: full replace/reconcile edit ──────────────────────
+export const updateFullBuilding = async (
   id: string,
-  payload: UpdateBuildingPayload
-): Promise<BuildingSingleResponse> => {
-  const res = await axiosInstance.put(`/building/${id}`, payload);
-  console.log('[buildingService] updateBuilding response:', res.data);
+  payload: CreateFullBuildingPayload
+): Promise<FullBuildingResponse> => {
+  const res = await axiosInstance.put(`/buildings/${id}/full`, payload);
+  console.log('[buildingService] updateFullBuilding response:', res.data);
   return res.data;
 };
 
-// ── Delete building ──────────────────────────────────────────────────────────
-/** DELETE /api/building/:id */
+// ── Delete building (cascades to wings/floors/flats) ─────────────────────────
 export const deleteBuilding = async (id: string): Promise<BuildingDeleteResponse> => {
-  const res = await axiosInstance.delete(`/building/${id}`);
+  const res = await axiosInstance.delete(`/buildings/${id}`);
   console.log('[buildingService] deleteBuilding response:', res.data);
   return res.data;
-};
-
-// Grouped export — same convenience pattern as companyService
-export const buildingService = {
-  getAll  : fetchBuildingList,
-  getById : fetchBuildingById,
-  create  : createBuilding,
-  update  : updateBuilding,
-  remove  : deleteBuilding,
 };

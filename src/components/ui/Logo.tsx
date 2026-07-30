@@ -17,6 +17,7 @@
 //
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import favicon_logo from '@/assets/images/favicon_logo.png';
 
 type LogoSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | number;
 
@@ -51,7 +52,7 @@ const Logo: React.FC<LogoProps> = ({
 }) => {
   const navigate = useNavigate();
   const px = typeof size === 'number' ? size : SIZE_MAP[size] || 44;
-  const logoImg = "/src/assets/images/favicon_logo.png"; // ← real logo image (transparent bg) for best display on all themes/backgrounds
+  const logoImg = favicon_logo; // ← real logo image (transparent bg) for best display on all themes/backgrounds
   const handleClick = () => {
     if (navigateTo) navigate(navigateTo);
   };

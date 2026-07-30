@@ -35,7 +35,7 @@ const PlaceholderPage = lazy(() => import('../components/common/PlaceholderPage'
 
 const AdminRoutes: React.FC = () => (
   <Routes>
-    <Route element={<ProtectedRoute allowedRoles={['admin']}><DashboardLayout /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><DashboardLayout /></ProtectedRoute>}>
       <Route index element={<Navigate to={ROUTES.ADMIN.DASHBOARD} replace />} />
       <Route path="dashboard" element={<AdminDashboard />} />
 
