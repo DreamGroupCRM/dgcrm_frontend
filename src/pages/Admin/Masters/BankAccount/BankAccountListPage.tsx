@@ -61,7 +61,7 @@ const BankAccountListPage: React.FC = () => {
               b.name.toLowerCase().includes(q) ||
               (b.account_number ?? '').toLowerCase().includes(q) ||
               (b.ifsc_code ?? '').toLowerCase().includes(q) ||
-              (b.company_name ?? '').toLowerCase().includes(q) ||
+              (b.company ?? '').toLowerCase().includes(q) ||
               (b.account_holder_name ?? '').toLowerCase().includes(q)
           )
         : allBanks
@@ -90,7 +90,7 @@ const BankAccountListPage: React.FC = () => {
     const headers = ['ID', 'Company Name', 'Bank Name', 'Account Holder Name', 'Account Number', 'Branch Name', 'IFSC Code', 'Status', 'Created At'];
     const rows    = filtered.map((b) => [
       b.id,
-      `"${b.company_name ?? ''}"`,
+      `"${b.company ?? ''}"`,
       `"${b.name}"`,
       `"${b.account_holder_name ?? ''}"`,
       b.account_number,
@@ -217,7 +217,7 @@ const BankAccountListPage: React.FC = () => {
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
                       <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{bank.id}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.company_name ?? '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.company ?? '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500, whiteSpace: 'nowrap' }}>{bank.name}</td>
                       <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.account_holder_name ?? '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.account_number}</td>

@@ -14,11 +14,16 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme, AppTheme } from '../../../../styles/theme';
 import { useAccordion } from '../../../../hooks/useAccordion';
 import {
-  fetchBuildingById,
-  createBuilding,
-  updateBuilding,
+  fetchBuildingFullById,
+  createFullBuilding,
+  updateFullBuilding,
 } from '../../../../services/buildingService';
-import { CreateBuildingPayload } from '../../../../types/index';
+import { CreateFullBuildingPayload } from '../../../../types/index';
+
+/** Real backend rows have a bare numeric id (e.g. "42"); newly-added local
+ *  rows use a prefixed id (e.g. "wing_003") and must be sent WITHOUT an id
+ *  so the API creates them instead of trying to update a non-existent row. */
+const isBackendId = (id: string): boolean => /^\d+$/.test(id);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Local (string-friendly, form-editable) shapes
@@ -329,32 +334,38 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
     if (mode === 'add' || !id) return;
     (async () => {
       try {
-        const res = await fetchBuildingById(id);
+        const res = await fetchBuildingFullById(id);
         if (res.success && res.data) {
           const b = res.data;
-          setProjectName(b.project_name || '');
-          setLocationVal(b.location || '');
-          setBuildingName(b.building_name || '');
-          setIsActive(b.is_active ?? true);
-          const loadedWings: WingRow[] = (b.wings || []).map((w, wi) => ({
-            id: w.id || simpleId('wing', wi + 1),
-            name: w.name || '',
-            no_of_floors: String(w.no_of_floors ?? ''),
-            with_ground_floor: !!w.with_ground_floor,
-            flatsPerFloorInput: '',
-            floors: (w.floors || []).map((f, fi) => ({
-              id: f.id || simpleId('floor', fi + 1),
-              label: f.label,
-              sort_order: f.sort_order ?? 0,
-              flats: (f.flats || []).map((fl, fli) => ({
-                id: fl.id || simpleId('flat', fli + 1),
-                flat_no: fl.flat_no || '',
-                flat_type: fl.flat_type || FLAT_TYPES[0],
-                area_sqft: fl.area_sqft != null ? String(fl.area_sqft) : '',
-                is_active: fl.is_active ?? true,
+          setProjectName(b.building.project?.projectName || '');
+          setLocationVal(b.building.project?.location || '');
+          setBuildingName(b.building.name || '');
+          setIsActive(b.building.is_active ?? true);
+          const loadedWings: WingRow[] = (b.wings || []).map((w) => {
+            const floors: FloorRow[] = (w.floors || []).map((f, fi) => ({
+              id: String(f.id),
+              label: f.floorName,
+              sort_order: fi,
+              flats: (f.flats || []).map((fl) => ({
+                id: String(fl.id),
+                flat_no: fl.flatNo || '',
+                flat_type: fl.flatType || FLAT_TYPES[0],
+                area_sqft: fl.flatArea != null ? String(fl.flatArea) : '',
+                is_active: fl.enabled ?? true,
               })),
-            })),
-          }));
+            }));
+            // Backend doesn't store no_of_floors/with_ground_floor directly —
+            // derive them from the actual floor labels so Step 3 shows correctly.
+            const hasGround = floors.some((f) => f.label.trim().toLowerCase().startsWith('ground'));
+            return {
+              id: String(w.id),
+              name: w.wingName || '',
+              no_of_floors: String(floors.length - (hasGround ? 1 : 0)),
+              with_ground_floor: hasGround,
+              flatsPerFloorInput: '',
+              floors,
+            };
+          });
           setWings(loadedWings);
           setActiveWingId(loadedWings[0]?.id || '');
         } else {
@@ -490,34 +501,31 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
     }
     setSaving(true);
     try {
-      const payload: CreateBuildingPayload = {
-        project_name: projectName.trim(),
-        location: location.trim(),
-        building_name: buildingName.trim(),
-        is_active: isActive,
+      const payload: CreateFullBuildingPayload = {
+        project: { projectName: projectName.trim(), location: location.trim() || null },
+        building: { buildingName: buildingName.trim() },
         wings: wings.map((w) => ({
-          id: w.id,
-          name: w.name.trim(),
-          no_of_floors: parseInt(w.no_of_floors, 10) || 0,
-          with_ground_floor: w.with_ground_floor,
+          ...(isBackendId(w.id) ? { id: Number(w.id) } : {}),
+          wingName: w.name.trim(),
+          withGroundFloor: w.with_ground_floor,
+          numberOfFloors: parseInt(w.no_of_floors, 10) || 0,
           floors: w.floors.map((f) => ({
-            id: f.id,
-            label: f.label,
-            sort_order: f.sort_order,
+            ...(isBackendId(f.id) ? { id: Number(f.id) } : {}),
+            floorName: f.label,
             flats: f.flats.map((fl) => ({
-              id: fl.id,
-              flat_no: fl.flat_no.trim(),
-              flat_type: fl.flat_type,
-              area_sqft: fl.area_sqft ? Number(fl.area_sqft) : null,
-              is_active: fl.is_active,
+              ...(isBackendId(fl.id) ? { id: Number(fl.id) } : {}),
+              flatNo: fl.flat_no.trim(),
+              flatType: fl.flat_type,
+              flatArea: fl.area_sqft ? Number(fl.area_sqft) : null,
+              enabled: fl.is_active,
             })),
           })),
         })),
       };
 
       const res = isEdit
-        ? await updateBuilding(id!, payload)
-        : await createBuilding(payload);
+        ? await updateFullBuilding(id!, payload)
+        : await createFullBuilding(payload);
 
       if (res.success) {
         toast.success(isEdit ? 'Building Updated Successfully' : 'Building Created Successfully', { autoClose: 1000 });

@@ -19,16 +19,6 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 // All action icons use the same dark-grey color — same as every other master list
 const ACTION_ICON_COLOR = '#4b5563';
 
-// ── derived helpers ──────────────────────────────────────────────────────────
-const totalFlatsOf = (b: Building): number =>
-  (b.wings ?? []).reduce(
-    (wSum, w) => wSum + (w.floors ?? []).reduce((fSum, f) => fSum + (f.flats?.length ?? 0), 0),
-    0
-  );
-
-const totalFloorsOf = (b: Building): number =>
-  (b.wings ?? []).reduce((sum, w) => sum + (w.floors?.length ?? 0), 0);
-
 const BuildingListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -71,9 +61,8 @@ const BuildingListPage: React.FC = () => {
       q
         ? allBuildings.filter(
             (b) =>
-              b.building_name?.toLowerCase().includes(q) ||
-              b.project_name?.toLowerCase().includes(q) ||
-              b.location?.toLowerCase().includes(q)
+              b.b_name?.toLowerCase().includes(q) ||
+              b.project?.toLowerCase().includes(q)
           )
         : allBuildings
     );
@@ -83,12 +72,12 @@ const BuildingListPage: React.FC = () => {
   // ── delete ──────────────────────────────────────────────────────────────
   const handleDelete = async (building: Building) => {
     const result = await showAlert.confirm(
-      `Are you sure you want to delete "${building.building_name}"?`,
+      `Are you sure you want to delete "${building.b_name}"?`,
       'Delete Building?'
     );
     if (!result.isConfirmed) return;
     try {
-      const res = await deleteBuilding(building.id);
+      const res = await deleteBuilding(building.b_id);
       if (res.success) {
         toast.success('Building Deleted Successfully', { autoClose: 1000 });
         fetchBuildings();
@@ -104,21 +93,21 @@ const BuildingListPage: React.FC = () => {
   const exportCSV = () => {
     if (filtered.length === 0) { toast.info('No data to Export'); return; }
     const headers = [
-      'ID', 'Project Name', 'Building Name', 'Location',
+      'ID', 'Project Name', 'Building Name', 'Code',
       'No. of Wings', 'No. of Floors', 'No. of Flats',
       'Status', 'Created At', 'Updated At',
     ];
     const rows = filtered.map((b) => [
-      b.id,
-      `"${b.project_name}"`,
-      `"${b.building_name}"`,
-      `"${b.location}"`,
-      b.wings?.length ?? 0,
-      totalFloorsOf(b),
-      totalFlatsOf(b),
-      b.is_active ? 'Active' : 'Inactive',
-      formatDate(b.created_at),
-      formatDate(b.updated_at || ''),
+      b.b_id,
+      `"${b.project ?? ''}"`,
+      `"${b.b_name}"`,
+      `"${b.b_code ?? ''}"`,
+      b.wing_count,
+      b.floor_count,
+      b.flat_count,
+      b.b_is_active ? 'Active' : 'Inactive',
+      formatDate(b.b_created_at),
+      formatDate(b.b_updated_at || ''),
     ]);
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
@@ -191,7 +180,7 @@ const BuildingListPage: React.FC = () => {
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input
             type="text"
-            placeholder="Search by Building, Project or Location..."
+            placeholder="Search by Building or Project..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
@@ -256,7 +245,7 @@ const BuildingListPage: React.FC = () => {
 
             <thead>
               <tr style={{ background: t.tableHeaderBg }}>
-                {['ID', 'Project Name', 'Building Name', 'Location', 'Wings', 'Floors', 'Flats', 'Status', 'Created At'].map((h) => (
+                {['ID', 'Project Name', 'Building Name', 'Code', 'Wings', 'Floors', 'Flats', 'Status', 'Created At'].map((h) => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
                     fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
@@ -301,7 +290,7 @@ const BuildingListPage: React.FC = () => {
                   const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
                   return (
                     <tr
-                      key={b.id}
+                      key={b.b_id}
                       style={{
                         background: rowBg,
                         borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`,
@@ -311,34 +300,34 @@ const BuildingListPage: React.FC = () => {
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}
                     >
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {b.id}
+                        {b.b_id}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {b.project_name}
+                        {b.project}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         <div className="flex items-center gap-2">
                           <MdApartment size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
-                          {b.building_name}
+                          {b.b_name}
                         </div>
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {b.location}
+                        {b.b_code || '-'}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {b.wings?.length ?? 0}
+                        {b.wing_count}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {totalFloorsOf(b)}
+                        {b.floor_count}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {totalFlatsOf(b)}
+                        {b.flat_count}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
-                        {statusBadge(b.is_active)}
+                        {statusBadge(b.b_is_active)}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {formatDate(b.created_at)}
+                        {formatDate(b.b_created_at)}
                       </td>
 
                       {/* STICKY Actions cell */}
@@ -351,14 +340,14 @@ const BuildingListPage: React.FC = () => {
                       }}>
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={() => navigate(`/admin/masters/building/view/${b.id}`)}
+                            onClick={() => navigate(`/admin/masters/building/view/${b.b_id}`)}
                             title="View"
                             style={iconBtn}
                           >
                             <MdVisibility size={18} color={ACTION_ICON_COLOR} />
                           </button>
                           <button
-                            onClick={() => navigate(`/admin/masters/building/edit/${b.id}`)}
+                            onClick={() => navigate(`/admin/masters/building/edit/${b.b_id}`)}
                             title="Edit"
                             style={iconBtn}
                           >

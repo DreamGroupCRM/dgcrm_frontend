@@ -105,7 +105,7 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated && role) {
       navigate(
-        role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
+        role === 'admin' || role === 'superadmin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
         { replace: true }
       );
     }
@@ -160,10 +160,10 @@ const LoginPage: React.FC = () => {
 
       const result = await dispatch(loginThunk({ email: form.email, password: form.password }));
       if (loginThunk.fulfilled.match(result)) {
-        const baseRole = result.payload.user.base_role; // 'admin' | 'employee'
+        const baseRole = result.payload.user.base_role; // 'admin' | 'employee' | 'superadmin'
         await showAlert.loginSuccess(baseRole);
         navigate(
-          baseRole === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
+          baseRole === 'admin' || baseRole === 'superadmin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
           { replace: true }
         );
       }

@@ -9,6 +9,7 @@ import { toggleSidebar } from '../../redux/slices/uiSlice';
 import { ROUTES } from '../../constants';
 import { useNavigate } from 'react-router-dom';
 import { getTheme } from '../../styles/theme';
+import favicon_logo from '../../assets/images/favicon_logo.png';
 
 import {
   MdDashboard, MdBusiness, MdPeople, MdContactPage,
@@ -59,7 +60,7 @@ interface NavItem {
   children?: NavItem[];
 }
 
-const buildAdminNavItems = (masterEnabled: boolean): NavItem[] => [
+const buildAdminNavItems = (masterEnabled: boolean, isSuperAdmin: boolean): NavItem[] => [
   { label: 'Dashboard', path: ROUTES.ADMIN.DASHBOARD, icon: <MdDashboard /> },
 
   // Master section — conditionally included based on settings toggle
@@ -72,8 +73,11 @@ const buildAdminNavItems = (masterEnabled: boolean): NavItem[] => [
       { label: 'Roles',          path: ROUTES.ADMIN.ROLES,          icon: <MdAccountTree /> },
       { label: 'Bank A/C',       path: ROUTES.ADMIN.BANK_AC,        icon: <MdAccountBalance /> },
       { label: 'Building',       path: ROUTES.ADMIN.BUILDING,       icon: <MdApartment /> },
-      { label: 'Action & Module',path: ROUTES.ADMIN.ACTION_MODULE,  icon: <MdSettings /> },
-      { label: 'Module Mapping', path: ROUTES.ADMIN.MODULE_MAPPING, icon: <MdGridOn /> },
+      // Global/shared config (not scoped to a company) — SuperAdmin only.
+      ...(isSuperAdmin ? [
+        { label: 'Action & Module',path: ROUTES.ADMIN.ACTION_MODULE,  icon: <MdSettings /> },
+        { label: 'Module Mapping', path: ROUTES.ADMIN.MODULE_MAPPING, icon: <MdGridOn /> },
+      ] : []),
     ],
   }] : []),
 
@@ -202,7 +206,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
-  const logoImg  = '/src/assets/images/favicon_logo.png';
+  const logoImg  = favicon_logo;
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { sidebarCollapsed } = useAppSelector((s) => s.ui);
@@ -212,8 +216,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
 
   const isDark   = mode === 'dark';
   const t        = getTheme(isDark);
-  const roleLabel = role === 'admin' ? 'Admin' : 'Employee';
-  const dashboardRoute = role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
+  const roleLabel = role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Admin' : 'Employee';
+  const dashboardRoute = role === 'admin' || role === 'superadmin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
 
   // Authoritative desktop/drawer switch — see useIsDesktopSidebar above.
   const isDesktop = useIsDesktopSidebar();
@@ -269,7 +273,9 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
     };
   }, [mobileOpen]);
 
-  const navItems = role === 'admin' ? buildAdminNavItems(masterEnabled) : employeeNavItems;
+  const navItems = role === 'admin' || role === 'superadmin'
+    ? buildAdminNavItems(masterEnabled, role === 'superadmin')
+    : employeeNavItems;
 
   const shellStyle: React.CSSProperties = {
     background : t.sidebarBg,

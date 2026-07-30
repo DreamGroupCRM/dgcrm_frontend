@@ -2,8 +2,11 @@
 // DREAM GROUP CRM - TYPE DEFINITIONS
 // ==========================================
 
-// The backend sends the role as lowercase: "admin" | "employee"
-export type BaseRole = 'admin' | 'employee';
+// The backend sends the role as lowercase: "admin" | "employee" | "superadmin"
+// superadmin is a strict superset of admin (passes every admin check) but is
+// also the only role that can reach Module Master / Action Master / Module Mapping
+// (those are global config, not scoped to a company).
+export type BaseRole = 'admin' | 'employee' | 'superadmin';
 
 // Detailed role record (comes nested inside user.role from the login API)
 export interface RoleInfo {
@@ -226,7 +229,7 @@ export interface UpdateRolePayload {
 export interface BankAccount {
   id                  : string;
   company_id          : string;
-  company_name        : string;
+  company             : string;
   name                : string;
   account_holder_name : string;
   branch_name         : string;
@@ -389,38 +392,22 @@ export interface UpdateModuleMasterPayload {
 
 // ── Building Master ────────────────────────────────────────────────────────
 // A Building has many Wings -> each Wing has many Floors -> each Floor has many Flats.
-export interface BuildingFlat {
-  id       : string;
-  flat_no  : string;
-  flat_type: string;            // '1 BHK' | '2 BHK' | '3 BHK' | 'Studio' | 'Other'
-  area_sqft: number | null;
-  is_active: boolean;
-}
-
-export interface BuildingFloor {
-  id        : string;
-  label     : string;           // 'Ground Floor' | '1st Floor' | '2nd Floor' ...
-  sort_order: number;
-  flats     : BuildingFlat[];
-}
-
-export interface BuildingWing {
-  id               : string;
-  name             : string;    // 'A Wing'
-  no_of_floors     : number;    // numbered floors, EXCLUDING ground floor
-  with_ground_floor: boolean;
-  floors           : BuildingFloor[];
-}
-
+// GET /api/buildings (plain list) — raw-aliased keys (b_*), same convention as
+// Wing/Floor/Flat list responses, plus a live project name + wing/floor/flat counts.
 export interface Building {
-  id           : string;
-  project_name : string;
-  location     : string;
-  building_name: string;
-  wings        : BuildingWing[];
-  is_active    : boolean;
-  created_at   : string;
-  updated_at?  : string;
+  b_id         : string;
+  b_name       : string;
+  b_code       : string | null;
+  b_address    : string | null;
+  b_project_id : string | number | null;
+  b_is_active  : boolean;
+  b_sort_order : number;
+  b_created_at : string;
+  b_updated_at : string;
+  project      : string | null;
+  wing_count   : number;
+  floor_count  : number;
+  flat_count   : number;
 }
 
 export interface BuildingListResponse {
@@ -432,26 +419,65 @@ export interface BuildingListResponse {
   limit   : number;
 }
 
-export interface BuildingSingleResponse {
-  success : boolean;
-  message?: string;
-  data    : Building;
-}
-
 export interface BuildingDeleteResponse {
   success : boolean;
   message?: string;
 }
 
-export interface CreateBuildingPayload {
-  project_name : string;
-  location     : string;
-  building_name: string;
-  wings        : BuildingWing[];
-  is_active    : boolean;
+// POST /api/buildings/full, GET/PUT /api/buildings/:id/full — the one-page
+// wizard's own field names. `id` fields are present on GET (for edit) and
+// accepted back on PUT to update that exact row instead of creating a new one.
+export interface WizardFlat {
+  id?      : number;
+  flatNo   : string;
+  flatType : string | null;
+  flatArea : number | null;
+  enabled  : boolean;
 }
 
-export interface UpdateBuildingPayload extends CreateBuildingPayload {}
+export interface WizardFloor {
+  id?       : number;
+  floorName : string;
+  flats     : WizardFlat[];
+}
+
+export interface WizardWing {
+  id?              : number;
+  wingName         : string;
+  withGroundFloor? : boolean;
+  numberOfFloors?  : number;
+  floors           : WizardFloor[];
+}
+
+export interface CreateFullBuildingPayload {
+  project : { projectName: string; location?: string | null };
+  building: { buildingName: string; buildingCode?: string | null };
+  wings   : WizardWing[];
+}
+
+export interface FullBuildingWing {
+  id    : number;
+  wingName: string;
+  floors: Array<{
+    id       : number;
+    floorName: string;
+    flats    : Array<{ id: number; flatNo: string; flatType: string | null; flatArea: number | null; enabled: boolean }>;
+  }>;
+}
+
+export interface FullBuildingData {
+  building: {
+    id: number; name: string; code: string | null; project_id: number | null; is_active: boolean;
+    project: { projectName: string; location: string | null } | null;
+  };
+  wings: FullBuildingWing[];
+}
+
+export interface FullBuildingResponse {
+  success : boolean;
+  data    : FullBuildingData;
+  message?: string;
+}
 
 // Module <-> Action mapping matrix (GET /api/module-action/matrix)
 export interface MappingModule {
