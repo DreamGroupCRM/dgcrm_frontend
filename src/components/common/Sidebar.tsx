@@ -19,6 +19,39 @@ import {
   MdPersonAdd, MdSettings, MdGridOn,
 } from 'react-icons/md';
 
+// ── Single source of truth for "desktop vs drawer" mode ────────────────────
+// Previously desktop/mobile was decided purely by Tailwind's `lg` breakpoint,
+// declared separately in Sidebar.tsx (`hidden lg:flex`) and Header.tsx
+// (`lg:hidden`). Two independent CSS declarations can visually disagree at
+// the exact breakpoint edge (browser zoom, scrollbar width, devtools
+// device-toolbar rendering, etc.) — which is exactly how you can get BOTH
+// the desktop Collapse button and the mobile hamburger rendered at once,
+// with the hamburger wired to drawer state nobody is listening to.
+// This hook uses matchMedia at runtime and both components read the exact
+// same threshold, so exactly one control is ever mounted — never both.
+export const SIDEBAR_DESKTOP_BREAKPOINT = 1024; // matches Tailwind's `lg`
+
+export function useIsDesktopSidebar(breakpoint: number = SIDEBAR_DESKTOP_BREAKPOINT): boolean {
+  const [isDesktop, setIsDesktop] = useState<boolean>(
+    () => typeof window !== 'undefined' && window.innerWidth >= breakpoint
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia(`(min-width: ${breakpoint}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    setIsDesktop(mql.matches);
+    if (mql.addEventListener) mql.addEventListener('change', handler);
+    else mql.addListener(handler); // Safari <14 fallback
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', handler);
+      else mql.removeListener(handler);
+    };
+  }, [breakpoint]);
+
+  return isDesktop;
+}
+
 interface NavItem {
   label    : string;
   path?    : string;
@@ -93,6 +126,7 @@ const NavItemComponent: React.FC<{
     return (
       <div>
         <button
+          type="button"
           onClick={() => !collapsed && setOpen((v) => !v)}
           title={collapsed ? item.label : undefined}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150"
@@ -174,11 +208,23 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
   const { sidebarCollapsed } = useAppSelector((s) => s.ui);
   const { role }             = useAppSelector((s) => s.auth);
   const { mode }             = useAppSelector((s) => s.theme);
+  const location             = useLocation();
 
   const isDark   = mode === 'dark';
   const t        = getTheme(isDark);
   const roleLabel = role === 'admin' ? 'Admin' : 'Employee';
   const dashboardRoute = role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
+
+  // Authoritative desktop/drawer switch — see useIsDesktopSidebar above.
+  const isDesktop = useIsDesktopSidebar();
+
+  // If the viewport crosses into desktop width while the mobile drawer
+  // happens to be open, close it — you should never be able to land in a
+  // state where the drawer is open AND the desktop rail is showing.
+  useEffect(() => {
+    if (isDesktop && mobileOpen) onMobileClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDesktop]);
 
   // ── Master visibility — sync with Header settings toggle ──────────────
   const [masterEnabled, setMasterEnabled] = useState<boolean>(() => {
@@ -194,6 +240,35 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
     return () => window.removeEventListener('dgcrm_master_toggle', handler);
   }, []);
 
+  // ── ROOT-CAUSE FIXES for mobile drawer behavior ────────────────────────
+  // 1) Auto-close the mobile drawer whenever the route changes, so
+  //    navigating to a page never leaves a "dead" open drawer behind.
+  useEffect(() => {
+    if (mobileOpen) onMobileClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  // 2) Close on Escape — standard drawer/overlay behavior.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onMobileClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [mobileOpen, onMobileClose]);
+
+  // 3) Lock body scroll while the drawer is open so the page behind it
+  //    doesn't scroll along with the overlay.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileOpen]);
+
   const navItems = role === 'admin' ? buildAdminNavItems(masterEnabled) : employeeNavItems;
 
   const shellStyle: React.CSSProperties = {
@@ -201,16 +276,26 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
     borderRight: `1px solid ${t.sidebarBorder}`,
   };
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full" style={{ width: sidebarCollapsed ? 70 : 260 }}>
+  // NOTE on the fix:
+  // Previously a single `SidebarContent` closure read `sidebarCollapsed`
+  // directly from Redux, so BOTH the desktop rail AND the mobile drawer
+  // shrank together whenever "Collapse" was clicked. The mobile drawer's
+  // outer <aside> kept a hardcoded width of 260px, but the inner content
+  // shrank to 70px — leaving the empty strip of dead space seen in the
+  // screenshot. The fix: `collapsed` and `showCollapseToggle` are now
+  // explicit parameters. The mobile drawer always renders fully expanded
+  // (collapsed = false) and never shows the collapse control — on mobile,
+  // "collapsing" isn't a real interaction; the whole drawer opens or closes.
+  const renderSidebarContent = (collapsed: boolean, showCollapseToggle: boolean) => (
+    <div className="flex flex-col h-full" style={{ width: collapsed ? 70 : 260 }}>
 
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-4 flex-shrink-0"
         style={{ minHeight: 64, borderBottom: `1px solid ${t.sidebarBorder}` }}>
         <img src={logoImg} alt="Dream Group"
-          style={{ width: sidebarCollapsed ? 28 : 34, height: sidebarCollapsed ? 28 : 34, objectFit: 'contain', mixBlendMode: isDark ? 'screen' : 'multiply', flexShrink: 0 }} />
-        {!sidebarCollapsed && (
-          <button onClick={() => navigate(dashboardRoute)}
+          style={{ width: collapsed ? 28 : 34, height: collapsed ? 28 : 34, objectFit: 'contain', mixBlendMode: isDark ? 'screen' : 'multiply', flexShrink: 0 }} />
+        {!collapsed && (
+          <button type="button" onClick={() => navigate(dashboardRoute)}
             style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', outline: 'none' }}>
             <span style={{ fontFamily: t.fontFamily, fontSize: 28, fontWeight: 700, letterSpacing: '0.06em', color: t.textPrimary }}>
               DGCRM
@@ -220,7 +305,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
       </div>
 
       {/* Role badge */}
-      {!sidebarCollapsed && (
+      {!collapsed && (
         <div className="px-4 py-2.5 flex-shrink-0">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
             style={{ background: isDark ? '#141414' : '#eff6ff', color: isDark ? '#a3a3a3' : '#2563eb', fontFamily: t.fontFamily }}>
@@ -233,69 +318,99 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
         {navItems.map((item, i) => (
-          <NavItemComponent key={i} item={item} collapsed={sidebarCollapsed} isDark={isDark} />
+          <NavItemComponent key={i} item={item} collapsed={collapsed} isDark={isDark} />
         ))}
       </nav>
 
-      {/* Collapse toggle */}
-      <div className="px-3 pb-4 pt-2 flex-shrink-0" style={{ borderTop: `1px solid ${t.sidebarBorder}` }}>
-        <button
-          onClick={() => dispatch(toggleSidebar())}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all duration-150 text-sm"
-          style={{ background: 'transparent', color: t.textPrimary, border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
-          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.background = t.sidebarHoverBg;
-            (e.currentTarget as HTMLElement).style.color      = t.sidebarHoverText;
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.background = 'transparent';
-            (e.currentTarget as HTMLElement).style.color      = t.textPrimary;
-          }}
-        >
-          {sidebarCollapsed ? <MdChevronRight size={28} /> : (
-            <><MdChevronLeft size={28} /><span>Collapse</span></>
-          )}
-        </button>
-      </div>
+      {/* Collapse toggle — DESKTOP ONLY. Mobile closes via the ✕ button
+          or by tapping the backdrop, never by "collapsing". */}
+      {showCollapseToggle && (
+        <div className="px-3 pb-4 pt-2 flex-shrink-0" style={{ borderTop: `1px solid ${t.sidebarBorder}` }}>
+          <button
+            type="button"
+            onClick={() => dispatch(toggleSidebar())}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all duration-150 text-sm"
+            style={{ background: 'transparent', color: t.textPrimary, border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background = t.sidebarHoverBg;
+              (e.currentTarget as HTMLElement).style.color      = t.sidebarHoverText;
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+              (e.currentTarget as HTMLElement).style.color      = t.textPrimary;
+            }}
+          >
+            {collapsed ? <MdChevronRight size={28} /> : (
+              <><MdChevronLeft size={28} /><span>Collapse</span></>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 
   return (
     <>
-      {/* DESKTOP sidebar — in-flow, takes space */}
-      <aside
-        className="hidden md:flex flex-col flex-shrink-0 h-screen overflow-hidden transition-all duration-300"
-        style={{ width: sidebarCollapsed ? 70 : 260, ...shellStyle }}
-      >
-        <SidebarContent />
-      </aside>
-
-      {/* MOBILE sidebar — fixed overlay, no empty space when closed */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-30 md:hidden"
-          style={{ background: 'rgba(0,0,0,0.4)' }}
-          onClick={onMobileClose}
-        />
-      )}
-      <aside
-        className="fixed top-0 left-0 h-full z-40 flex flex-col md:hidden transition-transform duration-300"
-        style={{
-          width    : 260,
-          transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
-          ...shellStyle,
-        }}
-      >
-        <button
-          onClick={onMobileClose}
-          className="absolute top-4 right-4 z-10"
-          style={{ color: t.sidebarTextMuted, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }}
+      {/* ===================== DESKTOP sidebar =====================
+          Mounted ONLY when isDesktop is true (JS-gated, not CSS-gated).
+          In-flow, collapsible via the "Collapse" button. Unchanged design.
+          Because this is a real conditional render (not `hidden lg:flex`),
+          the Collapse button and the mobile hamburger can never both be
+          mounted in the DOM at the same time. */}
+      {isDesktop && (
+        <aside
+          className="flex flex-col flex-shrink-0 h-screen overflow-hidden transition-all duration-300"
+          style={{ width: sidebarCollapsed ? 70 : 260, ...shellStyle }}
         >
-          ✕
-        </button>
-        <SidebarContent />
-      </aside>
+          {renderSidebarContent(sidebarCollapsed, true)}
+        </aside>
+      )}
+
+      {/* ================= TABLET / MOBILE drawer =================
+          Mounted ONLY when !isDesktop, using the exact same boolean the
+          Header uses to decide whether to render its hamburger. */}
+      {!isDesktop && (
+        <>
+          {/* Backdrop — starts BELOW the header (top-16 = header's h-16), so
+              the header (and the hamburger button inside it) is never
+              dimmed, hidden, or made unclickable while the drawer is open.
+              Fix for "sometimes the hamburger blurs/hides the whole screen". */}
+          {mobileOpen && (
+            <div
+              className="fixed top-16 left-0 right-0 bottom-0 z-30"
+              style={{ background: 'rgba(0,0,0,0.4)' }}
+              onClick={onMobileClose}
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Drawer — same top-16 offset as the backdrop, always renders
+              fully expanded (never partially collapsed), and slides fully
+              off-screen (translateX(-100%)) when closed, so there is never
+              leftover empty width. */}
+          <aside
+            className="fixed top-16 left-0 h-[calc(100%-4rem)] z-40 flex flex-col transition-transform duration-300"
+            style={{
+              width    : 260,
+              transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
+              ...shellStyle,
+            }}
+            aria-hidden={!mobileOpen}
+          >
+            <button
+              type="button"
+              onClick={onMobileClose}
+              aria-label="Close menu"
+              className="absolute top-3 right-3 z-10"
+              style={{ color: t.sidebarTextMuted, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }}
+            >
+              ✕
+            </button>
+            {renderSidebarContent(false, false)}
+          </aside>
+        </>
+      )}
     </>
   );
 };

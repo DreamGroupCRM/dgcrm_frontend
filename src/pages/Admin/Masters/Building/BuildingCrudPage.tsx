@@ -82,6 +82,12 @@ const buildFloorLabels = (withGround: boolean, noOfFloors: number): string[] => 
   return labels;
 };
 
+/** e.g. "Ground + 5 Floors" or, without a ground floor, just "5 Floors". */
+const floorsSummary = (withGround: boolean, noOfFloorsRaw: string): string => {
+  const n = parseInt(noOfFloorsRaw, 10) || 0;
+  return withGround ? `Ground + ${n} Floors` : `${n} Floors`;
+};
+
 const makeWing = (id: string): WingRow => ({
   id,
   name: '',
@@ -718,16 +724,16 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+        <div className="flex flex-wrap items-start gap-4 mt-4">
           {wings.map((w, idx) => (
-            <div key={w.id} style={{
+            <div key={w.id} className="w-full sm:w-64" style={{
               border: `1px solid ${t.surfaceBorder}`, borderRadius: 12, padding: 16,
               background: t.subtleBg,
             }}>
               <div className="flex items-center gap-2 mb-3">
                 <MdApartment size={17} style={{ color: WING_COLORS[idx % WING_COLORS.length] }} />
                 <span style={{ fontWeight: 700, fontSize: 14.5, color: t.textPrimary }}>
-                  {w.name || `Wing ${idx + 1}`}
+                  {w.name ? `${w.name} wing` : `Wing ${idx + 1}`}
                 </span>
               </div>
               <label style={labelStyle}>No. of Floors <span style={{ color: '#ef4444' }}>*</span></label>
@@ -743,14 +749,14 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                     type="radio" checked={w.with_ground_floor} disabled={isView}
                     onChange={() => updateWing(w.id, { with_ground_floor: true })}
                   />
-                  With Gr Floor
+                  With Ground Floor
                 </label>
                 <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
                   <input
                     type="radio" checked={!w.with_ground_floor} disabled={isView}
                     onChange={() => updateWing(w.id, { with_ground_floor: false })}
                   />
-                  Without Gr Floor
+                  Without Ground Floor
                 </label>
               </div>
             </div>
@@ -788,10 +794,10 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 }}
               >
                 <div style={{ fontWeight: 700, fontSize: 14, color: w.id === activeWingId ? '#4338ca' : t.textPrimary }}>
-                  {w.name || `Wing ${idx + 1}`}
+                  {w.name ? `${w.name} wing` : `Wing ${idx + 1}`}
                 </div>
                 <div style={{ fontSize: 12.5, color: t.textSecondary, marginTop: 2 }}>
-                  {w.floors.length} Floor{w.floors.length === 1 ? '' : 's'}
+                  {floorsSummary(w.with_ground_floor, w.no_of_floors)}
                 </div>
               </button>
             ))}
@@ -810,7 +816,9 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3" style={{ padding: '14px 16px', background: t.insetBg, borderBottom: `1px solid ${t.divider}` }}>
                   <div>
-                    <span style={{ fontWeight: 700, color: '#4338ca', fontSize: 14.5 }}>{activeWing.name || 'Wing'}</span>
+                    <span style={{ fontWeight: 700, color: '#4338ca', fontSize: 14.5 }}>
+                      {activeWing.name ? `${activeWing.name} wing` : 'Wing'}
+                    </span>
                     <span style={{ fontSize: 12.5, color: t.textSecondary, marginLeft: 8 }}>
                       ({activeWing.with_ground_floor ? 'With Ground Floor' : 'Without Ground Floor'}
                       {' + '}{parseInt(activeWing.no_of_floors, 10) || 0} Floors = {(parseInt(activeWing.no_of_floors, 10) || 0) + (activeWing.with_ground_floor ? 1 : 0)} Levels)
@@ -818,7 +826,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                   </div>
                   {!isView && (
                     <div className="flex items-center gap-2">
-                      <span style={{ fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>Enter number of flats on each floor</span>
+                      <span style={{ fontSize: 17, color: t.textSecondary, whiteSpace: 'nowrap' }}>Enter number of flats on each floor</span>
                       <input
                         type="number" min={0} value={activeWing.flatsPerFloorInput}
                         onChange={(e) => updateWing(activeWing.id, { flatsPerFloorInput: e.target.value })}
