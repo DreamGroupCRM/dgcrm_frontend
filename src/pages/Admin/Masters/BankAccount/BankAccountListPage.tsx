@@ -164,11 +164,11 @@ const BankAccountListPage: React.FC = () => {
             <MdAdd size={18} /> Add Bank A/C
           </button>
           <button onClick={exportCSV} title="Export CSV" className="p-2 rounded-xl"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}>
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}>
             <MdDownload size={18} />
           </button>
           <button onClick={fetchBanks} title="Refresh" className="p-2 rounded-xl"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}>
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
@@ -216,15 +216,15 @@ const BankAccountListPage: React.FC = () => {
                       style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`, transition: 'background 0.15s' }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{bank.id}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{bank.company_name ?? '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{bank.id}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.company_name ?? '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500, whiteSpace: 'nowrap' }}>{bank.name}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{bank.account_holder_name ?? '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{bank.account_number}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{bank.branch_name}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{bank.ifsc_code}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.account_holder_name ?? '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.account_number}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.branch_name}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.ifsc_code}</td>
                       <td style={{ padding: '12px 16px' }}>{statusBadge(bank.is_active)}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDate(bank.created_at)}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(bank.created_at)}</td>
                       <td style={{
                         padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
                         position: 'sticky', right: 0, zIndex: 1,

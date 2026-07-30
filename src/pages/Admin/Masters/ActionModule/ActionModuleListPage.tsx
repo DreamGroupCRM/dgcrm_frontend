@@ -203,9 +203,9 @@ const ActionModuleListPage: React.FC = () => {
               <MdAdd size={18} /> Add Module
             </button>
             <button onClick={exportModuleCSV} title="Export CSV" className="p-2 rounded-xl"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}><MdDownload size={18} /></button>
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}><MdDownload size={18} /></button>
             <button onClick={fetchModules} title="Refresh" className="p-2 rounded-xl"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}><MdRefresh size={18} className={moduleLoading ? 'animate-spin' : ''} /></button>
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}><MdRefresh size={18} className={moduleLoading ? 'animate-spin' : ''} /></button>
           </div>
         </div>
 
@@ -232,12 +232,12 @@ const ActionModuleListPage: React.FC = () => {
                       <tr key={m.m_id} style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`, transition: 'background 0.15s' }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                         onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{m.m_id}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{m.m_id}</td>
                         <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500 }}>{m.m_name}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{m.m_slug}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{m.m_sort_order}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{m.m_slug}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{m.m_sort_order}</td>
                         <td style={{ padding: '12px 16px' }}>{statusBadge(m.m_is_active)}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDate(m.m_created_at)}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(m.m_created_at)}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 1, background: stickyBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>
                           <div className="flex items-center justify-center gap-1">
                             <button onClick={() => navigate(`/admin/masters/module/view/${m.m_id}`)} title="View" style={iconBtn}><MdVisibility size={18} /></button>
@@ -282,9 +282,9 @@ const ActionModuleListPage: React.FC = () => {
               <MdAdd size={18} /> Add Action
             </button>
             <button onClick={exportActionCSV} title="Export CSV" className="p-2 rounded-xl"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}><MdDownload size={18} /></button>
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}><MdDownload size={18} /></button>
             <button onClick={fetchActions} title="Refresh" className="p-2 rounded-xl"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}><MdRefresh size={18} className={actionLoading ? 'animate-spin' : ''} /></button>
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}><MdRefresh size={18} className={actionLoading ? 'animate-spin' : ''} /></button>
           </div>
         </div>
 
@@ -311,12 +311,12 @@ const ActionModuleListPage: React.FC = () => {
                       <tr key={a.id} style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`, transition: 'background 0.15s' }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                         onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{a.id}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{a.id}</td>
                         <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500 }}>{a.name}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{a.code}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary }}>{a.description || '—'}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{a.code}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{a.description || '—'}</td>
                         <td style={{ padding: '12px 16px' }}>{statusBadge(a.is_active)}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDate(a.created_at)}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(a.created_at)}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 1, background: stickyBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>
                           <div className="flex items-center justify-center gap-1">
                             <button onClick={() => navigate(`/admin/masters/action/view/${a.id}`)} title="View" style={iconBtn}><MdVisibility size={18} /></button>
