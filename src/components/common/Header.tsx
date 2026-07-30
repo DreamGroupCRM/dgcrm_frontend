@@ -17,6 +17,11 @@ import { AiOutlineInstagram, AiOutlineWhatsApp } from 'react-icons/ai';
 import { FaFacebookF } from 'react-icons/fa';
 import { MdLogout, MdCheckBox, MdCheckBoxOutlineBlank } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
+// Same runtime check the Sidebar uses to decide desktop-rail vs mobile-drawer
+// mode. Importing it (instead of re-declaring `lg:hidden` here) guarantees
+// the hamburger and the desktop Collapse button can never both be visible,
+// and can never both be absent.
+import { useIsDesktopSidebar } from './Sidebar';
 
 interface HeaderProps {
   onMobileMenuToggle: () => void;
@@ -54,7 +59,7 @@ const IconBtn: React.FC<{
       style={base} onMouseEnter={onEnter} onMouseLeave={onLeave}>{children}</a>
   );
   return (
-    <button onClick={onClick} title={title} style={base}
+    <button type="button" onClick={onClick} title={title} style={base}
       onMouseEnter={onEnter} onMouseLeave={onLeave}>{children}</button>
   );
 };
@@ -70,6 +75,9 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
 
   const dashboardRoute = role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
   const notesUserId    = (user as any)?.id ?? user?.email ?? 'guest';
+
+  // Authoritative desktop/mobile switch shared with Sidebar.tsx.
+  const isDesktop = useIsDesktopSidebar();
 
   // ── Settings: master visibility persisted in localStorage ─────────────
   const [masterEnabled, setMasterEnabled] = useState<boolean>(() => {
@@ -145,6 +153,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   // ── Settings Panel content (reused in both desktop and mobile) ─────────
   const SettingsMenuContent = () => (
     <button
+      type="button"
       style={dropdownItemStyle}
       onClick={toggleMaster}
       onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.hoverBg)}
@@ -160,7 +169,11 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
 
   return (
     <header
-      className="flex items-center justify-between px-3 lg:px-6 h-16 flex-shrink-0"
+      // `relative z-50` keeps the header — and the hamburger inside it —
+      // above the mobile drawer's backdrop/overlay at all times. Combined
+      // with the drawer now starting below the header (see Sidebar.tsx),
+      // the header is never dimmed, covered, or made unclickable.
+      className="relative z-50 flex items-center justify-between px-3 lg:px-6 h-16 flex-shrink-0"
       style={{
         background  : t.headerBg,
         borderBottom: `1px solid ${t.headerBorder}`,
@@ -171,24 +184,35 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
       {/* ── LEFT: Hamburger + Logo + Brand ──────────────────────────── */}
       <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-shrink-0">
 
-        {/* Hamburger — mobile only */}
-        <button
-          onClick={onMobileMenuToggle}
-          title="Menu"
-          className="md:hidden"
-          style={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            padding: '8px', borderRadius: '8px', border: 'none',
-            background: 'transparent', color: t.textSecondary, cursor: 'pointer', flexShrink: 0,
-          }}
-        >
-          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 6h14M3 12h14M3 18h14" strokeLinecap="round" />
-          </svg>
-        </button>
+        {/* Hamburger — rendered ONLY when `isDesktop` is false, i.e. only on
+            the exact resolutions where the Sidebar's desktop Collapse button
+            is not mounted. This is a real JS conditional (not a `lg:hidden`
+            CSS class), using the identical `useIsDesktopSidebar()` boolean
+            the Sidebar uses for its own desktop-rail vs drawer decision — so
+            it is structurally impossible for both the hamburger and the
+            Collapse button to be visible (or for both to be missing) at the
+            same time. Clicking it expands/collapses the mobile drawer. */}
+        {!isDesktop && (
+          <button
+            type="button"
+            onClick={onMobileMenuToggle}
+            title="Menu"
+            aria-label="Toggle menu"
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              padding: '8px', borderRadius: '8px', border: 'none',
+              background: 'transparent', color: t.textSecondary, cursor: 'pointer', flexShrink: 0,
+            }}
+          >
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 6h14M3 12h14M3 18h14" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
 
         {/* Logo + Brand */}
         <button
+          type="button"
           onClick={() => navigate(dashboardRoute)}
           className="flex items-center gap-1.5 focus:outline-none flex-shrink-0"
           title="Go to Dashboard"
@@ -213,8 +237,9 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
       {/* ── RIGHT: controls ───────────────────────────────────────────── */}
       <div className="flex items-center gap-0.5 flex-shrink-0">
 
-        {/* ── DESKTOP controls (hidden below lg) ──────────────────── */}
-        <div className="hidden lg:flex items-center gap-0.5">
+        {/* ── DESKTOP controls — mounted only when isDesktop is true ── */}
+        {isDesktop && (
+        <div className="flex items-center gap-0.5">
 
           {/* Social icons */}
           <div className="flex items-center gap-0.5">
@@ -263,9 +288,11 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
 
           <div className="mx-0.5"><Divider /></div>
         </div>
+        )}
 
-        {/* ── TABLET / MOBILE three-dot menu (hidden on lg+) ──────── */}
-        <div className="flex lg:hidden items-center gap-0.5">
+        {/* ── TABLET / MOBILE three-dot menu — mounted only when !isDesktop ── */}
+        {!isDesktop && (
+        <div className="flex items-center gap-0.5">
           <div ref={moreRef} style={{ position: 'relative' }}>
             <IconBtn
               onClick={() => setMoreOpen((p) => !p)}
@@ -302,6 +329,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
 
                 {/* Theme toggle */}
                 <button
+                  type="button"
                   style={dropdownItemStyle}
                   onClick={() => { dispatch(toggleTheme()); setMoreOpen(false); }}
                   onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.hoverBg)}
@@ -321,9 +349,11 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             )}
           </div>
         </div>
+        )}
 
         {/* ── Profile button — always visible ─────────────────────── */}
         <button
+          type="button"
           onClick={() => dispatch(openProfileModal())}
           className="flex items-center gap-1.5 px-1.5 py-1.5 rounded-xl transition-all"
           title="My Profile"
