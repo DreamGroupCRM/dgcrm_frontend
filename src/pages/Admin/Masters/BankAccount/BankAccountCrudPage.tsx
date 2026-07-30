@@ -138,14 +138,14 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
         const res = await fetchBankAccountById(id);
         if (res.success && res.data) {
           setForm({
-            company_id          : String(res.data.company_id ?? ''),
-            name                : res.data.name                ?? '',
-            account_holder_name : res.data.account_holder_name ?? '',
-            account_number      : res.data.account_number      ?? '',
-            branch_name         : res.data.branch_name         ?? '',
-            ifsc_code           : res.data.ifsc_code           ?? '',
+            company_id          : String(res.data.b_company_id ?? ''),
+            name                : res.data.b_name                ?? '',
+            account_holder_name : res.data.b_account_holder_name ?? '',
+            account_number      : res.data.b_account_number      ?? '',
+            branch_name         : res.data.b_branch_name         ?? '',
+            ifsc_code           : res.data.b_ifsc_code           ?? '',
           });
-          setIsActive(res.data.is_active ?? true);
+          setIsActive(res.data.b_is_active ?? true);
         } else {
           toast.error('Failed to load bank account');
           navigate('/admin/masters/bank-account');

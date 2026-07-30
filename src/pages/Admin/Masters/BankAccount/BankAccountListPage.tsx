@@ -58,11 +58,11 @@ const BankAccountListPage: React.FC = () => {
       q
         ? allBanks.filter(
             (b) =>
-              b.name.toLowerCase().includes(q) ||
-              (b.account_number ?? '').toLowerCase().includes(q) ||
-              (b.ifsc_code ?? '').toLowerCase().includes(q) ||
+              b.b_name.toLowerCase().includes(q) ||
+              (b.b_account_number ?? '').toLowerCase().includes(q) ||
+              (b.b_ifsc_code ?? '').toLowerCase().includes(q) ||
               (b.company ?? '').toLowerCase().includes(q) ||
-              (b.account_holder_name ?? '').toLowerCase().includes(q)
+              (b.b_account_holder_name ?? '').toLowerCase().includes(q)
           )
         : allBanks
     );
@@ -71,12 +71,12 @@ const BankAccountListPage: React.FC = () => {
 
   const handleDelete = async (bank: BankAccount) => {
     const result = await showAlert.confirm(
-      `Are you sure you want to delete "${bank.name}"?`,
+      `Are you sure you want to delete "${bank.b_name}"?`,
       'Delete Bank Account?'
     );
     if (!result.isConfirmed) return;
     try {
-      await deleteBankAccount(String(bank.id));
+      await deleteBankAccount(String(bank.b_id));
       toast.success('Bank Account Deleted Successfully', { autoClose: 1000 });
       fetchBanks();
     } catch (e: any) {
@@ -89,15 +89,15 @@ const BankAccountListPage: React.FC = () => {
     if (filtered.length === 0) { toast.info('No data to Export'); return; }
     const headers = ['ID', 'Company Name', 'Bank Name', 'Account Holder Name', 'Account Number', 'Branch Name', 'IFSC Code', 'Status', 'Created At'];
     const rows    = filtered.map((b) => [
-      b.id,
+      b.b_id,
       `"${b.company ?? ''}"`,
-      `"${b.name}"`,
-      `"${b.account_holder_name ?? ''}"`,
-      b.account_number,
-      `"${b.branch_name}"`,
-      b.ifsc_code,
-      b.is_active ? 'Active' : 'Inactive',
-      formatDate(b.created_at),
+      `"${b.b_name}"`,
+      `"${b.b_account_holder_name ?? ''}"`,
+      b.b_account_number,
+      `"${b.b_branch_name}"`,
+      b.b_ifsc_code,
+      b.b_is_active ? 'Active' : 'Inactive',
+      formatDate(b.b_created_at),
     ]);
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
@@ -212,19 +212,19 @@ const BankAccountListPage: React.FC = () => {
                 pageRows.map((bank, idx) => {
                   const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
                   return (
-                    <tr key={bank.id}
+                    <tr key={bank.b_id}
                       style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`, transition: 'background 0.15s' }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{bank.id}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{bank.b_id}</td>
                       <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.company ?? '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500, whiteSpace: 'nowrap' }}>{bank.name}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.account_holder_name ?? '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.account_number}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.branch_name}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.ifsc_code}</td>
-                      <td style={{ padding: '12px 16px' }}>{statusBadge(bank.is_active)}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(bank.created_at)}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500, whiteSpace: 'nowrap' }}>{bank.b_name}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.b_account_holder_name ?? '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.b_account_number}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.b_branch_name}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.b_ifsc_code}</td>
+                      <td style={{ padding: '12px 16px' }}>{statusBadge(bank.b_is_active)}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(bank.b_created_at)}</td>
                       <td style={{
                         padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
                         position: 'sticky', right: 0, zIndex: 1,
@@ -233,8 +233,8 @@ const BankAccountListPage: React.FC = () => {
                         boxShadow: '-4px 0 8px rgba(0,0,0,0.06)',
                       }}>
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => navigate(`/admin/masters/bank-account/view/${bank.id}`)} title="View" style={iconBtn}><MdVisibility size={18} /></button>
-                          <button onClick={() => navigate(`/admin/masters/bank-account/edit/${bank.id}`)} title="Edit" style={iconBtn}><MdEdit size={18} /></button>
+                          <button onClick={() => navigate(`/admin/masters/bank-account/view/${bank.b_id}`)} title="View" style={iconBtn}><MdVisibility size={18} /></button>
+                          <button onClick={() => navigate(`/admin/masters/bank-account/edit/${bank.b_id}`)} title="Edit" style={iconBtn}><MdEdit size={18} /></button>
                           <button onClick={() => handleDelete(bank)} title="Delete" style={iconBtn}><MdDelete size={18} /></button>
                         </div>
                       </td>

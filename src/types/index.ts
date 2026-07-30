@@ -225,20 +225,21 @@ export interface UpdateRolePayload {
 }
 
 
-// Bank Account interfaces
+// Bank Account interfaces — raw aliased keys (b_*) from findBankList/findBankById,
+// same convention as Wing/Floor/Flat/Building list responses.
 export interface BankAccount {
-  id                  : string;
-  company_id          : string;
-  company             : string;
-  name                : string;
-  account_holder_name : string;
-  branch_name         : string;
-  ifsc_code           : string;
-  account_number      : string;
-  is_active           : boolean;
-  sort_order          : number;
-  created_at          : string;
-  updated_at          : string;
+  b_id                  : string;
+  b_company_id          : string;
+  company               : string;
+  b_name                : string;
+  b_account_holder_name : string;
+  b_branch_name         : string;
+  b_ifsc_code           : string;
+  b_account_number      : string;
+  b_is_active           : boolean;
+  b_sort_order          : number;
+  b_created_at          : string;
+  b_updated_at          : string;
 }
 
 export interface BankAccountListResponse {
