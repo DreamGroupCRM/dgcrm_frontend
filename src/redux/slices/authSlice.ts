@@ -4,7 +4,11 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { User, BaseRole, Permissions } from '../../types';
 import { STORAGE_KEYS } from '../../constants';
-import { loginThunk, logoutThunk } from '../thunks/authThunks';
+import { loginThunk, verifyOtpThunk, setNewPasswordThunk, logoutThunk } from '../thunks/authThunks';
+
+// Login is up to 3 steps: password -> emailed OTP -> (first login only) set a
+// new password. 'credentials' is also the at-rest state once fully logged in.
+type LoginStep = 'credentials' | 'otp' | 'newPassword';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -14,6 +18,9 @@ interface AuthState {
   permissions: Permissions | null;
   loading: boolean;
   error: string | null;
+  loginStep: LoginStep;
+  otpToken: string | null;
+  resetToken: string | null;
 }
 
 // Rehydrate auth state from localStorage so a page refresh keeps the user logged in
@@ -30,6 +37,9 @@ const initialState: AuthState = {
   permissions: storedPermissions ? JSON.parse(storedPermissions) : null,
   loading: false,
   error: null,
+  loginStep: 'credentials',
+  otpToken: null,
+  resetToken: null,
 };
 
 // Clears all auth-related data from localStorage in one place
@@ -50,14 +60,70 @@ const authSlice = createSlice({
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
     },
+    // "Back to login" — abandons the OTP/new-password step and starts over.
+    resetLoginFlow: (state) => {
+      state.loginStep = 'credentials';
+      state.otpToken = null;
+      state.resetToken = null;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
-    // ── Login ──
+    // ── Step 1: password -> OTP emailed ──
     builder.addCase(loginThunk.pending, (state) => {
       state.loading = true;
       state.error = null;
     });
     builder.addCase(loginThunk.fulfilled, (state, action) => {
+      state.loading = false;
+      state.otpToken = action.payload.otpToken;
+      state.loginStep = 'otp';
+    });
+    builder.addCase(loginThunk.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload as string;
+    });
+
+    // ── Step 2: OTP -> session, or a first-login reset requirement ──
+    builder.addCase(verifyOtpThunk.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(verifyOtpThunk.fulfilled, (state, action) => {
+      state.loading = false;
+      const response = action.payload;
+      if ('mustChangePassword' in response) {
+        state.resetToken = response.resetToken;
+        state.otpToken = null;
+        state.loginStep = 'newPassword';
+        return;
+      }
+      const { token, user, permissions } = response;
+      state.isAuthenticated = true;
+      state.user = user;
+      state.token = token;
+      state.role = user.base_role;
+      state.permissions = permissions;
+      state.loginStep = 'credentials';
+      state.otpToken = null;
+      state.resetToken = null;
+
+      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+      localStorage.setItem(STORAGE_KEYS.ROLE, user.base_role);
+      localStorage.setItem(STORAGE_KEYS.PERMISSIONS, JSON.stringify(permissions));
+    });
+    builder.addCase(verifyOtpThunk.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload as string;
+    });
+
+    // ── Step 3 (first login only): set new password -> session ──
+    builder.addCase(setNewPasswordThunk.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(setNewPasswordThunk.fulfilled, (state, action) => {
       const { token, user, permissions } = action.payload;
       state.loading = false;
       state.isAuthenticated = true;
@@ -65,14 +131,16 @@ const authSlice = createSlice({
       state.token = token;
       state.role = user.base_role;
       state.permissions = permissions;
+      state.loginStep = 'credentials';
+      state.otpToken = null;
+      state.resetToken = null;
 
-      // Persist only what is needed to restore the session on refresh
       localStorage.setItem(STORAGE_KEYS.TOKEN, token);
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
       localStorage.setItem(STORAGE_KEYS.ROLE, user.base_role);
       localStorage.setItem(STORAGE_KEYS.PERMISSIONS, JSON.stringify(permissions));
     });
-    builder.addCase(loginThunk.rejected, (state, action) => {
+    builder.addCase(setNewPasswordThunk.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload as string;
     });
@@ -88,6 +156,9 @@ const authSlice = createSlice({
       state.permissions = null;
       state.loading = false;
       state.error = null;
+      state.loginStep = 'credentials';
+      state.otpToken = null;
+      state.resetToken = null;
       clearAuthStorage();
     });
     builder.addCase(logoutThunk.rejected, (state) => {
@@ -98,10 +169,13 @@ const authSlice = createSlice({
       state.permissions = null;
       state.loading = false;
       state.error = null;
+      state.loginStep = 'credentials';
+      state.otpToken = null;
+      state.resetToken = null;
       clearAuthStorage();
     });
   },
 });
 
-export const { clearError, setUser } = authSlice.actions;
+export const { clearError, setUser, resetLoginFlow } = authSlice.actions;
 export default authSlice.reducer;

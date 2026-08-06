@@ -29,11 +29,18 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Public auth-flow endpoints never carry a session token to begin with, so a
+// 401 from them (wrong password, wrong/expired OTP) means "try again" — not
+// "your session expired". Redirecting to /login on those would hard-reload
+// the page mid-flow and wipe the error message before the user ever sees it.
+const AUTH_FLOW_PATHS = ['/auth/login', '/auth/verify-otp', '/auth/set-new-password'];
+
 // Response interceptor — handle 401
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthFlowRequest = AUTH_FLOW_PATHS.some((p) => error.config?.url?.includes(p));
+    if (error.response?.status === 401 && !isAuthFlowRequest) {
       // Token expired/invalid — clear the session and send the user back to login
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
       localStorage.removeItem(STORAGE_KEYS.USER);
