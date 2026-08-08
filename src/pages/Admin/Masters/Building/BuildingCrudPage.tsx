@@ -67,16 +67,6 @@ interface Props { mode: Mode; }
 const FLAT_TYPES = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Studio', 'Other'];
 const WING_COLORS = ['#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#db2777'];
 
-// NOTE: the existing flat table used a free-form number input for Area
-// (there was no predefined "existing options" list for it). The new bulk
-// Series configurator asks for a dropdown, so this list of common flat
-// sizes (sq ft) was added specifically for that dropdown. It does not
-// change the original per-flat Area field, which stays a free number input.
-const FLAT_AREA_OPTIONS = [
-  '450', '550', '650', '750', '850', '950', '1050', '1150',
-  '1250', '1350', '1500', '1750', '2000', '2500', '3000',
-];
-
 /** Finds the highest numeric suffix already used for a given id prefix, e.g.
  *  maxNumericSuffix(['wing_001','wing_002'], 'wing_') === 2 — so the next id is wing_003. */
 const maxNumericSuffix = (ids: string[], prefix: string): number =>
@@ -349,10 +339,10 @@ const SeriesConfigCard: React.FC<{
   onApply: () => void;
   onCancel: () => void;
 }> = ({ t, seriesNumber, draft, onChangeDraft, onApply, onCancel }) => {
-  const selectStyle: React.CSSProperties = {
+  const fieldStyleLocal: React.CSSProperties = {
     width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`,
     borderRadius: 8, padding: '7px 10px', fontSize: 13, color: t.inputText,
-    outline: 'none', fontFamily: t.fontFamily, cursor: 'pointer',
+    outline: 'none', fontFamily: t.fontFamily,
   };
   return (
     <div
@@ -369,7 +359,7 @@ const SeriesConfigCard: React.FC<{
       <select
         value={draft.flat_type}
         onChange={(e) => onChangeDraft({ flat_type: e.target.value })}
-        style={{ ...selectStyle, marginBottom: 8 }}
+        style={{ ...fieldStyleLocal, marginBottom: 8, cursor: 'pointer' }}
       >
         <option value="">Select</option>
         {FLAT_TYPES.map((ft) => <option key={ft} value={ft}>{ft}</option>)}
@@ -378,14 +368,14 @@ const SeriesConfigCard: React.FC<{
       <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: t.textSecondary, marginBottom: 4 }}>
         Flat Area (Sq Ft)
       </label>
-      <select
+      {/* Manually entered — no hardcoded preset list. */}
+      <input
+        type="number"
         value={draft.area_sqft}
+        placeholder="Enter area of flat"
         onChange={(e) => onChangeDraft({ area_sqft: e.target.value })}
-        style={{ ...selectStyle, marginBottom: 10 }}
-      >
-        <option value="">Select</option>
-        {FLAT_AREA_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
-      </select>
+        style={{ ...fieldStyleLocal, marginBottom: 10 }}
+      />
 
       <div className="flex items-center gap-2">
         <button
@@ -426,7 +416,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   const [projectName, setProjectName] = useState('');
   const [location, setLocationVal] = useState('');
   const [buildingName, setBuildingName] = useState('');
-  const [wings, setWings] = useState<WingRow[]>(() => (mode === 'add' ? [makeWing(simpleId('wing', 1))] : []));
+  const [wings, setWings] = useState<WingRow[]>([]);
   const [activeWingId, setActiveWingId] = useState<string>('');
   const [isActive, setIsActive] = useState(true);
 
@@ -1281,71 +1271,71 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 No shops yet — enter a count above and click &quot;Generate Shops&quot;.
               </p>
             ) : (
-              /* Compact cards laid out next to each other (flex-wrap), with
-                 Shop Number / Shop Area / Status stacked inside each card —
-                 far less horizontal space than a table, and naturally
-                 responsive (cards wrap to fewer per row on small screens).
-                 Booking a shop (toggling it to "Booked") disables & greys
-                 out its entire card, mirroring how a disabled flat row
-                 behaves in Step 4. */
-              <div className="flex flex-wrap gap-3">
+              /* Compact cards laid out next to each other (flex-wrap), sized
+                 to fit their content rather than a wide fixed box — Shop
+                 Number / Shop Area / Status stacked vertically, with the
+                 toggle centered under its own label. Booking a shop
+                 (toggling it to "Booked") disables & greys out its entire
+                 card, mirroring how a disabled flat row behaves in Step 4. */
+              <div className="flex flex-wrap gap-2.5">
                 {shops.map((shop) => {
                   const rowDisabled = !shop.is_active;
                   const fieldsDisabled = isView || rowDisabled;
                   const shopFieldStyle: React.CSSProperties = {
                     width: '100%',
                     background: fieldsDisabled ? (isDark ? '#2a2a2a' : '#e5e7eb') : t.inputBg,
-                    border: `1px solid ${t.inputBorder}`, borderRadius: 8, padding: '7px 10px',
-                    fontSize: 13.5, color: fieldsDisabled ? t.textSecondary : t.inputText,
+                    border: `1px solid ${t.inputBorder}`, borderRadius: 7, padding: '5px 8px',
+                    fontSize: 12.5, color: fieldsDisabled ? t.textSecondary : t.inputText,
                     outline: 'none', fontFamily: t.fontFamily,
                     cursor: fieldsDisabled ? 'not-allowed' : 'text',
+                  };
+                  const shopLabelStyle: React.CSSProperties = {
+                    display: 'block', fontSize: 10.5, fontWeight: 600, color: t.textSecondary, marginBottom: 3,
                   };
                   return (
                     <div
                       key={shop.id}
-                      className="w-full sm:w-[190px]"
                       style={{
-                        border: `1px solid ${t.surfaceBorder}`, borderRadius: 12, padding: 14,
+                        width: 132,
+                        border: `1px solid ${t.surfaceBorder}`, borderRadius: 10, padding: '10px 10px',
                         background: rowDisabled ? (isDark ? '#1c1c1c' : '#e5e7eb') : t.subtleBg,
                         opacity: rowDisabled ? 0.6 : 1,
                         filter: rowDisabled ? 'grayscale(70%)' : 'none',
                         transition: 'opacity 0.15s ease, filter 0.15s ease',
                       }}
                     >
-                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: t.textSecondary, marginBottom: 4 }}>
-                        Shop Number
-                      </label>
+                      <label style={shopLabelStyle}>Shop Number</label>
                       <input
                         type="text" value={shop.shop_no}
                         readOnly={fieldsDisabled} disabled={fieldsDisabled}
                         onChange={(e) => updateShop(shop.id, { shop_no: e.target.value })}
-                        style={{ ...shopFieldStyle, marginBottom: 10 }}
+                        style={{ ...shopFieldStyle, marginBottom: 7 }}
                       />
 
-                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: t.textSecondary, marginBottom: 4 }}>
-                        Shop Area (Sq Ft)
-                      </label>
+                      <label style={shopLabelStyle}>Shop Area (Sq Ft)</label>
                       <input
                         type="number" value={shop.area_sqft}
                         readOnly={fieldsDisabled} disabled={fieldsDisabled}
                         onChange={(e) => updateShop(shop.id, { area_sqft: e.target.value })}
-                        style={{ ...shopFieldStyle, marginBottom: 10 }}
+                        style={{ ...shopFieldStyle, marginBottom: 8 }}
                       />
 
-                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: t.textSecondary, marginBottom: 4 }}>
-                        Status
-                      </label>
-                      {/* The toggle itself always stays clickable (unless the
-                          whole page is read-only) so a booked shop can be
-                          freed up again — same rule as the flat rows. */}
-                      <StatusToggle
-                        checked={shop.is_active}
-                        disabled={isView}
-                        onLabel="Available"
-                        offLabel="Booked"
-                        showLabel
-                        onChange={(v) => updateShop(shop.id, { is_active: v })}
-                      />
+                      <label style={{ ...shopLabelStyle, textAlign: 'center' }}>Status</label>
+                      {/* The toggle itself always stays clickable (unless
+                          the whole page is read-only) so a booked shop can
+                          be freed up again — same rule as the flat rows.
+                          Centered under its label, taking no more width
+                          than the toggle + text itself needs. */}
+                      <div className="flex justify-center">
+                        <StatusToggle
+                          checked={shop.is_active}
+                          disabled={isView}
+                          onLabel="Available"
+                          offLabel="Booked"
+                          showLabel
+                          onChange={(v) => updateShop(shop.id, { is_active: v })}
+                        />
+                      </div>
                     </div>
                   );
                 })}
@@ -1389,12 +1379,12 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       </SectionCard>
 
       {/* ── Action Buttons ───────────────────────────────────────────────── */}
-      <div className="flex justify-end items-center gap-3 mt-2">
+      <div className="flex justify-center items-center gap-3 mt-2">
         <button
           onClick={() => navigate('/admin/masters/building')}
           disabled={saving}
-          className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold"
-          style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}
+          className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold"
+          style={{ background: isDark ? '#374151' : '#e5e7eb', color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}
         >
           <MdArrowBack size={16} /> Go Back
         </button>
