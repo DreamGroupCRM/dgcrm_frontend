@@ -412,12 +412,24 @@ export interface BuildingWing {
   floors           : BuildingFloor[];
 }
 
+// A shop unit on the building's ground/commercial level, independent of
+// the wing/floor/flat hierarchy above.
+export interface BuildingShop {
+  id       : string;
+  shop_no  : string;
+  area_sqft: number | null;
+  is_active: boolean;           // true = Available, false = Booked
+}
+
 export interface Building {
   id           : string;
   project_name : string;
   location     : string;
   building_name: string;
   wings        : BuildingWing[];
+  has_shops?   : boolean;
+  shops?       : BuildingShop[];
+  has_parking? : boolean;
   is_active    : boolean;
   created_at   : string;
   updated_at?  : string;
@@ -448,6 +460,9 @@ export interface CreateBuildingPayload {
   location     : string;
   building_name: string;
   wings        : BuildingWing[];
+  has_shops    : boolean;
+  shops        : BuildingShop[];
+  has_parking  : boolean;
   is_active    : boolean;
 }
 
