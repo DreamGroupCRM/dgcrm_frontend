@@ -53,13 +53,47 @@ export interface LoginCredentials {
   password: string;
 }
 
-// POST /api/auth/login response — success/token/user/permissions are top-level
-export interface LoginResponse {
+// POST /api/auth/login (step 1 of 2) response — email+password are verified,
+// but no session is issued yet. An OTP was emailed (or logged server-side in
+// local dev without SMTP configured); otpToken must be sent back with the
+// code to POST /api/auth/verify-otp.
+export interface LoginOtpResponse {
+  success: boolean;
+  otpRequired: true;
+  otpToken: string;
+  message?: string;
+}
+
+export interface VerifyOtpCredentials {
+  otpToken: string;
+  otp: string;
+}
+
+// A real, usable session — either from verify-otp directly, or from
+// set-new-password after a forced first-login password reset.
+export interface SessionResponse {
   success: boolean;
   message?: string;
   token: string;
   user: User;
   permissions: Permissions;
+}
+
+// POST /api/auth/verify-otp (step 2) response — either a full session
+// (normal case), or, for a first-time login, a resetToken that only
+// POST /api/auth/set-new-password can use.
+export interface MustChangePasswordResponse {
+  success: boolean;
+  mustChangePassword: true;
+  resetToken: string;
+  message?: string;
+}
+
+export type VerifyOtpResponse = SessionResponse | MustChangePasswordResponse;
+
+export interface SetNewPasswordCredentials {
+  resetToken: string;
+  new_password: string;
 }
 
 // POST /api/auth/logout response
