@@ -15,6 +15,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks';
 import { loginThunk, verifyOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
 import { clearError, resetLoginFlow } from '../../redux/slices/authSlice';
 import { ROUTES } from '../../constants';
+import { isAdminRole } from '../../types';
 import { showAlert } from '../../utils';
 import Logo from '../../components/ui/Logo';
 
@@ -133,7 +134,7 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated && role) {
       navigate(
-        role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
+        isAdminRole(role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
         { replace: true }
       );
     }
@@ -220,7 +221,7 @@ const LoginPage: React.FC = () => {
       if (verifyOtpThunk.fulfilled.match(result) && 'token' in result.payload) {
         await showAlert.loginSuccess(result.payload.user.base_role);
         navigate(
-          result.payload.user.base_role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
+          isAdminRole(result.payload.user.base_role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
           { replace: true }
         );
       }
@@ -245,7 +246,7 @@ const LoginPage: React.FC = () => {
       if (setNewPasswordThunk.fulfilled.match(result)) {
         await showAlert.loginSuccess(result.payload.user.base_role);
         navigate(
-          result.payload.user.base_role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
+          isAdminRole(result.payload.user.base_role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
           { replace: true }
         );
       }

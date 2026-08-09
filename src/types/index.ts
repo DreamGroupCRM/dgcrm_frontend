@@ -2,8 +2,18 @@
 // DREAM GROUP CRM - TYPE DEFINITIONS
 // ==========================================
 
-// The backend sends the role as lowercase: "admin" | "employee"
-export type BaseRole = 'admin' | 'employee';
+// The backend sends the role as lowercase. 'manager' exists in the backend's
+// seed data but the frontend has never had a distinct view for it — it's
+// left out of this union deliberately, same as before, so it keeps landing
+// on the employee view rather than silently gaining admin access.
+export type BaseRole = 'superadmin' | 'admin' | 'employee';
+
+// superadmin is a strict superset of admin (see backend's role.ts middleware
+// comment) — anywhere the app decides "does this user get the admin view",
+// both roles should pass. Anywhere it decides "does this user get the
+// SuperAdmin-only screens" (Role Master, Action & Module, Module Mapping),
+// check `role === 'superadmin'` directly instead.
+export const isAdminRole = (role: BaseRole | null): boolean => role === 'admin' || role === 'superadmin';
 
 // Detailed role record (comes nested inside user.role from the login API)
 export interface RoleInfo {

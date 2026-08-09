@@ -11,7 +11,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../hooks';
-import { BaseRole } from '../types';
+import { BaseRole, isAdminRole } from '../types';
 import { ROUTES } from '../constants';
 
 interface ProtectedRouteProps {
@@ -32,7 +32,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     return (
       <Navigate
-        to={role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD}
+        to={isAdminRole(role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD}
         replace
       />
     );
