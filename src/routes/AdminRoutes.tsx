@@ -12,9 +12,6 @@ const CompanyCrudPage = lazy(() => import('../pages/Admin/Masters/Company/Compan
 import DepartmentListPage from '@/pages/Admin/Masters/Department/DepartmentListPage';
 import DepartmentCrudPage from '@/pages/Admin/Masters/Department/DepartmentCrudPage';
 
-import DesignationListPage from '../pages/Admin/Masters/Designation/DesignationListPage';
-import DesignationCrudPage from '../pages/Admin/Masters/Designation/DesignationCrudPage';
-
 import RoleListPage from '../pages/Admin/Masters/Roles/RoleListPage'
 import RoleCrudPage from '../pages/Admin/Masters/Roles/RoleCrudPage';
 
@@ -48,11 +45,6 @@ const AdminRoutes: React.FC = () => (
       <Route path="masters/department/add" element={<DepartmentCrudPage mode="add" />} />
       <Route path="masters/department/view/:id" element={<DepartmentCrudPage mode="view" />} />
       <Route path="masters/department/edit/:id" element={<DepartmentCrudPage mode="edit" />} />
-
-      <Route path="masters/designation" element={<DesignationListPage />} />
-      <Route path="masters/designation/add" element={<DesignationCrudPage mode="add" />} />
-      <Route path="masters/designation/view/:id" element={<DesignationCrudPage mode="view" />} />
-      <Route path="masters/designation/edit/:id" element={<DesignationCrudPage mode="edit" />} />
 
       {/* SuperAdmin-only — see Sidebar.tsx / backend's requireSuperAdmin */}
       <Route path="masters/roles" element={<ProtectedRoute allowedRoles={['superadmin']}><RoleListPage /></ProtectedRoute>} />
