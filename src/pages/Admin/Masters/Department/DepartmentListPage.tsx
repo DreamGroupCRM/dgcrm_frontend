@@ -261,7 +261,7 @@ const DepartmentListPage: React.FC = () => {
             </div>
 
             {/* Filter — Status */}
-            <div style={{ position: 'relative' }}>
+            {/* <div style={{ position: 'relative' }}>
               <button
                 type="button"
                 onClick={() => setFilterOpen((v) => !v)}
@@ -298,7 +298,7 @@ const DepartmentListPage: React.FC = () => {
                   ))}
                 </div>
               )}
-            </div>
+            </div> */}
 
             {/* Export */}
             <button
