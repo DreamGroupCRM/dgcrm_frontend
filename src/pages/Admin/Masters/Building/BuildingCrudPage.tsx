@@ -437,6 +437,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
 
   // ── New: Parking (Step 6) ───────────────────────────────────────────────
   const [hasParking, setHasParking] = useState<boolean | null>(mode === 'add' ? null : false);
+  const [parkingCountInput, setParkingCountInput] = useState('');
 
   // Refs so a newly-added wing's name input gets focus automatically
   const wingInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
@@ -497,6 +498,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           setShops(loadedShops);
           setShopCountInput(loadedShops.length ? String(loadedShops.length) : '');
           setHasParking(b.has_parking ?? false);
+          setParkingCountInput(b.parking_count != null ? String(b.parking_count) : '');
         } else {
           toast.error('Failed to load building');
           navigate('/admin/masters/building');
@@ -728,7 +730,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
 
   // ── validation ────────────────────────────────────────────────────────
   const shopsSectionValid = hasShops !== null && (!hasShops || shops.length > 0);
-  const parkingSectionValid = hasParking !== null;
+  const parkingCountValid = parkingCountInput.trim() !== '' && /^\d+$/.test(parkingCountInput.trim()) && parseInt(parkingCountInput, 10) > 0;
+  const parkingSectionValid = hasParking !== null && (!hasParking || parkingCountValid);
 
   const isFormValid =
     projectName.trim() !== '' &&
@@ -752,6 +755,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         toast.error('Please enter the number of shops and click Generate Shops.');
       } else if (hasParking === null) {
         toast.error('Please select whether this building has parking.');
+      } else if (hasParking && !parkingCountValid) {
+        toast.error('Please enter a valid number of parking spaces.');
       } else {
         toast.error('Please fill all mandatory fields.');
       }
@@ -792,6 +797,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             }))
           : [],
         has_parking: hasParking === true,
+        parking_count: hasParking ? parseInt(parkingCountInput, 10) : null,
       };
 
       const res = isEdit
@@ -1370,16 +1376,51 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
               <input
                 type="radio" name="has_parking" checked={hasParking === false} disabled={isView}
-                onChange={() => { setHasParking(false); markDirty(); }}
+                onChange={() => { setHasParking(false); setParkingCountInput(''); markDirty(); }}
               />
               No
             </label>
           </div>
         </div>
+
+        {hasParking && (
+          <div className="mt-5" style={{ borderTop: `1px solid ${t.divider}`, paddingTop: 16 }}>
+            <div className="flex flex-wrap items-center gap-3">
+              <span style={{ fontWeight: 600, fontSize: 13.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                How many parking spaces are there in this building? <span style={{ color: '#ef4444' }}>*</span>
+              </span>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                placeholder="e.g. 20"
+                value={parkingCountInput}
+                readOnly={isView}
+                disabled={isView}
+                // Numeric-only: strip anything that isn't a digit as the
+                // user types, so the field can never hold letters/symbols.
+                onChange={(e) => {
+                  const digitsOnly = e.target.value.replace(/[^\d]/g, '');
+                  setParkingCountInput(digitsOnly);
+                  markDirty();
+                }}
+                style={{ ...fieldStyle, width: 140 }}
+              />
+            </div>
+          </div>
+        )}
       </SectionCard>
 
       {/* ── Action Buttons ───────────────────────────────────────────────── */}
-      <div className="flex justify-center items-center gap-3 mt-2">
+      {/* Sticky footer bar — stays pinned to the bottom of the viewport
+          while scrolling through the form, with both buttons centered
+          inside it (rather than just centered at the end of the page
+          content, which could sit anywhere depending on scroll position). */}
+      <div
+        className="sticky bottom-0 left-0 right-0 flex justify-center items-center gap-3 mt-4 py-4 z-10"
+        style={{ background: t.surfaceBg, borderTop: `1px solid ${t.surfaceBorder}` }}
+      >
         <button
           onClick={() => navigate('/admin/masters/building')}
           disabled={saving}

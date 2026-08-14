@@ -14,6 +14,7 @@ import axiosInstance from './axiosConfig';
 import {
   Building,
   BuildingListResponse,
+  BuildingListSummary,
   BuildingSingleResponse,
   BuildingDeleteResponse,
   BuildingWing,
@@ -28,7 +29,7 @@ interface WizardFloor { id: number; floorName: string; flats: WizardFlat[]; }
 interface WizardWing { id: number; wingName: string; withGroundFloor: boolean; numberOfFloors: number | null; floors: WizardFloor[]; }
 interface WizardShop { id: number; shopNo: string; shopArea: number | null; enabled: boolean; }
 interface WizardBuilding {
-  id: number; name: string; code: string | null; has_parking: boolean;
+  id: number; name: string; code: string | null; has_parking: boolean; parkingCount: number | null;
   is_active: boolean; sort_order: number; created_at: string; updated_at?: string;
   project: { projectName: string; location: string | null } | null;
 }
@@ -47,10 +48,20 @@ interface WizardFullResponse {
 // keys seen from auth's raw queries.
 interface BuildingListRow {
   b_id: number; b_name: string; b_code: string | null; b_address: string | null;
-  b_has_parking: boolean; b_is_active: boolean; b_sort_order: number;
+  b_has_parking: boolean; b_parking_count: number | null; b_is_active: boolean; b_sort_order: number;
   b_created_at: string; b_updated_at: string;
   project: string | null;
   wing_count: number; floor_count: number; flat_count: number;
+  // NEW — needed for the Building List page's summary cards. Same
+  // aggregation convention as wing_count/floor_count/flat_count above
+  // (an .addSelect(subquery, 'alias') per building), so the backend query
+  // needs three more of those: how many of this building's flats are
+  // enabled vs disabled, and how many shops it has. Optional here so this
+  // still degrades gracefully (summary cards show 0, nothing crashes) if
+  // the backend hasn't added these columns yet.
+  enabled_flat_count?: number;
+  disabled_flat_count?: number;
+  shop_count?: number;
 }
 
 // Client-generated ids (see BuildingCrudPage's simpleId helper) look like
@@ -93,6 +104,7 @@ function fromWizardResponse(data: WizardFullResponse): Building {
       is_active: s.enabled,
     })),
     has_parking: !!b.has_parking,
+    parking_count: b.parkingCount ?? null,
     is_active: b.is_active,
     created_at: b.created_at,
     updated_at: b.updated_at,
@@ -126,6 +138,7 @@ function fromListRow(row: BuildingListRow): Building {
     has_shops: undefined,
     shops: undefined,
     has_parking: !!row.b_has_parking,
+    parking_count: row.b_parking_count ?? null,
     is_active: row.b_is_active,
     created_at: row.b_created_at,
     updated_at: row.b_updated_at,
@@ -143,6 +156,7 @@ function toWizardPayload(payload: CreateBuildingPayload) {
       buildingName: payload.building_name.trim(),
       buildingCode: null,
       hasParking: payload.has_parking,
+      parkingCount: payload.has_parking ? payload.parking_count : null,
     },
     wings: payload.wings.map((w) => ({
       id: toServerId(w.id),
@@ -189,13 +203,33 @@ export const fetchBuildingList = async (
   }
   const res = await axiosInstance.get('/buildings', { params });
   console.log('[buildingService] fetchBuildingList response:', res.data);
+
+  const rawRows = (res.data.rows as BuildingListRow[]) || [];
+
+  // Summary cards roll up counts across whatever rows this call returned.
+  // BuildingListPage calls this with limit=1000 to get "all" buildings for
+  // its client-side search/pagination, so in practice this covers every
+  // building — same pre-existing assumption the rest of this page already
+  // makes. `total_buildings` uses the server's own `total` instead of
+  // rows.length so it stays correct even past that cap.
+  const summary: BuildingListSummary = {
+    total_projects : new Set(rawRows.map((r) => r.project).filter((p): p is string => !!p)).size,
+    total_buildings: res.data.total ?? rawRows.length,
+    total_wings    : rawRows.reduce((sum, r) => sum + (r.wing_count || 0), 0),
+    total_flats    : rawRows.reduce((sum, r) => sum + (r.flat_count || 0), 0),
+    enabled_flats  : rawRows.reduce((sum, r) => sum + (r.enabled_flat_count || 0), 0),
+    disabled_flats : rawRows.reduce((sum, r) => sum + (r.disabled_flat_count || 0), 0),
+    total_shops    : rawRows.reduce((sum, r) => sum + (r.shop_count || 0), 0),
+  };
+
   return {
     success: res.data.success,
     message: res.data.message,
-    rows: (res.data.rows as BuildingListRow[]).map(fromListRow),
+    rows: rawRows.map(fromListRow),
     total: res.data.total,
     page: res.data.page,
     limit: res.data.limit,
+    summary,
   };
 };
 

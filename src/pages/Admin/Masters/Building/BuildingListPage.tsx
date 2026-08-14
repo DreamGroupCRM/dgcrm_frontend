@@ -6,12 +6,13 @@ import { toast } from 'react-toastify';
 import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh,
   MdSearch, MdVisibility, MdApartment,
+  MdBusiness, MdLayers, MdHome, MdCheckCircle, MdCancel, MdStorefront,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
 import { fetchBuildingList, deleteBuilding } from '../../../../services/buildingService';
-import { Building } from '../../../../types/index';
+import { Building, BuildingListSummary } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
@@ -38,6 +39,7 @@ const BuildingListPage: React.FC = () => {
 
   const [allBuildings, setAllBuildings] = useState<Building[]>([]);
   const [filtered, setFiltered]         = useState<Building[]>([]);
+  const [summary, setSummary]           = useState<BuildingListSummary | null>(null);
   const [search, setSearch]             = useState('');
   const [loading, setLoading]           = useState(false);
   const [page, setPage]                 = useState(1);
@@ -52,6 +54,7 @@ const BuildingListPage: React.FC = () => {
       const res = await fetchBuildingList(1, 1000);
       if (res.success) {
         setAllBuildings(res.rows ?? []);
+        setSummary(res.summary ?? null);
       } else {
         toast.error('Failed to Fetch Buildings');
       }
@@ -65,16 +68,13 @@ const BuildingListPage: React.FC = () => {
   useEffect(() => { fetchBuildings(); }, [fetchBuildings]);
 
   // ── instant client-side filter on every keypress — zero API calls ─────────
+  // Building Name only (per spec — no Project/Location matching, to keep
+  // this a single, predictable search field rather than a fuzzy multi-field one).
   useEffect(() => {
     const q = search.trim().toLowerCase();
     setFiltered(
       q
-        ? allBuildings.filter(
-            (b) =>
-              b.building_name?.toLowerCase().includes(q) ||
-              b.project_name?.toLowerCase().includes(q) ||
-              b.location?.toLowerCase().includes(q)
-          )
+        ? allBuildings.filter((b) => b.building_name?.toLowerCase().includes(q))
         : allBuildings
     );
     setPage(1);
@@ -176,10 +176,44 @@ const BuildingListPage: React.FC = () => {
   return (
     <div style={{ fontFamily: t.fontFamily }}>
 
+      {/* ── Summary cards — counts only, no percentages ─────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-4">
+        {[
+          { label: 'Total Projects',  value: summary?.total_projects  ?? 0, icon: MdBusiness,    color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)'  : '#eff6ff' },
+          { label: 'Total Buildings', value: summary?.total_buildings ?? allBuildings.length, icon: MdApartment,  color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
+          { label: 'Total Wings',     value: summary?.total_wings     ?? 0, icon: MdLayers,      color: '#0891b2', bg: isDark ? 'rgba(8,145,178,0.12)'  : '#ecfeff' },
+          { label: 'Total Flats',     value: summary?.total_flats     ?? 0, icon: MdHome,        color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)'  : '#fff7ed' },
+          { label: 'Enabled Flats',   value: summary?.enabled_flats   ?? 0, icon: MdCheckCircle, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)'  : '#f0fdf4' },
+          { label: 'Disabled Flats',  value: summary?.disabled_flats  ?? 0, icon: MdCancel,      color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)'  : '#fef2f2' },
+          { label: 'Total Shops',     value: summary?.total_shops     ?? 0, icon: MdStorefront,  color: '#db2777', bg: isDark ? 'rgba(219,39,119,0.12)' : '#fdf2f8' },
+        ].map((card) => (
+          <div
+            key={card.label}
+            className="flex items-center gap-2.5 px-3 py-3 rounded-xl"
+            style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
+          >
+            <div
+              className="flex items-center justify-center rounded-lg flex-shrink-0"
+              style={{ width: 36, height: 36, background: card.bg }}
+            >
+              <card.icon size={19} style={{ color: card.color }} />
+            </div>
+            <div className="min-w-0">
+              <div style={{ fontSize: 19, fontWeight: 800, color: t.textPrimary, lineHeight: 1.1 }}>
+                {loading ? '—' : card.value}
+              </div>
+              <div style={{ fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                {card.label}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* ── Top bar: Search | Add + Download + Refresh ─────────────────── */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
 
-        {/* Search — left */}
+        {/* Search — left, Building Name only per spec */}
         <div
           className="flex items-center gap-2 px-3 py-2 rounded-xl"
           style={{
@@ -191,7 +225,7 @@ const BuildingListPage: React.FC = () => {
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input
             type="text"
-            placeholder="Search by Building, Project or Location..."
+            placeholder="Search by Building Name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{

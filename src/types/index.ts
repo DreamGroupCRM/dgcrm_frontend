@@ -474,9 +474,21 @@ export interface Building {
   has_shops?   : boolean;
   shops?       : BuildingShop[];
   has_parking? : boolean;
+  parking_count?: number | null;
   is_active    : boolean;
   created_at   : string;
   updated_at?  : string;
+}
+
+// Aggregate counts for the Building List page's top summary cards.
+export interface BuildingListSummary {
+  total_projects : number;
+  total_buildings: number;
+  total_wings    : number;
+  total_flats    : number;
+  enabled_flats  : number;
+  disabled_flats : number;
+  total_shops    : number;
 }
 
 export interface BuildingListResponse {
@@ -486,6 +498,7 @@ export interface BuildingListResponse {
   total   : number;
   page    : number;
   limit   : number;
+  summary?: BuildingListSummary;
 }
 
 export interface BuildingSingleResponse {
@@ -507,6 +520,7 @@ export interface CreateBuildingPayload {
   has_shops    : boolean;
   shops        : BuildingShop[];
   has_parking  : boolean;
+  parking_count: number | null;
   is_active    : boolean;
 }
 
