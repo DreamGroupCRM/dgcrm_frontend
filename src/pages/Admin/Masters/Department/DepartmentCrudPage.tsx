@@ -1,407 +1,465 @@
-// src/pages/masters/DepartmentCrudPage.tsx
-
+// ==========================================
+// DREAM GROUP CRM - DEPARTMENT CRUD PAGE (Department + Designations)
+// ==========================================
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  Box,
-  Typography,
-  Button,
-  TextField,
-  Paper,
-  CircularProgress,
-  useTheme,
-  useMediaQuery,
-  Chip,
-  Divider,
-} from '@mui/material';
-import { FiArrowLeft, FiSave, FiEdit2 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import {
-  fetchDepartmentById,
-  createDepartment,
-  updateDepartment,
-} from '../../../../services/departmentService';
+  MdApartment, MdArrowBack, MdSave, MdAdd, MdDelete,
+} from 'react-icons/md';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Props
-// ─────────────────────────────────────────────────────────────────────────────
-interface Props {
-  mode: 'add' | 'edit' | 'view';
-}
+import { useAppSelector } from '../../../../hooks';
+import { getTheme } from '../../../../styles/theme';
+import { Designation, CreateDepartmentPayload } from '../../../../types/index';
+import { fetchDepartmentById, createDepartment, updateDepartment } from '../../../../services/dapartmentService';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Field — defined at MODULE LEVEL to prevent remount on every keystroke
-// ─────────────────────────────────────────────────────────────────────────────
-interface FieldProps {
-  label: string;
-  value: string;
-  onChange?: (v: string) => void;
-  onBlur?: () => void;
-  error?: string;
-  readOnly?: boolean;
-  isDark: boolean;
-  borderC: string;
-  textPrim: string;
-  textSec: string;
-}
+// ── local id helper for not-yet-saved designation rows ──────────────────────
+let localIdCounter = 0;
+const localId = () => `local_${Date.now()}_${localIdCounter++}`;
 
-const Field: React.FC<FieldProps> = ({
-  label,
-  value,
-  onChange,
-  onBlur,
-  error,
-  readOnly,
-  isDark,
-  borderC,
-  textPrim,
-  textSec,
-}) => (
-  <Box sx={{ mb: 3 }}>
-    <Typography
-      variant="body2"
-      sx={{
-        color: textPrim,
-        fontWeight: 600,
-        mb: 0.75,
-        fontSize: '0.82rem',
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
-      }}
-    >
-      {label}
-      {!readOnly && <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>}
-    </Typography>
+type Mode = 'add' | 'edit' | 'view';
+interface Props { mode: Mode; }
 
-    {readOnly ? (
-      <Box
-        sx={{
-          px: 2,
-          py: 1.5,
-          borderRadius: 2,
-          border: `1px solid ${borderC}`,
-          background: isDark ? '#0f172a' : '#f8faff',
-          color: textPrim,
-          fontSize: '0.95rem',
-          fontWeight: 500,
-          minHeight: 44,
-        }}
-      >
-        {value || '—'}
-      </Box>
-    ) : (
-      <TextField
-        fullWidth
-        size="small"
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-        onBlur={onBlur}
-        error={!!error}
-        helperText={error}
-        placeholder={`Enter ${label}`}
-        sx={{
-          '& .MuiOutlinedInput-root': {
-            background: isDark ? '#0f172a' : '#fff',
-            borderRadius: 2,
-            color: textPrim,
-            fontSize: '0.95rem',
-            '& fieldset': { borderColor: error ? '#ef4444' : borderC },
-            '&:hover fieldset': { borderColor: error ? '#ef4444' : '#3b82f6' },
-            '&.Mui-focused fieldset': { borderColor: error ? '#ef4444' : '#3b82f6' },
-          },
-          '& .MuiFormHelperText-root': {
-            color: '#ef4444',
-            fontSize: '0.78rem',
-            mt: 0.5,
-            ml: 0,
-          },
-          '& input': { color: textPrim },
-        }}
-      />
-    )}
-  </Box>
+// ── small shared bits, styled to match the rest of the Masters section ─────
+const StatusToggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }> = (
+  { checked, onChange, disabled }
+) => (
+  <button
+    type="button"
+    disabled={disabled}
+    onClick={() => !disabled && onChange(!checked)}
+    style={{
+      width: 40, height: 22, borderRadius: 999, border: 'none', padding: 2,
+      background: checked ? '#22c55e' : '#d1d5db',
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      display: 'flex', alignItems: 'center',
+      justifyContent: checked ? 'flex-end' : 'flex-start',
+      transition: 'background 0.15s', flexShrink: 0,
+    }}
+    title={checked ? 'Enabled' : 'Disabled'}
+  >
+    <span style={{
+      width: 18, height: 18, borderRadius: '50%', background: '#fff',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.3)', display: 'block',
+    }} />
+  </button>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main Component
-// ─────────────────────────────────────────────────────────────────────────────
+const StatusPill: React.FC<{ active: boolean }> = ({ active }) => (
+  <span
+    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+    style={{
+      background: active ? '#dcfce7' : '#f1f5f9',
+      color: active ? '#16a34a' : '#64748b',
+    }}
+  >
+    <span className="w-1.5 h-1.5 rounded-full bg-current" />
+    {active ? 'Enabled' : 'Disabled'}
+  </span>
+);
+
 const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const navigate = useNavigate();
+  const { mode: themeMode } = useAppSelector((s) => s.theme);
+  const isDark = themeMode === 'dark';
+  const t = getTheme(isDark);
 
-  const isDark = theme.palette.mode === 'dark';
-  const cardBg = isDark ? '#1e1e2e' : '#ffffff';
-  const headerBg = isDark ? '#16213e' : '#f0f4ff';
-  const borderC = isDark ? '#2a2a3e' : '#d1d5db';
-  const textPrim = isDark ? '#e2e8f0' : '#1e293b';
-  const textSec = isDark ? '#94a3b8' : '#64748b';
+  const isView = mode === 'view';
 
-  // ── state ─────────────────────────────────────────────────────────────
-  const [name, setName] = useState('');
-  const [nameError, setNameError] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [fetching, setFetching] = useState(false);
+  const [fetching, setFetching] = useState(mode !== 'add');
   const [saving, setSaving] = useState(false);
 
-  // ── fetch for view / edit ─────────────────────────────────────────────
+  const [departmentName, setDepartmentName] = useState('');
+  const [isActive, setIsActive] = useState(true);
+
+  // "Do you want to add designations for this department?" — a display
+  // toggle (defaults to Yes, matching the screenshot), not a mandatory
+  // validation choice; Step 2 is explicitly optional.
+  const [wantDesignations, setWantDesignations] = useState(true);
+
+  const [designations, setDesignations] = useState<Designation[]>([]);
+  const [newDesignationName, setNewDesignationName] = useState('');
+
+  // ── load for edit/view ───────────────────────────────────────────────────
   useEffect(() => {
-    if ((mode === 'view' || mode === 'edit') && id) {
-      loadDepartment();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (mode === 'add' || !id) return;
+    (async () => {
+      setFetching(true);
+      try {
+        const res = await fetchDepartmentById(id);
+        if (res.success && res.data) {
+          const d = res.data;
+          setDepartmentName(d.name || '');
+          setIsActive(d.is_active);
+          const loadedDesignations = d.designations || [];
+          setDesignations(loadedDesignations);
+          setWantDesignations(loadedDesignations.length > 0);
+        } else {
+          toast.error('Failed to load department details.');
+        }
+      } catch {
+        toast.error('Failed to load department details.');
+      } finally {
+        setFetching(false);
+      }
+    })();
   }, [mode, id]);
 
-  const loadDepartment = async () => {
-    setFetching(true);
-    try {
-      const res = await fetchDepartmentById(id!);
-      setName(res.data.name || '');
-      setIsActive(res.data.is_active ?? true);
-    } catch (err: any) {
-      console.error('[DepartmentCrudPage] loadDepartment error:', err);
-      toast.error(err?.response?.data?.message || 'Failed to Fetch Department');
-      navigate('/admin/masters/department');
-    } finally {
-      setFetching(false);
+  // ── designations: add / toggle / delete — all local until Save ─────────
+  const addDesignation = () => {
+    const name = newDesignationName.trim();
+    if (!name) {
+      toast.error('Enter a designation name first.');
+      return;
     }
+    if (designations.some((d) => d.name.toLowerCase() === name.toLowerCase())) {
+      toast.error('That designation already exists for this department.');
+      return;
+    }
+    setDesignations((prev) => [...prev, { id: localId(), name, is_active: true }]);
+    setNewDesignationName('');
+    toast.success('Designation added', { autoClose: 900 });
+  };
+
+  const toggleDesignation = (designationId: string | undefined, v: boolean) => {
+    setDesignations((prev) => prev.map((d) => (d.id === designationId ? { ...d, is_active: v } : d)));
+  };
+
+  // Deleting a designation is immediate and local — no confirmation dialog,
+  // no separate API call. It's just removed from the array that gets sent
+  // on Save, same as removing a not-yet-saved row in a Building floor.
+  const removeDesignation = (designationId: string | undefined) => {
+    setDesignations((prev) => prev.filter((d) => d.id !== designationId));
   };
 
   // ── validation ────────────────────────────────────────────────────────
-  const validateName = (): boolean => {
-    if (!name.trim()) {
-      setNameError('Please enter department name');
-      return false;
-    }
-    setNameError('');
-    return true;
-  };
+  const isFormValid = departmentName.trim() !== '';
 
-  const isFormValid = name.trim().length > 0;
+  // Purely cosmetic progress indicator at the top of the page.
+  const currentStep = !departmentName.trim() ? 1 : wantDesignations ? 2 : 3;
 
-  // ── submit ────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!validateName()) return;
+    if (!isFormValid) {
+      toast.error('Please enter a Department Name.');
+      return;
+    }
     setSaving(true);
     try {
-      if (mode === 'add') {
-        const res = await createDepartment({ name: name.trim(), is_active: true });
-        // toast.success(res.message || 'Department Created Successfully');
-        toast.success('Department Created Successfully', { autoClose: 1000 });
-      } else if (mode === 'edit') {
-        const res = await updateDepartment(id!, { name: name.trim(), is_active: isActive });
-        // toast.success(res.message || 'Department Updated Successfully');
-        toast.success('Department Updated Successfully', { autoClose: 1000 });
+      const payload: CreateDepartmentPayload = {
+        name: departmentName.trim(),
+        is_active: isActive,
+        designations: wantDesignations
+          ? designations.map((d) => ({
+              // Only send a real id (already-saved rows); a `local_...` id
+              // means this row was created in this session and should be
+              // treated as new by the backend.
+              ...(d.id && !d.id.startsWith('local_') ? { id: d.id } : {}),
+              name: d.name.trim(),
+              is_active: d.is_active,
+            }))
+          : [],
+      };
+
+      if (mode === 'edit' && id) {
+        await updateDepartment(id, payload);
+        toast.success('Department Updated Successfully');
+      } else {
+        await createDepartment(payload);
+        toast.success('Department Created Successfully');
       }
       navigate('/admin/masters/department');
-    } catch (err: any) {
-      console.error('[DepartmentCrudPage] handleSubmit error:', err);
-      toast.error(err?.response?.data?.message || 'Operation Failed');
+    } catch {
+      toast.error(mode === 'edit' ? 'Failed to update department.' : 'Failed to create department.');
     } finally {
       setSaving(false);
     }
   };
 
-  // ── page meta ─────────────────────────────────────────────────────────
-  const pageTitle =
-    mode === 'add' ? 'Add Department' :
-      mode === 'edit' ? 'Edit Department' :
-        'View Department';
+  // ── shared field styles ──────────────────────────────────────────────────
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontSize: 13.5, fontWeight: 600, color: t.textPrimary, marginBottom: 6,
+  };
+  const fieldStyle: React.CSSProperties = {
+    width: '100%', background: isView ? t.insetBg : t.inputBg,
+    border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '10px 14px',
+    fontSize: 14, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
+  };
 
-  const pageSubtitle =
-    mode === 'add' ? 'Fill in the details to create a new department' :
-      mode === 'edit' ? 'Update the department information' :
-        'Department details (read-only)';
+  const steps = [
+    { n: 1, label: 'Department Details' },
+    { n: 2, label: 'Add Designations (Optional)' },
+    { n: 3, label: 'Review & Save' },
+  ];
 
-  // ── loading state ─────────────────────────────────────────────────────
   if (fetching) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress sx={{ color: '#3b82f6' }} />
-      </Box>
+      <div className="flex items-center justify-center" style={{ minHeight: 300, color: t.textSecondary, fontFamily: t.fontFamily }}>
+        Loading department details...
+      </div>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, minHeight: '100vh' }}>
+    <div style={{ fontFamily: t.fontFamily }}>
 
-      {/* ── Page Header ───────────────────────────────────────────────── */}
-      <Box sx={{ mb: 3 }}>
-        <Typography
-          variant="h5"
-          fontWeight={700}
-          sx={{ color: textPrim, fontFamily: 'Cambria, Georgia, serif' }}
+      {/* ── Page header ───────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 mb-6">
+        <div
+          className="flex items-center justify-center rounded-xl flex-shrink-0"
+          style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}
         >
-          {pageTitle}
-        </Typography>
-        <Typography variant="body2" sx={{ color: textPrim, mt: 0.5 }}>
-          {pageSubtitle}
-        </Typography>
-      </Box>
+          <MdApartment size={22} style={{ color: '#4f46e5' }} />
+        </div>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>
+            {mode === 'add' ? 'Add Department' : mode === 'edit' ? 'Edit Department' : 'View Department'}
+          </h1>
+          <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>
+            Add Department and related Designations
+          </p>
+        </div>
+      </div>
 
-      {/* ── Card ──────────────────────────────────────────────────────── */}
-      <Paper
-        elevation={0}
-        sx={{
-          borderRadius: 3,
-          border: `1px solid ${borderC}`,
-          background: cardBg,
-          overflow: 'hidden',
-          maxWidth: 600,
-          mx: 'auto',
-        }}
+      {/* ── Stepper ───────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-center mb-6 px-2 overflow-x-auto">
+        {steps.map((s, i) => (
+          <React.Fragment key={s.n}>
+            <div className="flex flex-col items-center flex-shrink-0" style={{ minWidth: 90 }}>
+              <div
+                className="flex items-center justify-center rounded-full"
+                style={{
+                  width: 32, height: 32, fontSize: 13.5, fontWeight: 700,
+                  background: s.n <= currentStep ? '#4338ca' : 'transparent',
+                  color: s.n <= currentStep ? '#fff' : t.textSecondary,
+                  border: s.n <= currentStep ? 'none' : `1.5px solid ${t.surfaceBorder}`,
+                }}
+              >
+                {s.n}
+              </div>
+              <span
+                className="mt-1.5 text-center"
+                style={{ fontSize: 12, fontWeight: 600, color: s.n <= currentStep ? '#4338ca' : t.textSecondary, whiteSpace: 'nowrap' }}
+              >
+                {s.label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div style={{ width: 60, height: 2, background: s.n < currentStep ? '#4338ca' : t.surfaceBorder, flexShrink: 0, marginBottom: 18 }} />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* ── Step 1: Department Details ───────────────────────────────── */}
+      <div
+        className="rounded-2xl mb-5"
+        style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
       >
-        {/* Card Header */}
-        <Box
-          sx={{
-            px: { xs: 2, sm: 3 },
-            py: 2,
-            background: headerBg,
-            borderBottom: `1px solid ${borderC}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 1,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: 2,
-                background: 'linear-gradient(135deg,#3b82f6,#2563eb)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+        <div className="p-5 sm:p-6">
+          <div className="flex items-center gap-2.5 mb-4">
+            <span
+              className="flex items-center justify-center rounded-full text-white text-xs font-bold flex-shrink-0"
+              style={{ width: 24, height: 24, background: '#4338ca' }}
             >
-              <FiEdit2 size={16} color="#fff" />
-            </Box>
-            <Typography variant="subtitle1" fontWeight={700} sx={{ color: textPrim }}>
-              Department Information
-            </Typography>
-          </Box>
+              1
+            </span>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Department Details</h2>
+          </div>
 
-          {/* Status badge — only in view / edit */}
-          {mode !== 'add' && (
-            <Chip
-              label={isActive ? 'Active' : 'Inactive'}
-              size="small"
-              sx={{
-                fontWeight: 600,
-                fontSize: '0.72rem',
-                background: isActive
-                  ? isDark ? 'rgba(34,197,94,0.15)' : '#dcfce7'
-                  : isDark ? 'rgba(239,68,68,0.15)' : '#fee2e2',
-                color: isActive
-                  ? isDark ? '#4ade80' : '#16a34a'
-                  : isDark ? '#f87171' : '#dc2626',
-              }}
-            />
-          )}
-        </Box>
-
-        {/* Form Body */}
-        <Box sx={{ px: { xs: 2, sm: 3 }, pt: 3, pb: 2 }}>
-          <Field
-            label="Department Name"
-            value={name}
-            onChange={(v) => { setName(v); if (nameError) setNameError(''); }}
-            onBlur={validateName}
-            error={nameError}
-            readOnly={mode === 'view'}
-            isDark={isDark}
-            borderC={borderC}
-            textPrim={textPrim}
-            textSec={textSec}
+          <label style={labelStyle}>
+            Department Name <span style={{ color: '#ef4444' }}>*</span>
+          </label>
+          <input
+            type="text"
+            placeholder="Enter department name"
+            value={departmentName}
+            readOnly={isView}
+            disabled={isView}
+            onChange={(e) => setDepartmentName(e.target.value)}
+            style={{ ...fieldStyle, maxWidth: 480 }}
           />
-        </Box>
 
-        <Divider sx={{ borderColor: borderC }} />
+          <div
+            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-5 px-4 py-3 rounded-xl"
+            style={{ background: t.insetBg }}
+          >
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: t.textPrimary }}>
+              Do you want to add designations for this department?
+            </span>
+            <div className="flex items-center gap-5">
+              <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+                <input
+                  type="radio" name="want_designations" checked={wantDesignations === true} disabled={isView}
+                  onChange={() => setWantDesignations(true)}
+                />
+                Yes
+              </label>
+              <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+                <input
+                  type="radio" name="want_designations" checked={wantDesignations === false} disabled={isView}
+                  onChange={() => setWantDesignations(false)}
+                />
+                No
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {/* ── Action Buttons ─────────────────────────────────────────── */}
-        <Box
-          sx={{
-            px: { xs: 2, sm: 3 },
-            py: 2.5,
-            display: 'flex',
-            justifyContent: 'center',
-            gap: 2,
-            flexWrap: 'wrap',
-          }}
+      {/* ── connector arrow — purely decorative, matches the screenshot ── */}
+      {wantDesignations && (
+        <div className="flex justify-center mb-5" style={{ marginTop: -12 }}>
+          <div
+            className="flex items-center justify-center rounded-full"
+            style={{ width: 32, height: 32, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: '#4338ca' }}
+          >
+            ↓
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 2: Add Designations ─────────────────────────────────── */}
+      {wantDesignations && (
+        <div
+          className="rounded-2xl mb-5"
+          style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
         >
-          {/* Go Back — always visible */}
-          <Button
-            variant="outlined"
-            startIcon={<FiArrowLeft />}
-            onClick={() => navigate('/admin/masters/department')}
-            sx={{
-              borderColor: borderC,
-              color: textPrim,
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              px: 3,
-              py: 1.1,
-              fontSize: '0.875rem',
-              '&:hover': {
-                borderColor: '#3b82f6',
-                color: '#3b82f6',
-                background: 'rgba(59,130,246,0.05)',
-              },
+          <div className="p-5 sm:p-6">
+            <div className="flex items-center gap-2.5 mb-4">
+              <span
+                className="flex items-center justify-center rounded-full text-white text-xs font-bold flex-shrink-0"
+                style={{ width: 24, height: 24, background: '#4338ca' }}
+              >
+                2
+              </span>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, margin: 0 }}>
+                Add Designations{departmentName.trim() ? ` for ${departmentName.trim()} Department` : ''}
+              </h2>
+            </div>
+
+            {!isView && (
+              <>
+                <label style={labelStyle}>Add Designation Name</label>
+                <div className="flex flex-wrap items-center gap-3 mb-5">
+                  <input
+                    type="text"
+                    placeholder="Enter designation name"
+                    value={newDesignationName}
+                    onChange={(e) => setNewDesignationName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addDesignation(); } }}
+                    style={{ ...fieldStyle, flex: '1 1 260px', maxWidth: 420 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={addDesignation}
+                    disabled={!newDesignationName.trim()}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+                    style={{
+                      background: !newDesignationName.trim() ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)',
+                      border: 'none', cursor: !newDesignationName.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <MdAdd size={17} /> Add Designation
+                  </button>
+                </div>
+              </>
+            )}
+
+            {designations.length === 0 ? (
+              <p style={{ color: t.textSecondary, fontSize: 13.5 }}>
+                No designations added yet.
+              </p>
+            ) : (
+              <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 12 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
+                  <thead>
+                    <tr style={{ background: t.insetBg }}>
+                      {['#', 'Designation Name', 'Status', 'Action'].map((h) => (
+                        <th
+                          key={h}
+                          style={{
+                            padding: '10px 16px', textAlign: h === 'Action' ? 'right' : 'left', fontSize: 12.5, fontWeight: 700,
+                            textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary,
+                          }}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {designations.map((d, idx) => (
+                      <tr key={d.id ?? idx} style={{ borderTop: `1px solid ${t.divider}` }}>
+                        <td style={{ padding: '10px 16px', fontSize: 13.5, color: t.textSecondary, width: 48 }}>{idx + 1}</td>
+                        <td style={{ padding: '10px 16px', fontSize: 14, fontWeight: 600, color: t.textPrimary }}>{d.name}</td>
+                        <td style={{ padding: '10px 16px' }}>
+                          <StatusPill active={d.is_active} />
+                        </td>
+                        <td style={{ padding: '10px 16px' }}>
+                          <div className="flex items-center justify-end gap-3">
+                            <StatusToggle
+                              checked={d.is_active}
+                              disabled={isView}
+                              onChange={(v) => toggleDesignation(d.id, v)}
+                            />
+                            {!isView && (
+                              <button
+                                type="button"
+                                onClick={() => removeDesignation(d.id)}
+                                title="Delete designation"
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                  width: 32, height: 32, borderRadius: 8,
+                                  background: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2',
+                                  border: `1px solid ${isDark ? 'rgba(239,68,68,0.3)' : '#fecaca'}`,
+                                  color: '#dc2626', cursor: 'pointer',
+                                }}
+                              >
+                                <MdDelete size={17} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Action Buttons — Go Back (left) / Save Department (right) ─── */}
+      <div className="flex items-center justify-between gap-3 mt-6">
+        <button
+          type="button"
+          onClick={() => navigate('/admin/masters/department')}
+          disabled={saving}
+          className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold"
+          style={{ background: isDark ? '#374151' : '#e5e7eb', color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}
+        >
+          <MdArrowBack size={16} /> Go Back
+        </button>
+
+        {!isView && (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!isFormValid || saving}
+            className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
+            style={{
+              background: !isFormValid || saving ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)',
+              border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer',
+              opacity: saving ? 0.8 : 1,
             }}
           >
-            Go Back
-          </Button>
-
-          {/* Create / Update — only in add & edit mode */}
-          {mode !== 'view' && (
-            <Button
-              variant="contained"
-              startIcon={
-                saving
-                  ? <CircularProgress size={16} color="inherit" />
-                  : <FiSave />
-              }
-              onClick={handleSubmit}
-              disabled={!isFormValid || saving}
-              sx={{
-                background:
-                  isFormValid && !saving
-                    ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
-                    : undefined,
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                py: 1.1,
-                fontSize: '0.875rem',
-                boxShadow: isFormValid ? '0 4px 14px rgba(59,130,246,0.35)' : 'none',
-                '&:hover': {
-                  background: isFormValid
-                    ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)'
-                    : undefined,
-                },
-                '&.Mui-disabled': {
-                  background: isDark ? '#2a2a3e' : '#e2e8f0',
-                  color: isDark ? '#4b5563' : '#94a3b8',
-                },
-              }}
-            >
-              {saving
-                ? 'Saving...'
-                : mode === 'add'
-                  ? 'Create Department'
-                  : 'Update Department'}
-            </Button>
-          )}
-        </Box>
-      </Paper>
-    </Box>
+            <MdSave size={17} /> {saving ? 'Saving...' : 'Save Department'}
+          </button>
+        )}
+      </div>
+    </div>
   );
 };
 

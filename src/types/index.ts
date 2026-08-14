@@ -192,39 +192,61 @@ export interface CompanySingleResponse {
 }
 
 
-// src/types/departmentTypes.ts
+// ── Department Master (merged with Designation) ─────────────────────────────
+// Designations no longer have their own top-level list/CRUD — they're a
+// nested collection that lives and is saved entirely alongside their parent
+// Department. `id` is present on a designation once it's a real saved
+// record (present after fetch, or on an existing row being edited); it's
+// omitted for a brand-new row added in the CRUD page before Save. The
+// backend upserts by presence/absence of `id` and deletes any of a
+// department's existing designations that are no longer present in the
+// array — the same "send the whole current state, let the server diff it"
+// pattern already used by Building's shops.
+export interface Designation {
+  id?      : string;
+  name     : string;
+  is_active: boolean;
+}
 
 export interface Department {
-  id: string;
-  name: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  id                    : string;
+  name                  : string;
+  is_active             : boolean;
+  designations          : Designation[];
+  total_designations?   : number;   // convenience counts for the list page —
+  enabled_designations? : number;   // optional since older/list-row payloads
+  disabled_designations?: number;   // may send these instead of full designations[]
+  created_at            : string;
+  updated_at?           : string;
 }
 
 export interface DepartmentListResponse {
-  success: boolean;
-  rows: Department[];
-  total: number;
-  page: number;
-  limit: number;
+  success : boolean;
+  message?: string;
+  rows    : Department[];
+  total   : number;
+  page    : number;
+  limit   : number;
 }
 
-export interface DepartmentResponse {
-  success: boolean;
-  data: Department;
+export interface DepartmentSingleResponse {
+  success : boolean;
+  message?: string;
+  data    : Department;
+}
+
+export interface DepartmentDeleteResponse {
+  success : boolean;
   message?: string;
 }
 
 export interface CreateDepartmentPayload {
-  name: string;
-  is_active: boolean;
+  name        : string;
+  is_active   : boolean;
+  designations: Designation[];
 }
 
-export interface UpdateDepartmentPayload {
-  name: string;
-  is_active: boolean;
-}
+export interface UpdateDepartmentPayload extends CreateDepartmentPayload {}
 
 
 // Role interfaces
@@ -318,45 +340,9 @@ export interface UpdateBankAccountPayload {
   sort_order          : number;
 }
 
-// Designation interfaces
-export interface Designation {
-  id           : string;
-  name         : string;
-  department_id: string;
-  department   : string;
-  is_active    : boolean;
-  sort_order   : number;
-  created_at   : string;
-  updated_at   : string;
-}
+// Designation is now merged into Department — see the Designation and
+// Department interfaces above. This section intentionally left removed.
 
-export interface DesignationListResponse {
-  success: boolean;
-  rows   : Designation[];
-  total  : number;
-  page   : number;
-  limit  : number;
-}
-
-export interface DesignationResponse {
-  success : boolean;
-  data    : Designation;
-  message?: string;
-}
-
-export interface CreateDesignationPayload {
-  name         : string;
-  department_id: string;
-  is_active    : boolean;
-  sort_order   : number;
-}
-
-export interface UpdateDesignationPayload {
-  name         : string;
-  department_id: string;
-  is_active    : boolean;
-  sort_order   : number;
-}
 
 // Action Master interfaces — clean entity keys (getMany), no pagination on the API
 export interface ActionMaster {

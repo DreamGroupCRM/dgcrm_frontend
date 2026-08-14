@@ -15,7 +15,7 @@ import {
   MdDashboard, MdBusiness, MdPeople, MdContactPage,
   MdHistory, MdCalculate, MdStorage,
   MdEventAvailable, MdLeaderboard, MdPayment, MdAttachMoney,
-  MdApartment, MdAccountBalance, MdWork, MdAccountTree,
+  MdApartment, MdAccountBalance, MdAccountTree,
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
   MdPersonAdd, MdSettings, MdGridOn,
 } from 'react-icons/md';
@@ -69,7 +69,6 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
     children: [
       { label: 'Company',        path: ROUTES.ADMIN.COMPANY,        icon: <MdBusiness /> },
       { label: 'Department',     path: ROUTES.ADMIN.DEPARTMENT,     icon: <MdAccountTree /> },
-      { label: 'Designation',    path: ROUTES.ADMIN.DESIGNATION,    icon: <MdWork /> },
       { label: 'Bank A/C',       path: ROUTES.ADMIN.BANK_AC,        icon: <MdAccountBalance /> },
       { label: 'Building',       path: ROUTES.ADMIN.BUILDING,       icon: <MdApartment /> },
       // SuperAdmin-only, same restriction the backend enforces
