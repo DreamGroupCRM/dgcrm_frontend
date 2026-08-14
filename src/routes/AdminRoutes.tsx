@@ -35,7 +35,7 @@ const PlaceholderPage = lazy(() => import('../components/common/PlaceholderPage'
 
 const AdminRoutes: React.FC = () => (
   <Routes>
-    <Route element={<ProtectedRoute allowedRoles={['admin']}><DashboardLayout /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><DashboardLayout /></ProtectedRoute>}>
       <Route index element={<Navigate to={ROUTES.ADMIN.DASHBOARD} replace />} />
       <Route path="dashboard" element={<AdminDashboard />} />
 
@@ -54,10 +54,11 @@ const AdminRoutes: React.FC = () => (
       <Route path="masters/designation/view/:id" element={<DesignationCrudPage mode="view" />} />
       <Route path="masters/designation/edit/:id" element={<DesignationCrudPage mode="edit" />} />
 
-      <Route path="masters/roles" element={<RoleListPage />} />
-      <Route path="masters/roles/add" element={<RoleCrudPage mode="add" />} />
-      <Route path="masters/roles/view/:id" element={<RoleCrudPage mode="view" />} />
-      <Route path="masters/roles/edit/:id" element={<RoleCrudPage mode="edit" />} />
+      {/* SuperAdmin-only — see Sidebar.tsx / backend's requireSuperAdmin */}
+      <Route path="masters/roles" element={<ProtectedRoute allowedRoles={['superadmin']}><RoleListPage /></ProtectedRoute>} />
+      <Route path="masters/roles/add" element={<ProtectedRoute allowedRoles={['superadmin']}><RoleCrudPage mode="add" /></ProtectedRoute>} />
+      <Route path="masters/roles/view/:id" element={<ProtectedRoute allowedRoles={['superadmin']}><RoleCrudPage mode="view" /></ProtectedRoute>} />
+      <Route path="masters/roles/edit/:id" element={<ProtectedRoute allowedRoles={['superadmin']}><RoleCrudPage mode="edit" /></ProtectedRoute>} />
 
       <Route path="masters/bank-account" element={<BankAccountListPage />} />
       <Route path="masters/bank-account/add" element={<BankAccountCrudPage mode="add" />} />
@@ -69,16 +70,17 @@ const AdminRoutes: React.FC = () => (
       <Route path="masters/building/view/:id" element={<BuildingCrudPage mode="view" />} />
       <Route path="masters/building/edit/:id" element={<BuildingCrudPage mode="edit" />} />
 
-      <Route path="masters/action-module" element={<ActionModuleListPage />} />
-      <Route path="masters/action/add" element={<ActionMasterCrudPage mode="add" />} />
-      <Route path="masters/action/view/:id" element={<ActionMasterCrudPage mode="view" />} />
-      <Route path="masters/action/edit/:id" element={<ActionMasterCrudPage mode="edit" />} />
+      {/* SuperAdmin-only — see Sidebar.tsx / backend's requireSuperAdmin */}
+      <Route path="masters/action-module" element={<ProtectedRoute allowedRoles={['superadmin']}><ActionModuleListPage /></ProtectedRoute>} />
+      <Route path="masters/action/add" element={<ProtectedRoute allowedRoles={['superadmin']}><ActionMasterCrudPage mode="add" /></ProtectedRoute>} />
+      <Route path="masters/action/view/:id" element={<ProtectedRoute allowedRoles={['superadmin']}><ActionMasterCrudPage mode="view" /></ProtectedRoute>} />
+      <Route path="masters/action/edit/:id" element={<ProtectedRoute allowedRoles={['superadmin']}><ActionMasterCrudPage mode="edit" /></ProtectedRoute>} />
 
-      <Route path="masters/module/add" element={<ModuleMasterCrudPage mode="add" />} />
-      <Route path="masters/module/view/:id" element={<ModuleMasterCrudPage mode="view" />} />
-      <Route path="masters/module/edit/:id" element={<ModuleMasterCrudPage mode="edit" />} />
+      <Route path="masters/module/add" element={<ProtectedRoute allowedRoles={['superadmin']}><ModuleMasterCrudPage mode="add" /></ProtectedRoute>} />
+      <Route path="masters/module/view/:id" element={<ProtectedRoute allowedRoles={['superadmin']}><ModuleMasterCrudPage mode="view" /></ProtectedRoute>} />
+      <Route path="masters/module/edit/:id" element={<ProtectedRoute allowedRoles={['superadmin']}><ModuleMasterCrudPage mode="edit" /></ProtectedRoute>} />
 
-      <Route path="masters/module-mapping" element={<ModuleMappingPage />} />
+      <Route path="masters/module-mapping" element={<ProtectedRoute allowedRoles={['superadmin']}><ModuleMappingPage /></ProtectedRoute>} />
 
       <Route path="employees/employee-details" element={<PlaceholderPage title="Employee Details" />} />
       <Route path="employees/attendance" element={<PlaceholderPage title="Attendance" />} />

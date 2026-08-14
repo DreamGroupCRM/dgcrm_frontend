@@ -2,8 +2,18 @@
 // DREAM GROUP CRM - TYPE DEFINITIONS
 // ==========================================
 
-// The backend sends the role as lowercase: "admin" | "employee"
-export type BaseRole = 'admin' | 'employee';
+// The backend sends the role as lowercase. 'manager' exists in the backend's
+// seed data but the frontend has never had a distinct view for it — it's
+// left out of this union deliberately, same as before, so it keeps landing
+// on the employee view rather than silently gaining admin access.
+export type BaseRole = 'superadmin' | 'admin' | 'employee';
+
+// superadmin is a strict superset of admin (see backend's role.ts middleware
+// comment) — anywhere the app decides "does this user get the admin view",
+// both roles should pass. Anywhere it decides "does this user get the
+// SuperAdmin-only screens" (Role Master, Action & Module, Module Mapping),
+// check `role === 'superadmin'` directly instead.
+export const isAdminRole = (role: BaseRole | null): boolean => role === 'admin' || role === 'superadmin';
 
 // Detailed role record (comes nested inside user.role from the login API)
 export interface RoleInfo {
@@ -53,13 +63,47 @@ export interface LoginCredentials {
   password: string;
 }
 
-// POST /api/auth/login response — success/token/user/permissions are top-level
-export interface LoginResponse {
+// POST /api/auth/login (step 1 of 2) response — email+password are verified,
+// but no session is issued yet. An OTP was emailed (or logged server-side in
+// local dev without SMTP configured); otpToken must be sent back with the
+// code to POST /api/auth/verify-otp.
+export interface LoginOtpResponse {
+  success: boolean;
+  otpRequired: true;
+  otpToken: string;
+  message?: string;
+}
+
+export interface VerifyOtpCredentials {
+  otpToken: string;
+  otp: string;
+}
+
+// A real, usable session — either from verify-otp directly, or from
+// set-new-password after a forced first-login password reset.
+export interface SessionResponse {
   success: boolean;
   message?: string;
   token: string;
   user: User;
   permissions: Permissions;
+}
+
+// POST /api/auth/verify-otp (step 2) response — either a full session
+// (normal case), or, for a first-time login, a resetToken that only
+// POST /api/auth/set-new-password can use.
+export interface MustChangePasswordResponse {
+  success: boolean;
+  mustChangePassword: true;
+  resetToken: string;
+  message?: string;
+}
+
+export type VerifyOtpResponse = SessionResponse | MustChangePasswordResponse;
+
+export interface SetNewPasswordCredentials {
+  resetToken: string;
+  new_password: string;
 }
 
 // POST /api/auth/logout response
@@ -430,9 +474,21 @@ export interface Building {
   has_shops?   : boolean;
   shops?       : BuildingShop[];
   has_parking? : boolean;
+  parking_count?: number | null;
   is_active    : boolean;
   created_at   : string;
   updated_at?  : string;
+}
+
+// Aggregate counts for the Building List page's top summary cards.
+export interface BuildingListSummary {
+  total_projects : number;
+  total_buildings: number;
+  total_wings    : number;
+  total_flats    : number;
+  enabled_flats  : number;
+  disabled_flats : number;
+  total_shops    : number;
 }
 
 export interface BuildingListResponse {
@@ -442,6 +498,7 @@ export interface BuildingListResponse {
   total   : number;
   page    : number;
   limit   : number;
+  summary?: BuildingListSummary;
 }
 
 export interface BuildingSingleResponse {
@@ -463,6 +520,7 @@ export interface CreateBuildingPayload {
   has_shops    : boolean;
   shops        : BuildingShop[];
   has_parking  : boolean;
+  parking_count: number | null;
   is_active    : boolean;
 }
 

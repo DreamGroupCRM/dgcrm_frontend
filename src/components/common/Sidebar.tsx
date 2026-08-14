@@ -9,6 +9,7 @@ import { toggleSidebar } from '../../redux/slices/uiSlice';
 import { ROUTES } from '../../constants';
 import { useNavigate } from 'react-router-dom';
 import { getTheme } from '../../styles/theme';
+import { BaseRole, isAdminRole } from '../../types';
 
 import {
   MdDashboard, MdBusiness, MdPeople, MdContactPage,
@@ -59,7 +60,7 @@ interface NavItem {
   children?: NavItem[];
 }
 
-const buildAdminNavItems = (masterEnabled: boolean): NavItem[] => [
+const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavItem[] => [
   { label: 'Dashboard', path: ROUTES.ADMIN.DASHBOARD, icon: <MdDashboard /> },
 
   // Master section — conditionally included based on settings toggle
@@ -69,11 +70,17 @@ const buildAdminNavItems = (masterEnabled: boolean): NavItem[] => [
       { label: 'Company',        path: ROUTES.ADMIN.COMPANY,        icon: <MdBusiness /> },
       { label: 'Department',     path: ROUTES.ADMIN.DEPARTMENT,     icon: <MdAccountTree /> },
       { label: 'Designation',    path: ROUTES.ADMIN.DESIGNATION,    icon: <MdWork /> },
-      { label: 'Roles',          path: ROUTES.ADMIN.ROLES,          icon: <MdAccountTree /> },
       { label: 'Bank A/C',       path: ROUTES.ADMIN.BANK_AC,        icon: <MdAccountBalance /> },
       { label: 'Building',       path: ROUTES.ADMIN.BUILDING,       icon: <MdApartment /> },
-      { label: 'Action & Module',path: ROUTES.ADMIN.ACTION_MODULE,  icon: <MdSettings /> },
-      { label: 'Module Mapping', path: ROUTES.ADMIN.MODULE_MAPPING, icon: <MdGridOn /> },
+      // SuperAdmin-only, same restriction the backend enforces
+      // (requireSuperAdmin on /api/role, /api/action-master, /api/module,
+      // /api/module-action) — a regular Admin gets "SuperAdmin access
+      // required" from the API, so don't show these to them at all.
+      ...(role === 'superadmin' ? [
+        { label: 'Roles',          path: ROUTES.ADMIN.ROLES,          icon: <MdAccountTree /> },
+        { label: 'Action & Module',path: ROUTES.ADMIN.ACTION_MODULE,  icon: <MdSettings /> },
+        { label: 'Module Mapping', path: ROUTES.ADMIN.MODULE_MAPPING, icon: <MdGridOn /> },
+      ] : []),
     ],
   }] : []),
 
@@ -212,8 +219,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
 
   const isDark   = mode === 'dark';
   const t        = getTheme(isDark);
-  const roleLabel = role === 'admin' ? 'Admin' : 'Employee';
-  const dashboardRoute = role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
+  const roleLabel = role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Admin' : 'Employee';
+  const dashboardRoute = isAdminRole(role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
 
   // Authoritative desktop/drawer switch — see useIsDesktopSidebar above.
   const isDesktop = useIsDesktopSidebar();
@@ -269,7 +276,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
     };
   }, [mobileOpen]);
 
-  const navItems = role === 'admin' ? buildAdminNavItems(masterEnabled) : employeeNavItems;
+  const navItems = isAdminRole(role) ? buildAdminNavItems(masterEnabled, role) : employeeNavItems;
 
   const shellStyle: React.CSSProperties = {
     background : t.sidebarBg,

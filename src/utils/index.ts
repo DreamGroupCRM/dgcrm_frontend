@@ -2,6 +2,7 @@
 // DREAM GROUP CRM - UTILITY FUNCTIONS
 // ==========================================
 import Swal from 'sweetalert2';
+import { BaseRole } from '../types';
 
 /**
  * SweetAlert2 notifications
@@ -55,9 +56,9 @@ export const showAlert = {
       cancelButtonText: 'No',
     });
   },
-  /** Shows "Admin Logged in Successfully" or "Employee Logged in Successfully" based on base_role */
-  loginSuccess: (baseRole: 'admin' | 'employee') => {
-    const roleLabel = baseRole === 'admin' ? 'Admin' : 'Employee';
+  /** Shows "Super Admin/Admin/Employee Logged in Successfully" based on base_role */
+  loginSuccess: (baseRole: BaseRole) => {
+    const roleLabel = baseRole === 'superadmin' ? 'Super Admin' : baseRole === 'admin' ? 'Admin' : 'Employee';
     return Swal.fire({
       icon: 'success',
       title: `${roleLabel} Logged in Successfully`,
@@ -69,9 +70,9 @@ export const showAlert = {
       timerProgressBar: true,
     });
   },
-  /** Shows "Admin Logged out Successfully" or "Employee Logged out Successfully" based on base_role */
-  logoutSuccess: (baseRole: 'admin' | 'employee') => {
-    const roleLabel = baseRole === 'admin' ? 'Admin' : 'Employee';
+  /** Shows "Super Admin/Admin/Employee Logged out Successfully" based on base_role */
+  logoutSuccess: (baseRole: BaseRole) => {
+    const roleLabel = baseRole === 'superadmin' ? 'Super Admin' : baseRole === 'admin' ? 'Admin' : 'Employee';
     return Swal.fire({
       icon: 'success',
       title: `${roleLabel} Logged out Successfully`,

@@ -6,13 +6,16 @@
 //   1. Real Dream Group logo via <Logo> component (replaces inline SVG)
 //   2. Smart validation messages — specific error per rule, shown via SweetAlert2
 //   3. Validation helpers rewritten with granular messages
+//   4. Multi-step login to match API v12: email+password -> OTP -> session
+//      (and, for a first-time login, OTP -> set new password -> session)
 //
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { loginThunk } from '../../redux/thunks/authThunks';
-import { clearError } from '../../redux/slices/authSlice';
+import { loginThunk, verifyOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
+import { clearError, resetLoginFlow } from '../../redux/slices/authSlice';
 import { ROUTES } from '../../constants';
+import { isAdminRole } from '../../types';
 import { showAlert } from '../../utils';
 import Logo from '../../components/ui/Logo';
 
@@ -22,7 +25,7 @@ import {
   IconButton,
   CircularProgress,
 } from '@mui/material';
-import { Visibility, VisibilityOff, Email, Lock, Person, Phone } from '@mui/icons-material';
+import { Visibility, VisibilityOff, Email, Lock, Person, Phone, KeyboardBackspace } from '@mui/icons-material';
 
 const img1 = "/src/assets/images/carousel_1.png";
 const img2 = "/src/assets/images/carousel_2.png";
@@ -62,6 +65,13 @@ const validatePassword = (pwd: string): string => {
   return '';
 };
 
+/** Returns the FIRST failing rule for the OTP, or '' if valid */
+const validateOtp = (otp: string): string => {
+  if (!otp.trim()) return 'Please enter the code sent to your email.';
+  if (!/^\d{6}$/.test(otp.trim())) return 'The code is 6 digits.';
+  return '';
+};
+
 // MUI field shared styles for the glassmorphism login card
 const glassFieldSx = {
   '& .MuiOutlinedInput-root': {
@@ -81,12 +91,30 @@ const glassFieldSx = {
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { loading, error, isAuthenticated, role } = useAppSelector((s) => s.auth);
+  const {
+    loading, error, isAuthenticated, role,
+    otpToken, otpMessage, mustChangePassword, resetToken,
+  } = useAppSelector((s) => s.auth);
+
+  // Which step of the login flow is showing right now
+  const step: 'credentials' | 'otp' | 'reset-password' =
+    mustChangePassword ? 'reset-password' : otpToken ? 'otp' : 'credentials';
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
+
+  const [otp, setOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpTouched, setOtpTouched] = useState(false);
+  const [justRequestedOtp, setJustRequestedOtp] = useState(false);
+
+  const [newPassword, setNewPassword] = useState('');
+  const [newPasswordError, setNewPasswordError] = useState('');
+  const [newPasswordTouched, setNewPasswordTouched] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -106,7 +134,7 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated && role) {
       navigate(
-        role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
+        isAdminRole(role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
         { replace: true }
       );
     }
@@ -119,6 +147,14 @@ const LoginPage: React.FC = () => {
       dispatch(clearError());
     }
   }, [error, dispatch]);
+
+  // ── Toast once when we land on the OTP step ──
+  useEffect(() => {
+    if (step === 'otp' && justRequestedOtp) {
+      showAlert.success(otpMessage || 'A one-time code has been sent to your email', 'Check your email');
+      setJustRequestedOtp(false);
+    }
+  }, [step, justRequestedOtp, otpMessage]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -141,6 +177,7 @@ const LoginPage: React.FC = () => {
     if (field === 'password') setErrors((p) => ({ ...p, password: validatePassword(form.password) }));
   };
 
+  // ── Step 1: email + password -> backend emails an OTP ──
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -161,16 +198,71 @@ const LoginPage: React.FC = () => {
 
       const result = await dispatch(loginThunk({ email: form.email, password: form.password }));
       if (loginThunk.fulfilled.match(result)) {
-        const baseRole = result.payload.user.base_role; // 'admin' | 'employee'
-        await showAlert.loginSuccess(baseRole);
+        setJustRequestedOtp(true);
+      }
+    },
+    [form, dispatch]
+  );
+
+  // ── Step 2: OTP -> session, or -> forced password reset ──
+  const handleOtpSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const err = validateOtp(otp);
+      setOtpError(err);
+      setOtpTouched(true);
+      if (err) {
+        showAlert.warning(err, 'Code Error');
+        return;
+      }
+      if (!otpToken) return; // shouldn't happen — step wouldn't render without it
+
+      const result = await dispatch(verifyOtpThunk({ otpToken, otp: otp.trim() }));
+      if (verifyOtpThunk.fulfilled.match(result) && 'token' in result.payload) {
+        await showAlert.loginSuccess(result.payload.user.base_role);
         navigate(
-          baseRole === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
+          isAdminRole(result.payload.user.base_role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
           { replace: true }
         );
       }
     },
-    [form, dispatch, navigate]
+    [otp, otpToken, dispatch, navigate]
   );
+
+  // ── Step 3 (first login only): set a new password -> session ──
+  const handleResetPasswordSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const err = validatePassword(newPassword);
+      setNewPasswordError(err);
+      setNewPasswordTouched(true);
+      if (err) {
+        showAlert.warning(err, 'Password Error');
+        return;
+      }
+      if (!resetToken) return;
+
+      const result = await dispatch(setNewPasswordThunk({ resetToken, new_password: newPassword }));
+      if (setNewPasswordThunk.fulfilled.match(result)) {
+        await showAlert.loginSuccess(result.payload.user.base_role);
+        navigate(
+          isAdminRole(result.payload.user.base_role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
+          { replace: true }
+        );
+      }
+    },
+    [newPassword, resetToken, dispatch, navigate]
+  );
+
+  const handleBackToLogin = () => {
+    setOtp('');
+    setOtpError('');
+    setOtpTouched(false);
+    setNewPassword('');
+    setNewPasswordError('');
+    setNewPasswordTouched(false);
+    dispatch(resetLoginFlow());
+  };
 
   const goToSlide = (index: number) => {
     setIsTransitioning(true);
@@ -258,97 +350,235 @@ const LoginPage: React.FC = () => {
             {/* Divider */}
             <div className="flex items-center gap-3 mb-5">
               <div className="flex-1 h-px bg-white/20" />
-              <span className="text-white/50 text-xs font-body">Sign In to Your Account</span>
+              <span className="text-white/50 text-xs font-body">
+                {step === 'credentials' && 'Sign In to Your Account'}
+                {step === 'otp' && 'Enter Verification Code'}
+                {step === 'reset-password' && 'Set a New Password'}
+              </span>
               <div className="flex-1 h-px bg-white/20" />
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            {/* ── Step 1: Email + Password ── */}
+            {step === 'credentials' && (
+              <form onSubmit={handleSubmit} noValidate className="space-y-4">
+                {/* Email (mandatory) */}
+                <TextField
+                  fullWidth required name="email" label="Email ID" type="email"
+                  value={form.email} onChange={handleChange}
+                  onBlur={() => handleBlur('email')}
+                  error={touched.email && !!errors.email}
+                  helperText={touched.email && errors.email}
+                  size="small"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Email sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={glassFieldSx}
+                />
 
-              {/* Email (mandatory) */}
-              <TextField
-                fullWidth required name="email" label="Email ID" type="email"
-                value={form.email} onChange={handleChange}
-                onBlur={() => handleBlur('email')}
-                error={touched.email && !!errors.email}
-                helperText={touched.email && errors.email}
-                size="small"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Email sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 20 }} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={glassFieldSx}
-              />
+                {/* Password (mandatory) */}
+                <TextField
+                  fullWidth required name="password" label="Password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password} onChange={handleChange}
+                  onBlur={() => handleBlur('password')}
+                  error={touched.password && !!errors.password}
+                  helperText={touched.password && errors.password}
+                  size="small"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Lock sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowPassword(!showPassword)}
+                          edge="end" size="small"
+                          sx={{ color: 'rgba(255,255,255,0.5)' }}
+                        >
+                          {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={glassFieldSx}
+                />
 
-              {/* Password (mandatory) */}
-              <TextField
-                fullWidth required name="password" label="Password"
-                type={showPassword ? 'text' : 'password'}
-                value={form.password} onChange={handleChange}
-                onBlur={() => handleBlur('password')}
-                error={touched.password && !!errors.password}
-                helperText={touched.password && errors.password}
-                size="small"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Lock sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 20 }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end" size="small"
-                        sx={{ color: 'rgba(255,255,255,0.5)' }}
+                {/* Password strength hints */}
+                {form.password && (
+                  <div className="grid grid-cols-2 gap-1 text-xs">
+                    {[
+                      { check: form.password.length >= 8, label: '8+ chars' },
+                      { check: /[A-Z]/.test(form.password), label: 'Uppercase' },
+                      { check: /[a-z]/.test(form.password), label: 'Lowercase' },
+                      { check: /[0-9]/.test(form.password), label: 'Number' },
+                    ].map(({ check, label }) => (
+                      <span
+                        key={label}
+                        className={`flex items-center gap-1 ${check ? 'text-green-400' : 'text-white/40'}`}
                       >
-                        {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                sx={glassFieldSx}
-              />
-
-              {/* Password strength hints */}
-              {form.password && (
-                <div className="grid grid-cols-2 gap-1 text-xs">
-                  {[
-                    { check: form.password.length >= 8, label: '8+ chars' },
-                    { check: /[A-Z]/.test(form.password), label: 'Uppercase' },
-                    { check: /[a-z]/.test(form.password), label: 'Lowercase' },
-                    { check: /[0-9]/.test(form.password), label: 'Number' },
-                  ].map(({ check, label }) => (
-                    <span
-                      key={label}
-                      className={`flex items-center gap-1 ${check ? 'text-green-400' : 'text-white/40'}`}
-                    >
-                      <span>{check ? '✓' : '○'}</span> {label}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-2 py-3 rounded-xl font-semibold text-white transition-all
-                  duration-300 flex items-center justify-center gap-2 disabled:opacity-70
-                  disabled:cursor-not-allowed login-submit-btn">
-                {loading ? (
-                  <>
-                    <CircularProgress size={18} sx={{ color: 'white' }} />
-                    Signing In...
-                  </>
-                ) : (
-                  'Sign In'
+                        <span>{check ? '✓' : '○'}</span> {label}
+                      </span>
+                    ))}
+                  </div>
                 )}
-              </button>
-            </form>
+
+                {/* Submit */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full mt-2 py-3 rounded-xl font-semibold text-white transition-all
+                    duration-300 flex items-center justify-center gap-2 disabled:opacity-70
+                    disabled:cursor-not-allowed login-submit-btn">
+                  {loading ? (
+                    <>
+                      <CircularProgress size={18} sx={{ color: 'white' }} />
+                      Signing In...
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
+                </button>
+              </form>
+            )}
+
+            {/* ── Step 2: OTP ── */}
+            {step === 'otp' && (
+              <form onSubmit={handleOtpSubmit} noValidate className="space-y-4">
+                <p className="text-white/60 text-xs -mt-2 mb-1">
+                  We sent a 6-digit code to <span className="text-white/90">{form.email}</span>.
+                  It expires in 5 minutes.
+                </p>
+
+                <TextField
+                  fullWidth required name="otp" label="Verification Code"
+                  inputMode="numeric"
+                  value={otp}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+                    setOtp(cleaned);
+                    if (otpTouched) setOtpError(validateOtp(cleaned));
+                  }}
+                  onBlur={() => { setOtpTouched(true); setOtpError(validateOtp(otp)); }}
+                  error={otpTouched && !!otpError}
+                  helperText={otpTouched && otpError}
+                  size="small"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Lock sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ ...glassFieldSx, '& input': { letterSpacing: '0.4em', fontSize: '1.1rem' } }}
+                />
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full mt-2 py-3 rounded-xl font-semibold text-white transition-all
+                    duration-300 flex items-center justify-center gap-2 disabled:opacity-70
+                    disabled:cursor-not-allowed login-submit-btn">
+                  {loading ? (
+                    <>
+                      <CircularProgress size={18} sx={{ color: 'white' }} />
+                      Verifying...
+                    </>
+                  ) : (
+                    'Verify & Sign In'
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleBackToLogin}
+                  className="w-full flex items-center justify-center gap-1 text-white/50 hover:text-white/80 text-xs py-1"
+                >
+                  <KeyboardBackspace fontSize="inherit" /> Back to login
+                </button>
+              </form>
+            )}
+
+            {/* ── Step 3: Set new password (first login only) ── */}
+            {step === 'reset-password' && (
+              <form onSubmit={handleResetPasswordSubmit} noValidate className="space-y-4">
+                <p className="text-white/60 text-xs -mt-2 mb-1">
+                  This is your first login — please set a new password to continue.
+                </p>
+
+                <TextField
+                  fullWidth required name="new_password" label="New Password"
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (newPasswordTouched) setNewPasswordError(validatePassword(e.target.value));
+                  }}
+                  onBlur={() => { setNewPasswordTouched(true); setNewPasswordError(validatePassword(newPassword)); }}
+                  error={newPasswordTouched && !!newPasswordError}
+                  helperText={newPasswordTouched && newPasswordError}
+                  size="small"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Lock sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          edge="end" size="small"
+                          sx={{ color: 'rgba(255,255,255,0.5)' }}
+                        >
+                          {showNewPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={glassFieldSx}
+                />
+
+                {newPassword && (
+                  <div className="grid grid-cols-2 gap-1 text-xs">
+                    {[
+                      { check: newPassword.length >= 8, label: '8+ chars' },
+                      { check: /[A-Z]/.test(newPassword), label: 'Uppercase' },
+                      { check: /[a-z]/.test(newPassword), label: 'Lowercase' },
+                      { check: /[0-9]/.test(newPassword), label: 'Number' },
+                    ].map(({ check, label }) => (
+                      <span
+                        key={label}
+                        className={`flex items-center gap-1 ${check ? 'text-green-400' : 'text-white/40'}`}
+                      >
+                        <span>{check ? '✓' : '○'}</span> {label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full mt-2 py-3 rounded-xl font-semibold text-white transition-all
+                    duration-300 flex items-center justify-center gap-2 disabled:opacity-70
+                    disabled:cursor-not-allowed login-submit-btn">
+                  {loading ? (
+                    <>
+                      <CircularProgress size={18} sx={{ color: 'white' }} />
+                      Saving...
+                    </>
+                  ) : (
+                    'Set Password & Sign In'
+                  )}
+                </button>
+              </form>
+            )}
 
             <p className="text-center text-white/30 text-xs mt-5 font-body">
               © {new Date().getFullYear()} Dream Group. All rights reserved.
