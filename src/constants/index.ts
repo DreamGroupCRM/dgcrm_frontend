@@ -36,7 +36,7 @@ export const ROUTES = {
     MODULE_MAPPING: '/admin/masters/module-mapping',
 
     // Employee
-    EMPLOYEE_DETAILS: '/admin/employees/employee-details',
+    EMPLOYEE_DETAILS: '/admin/employee/employee-details',
     ATTENDANCE: '/admin/employees/attendance',
 
     // CRM

@@ -11,7 +11,7 @@ import {
 import { useAppSelector } from '../../../../hooks';
 import { getTheme } from '../../../../styles/theme';
 import { Designation, CreateDepartmentPayload } from '../../../../types/index';
-import { fetchDepartmentById, createDepartment, updateDepartment } from '../../../../services/dapartmentService';
+import { fetchDepartmentById, createDepartment, updateDepartment } from '../../../../services/departmentService';
 
 // ── local id helper for not-yet-saved designation rows ──────────────────────
 let localIdCounter = 0;

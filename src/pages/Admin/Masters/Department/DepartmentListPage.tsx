@@ -12,7 +12,7 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
-import { fetchDepartmentList, deleteDepartment } from '../../../../services/dapartmentService';
+import { fetchDepartmentList, deleteDepartment } from '../../../../services/departmentService';
 import { Department } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
 

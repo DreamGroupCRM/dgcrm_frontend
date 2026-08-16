@@ -12,7 +12,10 @@ const CompanyCrudPage = lazy(() => import('../pages/Admin/Masters/Company/Compan
 import DepartmentListPage from '@/pages/Admin/Masters/Department/DepartmentListPage';
 import DepartmentCrudPage from '@/pages/Admin/Masters/Department/DepartmentCrudPage';
 
-import RoleListPage from '../pages/Admin/Masters/Roles/RoleListPage'
+import EmployeeDetailsCrudPage from '../pages/Admin/Employee/Employee-Details/EmployeeDetailsCrudPage';
+import EmployeeDetailsListPage from '../pages/Admin/Employee/Employee-Details/EmployeeDetailsListPage';
+
+import RoleListPage from '../pages/Admin/Masters/Roles/RoleListPage';
 import RoleCrudPage from '../pages/Admin/Masters/Roles/RoleCrudPage';
 
 import BankAccountListPage from '../pages/Admin/Masters/BankAccount/BankAccountListPage';
@@ -74,8 +77,11 @@ const AdminRoutes: React.FC = () => (
 
       <Route path="masters/module-mapping" element={<ProtectedRoute allowedRoles={['superadmin']}><ModuleMappingPage /></ProtectedRoute>} />
 
-      <Route path="employees/employee-details" element={<PlaceholderPage title="Employee Details" />} />
-      <Route path="employees/attendance" element={<PlaceholderPage title="Attendance" />} />
+      <Route path="employee/employee-details" element={<EmployeeDetailsListPage />} />
+      <Route path="employee/employee-details/add" element={<EmployeeDetailsCrudPage mode="add" />} />
+      <Route path="employee/employee-details/view/:id" element={<EmployeeDetailsCrudPage mode="view" />} />
+      <Route path="employee/employee-details/edit/:id" element={<EmployeeDetailsCrudPage mode="edit" />} />
+      <Route path="employee/attendance" element={<PlaceholderPage title="Attendance" />} />
 
       <Route path="crm/customer-details" element={<PlaceholderPage title="Customer Details" />} />
       <Route path="crm/leads" element={<PlaceholderPage title="Leads" />} />
