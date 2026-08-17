@@ -407,8 +407,7 @@ const CustomerDetailsListPage: React.FC = () => {
               type="button" onClick={clearAllFilters}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}
-            >
-              <MdRefresh size={16} /> Clear All Filter
+            > X
             </button>
           </div>
         </div>
