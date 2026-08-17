@@ -541,3 +541,133 @@ export interface MappingMatrixResponse {
   success: boolean;
   data   : MappingMatrix;
 }
+
+// ── Customer Details (CRM) ──────────────────────────────────────────────────
+// A customer is tied to one flat (building -> wing -> flat), and may be
+// assigned to one employee for follow-up. Building/Wing/Flat data is not
+// duplicated here — the CRUD/List pages source it live from the existing
+// Building module (fetchBuildingList), same as Employee's checkboxes reuse
+// Department data conceptually, just live-fetched instead of hardcoded
+// since a real Building/Wing/Flat picker needs to cascade correctly.
+export type CustomerStatus = 'active' | 'inactive';
+
+export interface Customer {
+  id                          : string;
+  customer_name               : string;
+  mobile_number                : string;
+  email                         : string;
+
+  building_id                    : string;
+  building_name                   : string;
+  wing_id?                         : string;
+  wing_name                         : string;
+  flat_id?                           : string;
+  flat_no                             : string;
+  flat_type                            : string;
+  area_sqft                             : number | null;
+
+  booking_date                           : string;
+  monthly_emi                             : number | null;
+
+  assigned_employee_id?                    : string;
+  assigned_employee_code?                   : string;
+  assigned_employee_name?                    : string;
+  assigned_employee_photo_url?                : string | null;
+
+  status                                       : CustomerStatus;
+  is_active                                     : boolean;
+  created_at                                     : string;
+  updated_at?                                     : string;
+}
+
+export interface CustomerListSummary {
+  total_customers  : number;
+  active_customers  : number;
+  inactive_customers : number;
+  new_this_month       : number;
+}
+
+export interface CustomerListFilters {
+  customer_name?: string;
+  building_name? : string;
+  wing?          : string;
+  flat_no?       : string;
+  from_date?     : string;
+  to_date?       : string;
+}
+
+export interface CustomerListResponse {
+  success : boolean;
+  message?: string;
+  rows    : Customer[];
+  total   : number;
+  page    : number;
+  limit   : number;
+  summary?: CustomerListSummary;
+}
+
+export interface CustomerSingleResponse {
+  success : boolean;
+  message?: string;
+  data    : Customer;
+}
+
+export interface CustomerDeleteResponse {
+  success : boolean;
+  message?: string;
+}
+
+export interface CreateCustomerPayload {
+  customer_name : string;
+  mobile_number : string;
+  email         : string;
+  building_id   : string;
+  wing_id?      : string;
+  flat_id?      : string;
+  flat_type     : string;
+  area_sqft     : number | null;
+  booking_date  : string;
+  monthly_emi   : number | null;
+  is_active     : boolean;
+}
+
+export interface UpdateCustomerPayload extends CreateCustomerPayload {}
+
+export interface AssignCustomersPayload {
+  customer_ids: string[];
+  employee_id : string;
+}
+
+export interface AssignCustomersResponse {
+  success : boolean;
+  message?: string;
+}
+
+export interface CustomerPaymentRecord {
+  id           : string;
+  paid_on      : string;
+  amount       : number;
+  mode?        : string;
+  reference_no?: string;
+  notes?       : string;
+}
+
+export interface CustomerPaymentHistoryResponse {
+  success : boolean;
+  message?: string;
+  rows    : CustomerPaymentRecord[];
+}
+
+export interface CustomerScheme {
+  id               : string;
+  scheme_name      : string;
+  description?     : string;
+  discount_percent?: number | null;
+  valid_till?      : string;
+}
+
+export interface CustomerSchemeResponse {
+  success : boolean;
+  message?: string;
+  data    : CustomerScheme | null;
+}
