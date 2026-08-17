@@ -54,9 +54,9 @@ export function useIsDesktopSidebar(breakpoint: number = SIDEBAR_DESKTOP_BREAKPO
 }
 
 interface NavItem {
-  label    : string;
-  path?    : string;
-  icon     : React.ReactNode;
+  label: string;
+  path?: string;
+  icon: React.ReactNode;
   children?: NavItem[];
 }
 
@@ -67,17 +67,17 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
   ...(masterEnabled ? [{
     label: 'Master', icon: <MdBusiness />,
     children: [
-      { label: 'Company',        path: ROUTES.ADMIN.COMPANY,        icon: <MdBusiness /> },
-      { label: 'Department',     path: ROUTES.ADMIN.DEPARTMENT,     icon: <MdAccountTree /> },
-      { label: 'Bank A/C',       path: ROUTES.ADMIN.BANK_AC,        icon: <MdAccountBalance /> },
-      { label: 'Building',       path: ROUTES.ADMIN.BUILDING,       icon: <MdApartment /> },
+      { label: 'Company', path: ROUTES.ADMIN.COMPANY, icon: <MdBusiness /> },
+      { label: 'Department', path: ROUTES.ADMIN.DEPARTMENT, icon: <MdAccountTree /> },
+      { label: 'Bank A/C', path: ROUTES.ADMIN.BANK_AC, icon: <MdAccountBalance /> },
+      { label: 'Building', path: ROUTES.ADMIN.BUILDING, icon: <MdApartment /> },
       // SuperAdmin-only, same restriction the backend enforces
       // (requireSuperAdmin on /api/role, /api/action-master, /api/module,
       // /api/module-action) — a regular Admin gets "SuperAdmin access
       // required" from the API, so don't show these to them at all.
       ...(role === 'superadmin' ? [
-        { label: 'Roles',          path: ROUTES.ADMIN.ROLES,          icon: <MdAccountTree /> },
-        { label: 'Action & Module',path: ROUTES.ADMIN.ACTION_MODULE,  icon: <MdSettings /> },
+        { label: 'Roles', path: ROUTES.ADMIN.ROLES, icon: <MdAccountTree /> },
+        { label: 'Action & Module', path: ROUTES.ADMIN.ACTION_MODULE, icon: <MdSettings /> },
         { label: 'Module Mapping', path: ROUTES.ADMIN.MODULE_MAPPING, icon: <MdGridOn /> },
       ] : []),
     ],
@@ -87,7 +87,7 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
     label: 'Employee', icon: <MdPeople />,
     children: [
       { label: 'Employee Details', path: ROUTES.ADMIN.EMPLOYEE_DETAILS, icon: <MdPersonAdd /> },
-      { label: 'Attendance',       path: ROUTES.ADMIN.ATTENDANCE,       icon: <MdEventAvailable /> },
+      { label: 'Attendance', path: ROUTES.ADMIN.ATTENDANCE, icon: <MdEventAvailable /> },
     ],
   },
 
@@ -95,35 +95,35 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
     label: 'CRM', icon: <MdLeaderboard />,
     children: [
       { label: 'Customer Details', path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage /> },
-      { label: 'Leads',            path: ROUTES.ADMIN.LEADS,            icon: <MdLeaderboard /> },
+      { label: 'Payment Dues', path: ROUTES.ADMIN.PAYMENT_DUES, icon: <MdPayment /> },
       { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
-      { label: 'Payment Dues',     path: ROUTES.ADMIN.PAYMENT_DUES,     icon: <MdPayment /> },
+      { label: 'Leads', path: ROUTES.ADMIN.LEADS, icon: <MdLeaderboard /> },
     ],
   },
 
-  { label: 'Audit History',            path: ROUTES.ADMIN.AUDIT_HISTORY,       icon: <MdHistory /> },
+  { label: 'Audit History', path: ROUTES.ADMIN.AUDIT_HISTORY, icon: <MdHistory /> },
   { label: 'Interest Free Calculator', path: ROUTES.ADMIN.INTEREST_CALCULATOR, icon: <MdCalculate /> },
-  { label: 'Backup Database',          path: ROUTES.ADMIN.BACKUP_DATABASE,     icon: <MdStorage /> },
+  { label: 'Backup Database', path: ROUTES.ADMIN.BACKUP_DATABASE, icon: <MdStorage /> },
 ];
 
 const employeeNavItems: NavItem[] = [
-  { label: 'Dashboard',        path: ROUTES.EMPLOYEE.DASHBOARD,        icon: <MdDashboard /> },
+  { label: 'Dashboard', path: ROUTES.EMPLOYEE.DASHBOARD, icon: <MdDashboard /> },
   { label: 'Customer Details', path: ROUTES.EMPLOYEE.CUSTOMER_DETAILS, icon: <MdContactPage /> },
-  { label: 'Leads',            path: ROUTES.EMPLOYEE.LEADS,            icon: <MdLeaderboard /> },
+  { label: 'Leads', path: ROUTES.EMPLOYEE.LEADS, icon: <MdLeaderboard /> },
   { label: 'Payment Received', path: ROUTES.EMPLOYEE.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
-  { label: 'Payment Dues',     path: ROUTES.EMPLOYEE.PAYMENT_DUES,     icon: <MdPayment /> },
-  { label: 'Attendance',       path: ROUTES.EMPLOYEE.ATTENDANCE,       icon: <MdEventAvailable /> },
+  { label: 'Payment Dues', path: ROUTES.EMPLOYEE.PAYMENT_DUES, icon: <MdPayment /> },
+  { label: 'Attendance', path: ROUTES.EMPLOYEE.ATTENDANCE, icon: <MdEventAvailable /> },
 ];
 
 // ── NavItemComponent ───────────────────────────────────────────────────────
 const NavItemComponent: React.FC<{
-  item     : NavItem;
+  item: NavItem;
   collapsed: boolean;
-  isDark   : boolean;
+  isDark: boolean;
 }> = ({ item, collapsed, isDark }) => {
-  const t        = getTheme(isDark);
+  const t = getTheme(isDark);
   const location = useLocation();
-  const [open, setOpen]       = useState(() =>
+  const [open, setOpen] = useState(() =>
     !!item.children?.some((c) => c.path && location.pathname.startsWith(c.path))
   );
   const [hovered, setHovered] = useState(false);
@@ -138,7 +138,7 @@ const NavItemComponent: React.FC<{
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150"
           style={{
             background: open ? t.sidebarActiveBg : hovered ? t.sidebarHoverBg : 'transparent',
-            color     : open ? t.sidebarActiveText : hovered ? t.sidebarHoverText : t.sidebarText,
+            color: open ? t.sidebarActiveText : hovered ? t.sidebarHoverText : t.sidebarText,
             fontFamily: t.fontFamily, border: 'none', cursor: 'pointer',
           }}
           onMouseEnter={() => setHovered(true)}
@@ -172,7 +172,7 @@ const NavItemComponent: React.FC<{
       className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 no-underline"
       style={({ isActive }) => ({
         background: isActive ? t.sidebarActiveBg : 'transparent',
-        color     : isActive ? t.sidebarActiveText : t.sidebarText,
+        color: isActive ? t.sidebarActiveText : t.sidebarText,
         fontFamily: t.fontFamily, fontWeight: isActive ? 600 : 400,
         borderLeft: isActive ? `3px solid ${t.sidebarActiveBorder}` : '3px solid transparent',
       })}
@@ -180,14 +180,14 @@ const NavItemComponent: React.FC<{
         const el = e.currentTarget as HTMLElement;
         if (!location.pathname.startsWith(item.path ?? '__')) {
           el.style.background = t.sidebarHoverBg;
-          el.style.color      = t.sidebarHoverText;
+          el.style.color = t.sidebarHoverText;
         }
       }}
       onMouseLeave={(e) => {
         const el = e.currentTarget as HTMLElement;
         if (!location.pathname.startsWith(item.path ?? '__')) {
           el.style.background = 'transparent';
-          el.style.color      = t.sidebarText;
+          el.style.color = t.sidebarText;
         }
       }}
     >
@@ -203,21 +203,21 @@ const NavItemComponent: React.FC<{
 
 // ── Sidebar shell ──────────────────────────────────────────────────────────
 interface SidebarProps {
-  mobileOpen   : boolean;
+  mobileOpen: boolean;
   onMobileClose: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
-  const logoImg  = '/src/assets/images/favicon_logo.png';
+  const logoImg = '/src/assets/images/favicon_logo.png';
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { sidebarCollapsed } = useAppSelector((s) => s.ui);
-  const { role }             = useAppSelector((s) => s.auth);
-  const { mode }             = useAppSelector((s) => s.theme);
-  const location             = useLocation();
+  const { role } = useAppSelector((s) => s.auth);
+  const { mode } = useAppSelector((s) => s.theme);
+  const location = useLocation();
 
-  const isDark   = mode === 'dark';
-  const t        = getTheme(isDark);
+  const isDark = mode === 'dark';
+  const t = getTheme(isDark);
   const roleLabel = role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Admin' : 'Employee';
   const dashboardRoute = isAdminRole(role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
 
@@ -278,7 +278,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
   const navItems = isAdminRole(role) ? buildAdminNavItems(masterEnabled, role) : employeeNavItems;
 
   const shellStyle: React.CSSProperties = {
-    background : t.sidebarBg,
+    background: t.sidebarBg,
     borderRight: `1px solid ${t.sidebarBorder}`,
   };
 
@@ -340,11 +340,11 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLElement).style.background = t.sidebarHoverBg;
-              (e.currentTarget as HTMLElement).style.color      = t.sidebarHoverText;
+              (e.currentTarget as HTMLElement).style.color = t.sidebarHoverText;
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLElement).style.background = 'transparent';
-              (e.currentTarget as HTMLElement).style.color      = t.textPrimary;
+              (e.currentTarget as HTMLElement).style.color = t.textPrimary;
             }}
           >
             {collapsed ? <MdChevronRight size={28} /> : (
@@ -398,7 +398,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
           <aside
             className="fixed top-16 left-0 h-[calc(100%-4rem)] z-40 flex flex-col transition-transform duration-300"
             style={{
-              width    : 260,
+              width: 260,
               transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
               ...shellStyle,
             }}

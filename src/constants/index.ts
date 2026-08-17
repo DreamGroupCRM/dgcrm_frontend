@@ -37,7 +37,7 @@ export const ROUTES = {
 
     // Employee
     EMPLOYEE_DETAILS: '/admin/employee/employee-details',
-    ATTENDANCE: '/admin/employees/attendance',
+    ATTENDANCE: '/admin/employee/attendance',
 
     // CRM
     CUSTOMER_DETAILS: '/admin/crm/customer-details',

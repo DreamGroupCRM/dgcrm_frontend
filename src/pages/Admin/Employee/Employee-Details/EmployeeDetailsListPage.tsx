@@ -364,14 +364,14 @@ const EmployeeDetailsListPage: React.FC = () => {
                 style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 13, width: '100%' }}
               />
             </div>
-            <button type="button" className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold"
+            {/* <button type="button" className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold"
               style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
               <MdFilterList size={17} /> Filter
-            </button>
+            </button> */}
             <button type="button" onClick={handleExportCsv} title="Export CSV"
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold"
               style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
-              <MdDownload size={17} /> Export
+              <MdDownload size={17} /> Export CSV
             </button>
             <button
               type="button"
