@@ -104,7 +104,7 @@ const ProfileModal: React.FC = () => {
           >
             <MdClose size={16} />
           </button>
-          <p className="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-0.5">
+          <p className="text-blue-200 text-xs font-semibold camelcase tracking-widest mb-0.5">
             My Profile
           </p>
           <h2 className="text-white font-bold text-lg" style={{ fontFamily: t.fontFamily }}>

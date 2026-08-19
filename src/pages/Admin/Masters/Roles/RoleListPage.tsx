@@ -223,7 +223,7 @@ const RoleListPage: React.FC = () => {
                 {['ID', 'Role Name', 'Status', 'Created At', 'Updated At'].map((h) => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
-                    fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
+                    fontSize: 14, fontWeight: 700, textTransform: 'camelcase',
                     letterSpacing: '0.05em', color: t.textPrimary,
                     borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   }}>
@@ -232,7 +232,7 @@ const RoleListPage: React.FC = () => {
                 ))}
                 <th style={{
                   padding: '12px 16px', textAlign: 'center',
-                  fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
+                  fontSize: 14, fontWeight: 700, textTransform: 'camelcase',
                   letterSpacing: '0.05em', color: t.textPrimary,
                   borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   position: 'sticky', right: 0, zIndex: 2,

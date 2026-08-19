@@ -333,7 +333,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                           key={h}
                           style={{
                             padding: '10px 16px', textAlign: h === 'Action' ? 'right' : 'left', fontSize: 12.5, fontWeight: 700,
-                            textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary,
+                            textTransform: 'camelcase', letterSpacing: '0.04em', color: t.textSecondary,
                           }}
                         >
                           {h}

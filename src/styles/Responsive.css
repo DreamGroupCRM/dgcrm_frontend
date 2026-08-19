@@ -103,13 +103,43 @@
   transition: transform .4s ease;
 }
 
+/* ── login-card height now MATCHES the left carousel, it never
+   dictates its own arbitrary size ─────────────────────────────
+   Previously this box had no explicit height (just padding around
+   its content), so it shrank/grew with whichever step was showing
+   (credentials vs OTP vs set-new-password) and looked smaller than
+   the carousel on the left, exactly as seen in the screenshot.
+
+   Fix: `height: 100%`. `.login-frame` (the grid) already has
+   `align-items: stretch`, so `.login-right` is already stretched to
+   match the carousel's height — that part was already correct.
+   The only missing piece was that `.login-card` itself (the inner
+   box) wasn't told to fill that stretched height, so it just sat
+   centered with empty space around it. `height: 100%` fills it —
+   deterministically, and identical on every refresh/step, because
+   the carousel's own height is driven purely by its own width +
+   `aspect-ratio: 16/9` (nothing to do with login-card's content).
+
+   Width is untouched — it was already `width: 100%; max-width:520px`
+   (not content-driven), so nothing there needed fixing.
+
+   Important: this does NOT touch, resize, or reshape `.login-left`
+   / `.carousel-card` in any way — height:100% only fills the space
+   the grid already stretched .login-right to; it can never grow the
+   row bigger than the carousel dictates, so the left div's width and
+   border-radius stay exactly as before. */
 .login-card {
   width: 100%;
   max-width: 520px;
+  height: 100%;
   padding: 32px;
   border-radius: 28px;
   box-sizing: border-box;
   flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .login-submit-btn {
@@ -169,8 +199,15 @@
     min-width: 0;
   }
 
+  /* Below 1100px the layout stacks into a single column, so left
+     and right are no longer in the same stretched grid row — there
+     is nothing left to "match" anymore. Use a comfortable min-height
+     instead of a hard height, so the card never looks cramped but
+     also never forces extra blank space. */
   .login-card {
     max-width: 650px;
+    height: auto;
+    min-height: 520px;
   }
 
 }
@@ -213,6 +250,10 @@
     padding-bottom: 20px;
   }
 
+  .login-card {
+    max-width: 600px;
+  }
+
 }
 
 /* ===========================
@@ -231,6 +272,8 @@
   }
 
   .login-card {
+    max-width: 560px;
+    min-height: 480px;
     padding: 22px;
   }
 
@@ -252,6 +295,9 @@
   }
 
   .login-card {
+    width: 100%;
+    max-width: 100%;
+    min-height: 440px;
     padding: 18px;
     border-radius: 22px;
   }
@@ -270,6 +316,9 @@
   }
 
   .login-card {
+    width: 100%;
+    max-width: 100%;
+    min-height: 400px;
     padding: 16px;
   }
 

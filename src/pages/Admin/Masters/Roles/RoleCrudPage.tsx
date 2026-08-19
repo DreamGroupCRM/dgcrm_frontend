@@ -57,7 +57,7 @@ const Field: React.FC<FieldProps> = ({
         fontWeight: 600,
         mb: 0.75,
         fontSize: '0.82rem',
-        textTransform: 'uppercase',
+        textTransform: 'camelcase',
         letterSpacing: '0.04em',
       }}
     >

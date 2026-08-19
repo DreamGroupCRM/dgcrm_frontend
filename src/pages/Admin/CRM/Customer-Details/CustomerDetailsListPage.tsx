@@ -468,7 +468,7 @@ const CustomerDetailsListPage: React.FC = () => {
                   <input type="checkbox" checked={pageRows.length > 0 && pageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
                 {['Action', 'Employee Code', 'Employee Name', 'Customer Name', 'Contact Details', 'Project / Flat Details', 'Flat Booking Date', 'Monthly EMI Amount'].map((h) => (
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, textTransform: 'camelcase', letterSpacing: '0.03em', color: t.textSecondary, whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
                 ))}
