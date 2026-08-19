@@ -32,6 +32,10 @@ import ActionMasterCrudPage from '../pages/Admin/Masters/ActionModule/ActionMast
 import ModuleMasterCrudPage from '../pages/Admin/Masters/ActionModule/ModuleMasterCrudPage';
 import ModuleMappingPage from '../pages/Admin/Masters/ModuleMapping/ModuleMappingPage';
 
+// Due Report — real data for the "Payment Dues" sidebar entry, replacing
+// its former PlaceholderPage now that GET /api/payments/due-report exists.
+import DueReportPage from '../pages/Admin/CRM/DueReport/DueReportPage';
+
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
 const PlaceholderPage = lazy(() => import('../components/common/PlaceholderPage'));
@@ -90,7 +94,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="crm/customer-details/add" element={<CustomerDetailsCrudPage mode="add" />} />
       <Route path="crm/customer-details/view/:id" element={<CustomerDetailsCrudPage mode="view" />} />
       <Route path="crm/customer-details/edit/:id" element={<CustomerDetailsCrudPage mode="edit" />} />
-      <Route path="crm/payment-dues" element={<PlaceholderPage title="Payment Dues" />} />
+      <Route path="crm/payment-dues" element={<DueReportPage />} />
       <Route path="crm/payment-received" element={<PlaceholderPage title="Payment Received" />} />
       <Route path="crm/leads" element={<PlaceholderPage title="Leads" />} />
 

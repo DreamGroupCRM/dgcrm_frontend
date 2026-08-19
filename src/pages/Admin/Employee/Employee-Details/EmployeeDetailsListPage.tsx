@@ -29,9 +29,9 @@ const cityStateFromAddress = (address: string): string => {
 };
 
 const STATUS_STYLES: Record<EmployeeStatus, { bg: string; color: string; label: string }> = {
-  active   : { bg: '#dcfce7', color: '#16a34a', label: 'Active' },
-  on_leave : { bg: '#fef9c3', color: '#ca8a04', label: 'On Leave' },
-  inactive : { bg: '#fee2e2', color: '#dc2626', label: 'Inactive' },
+  active: { bg: '#dcfce7', color: '#16a34a', label: 'Active' },
+  on_leave: { bg: '#fef9c3', color: '#ca8a04', label: 'On Leave' },
+  inactive: { bg: '#fee2e2', color: '#dc2626', label: 'Inactive' },
 };
 
 const initials = (first: string, last: string) => `${first?.[0] || ''}${last?.[0] || ''}`.toUpperCase();
@@ -316,19 +316,13 @@ const EmployeeDetailsListPage: React.FC = () => {
   return (
     <div style={{ fontFamily: t.fontFamily }}>
 
-      {/* ── Page header ───────────────────────────────────────────────── */}
-      <div className="mb-6">
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Employees</h1>
-        <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Manage and view all employees in your organization</p>
-      </div>
-
       {/* ── Summary cards ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'Total Employees', sub: 'All Employees', value: summary.total, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
-          { label: 'Active Employees', sub: `${summary.activePct}% of total`, value: summary.active, icon: MdLayers, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
-          { label: 'On Leave', sub: `${summary.onLeavePct}% of total`, value: summary.onLeave, icon: MdEventBusy, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff' },
-          { label: 'Inactive Employees', sub: `${summary.inactivePct}% of total`, value: summary.inactive, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
+          { label: 'Total Employees', value: summary.total, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
+          { label: 'Active Employees', value: summary.active, icon: MdLayers, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
+          { label: 'On Leave', value: summary.onLeave, icon: MdEventBusy, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff' },
+          { label: 'Inactive Employees', value: summary.inactive, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
         ].map((card) => (
           <div key={card.label} className="rounded-2xl p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
             <div className="flex items-center justify-center rounded-xl mb-3" style={{ width: 42, height: 42, background: card.bg }}>
@@ -345,16 +339,6 @@ const EmployeeDetailsListPage: React.FC = () => {
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
 
         <div className="flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 38, height: 38, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
-              <MdGroups size={19} style={{ color: '#4f46e5' }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 15.5, fontWeight: 700, color: t.textPrimary }}>All Employees</div>
-              <div style={{ fontSize: 12.5, color: t.textSecondary }}>Browse, search and manage your team members</div>
-            </div>
-          </div>
-
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 260 }}>
               <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
@@ -364,15 +348,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                 style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 13, width: '100%' }}
               />
             </div>
-            {/* <button type="button" className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold"
-              style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
-              <MdFilterList size={17} /> Filter
-            </button> */}
-            <button type="button" onClick={handleExportCsv} title="Export CSV"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold"
-              style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
-              <MdDownload size={17} /> Export CSV
-            </button>
+
             <button
               type="button"
               onClick={() => navigate('/admin/employee/employee-details/add')}
@@ -381,48 +357,18 @@ const EmployeeDetailsListPage: React.FC = () => {
             >
               <MdAdd size={18} /> Add Employee
             </button>
-          </div>
-        </div>
 
-        {/* filter row */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 px-5 py-3" style={{ borderBottom: `1px solid ${t.divider}` }}>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} style={selectStyle}>
-              <option>All Departments</option>
-              {departmentOptions.map((d) => <option key={d}>{d}</option>)}
-            </select>
-            <select value={designationFilter} onChange={(e) => setDesignationFilter(e.target.value)} style={selectStyle}>
-              <option>All Designations</option>
-              {designationOptions.map((d) => <option key={d}>{d}</option>)}
-            </select>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={selectStyle}>
-              <option>All Status</option>
-              {Object.values(STATUS_STYLES).map((s) => <option key={s.label}>{s.label}</option>)}
-            </select>
-            <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} style={selectStyle}>
-              <option>All Locations</option>
-              {locationOptions.map((l) => <option key={l}>{l}</option>)}
-            </select>
-          </div>
+            <button type="button" onClick={handleExportCsv} title="Export CSV"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold"
+              style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
+              <MdDownload size={17} /> Export CSV
+            </button>
 
-          <div className="flex items-center gap-2.5">
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} style={selectStyle}>
-              <option value="newest">Sort by: Newest First</option>
-              <option value="oldest">Sort by: Oldest First</option>
-              <option value="name">Sort by: Name (A–Z)</option>
-            </select>
-            <div className="flex items-center rounded-xl" style={{ border: `1px solid ${t.surfaceBorder}`, overflow: 'hidden' }}>
-              <button type="button" onClick={() => setView('grid')} style={{ padding: '7px 9px', background: view === 'grid' ? '#4338ca' : t.surfaceBg, color: view === 'grid' ? '#fff' : t.textSecondary, border: 'none', cursor: 'pointer' }}>
-                <MdGridView size={16} />
-              </button>
-              <button type="button" onClick={() => setView('list')} style={{ padding: '7px 9px', background: view === 'list' ? '#4338ca' : t.surfaceBg, color: view === 'list' ? '#fff' : t.textSecondary, border: 'none', cursor: 'pointer' }}>
-                <MdViewList size={16} />
-              </button>
-            </div>
             <button type="button" onClick={fetchEmployees} title="Refresh" className="flex items-center justify-center rounded-xl"
               style={{ width: 34, height: 34, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
               <MdRefresh size={17} />
             </button>
+
           </div>
         </div>
 

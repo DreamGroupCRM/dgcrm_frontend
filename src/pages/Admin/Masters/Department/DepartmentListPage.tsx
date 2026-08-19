@@ -304,6 +304,7 @@ const DepartmentListPage: React.FC = () => {
   return (
     <div style={{ fontFamily: t.fontFamily }}>
 
+<<<<<<< HEAD
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 mb-6">
         <div
@@ -318,13 +319,15 @@ const DepartmentListPage: React.FC = () => {
         </div>
       </div>
 
+=======
+>>>>>>> V_13.0
       {/* ── Summary cards — counts only, no percentages ─────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'Total Departments',   value: summary.totalDepartments,   icon: MdGroups,      color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
-          { label: 'Total Designations',  value: summary.totalDesignations,  icon: MdBadge,       color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)'  : '#f0fdf4' },
-          { label: 'Enabled Designations',value: summary.enabledDesignations,icon: MdCheckCircle, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)'  : '#eff6ff' },
-          { label: 'Disabled Designations',value: summary.disabledDesignations,icon: MdCancel,    color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)'  : '#fef2f2' },
+          { label: 'Total Departments', value: summary.totalDepartments, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
+          { label: 'Total Designations', value: summary.totalDesignations, icon: MdBadge, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
+          { label: 'Enabled Designations', value: summary.enabledDesignations, icon: MdCheckCircle, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff' },
+          { label: 'Disabled Designations', value: summary.disabledDesignations, icon: MdCancel, color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2' },
         ].map((card) => (
           <div
             key={card.label}
@@ -354,6 +357,7 @@ const DepartmentListPage: React.FC = () => {
 
         {/* header row */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
+<<<<<<< HEAD
           <div className="flex items-center gap-3">
             <div
               className="flex items-center justify-center rounded-lg flex-shrink-0"
@@ -366,12 +370,18 @@ const DepartmentListPage: React.FC = () => {
               <div style={{ fontSize: 14, color: t.textPrimary }}>Manage and view all departments and their designations</div>
             </div>
           </div>
+=======
+>>>>>>> V_13.0
 
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Search — Department Name only */}
             <div
               className="flex items-center gap-2 px-3 py-2 rounded-xl"
+<<<<<<< HEAD
               style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: '100%', maxWidth: 240, flex: '1 1 200px' }}
+=======
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: '100%', maxWidth: 240, minWidth: 160, flex: '1 1 200px' }}
+>>>>>>> V_13.0
             >
               <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
               <input
@@ -383,45 +393,15 @@ const DepartmentListPage: React.FC = () => {
               />
             </div>
 
-            {/* Filter — Status */}
-            {/* <div style={{ position: 'relative' }}>
-              <button
-                type="button"
-                onClick={() => setFilterOpen((v) => !v)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold"
-                style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}
-              >
-                <MdFilterList size={17} /> Filter
-              </button>
-              {filterOpen && (
-                <div
-                  style={{
-                    position: 'absolute', top: '110%', right: 0, zIndex: 20, minWidth: 180,
-                    background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 12,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '8px 0',
-                  }}
-                >
-                  {([
-                    { key: 'all', label: 'All Status' },
-                    { key: 'active', label: 'Active' },
-                    { key: 'inactive', label: 'Inactive' },
-                  ] as { key: StatusFilter; label: string }[]).map((opt) => (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      onClick={() => { setStatusFilter(opt.key); setFilterOpen(false); }}
-                      className="w-full text-left px-4 py-2 text-sm"
-                      style={{
-                        background: statusFilter === opt.key ? (isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff') : 'transparent',
-                        color: t.textPrimary, border: 'none', cursor: 'pointer', fontFamily: t.fontFamily,
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div> */}
+            {/* Add Department */}
+            <button
+              type="button"
+              onClick={() => navigate('/admin/masters/department/add')}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+              style={{ background: 'linear-gradient(135deg,#4338ca,#4f46e5)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              <MdAdd size={18} /> Add Department
+            </button>
 
             {/* Export */}
             <button
@@ -445,15 +425,7 @@ const DepartmentListPage: React.FC = () => {
               <MdRefresh size={18} />
             </button>
 
-            {/* Add Department */}
-            <button
-              type="button"
-              onClick={() => navigate('/admin/masters/department/add')}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-              style={{ background: 'linear-gradient(135deg,#4338ca,#4f46e5)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
-            >
-              <MdAdd size={18} /> Add Department
-            </button>
+
           </div>
         </div>
 
@@ -499,6 +471,7 @@ const DepartmentListPage: React.FC = () => {
                   const c = departmentCounts(d);
                   return (
                     <tr key={d.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+<<<<<<< HEAD
                       <td style={{ padding: '12px 16px', width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth }}>
                         {isMobile ? (
                           <div className="flex items-center">
@@ -553,6 +526,50 @@ const DepartmentListPage: React.FC = () => {
                             </button>
                           </div>
                         )}
+=======
+                      <td style={{ padding: '12px 16px', width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH }}>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            title="View"
+                            onClick={() => navigate(`/admin/masters/department/view/${d.id}`)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
+                              background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff',
+                              border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+                              color: isDark ? '#ffffff' : '#000000', cursor: 'pointer',
+                            }}
+                          >
+                            <MdVisibility size={17} />
+                          </button>
+                          <button
+                            type="button"
+                            title="Edit"
+                            onClick={() => navigate(`/admin/masters/department/edit/${d.id}`)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
+                              background: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff',
+                              border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+                              color: isDark ? '#ffffff' : '#000000', cursor: 'pointer',
+                            }}
+                          >
+                            <MdEdit size={17} />
+                          </button>
+                          <button
+                            type="button"
+                            title="Delete"
+                            onClick={() => handleDelete(d)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
+                              background: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2',
+                              border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+                              color: isDark ? '#ffffff' : '#000000', cursor: 'pointer',
+                            }}
+                          >
+                            <MdDelete size={17} />
+                          </button>
+                        </div>
+>>>>>>> V_13.0
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary }}>
                         {(safePage - 1) * limit + idx + 1}

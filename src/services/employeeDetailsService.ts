@@ -148,6 +148,11 @@ export interface EmployeeFormValues {
   designation_ids                                                             : number[];
   module_action_ids                                                           : number[];
 
+  // Real backend column as of V_13.0 (active/inactive/on_leave) — separate
+  // from is_active, which stays the plain enabled/disabled flag used for
+  // list filtering and soft-delete. See employees.repository.ts's
+  // softDeleteEmployee, which sets both together on delete.
+  status                                                                      : EmployeeStatus;
   is_active                                                                   : boolean;
 }
 
@@ -160,7 +165,7 @@ export interface EmployeeFileValues {
   // No backend field for a "passbook" document as of V_13.0 (no matching
   // multer field / column) — kept on the form for UI continuity, but
   // deliberately NOT translated/sent to the backend. See
-  // EMPLOYEE_FILE_FIELD_RENAMES below.
+  // EMPLOYEE_FILE_FIELD_MAP below.
   passbook_photo?     : File | null;
 }
 
@@ -169,8 +174,15 @@ const buildEmployeeFormData = (values: EmployeeFormValues, files: EmployeeFileVa
   (Object.keys(values) as (keyof EmployeeFormValues)[]).forEach((key) => {
     const value = values[key];
     if (Array.isArray(value)) {
-      if (value.length === 0) fd.append(`${key}[]`, ''); // keep the key present even when empty
-      value.forEach((v) => fd.append(`${key}[]`, String(v)));
+      // Plain, unbracketed key repeated once per item — multer/busboy
+      // accumulate repeated identical multipart field names into an array
+      // on req.body natively; a `key[]` suffix would instead land as a
+      // distinct, unrecognized key ("department_ids[]") that the backend's
+      // Zod schema (which only knows the plain "department_ids" field)
+      // silently drops. Empty arrays are skipped entirely rather than sent
+      // as a single empty-string placeholder, which would fail the
+      // schema's z.coerce.number() element validation.
+      value.forEach((v) => fd.append(key, String(v)));
     } else {
       fd.append(key, String(value));
     }
@@ -186,43 +198,62 @@ const buildEmployeeFormData = (values: EmployeeFormValues, files: EmployeeFileVa
 // real column names — see the Employee entity / Create/Update Employee
 // schema in dgcrm_backend. Fields not listed here already share the same
 // name on both sides (first_name, last_name, email, mobile_number,
-// whatsapp_number, joining_date, bank_account_number, bank_name) or have
-// no backend counterpart and are deliberately left unmapped. Extra keys
-// are harmless: the backend's Zod schemas here are non-strict, so unknown
-// fields are silently ignored server-side rather than rejected.
+// whatsapp_number, joining_date, bank_account_number, bank_name, and, as
+// of the V_13.0 backend schema extension, also middle_name, date_of_birth,
+// working_hours, check_in_time, check_out_time, holidays, salary,
+// account_holder_name, account_type, branch, and status — all now real
+// Employee columns, so nothing further needs mapping for them here).
+// Extra keys are harmless: the backend's Zod schemas here are non-strict,
+// so unknown fields are silently ignored server-side rather than rejected.
 const EMPLOYEE_TEXT_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
   ['aadhar_number', 'aadhaar_card_number'], // backend spells it "aadhaar", not "aadhar"
   ['pan_number', 'pan_card_number'],
   ['ifsc_code', 'bank_ifsc'],
+  ['address', 'residential_address'], // backend column is "residential_address", not "address"
 ];
 
-// File field renames -> real backend multer field names. `resume` already
-// matches the backend's field name, so it needs no rename entry.
+// File field source -> real backend multer field name. Unlike text fields,
+// this list is EXHAUSTIVE and must be used as an allowlist (see
+// toBackendEmployeeFormData below) rather than an additive rename: multer's
+// upload.fields(DOCUMENT_FIELDS) only accepts photo/aadhaar_card_img/
+// pan_card_img/offer_letter/resume/salary_slip as file field names and
+// rejects the WHOLE request (LIMIT_UNEXPECTED_FILE) if a file arrives under
+// any other fieldname — so a file field with no entry here (passbook_photo)
+// must never be forwarded at all, and one that already matches the backend
+// name (`resume`) still needs an identity entry so it doesn't get dropped.
 // `passbook_photo` has no backend equivalent (no such multer field/column)
 // as of V_13.0 — deliberately left unmapped rather than guessed at.
-const EMPLOYEE_FILE_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
+const EMPLOYEE_FILE_FIELD_MAP: ReadonlyArray<readonly [string, string]> = [
   ['profile_photo', 'photo'],
   ['aadhar_card', 'aadhaar_card_img'],
   ['pan_card', 'pan_card_img'],
+  ['resume', 'resume'],
   ['appointment_letter', 'offer_letter'],
 ];
 
-// Builds the FormData actually sent to the backend: every entry already in
-// `formData` is carried over unchanged (nothing removed), plus the
-// backend-named duplicates it needs to actually be understood by the
-// Employee create/update multipart schema. Same additive pattern as
-// `toBackendCustomerFormData` in customerDetailsService.ts.
+// Builds the FormData actually sent to the backend: every TEXT entry
+// already in `formData` is carried over unchanged (nothing removed), plus
+// the backend-named duplicates it needs to actually be understood by the
+// Employee create/update multipart schema — same additive pattern as
+// `toBackendCustomerFormData` in customerDetailsService.ts. FILE entries are
+// the exception: they are forwarded ONLY through EMPLOYEE_FILE_FIELD_MAP
+// (an allowlist), never copied through unchanged, because multer's
+// upload.fields() rejects the entire request outright if it sees a file
+// under a fieldname it wasn't configured with.
 const toBackendEmployeeFormData = (formData: FormData): FormData => {
   const out = new FormData();
-  formData.forEach((value, key) => out.append(key, value as string | Blob));
+  formData.forEach((value, key) => {
+    if (value instanceof Blob) return; // files: forwarded explicitly below, mapped-only
+    out.append(key, value as string);
+  });
 
   for (const [from, to] of EMPLOYEE_TEXT_FIELD_RENAMES) {
     const v = formData.get(from);
     if (v != null) out.append(to, v as string);
   }
-  for (const [from, to] of EMPLOYEE_FILE_FIELD_RENAMES) {
+  for (const [from, to] of EMPLOYEE_FILE_FIELD_MAP) {
     const v = formData.get(from);
-    if (v != null) out.append(to, v as Blob);
+    if (v instanceof Blob) out.append(to, v);
   }
 
   return out;
