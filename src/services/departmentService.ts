@@ -11,17 +11,41 @@
 // in the array (same "send the whole current state" pattern already used
 // by Building's shops in buildingService.ts).
 //
-// ASSUMPTION: this targets a plural `/departments` REST resource, matching
-// the convention already used by `/buildings` in buildingService.ts. The
-// previous Department/Designation pages and services were deleted before
-// this rewrite, so there was no existing endpoint contract to match — if
-// your backend uses different paths (e.g. singular `/department`), only
-// the URL strings below need to change; nothing else in this file depends
-// on the exact path.
+// V_13.0 fix #1 (path): this originally guessed a plural `/departments`
+// REST resource. The real backend (src/app.ts) mounts this module at the
+// singular `/api/department` — same convention as its siblings
+// roleService.ts (`/role`), companyService.ts (`/company`), and
+// moduleMasterService.ts (`/module`), which all correctly use singular
+// paths. `/departments` 404'd; corrected to `/department` below.
+//
+// V_13.0 fix #2 (designations not saving/showing): the backend splits
+// department data into two tiers — plain `GET/POST/PUT /department[...]`
+// (department fields only; department.service.ts's createDepartment/
+// updateDepartment read only name/description/sort_order from the body and
+// silently ignore anything else, including `designations`) and the "full"
+// wizard `GET /department/:id/full`, `POST /department/full`,
+// `PUT /department/:id/full`, which are the only endpoints that actually
+// read/write designations together with the department. This file
+// originally called the plain endpoints for get/create/update, so
+// designations were silently dropped on save and never returned on load.
+// fetchDepartmentById/createDepartment/updateDepartment now call the
+// `/full` endpoints and flatten their `{ department, designations }`
+// response shape into the single flat `Department` object (with
+// `designations` nested inside it) this app's pages already expect.
+//
+// Known gap, not fixed here: the `/full` endpoints' designation schema is
+// `{ id?, name }` only — there's no way to send a designation's is_active
+// flag through create/update. A designation omitted from the array is
+// deactivated server-side, but one INCLUDED in the array is always treated
+// as active — so DepartmentCrudPage's per-designation enable/disable
+// toggle has no backend effect until Save, at which point a toggled-off
+// (but not removed) designation is saved back as active anyway. Flagging
+// for a follow-up rather than guessing at a schema change here.
 
 import axiosInstance from './axiosConfig';
 import {
   Department,
+  Designation,
   DepartmentListResponse,
   DepartmentSingleResponse,
   DepartmentDeleteResponse,
@@ -29,8 +53,34 @@ import {
   UpdateDepartmentPayload,
 } from '../types/index';
 
+// Backend's /full response shape — see department.controller.ts's
+// getFullDepartment/createFullDepartment/updateFullDepartment.
+interface BackendFullDepartment {
+  department: {
+    id: number | string;
+    name: string;
+    description: string | null;
+    is_active: boolean;
+    sort_order: number;
+    created_at: string;
+    updated_at: string;
+  };
+  designations: { id: number | string; name: string }[];
+}
+
+// getFullDepartmentTree only ever returns active designations (its own
+// WHERE clause filters is_active = true), so every row here is active.
+const mapFullDepartment = (raw: BackendFullDepartment): Department => ({
+  id: String(raw.department.id),
+  name: raw.department.name,
+  is_active: raw.department.is_active,
+  designations: raw.designations.map((d): Designation => ({ id: String(d.id), name: d.name, is_active: true })),
+  created_at: raw.department.created_at,
+  updated_at: raw.department.updated_at,
+});
+
 // ── Fetch list of all departments ───────────────────────────────────────────
-/** GET /api/departments?is_active=true&page=1&limit=10&search=... */
+/** GET /api/department?is_active=true&page=1&limit=10&search=... */
 export const fetchDepartmentList = async (
   page: number,
   limit: number,
@@ -44,7 +94,7 @@ export const fetchDepartmentList = async (
   if (search && search.trim()) {
     params.search = search.trim();
   }
-  const res = await axiosInstance.get('/departments', { params });
+  const res = await axiosInstance.get('/department', { params });
   return {
     success: res.data.success,
     message: res.data.message,
@@ -55,48 +105,48 @@ export const fetchDepartmentList = async (
   };
 };
 
-// ── Fetch single department by ID (with its designations) ──────────────────
-/** GET /api/departments/:id */
+// ── Fetch single department by ID, with its designations ───────────────────
+/** GET /api/department/:id/full */
 export const fetchDepartmentById = async (id: string): Promise<DepartmentSingleResponse> => {
-  const res = await axiosInstance.get(`/departments/${id}`);
+  const res = await axiosInstance.get(`/department/${id}/full`);
   return {
     success: res.data.success,
     message: res.data.message,
-    data: res.data.data as Department,
+    data: mapFullDepartment(res.data.data as BackendFullDepartment),
   };
 };
 
-// ── Create new department (with its designations, if any) ──────────────────
-/** POST /api/departments */
+// ── Create new department, with its designations ────────────────────────────
+/** POST /api/department/full */
 export const createDepartment = async (
   payload: CreateDepartmentPayload
 ): Promise<DepartmentSingleResponse> => {
-  const res = await axiosInstance.post('/departments', payload);
+  const res = await axiosInstance.post('/department/full', payload);
   return {
     success: res.data.success,
     message: res.data.message,
-    data: res.data.data as Department,
+    data: mapFullDepartment(res.data.data as BackendFullDepartment),
   };
 };
 
-// ── Update existing department (with its designations, if any) ─────────────
-/** PUT /api/departments/:id */
+// ── Update existing department, with its designations ───────────────────────
+/** PUT /api/department/:id/full */
 export const updateDepartment = async (
   id: string,
   payload: UpdateDepartmentPayload
 ): Promise<DepartmentSingleResponse> => {
-  const res = await axiosInstance.put(`/departments/${id}`, payload);
+  const res = await axiosInstance.put(`/department/${id}/full`, payload);
   return {
     success: res.data.success,
     message: res.data.message,
-    data: res.data.data as Department,
+    data: mapFullDepartment(res.data.data as BackendFullDepartment),
   };
 };
 
 // ── Delete department (and, on the backend, its designations with it) ──────
-/** DELETE /api/departments/:id */
+/** DELETE /api/department/:id */
 export const deleteDepartment = async (id: string): Promise<DepartmentDeleteResponse> => {
-  const res = await axiosInstance.delete(`/departments/${id}`);
+  const res = await axiosInstance.delete(`/department/${id}`);
   return res.data;
 };
 

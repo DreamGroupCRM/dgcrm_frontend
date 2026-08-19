@@ -2,16 +2,30 @@
 // ==========================================
 // DREAM GROUP CRM - EMPLOYEE SERVICE
 // ==========================================
-// Self-contained: every function here talks to /employees only. Nothing in
-// this file imports or calls Department/Designation (or any other master's)
-// service or endpoints — Assign Departments / Assign Designations on the
-// CRUD page are a fixed static list (see EmployeeDetailsCrudPage.tsx), not fetched
-// from Department Master.
+// Self-contained: every function here talks to /employees (+ the sibling
+// /employee-permissions endpoint) only. Nothing in this file imports or
+// calls Department/Designation/Module-Action services — see
+// EmployeeDetailsCrudPage.tsx for where those ARE now fetched (real data,
+// not a hardcoded list) to build the Assign Departments / Assign
+// Designations / Assign Actions & Modules checklists.
 //
 // ASSUMPTION: targets a plural `/employees` REST resource, matching the
 // convention already used by `/buildings` and `/departments` elsewhere in
 // this app. If your backend uses different paths, only the URL strings
 // below need to change.
+//
+// ── V_13.0 alignment note ───────────────────────────────────────────────
+// Backend V_13.0 fixed the Employee create/update multer bug (multipart
+// bodies now actually parse) and added `/employees/next-code` plus real
+// `department_ids[]` / `designation_ids[]` / `module_action_ids[]` support
+// (an employee can now belong to multiple departments/designations, and
+// module/action assignment is by real numeric module_action ids instead of
+// a hardcoded string key). Same additive-translation-layer pattern as
+// `toBackendCustomerFormData` in customerDetailsService.ts: outgoing
+// FormData keeps every field the page already sends, plus backend-named
+// duplicates for the fields that needed renaming. Nothing is removed, so
+// this is safe even though unknown keys are silently ignored by the
+// backend's non-strict Zod schemas.
 
 import axiosInstance from './axiosConfig';
 
@@ -56,7 +70,9 @@ export interface Employee {
   passbook_photo_url?                            : string | null;
 
   department_names                                : string[];
+  department_ids                                  : number[];
   designation_names                                : string[];
+  designation_ids                                  : number[];
   module_keys                                       : string[];
 
   status                                             : EmployeeStatus;
@@ -116,9 +132,21 @@ export interface EmployeeFormValues {
   ifsc_code                                                            : string;
   branch                                                                 : string;
 
+  // Legacy name-based selections — kept on the type so nothing else that
+  // touches EmployeeFormValues breaks, but no longer sourced from real
+  // data and no longer sent as the request's department/designation/module
+  // selection (see department_ids / designation_ids / module_action_ids
+  // below, which ARE real, fetched ids and are what's actually submitted).
   department_names                                                        : string[];
   designation_names                                                         : string[];
   module_keys                                                                : string[];
+
+  // Real, fetched selections (department/designation ids from Department &
+  // Designation Master; module_action_ids from the Module/Action Master's
+  // module_action mapping table) — these are what's actually persisted.
+  department_ids                                                             : number[];
+  designation_ids                                                             : number[];
+  module_action_ids                                                           : number[];
 
   is_active                                                                   : boolean;
 }
@@ -129,6 +157,10 @@ export interface EmployeeFileValues {
   pan_card?           : File | null;
   resume?             : File | null;
   appointment_letter? : File | null;
+  // No backend field for a "passbook" document as of V_13.0 (no matching
+  // multer field / column) — kept on the form for UI continuity, but
+  // deliberately NOT translated/sent to the backend. See
+  // EMPLOYEE_FILE_FIELD_RENAMES below.
   passbook_photo?     : File | null;
 }
 
@@ -138,7 +170,7 @@ const buildEmployeeFormData = (values: EmployeeFormValues, files: EmployeeFileVa
     const value = values[key];
     if (Array.isArray(value)) {
       if (value.length === 0) fd.append(`${key}[]`, ''); // keep the key present even when empty
-      value.forEach((v) => fd.append(`${key}[]`, v));
+      value.forEach((v) => fd.append(`${key}[]`, String(v)));
     } else {
       fd.append(key, String(value));
     }
@@ -148,6 +180,52 @@ const buildEmployeeFormData = (values: EmployeeFormValues, files: EmployeeFileVa
     if (file) fd.append(key, file);
   });
   return fd;
+};
+
+// Plain-text field renames from this form's field names to the backend's
+// real column names — see the Employee entity / Create/Update Employee
+// schema in dgcrm_backend. Fields not listed here already share the same
+// name on both sides (first_name, last_name, email, mobile_number,
+// whatsapp_number, joining_date, bank_account_number, bank_name) or have
+// no backend counterpart and are deliberately left unmapped. Extra keys
+// are harmless: the backend's Zod schemas here are non-strict, so unknown
+// fields are silently ignored server-side rather than rejected.
+const EMPLOYEE_TEXT_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
+  ['aadhar_number', 'aadhaar_card_number'], // backend spells it "aadhaar", not "aadhar"
+  ['pan_number', 'pan_card_number'],
+  ['ifsc_code', 'bank_ifsc'],
+];
+
+// File field renames -> real backend multer field names. `resume` already
+// matches the backend's field name, so it needs no rename entry.
+// `passbook_photo` has no backend equivalent (no such multer field/column)
+// as of V_13.0 — deliberately left unmapped rather than guessed at.
+const EMPLOYEE_FILE_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
+  ['profile_photo', 'photo'],
+  ['aadhar_card', 'aadhaar_card_img'],
+  ['pan_card', 'pan_card_img'],
+  ['appointment_letter', 'offer_letter'],
+];
+
+// Builds the FormData actually sent to the backend: every entry already in
+// `formData` is carried over unchanged (nothing removed), plus the
+// backend-named duplicates it needs to actually be understood by the
+// Employee create/update multipart schema. Same additive pattern as
+// `toBackendCustomerFormData` in customerDetailsService.ts.
+const toBackendEmployeeFormData = (formData: FormData): FormData => {
+  const out = new FormData();
+  formData.forEach((value, key) => out.append(key, value as string | Blob));
+
+  for (const [from, to] of EMPLOYEE_TEXT_FIELD_RENAMES) {
+    const v = formData.get(from);
+    if (v != null) out.append(to, v as string);
+  }
+  for (const [from, to] of EMPLOYEE_FILE_FIELD_RENAMES) {
+    const v = formData.get(from);
+    if (v != null) out.append(to, v as Blob);
+  }
+
+  return out;
 };
 
 // ── Fetch list of all employees ─────────────────────────────────────────────
@@ -178,7 +256,7 @@ export const fetchEmployeeById = async (id: string): Promise<EmployeeSingleRespo
 };
 
 // ── Preview the next auto-generated employee code (optional) ───────────────
-/** GET /api/employees/next-code — returns e.g. { code: 'E_014' } */
+/** GET /api/employees/next-code — returns { success: true, code: 'E014' } */
 export const fetchNextEmployeeCode = async (): Promise<string | null> => {
   try {
     const res = await axiosInstance.get('/employees/next-code');
@@ -194,7 +272,7 @@ export const createEmployee = async (
   values: EmployeeFormValues,
   files: EmployeeFileValues
 ): Promise<EmployeeSingleResponse> => {
-  const res = await axiosInstance.post('/employees', buildEmployeeFormData(values, files), {
+  const res = await axiosInstance.post('/employees', toBackendEmployeeFormData(buildEmployeeFormData(values, files)), {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return { success: res.data.success, message: res.data.message, data: res.data.data as Employee };
@@ -207,7 +285,7 @@ export const updateEmployee = async (
   values: EmployeeFormValues,
   files: EmployeeFileValues
 ): Promise<EmployeeSingleResponse> => {
-  const res = await axiosInstance.put(`/employees/${id}`, buildEmployeeFormData(values, files), {
+  const res = await axiosInstance.put(`/employees/${id}`, toBackendEmployeeFormData(buildEmployeeFormData(values, files)), {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return { success: res.data.success, message: res.data.message, data: res.data.data as Employee };
@@ -220,12 +298,44 @@ export const deleteEmployee = async (id: string): Promise<EmployeeDeleteResponse
   return res.data;
 };
 
+// ── Per-employee module/action permission checklist (Edit/View mode) ───────
+// Requires an already-created employee, so this is only usable once an id
+// exists. Gives the full assignable checklist AND which ones are currently
+// checked in one call — unlike Add mode, which has to build the checklist
+// from `fetchMappingMatrix()` (moduleActionService.ts) instead, since there
+// is no employeeId yet.
+export interface EmployeePermissionAction {
+  module_action_id: number;
+  action           : string;
+  label            : string | null;
+  assigned         : boolean;
+}
+
+export interface EmployeePermissionModule {
+  module_id  : number;
+  module_name: string;
+  module_slug: string;
+  actions    : EmployeePermissionAction[];
+}
+
+export interface EmployeePermissionsResponse {
+  success: boolean;
+  data   : EmployeePermissionModule[];
+}
+
+/** GET /api/employee-permissions/:employeeId */
+export const fetchEmployeePermissions = async (employeeId: string): Promise<EmployeePermissionsResponse> => {
+  const res = await axiosInstance.get(`/employee-permissions/${employeeId}`);
+  return res.data;
+};
+
 // Grouped export — same convenience pattern as buildingService / departmentService
 export const employeeDetailsService = {
-  getAll   : fetchEmployeeList,
-  getById  : fetchEmployeeById,
-  nextCode : fetchNextEmployeeCode,
-  create   : createEmployee,
-  update   : updateEmployee,
-  remove   : deleteEmployee,
+  getAll      : fetchEmployeeList,
+  getById     : fetchEmployeeById,
+  nextCode    : fetchNextEmployeeCode,
+  create      : createEmployee,
+  update      : updateEmployee,
+  remove      : deleteEmployee,
+  permissions : fetchEmployeePermissions,
 };
