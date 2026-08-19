@@ -83,8 +83,15 @@ const CompanyListPage: React.FC = () => {
   };
 
   const exportCSV = () => {
-    const headers = ['ID', 'Company Name', 'Email', 'Phone', 'Created At'];
-    const rows    = filtered.map((c) => [c.id, `"${c.name}"`, c.email, c.phone, formatDate(c.created_at)]);
+    const headers = [
+      'ID', 'Company Name', 'Email', 'Phone',
+      'City', 'State', 'Country', 'GST', 'PAN', 'Created At',
+    ];
+    const rows = filtered.map((c) => [
+      c.id, `"${c.name}"`, c.email, c.phone,
+      c.city || '', c.state || '', c.country || '', c.gst || '', c.pan || '',
+      formatDate(c.created_at),
+    ]);
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     const a   = Object.assign(document.createElement('a'), { href: url, download: 'companies.csv' });
@@ -140,10 +147,13 @@ const CompanyListPage: React.FC = () => {
 
       <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto', position: 'relative' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 650 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1250 }}>
             <thead>
               <tr style={{ background: t.tableHeaderBg }}>
-                {['ID', 'Company', 'Email', 'Phone', 'Created At'].map((h) => (
+                {[
+                  'ID', 'Company', 'Email', 'Phone',
+                  'City', 'State', 'Country', 'GST', 'PAN', 'Created At',
+                ].map((h) => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
                     fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
@@ -170,9 +180,9 @@ const CompanyListPage: React.FC = () => {
 
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
+                <tr><td colSpan={12} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>
+                <tr><td colSpan={12} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>
                   {search ? 'No companies match your search.' : 'No companies found.'}
                 </td></tr>
               ) : (
@@ -204,6 +214,11 @@ const CompanyListPage: React.FC = () => {
 
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary }}>{company.email || '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.phone || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.city || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.state || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.country || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap', fontFamily: 'monospace', textTransform: 'uppercase' }}>{company.gst || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap', fontFamily: 'monospace', textTransform: 'uppercase' }}>{company.pan || '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(company.created_at)}</td>
 
                       {/* STICKY Actions cell */}
