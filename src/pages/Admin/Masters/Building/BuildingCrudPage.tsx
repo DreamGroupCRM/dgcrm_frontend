@@ -247,7 +247,7 @@ const FloorAccordionItem: React.FC<{
                   {['Flat No.', 'Flat Type', 'Area (Sq Ft)', 'Status'].map((h) => (
                     <th key={h} style={{
                       padding: '8px 16px', textAlign: 'left', fontSize: 12.5, fontWeight: 700,
-                      textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary,
+                      textTransform: 'camelcase', letterSpacing: '0.04em', color: t.textSecondary,
                     }}>
                       {h}
                     </th>
@@ -957,7 +957,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 style={{
                   border: 'none', outline: 'none', background: 'transparent',
                   color: t.inputText, fontSize: 14, width: 130, fontFamily: t.fontFamily,
-                  textTransform: 'uppercase',
+                  textTransform: 'camelcase',
                 }}
               />
               {!isView && (

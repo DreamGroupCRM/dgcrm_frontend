@@ -80,7 +80,7 @@ const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; 
 );
 
 const SubHeading: React.FC<{ t: Theme; title: string }> = ({ t, title }) => (
-  <p style={{ fontSize: 12.5, fontWeight: 700, color: t.textSecondary, margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 0.4 }}>{title}</p>
+  <p style={{ fontSize: 12.5, fontWeight: 700, color: t.textSecondary, margin: '0 0 12px', textTransform: 'camelcase', letterSpacing: 0.4 }}>{title}</p>
 );
 
 const Field: React.FC<{ t: Theme; label: string; required?: boolean; children: React.ReactNode; className?: string }> = ({ t, label, required, children, className }) => (

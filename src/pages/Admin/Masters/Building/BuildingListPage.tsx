@@ -1,16 +1,16 @@
 // src/pages/Admin/Masters/Building/BuildingListPage.tsx
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh,
-  MdSearch, MdVisibility, MdApartment,
+  MdSearch, MdVisibility, MdApartment, MdMoreVert,
   MdBusiness, MdLayers, MdHome, MdCheckCircle, MdCancel, MdStorefront,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { getTheme, AppTheme } from '../../../../styles/theme';
 import { fetchBuildingList, deleteBuilding } from '../../../../services/buildingService';
 import { Building, BuildingListSummary } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
@@ -22,8 +22,124 @@ const ACTION_ICON_COLOR = '#4b5563';
 
 // Fixed width for the Actions column — sized for exactly 3 icon buttons
 // (32px each) + gaps + cell padding, so it never grows/shrinks with the
-// number of other columns in the table.
+// number of other columns in the table. On mobile the 3 buttons collapse
+// into a single 3-dot menu button, so the column shrinks to match.
 const ACTION_COL_WIDTH = 148;
+const ACTION_COL_WIDTH_MOBILE = 64;
+const MOBILE_BREAKPOINT = 640; // Tailwind `sm`
+
+// ── responsive helper — same matchMedia pattern used by the Sidebar ────────
+const useIsMobileTable = (breakpoint: number = MOBILE_BREAKPOINT): boolean => {
+  const [isMobile, setIsMobile] = useState<boolean>(
+    () => typeof window !== 'undefined' && window.innerWidth < breakpoint
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    setIsMobile(mql.matches);
+    if (mql.addEventListener) mql.addEventListener('change', handler);
+    else mql.addListener(handler); // Safari <14 fallback
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', handler);
+      else mql.removeListener(handler);
+    };
+  }, [breakpoint]);
+  return isMobile;
+};
+
+// ── mobile Action cell — single 3-dot button that opens a View/Edit/Delete
+// menu. Positioned with `position: fixed` (computed from the button's own
+// bounding rect) rather than `absolute`, so it always escapes the table's
+// scroll container instead of being clipped by it.
+const RowActionMenu: React.FC<{
+  isDark: boolean;
+  t: AppTheme;
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}> = ({ isDark, t, onView, onEdit, onDelete }) => {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const openMenu = () => {
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect) {
+      const menuWidth = 140;
+      setCoords({
+        top: rect.bottom + 4,
+        left: Math.min(Math.max(8, rect.right - menuWidth), window.innerWidth - menuWidth - 8),
+      });
+    }
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    };
+    const closeOnScroll = () => setOpen(false);
+    document.addEventListener('mousedown', handleOutside);
+    window.addEventListener('scroll', closeOnScroll, true);
+    window.addEventListener('resize', closeOnScroll);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      window.removeEventListener('scroll', closeOnScroll, true);
+      window.removeEventListener('resize', closeOnScroll);
+    };
+  }, [open]);
+
+  const menuItemStyle: React.CSSProperties = {
+    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+    padding: '9px 12px', fontSize: 13.5, background: 'transparent', border: 'none',
+    cursor: 'pointer', textAlign: 'left', color: t.textPrimary, fontFamily: t.fontFamily,
+  };
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        title="Actions"
+        onClick={() => (open ? setOpen(false) : openMenu())}
+        style={{
+          width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 8, background: 'none',
+          border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+          color: isDark ? '#ffffff' : '#000000', cursor: 'pointer', flexShrink: 0,
+        }}
+      >
+        <MdMoreVert size={18} />
+      </button>
+      {open && coords && (
+        <div
+          ref={menuRef}
+          style={{
+            position: 'fixed', top: coords.top, left: coords.left, zIndex: 1000, minWidth: 140,
+            background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`,
+            borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', overflow: 'hidden',
+          }}
+        >
+          <button type="button" onClick={() => { setOpen(false); onView(); }} style={menuItemStyle}>
+            <MdVisibility size={16} /> View
+          </button>
+          <button type="button" onClick={() => { setOpen(false); onEdit(); }} style={menuItemStyle}>
+            <MdEdit size={16} /> Edit
+          </button>
+          <button type="button" onClick={() => { setOpen(false); onDelete(); }} style={{ ...menuItemStyle, color: '#dc2626' }}>
+            <MdDelete size={16} /> Delete
+          </button>
+        </div>
+      )}
+    </>
+  );
+};
 
 // ── derived helpers ──────────────────────────────────────────────────────────
 const totalFlatsOf = (b: Building): number =>
@@ -41,6 +157,8 @@ const BuildingListPage: React.FC = () => {
   const { mode } = useAppSelector((s) => s.theme);
   const isDark   = mode === 'dark';
   const t        = getTheme(isDark);
+  const isMobile = useIsMobileTable();
+  const actionColWidth = isMobile ? ACTION_COL_WIDTH_MOBILE : ACTION_COL_WIDTH;
 
   const [allBuildings, setAllBuildings] = useState<Building[]>([]);
   const [filtered, setFiltered]         = useState<Building[]>([]);
@@ -209,7 +327,7 @@ const BuildingListPage: React.FC = () => {
               <div style={{ fontSize: 19, fontWeight: 800, color: t.textPrimary, lineHeight: 1.1 }}>
                 {loading ? '—' : card.value}
               </div>
-              <div style={{ fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                 {card.label}
               </div>
             </div>
@@ -300,8 +418,8 @@ const BuildingListPage: React.FC = () => {
                 {/* STICKY Actions header — now the first column */}
                 <th style={{
                   padding: '12px 16px', textAlign: 'center',
-                  width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
-                  fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
+                  width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth,
+                  fontSize: 14, fontWeight: 700, textTransform: 'camelcase',
                   letterSpacing: '0.05em', color: t.textPrimary,
                   borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   position: 'sticky', left: 0, zIndex: 2,
@@ -309,12 +427,12 @@ const BuildingListPage: React.FC = () => {
                   borderRight: `2px solid ${t.divider}`,
                   boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                 }}>
-                  Actions
+                  {isMobile ? '#' : 'Actions'}
                 </th>
                 {['ID', 'Project Name', 'Building Name', 'Location', 'Wings', 'Floors', 'Flats', 'Status', 'Created At'].map((h) => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
-                    fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
+                    fontSize: 14, fontWeight: 700, textTransform: 'camelcase',
                     letterSpacing: '0.05em', color: t.textPrimary,
                     borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   }}>
@@ -354,35 +472,47 @@ const BuildingListPage: React.FC = () => {
                       {/* STICKY Actions cell — now the first column */}
                       <td style={{
                         padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
-                        width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                        width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth,
                         position: 'sticky', left: 0, zIndex: 1,
                         background: stickyBg,
                         borderRight: `2px solid ${t.divider}`,
                         boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                       }}>
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => navigate(`/admin/masters/building/view/${b.id}`)}
-                            title="View"
-                            style={iconBtn}
-                          >
-                            <MdVisibility size={17} color={ACTION_ICON_COLOR} />
-                          </button>
-                          <button
-                            onClick={() => navigate(`/admin/masters/building/edit/${b.id}`)}
-                            title="Edit"
-                            style={iconBtn}
-                          >
-                            <MdEdit size={17} color={ACTION_ICON_COLOR} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(b)}
-                            title="Delete"
-                            style={iconBtn}
-                          >
-                            <MdDelete size={17} color={ACTION_ICON_COLOR} />
-                          </button>
-                        </div>
+                        {isMobile ? (
+                          <div className="flex items-center justify-center">
+                            <RowActionMenu
+                              isDark={isDark}
+                              t={t}
+                              onView={() => navigate(`/admin/masters/building/view/${b.id}`)}
+                              onEdit={() => navigate(`/admin/masters/building/edit/${b.id}`)}
+                              onDelete={() => handleDelete(b)}
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => navigate(`/admin/masters/building/view/${b.id}`)}
+                              title="View"
+                              style={iconBtn}
+                            >
+                              <MdVisibility size={17} color={ACTION_ICON_COLOR} />
+                            </button>
+                            <button
+                              onClick={() => navigate(`/admin/masters/building/edit/${b.id}`)}
+                              title="Edit"
+                              style={iconBtn}
+                            >
+                              <MdEdit size={17} color={ACTION_ICON_COLOR} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(b)}
+                              title="Delete"
+                              style={iconBtn}
+                            >
+                              <MdDelete size={17} color={ACTION_ICON_COLOR} />
+                            </button>
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         {b.id}

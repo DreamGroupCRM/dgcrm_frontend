@@ -9,6 +9,12 @@
 //   4. Multi-step login to match API v12: email+password -> OTP -> session
 //      (and, for a first-time login, OTP -> set new password -> session)
 //
+// NOTE: the "right div (login form) height/width changes" issue was fixed
+// entirely in Responsive.css (.login-card now has a fixed width + height
+// per breakpoint instead of shrink-wrapping to whichever step's content is
+// showing). No structural/logic change was needed in this file — the same
+// className="login-card" hook already used below is what the CSS now pins.
+//
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks';
@@ -410,7 +416,7 @@ const LoginPage: React.FC = () => {
               <h1 className="font-display text-3xl font-bold text-white mb-1">
                 Dream Group CRM
               </h1>
-              <p className="text-xs text-yellow-300/90 font-body tracking-wide px-4 leading-relaxed">
+              <p className="text-lg text-yellow-300/90 font-body tracking-wide px-4 leading-relaxed">
                 Interest Free Home For All Community People
               </p>
             </div>
@@ -418,7 +424,7 @@ const LoginPage: React.FC = () => {
             {/* Divider */}
             <div className="flex items-center gap-3 mb-5">
               <div className="flex-1 h-px bg-white/20" />
-              <span className="text-white/50 text-xs font-body">
+              <span className="text-white/50 text-sm font-body">
                 {step === 'credentials' && 'Sign In to Your Account'}
                 {step === 'otp' && 'Enter Verification Code'}
                 {step === 'reset-password' && 'Set a New Password'}
@@ -518,7 +524,7 @@ const LoginPage: React.FC = () => {
             {/* ── Step 2: OTP ── */}
             {step === 'otp' && (
               <form onSubmit={handleOtpSubmit} noValidate className="space-y-4">
-                <p className="text-white/60 text-xs -mt-2 mb-1">
+                <p className="text-white/60 text-sm -mt-2 mb-1">
                   We sent a 6-digit code to <span className="text-white/90">{form.email}</span>.
                   It expires in 5 minutes.
                 </p>

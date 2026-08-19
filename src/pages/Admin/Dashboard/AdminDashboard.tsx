@@ -119,7 +119,7 @@ const AdminDashboard: React.FC = () => {
                 {['#', 'Name', 'Mobile', 'Status', 'Date'].map((h) => (
                   <th
                     key={h}
-                    className="text-left px-6 py-3 text-xs uppercase font-semibold tracking-wider"
+                    className="text-left px-6 py-3 text-xs camelcase font-semibold tracking-wider"
                     style={{ color: t.textPrimary, fontFamily: t.fontFamily }}
                   >
                     {h}

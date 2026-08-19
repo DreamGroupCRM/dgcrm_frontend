@@ -1,17 +1,17 @@
 // ==========================================
 // DREAM GROUP CRM - DEPARTMENT LIST PAGE
 // ==========================================
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh, MdSearch, MdVisibility,
-  MdFilterList, MdGroups, MdBadge, MdCheckCircle, MdCancel, MdSwapVert,
+  MdFilterList, MdGroups, MdBadge, MdCheckCircle, MdCancel, MdSwapVert, MdMoreVert,
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { getTheme, AppTheme } from '../../../../styles/theme';
 import { fetchDepartmentList, deleteDepartment } from '../../../../services/departmentService';
 import { Department } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
@@ -20,8 +20,124 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 // Fixed width for the Action column — sized for exactly 3 icon buttons
 // (32px each) + gaps + cell padding, so it never grows/shrinks with the
-// number of other columns in the table.
+// number of other columns in the table. On mobile the 3 buttons collapse
+// into a single 3-dot menu button, so the column shrinks to match.
 const ACTION_COL_WIDTH = 148;
+const ACTION_COL_WIDTH_MOBILE = 64;
+const MOBILE_BREAKPOINT = 640; // Tailwind `sm`
+
+// ── responsive helper — same matchMedia pattern used by the Sidebar ────────
+const useIsMobileTable = (breakpoint: number = MOBILE_BREAKPOINT): boolean => {
+  const [isMobile, setIsMobile] = useState<boolean>(
+    () => typeof window !== 'undefined' && window.innerWidth < breakpoint
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    setIsMobile(mql.matches);
+    if (mql.addEventListener) mql.addEventListener('change', handler);
+    else mql.addListener(handler); // Safari <14 fallback
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', handler);
+      else mql.removeListener(handler);
+    };
+  }, [breakpoint]);
+  return isMobile;
+};
+
+// ── mobile Action cell — single 3-dot button that opens a View/Edit/Delete
+// menu. Positioned with `position: fixed` (computed from the button's own
+// bounding rect) rather than `absolute`, so it always escapes the table's
+// scroll container instead of being clipped by it.
+const RowActionMenu: React.FC<{
+  isDark: boolean;
+  t: AppTheme;
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}> = ({ isDark, t, onView, onEdit, onDelete }) => {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const openMenu = () => {
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect) {
+      const menuWidth = 140;
+      setCoords({
+        top: rect.bottom + 4,
+        left: Math.min(Math.max(8, rect.right - menuWidth), window.innerWidth - menuWidth - 8),
+      });
+    }
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    };
+    const closeOnScroll = () => setOpen(false);
+    document.addEventListener('mousedown', handleOutside);
+    window.addEventListener('scroll', closeOnScroll, true);
+    window.addEventListener('resize', closeOnScroll);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      window.removeEventListener('scroll', closeOnScroll, true);
+      window.removeEventListener('resize', closeOnScroll);
+    };
+  }, [open]);
+
+  const menuItemStyle: React.CSSProperties = {
+    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+    padding: '9px 12px', fontSize: 14, background: 'transparent', border: 'none',
+    cursor: 'pointer', textAlign: 'left', color: t.textPrimary, fontFamily: t.fontFamily,
+  };
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        title="Actions"
+        onClick={() => (open ? setOpen(false) : openMenu())}
+        style={{
+          width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 8, background: 'none',
+          border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+          color: isDark ? '#ffffff' : '#000000', cursor: 'pointer', flexShrink: 0,
+        }}
+      >
+        <MdMoreVert size={18} />
+      </button>
+      {open && coords && (
+        <div
+          ref={menuRef}
+          style={{
+            position: 'fixed', top: coords.top, left: coords.left, zIndex: 1000, minWidth: 140,
+            background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`,
+            borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', overflow: 'hidden',
+          }}
+        >
+          <button type="button" onClick={() => { setOpen(false); onView(); }} style={menuItemStyle}>
+            <MdVisibility size={16} /> View
+          </button>
+          <button type="button" onClick={() => { setOpen(false); onEdit(); }} style={menuItemStyle}>
+            <MdEdit size={16} /> Edit
+          </button>
+          <button type="button" onClick={() => { setOpen(false); onDelete(); }} style={{ ...menuItemStyle, color: '#dc2626' }}>
+            <MdDelete size={16} /> Delete
+          </button>
+        </div>
+      )}
+    </>
+  );
+};
 
 type SortKey = 'name' | 'total' | 'enabled' | null;
 type SortDir = 'asc' | 'desc';
@@ -40,6 +156,8 @@ const DepartmentListPage: React.FC = () => {
   const { mode } = useAppSelector((s) => s.theme);
   const isDark = mode === 'dark';
   const t = getTheme(isDark);
+  const isMobile = useIsMobileTable();
+  const actionColWidth = isMobile ? ACTION_COL_WIDTH_MOBILE : ACTION_COL_WIDTH;
 
   const [allDepartments, setAllDepartments] = useState<Department[]>([]);
   const [filtered, setFiltered] = useState<Department[]>([]);
@@ -196,7 +314,7 @@ const DepartmentListPage: React.FC = () => {
         </div>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Department Master</h1>
-          <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>View and manage all departments</p>
+          <p style={{ fontSize: 14, color: t.textPrimary, margin: '2px 0 0' }}>View and manage all departments</p>
         </div>
       </div>
 
@@ -223,7 +341,7 @@ const DepartmentListPage: React.FC = () => {
               <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, lineHeight: 1.1 }}>
                 {loading ? '—' : card.value}
               </div>
-              <div style={{ fontSize: 12, color: t.textSecondary, whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 15, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                 {card.label}
               </div>
             </div>
@@ -244,8 +362,8 @@ const DepartmentListPage: React.FC = () => {
               <MdGroups size={19} style={{ color: '#4f46e5' }} />
             </div>
             <div>
-              <div style={{ fontSize: 15.5, fontWeight: 700, color: t.textPrimary }}>All Departments</div>
-              <div style={{ fontSize: 12.5, color: t.textSecondary }}>Manage and view all departments and their designations</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary }}>All Departments</div>
+              <div style={{ fontSize: 14, color: t.textPrimary }}>Manage and view all departments and their designations</div>
             </div>
           </div>
 
@@ -253,7 +371,7 @@ const DepartmentListPage: React.FC = () => {
             {/* Search — Department Name only */}
             <div
               className="flex items-center gap-2 px-3 py-2 rounded-xl"
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 240 }}
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: '100%', maxWidth: 240, flex: '1 1 200px' }}
             >
               <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
               <input
@@ -261,7 +379,7 @@ const DepartmentListPage: React.FC = () => {
                 placeholder="Search by department name..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 13.5, width: '100%' }}
+                style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 14, width: '100%' }}
               />
             </div>
 
@@ -357,72 +475,86 @@ const DepartmentListPage: React.FC = () => {
                   <th
                     key={col.label}
                     style={{
-                      padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700,
-                      textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary, whiteSpace: 'nowrap',
+                      padding: '12px 16px', textAlign: 'left', fontSize: 14, fontWeight: 700,
+                      textTransform: 'camelcase', letterSpacing: '0.04em', color: t.textPrimary, whiteSpace: 'nowrap',
                       ...(col.label === 'Action'
-                        ? { width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH }
+                        ? { width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth }
                         : {}),
                     }}
                   >
-                    {col.key ? <SortHeader label={col.label} sortField={col.key} /> : col.label}
+                    {col.label === 'Action'
+                      ? (isMobile ? '#' : 'Action')
+                      : (col.key ? <SortHeader label={col.label} sortField={col.key} /> : col.label)}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading departments...</td></tr>
+                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textPrimary }}>Loading departments...</td></tr>
               ) : pageRows.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No departments found.</td></tr>
+                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textPrimary }}>No departments found.</td></tr>
               ) : (
                 pageRows.map((d, idx) => {
                   const c = departmentCounts(d);
                   return (
                     <tr key={d.id} style={{ borderTop: `1px solid ${t.divider}` }}>
-                      <td style={{ padding: '12px 16px', width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH }}>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            title="View"
-                            onClick={() => navigate(`/admin/masters/department/view/${d.id}`)}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
-                              background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff',
-                              border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-                              color: '#2563eb', cursor: 'pointer',
-                            }}
-                          >
-                            <MdVisibility size={17} />
-                          </button>
-                          <button
-                            type="button"
-                            title="Edit"
-                            onClick={() => navigate(`/admin/masters/department/edit/${d.id}`)}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
-                              background: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff',
-                              border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-                              color: '#7c3aed', cursor: 'pointer',
-                            }}
-                          >
-                            <MdEdit size={17} />
-                          </button>
-                          <button
-                            type="button"
-                            title="Delete"
-                            onClick={() => handleDelete(d)}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
-                              background: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2',
-                              border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-                              color: '#dc2626', cursor: 'pointer',
-                            }}
-                          >
-                            <MdDelete size={17} />
-                          </button>
-                        </div>
+                      <td style={{ padding: '12px 16px', width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth }}>
+                        {isMobile ? (
+                          <div className="flex items-center">
+                            <RowActionMenu
+                              isDark={isDark}
+                              t={t}
+                              onView={() => navigate(`/admin/masters/department/view/${d.id}`)}
+                              onEdit={() => navigate(`/admin/masters/department/edit/${d.id}`)}
+                              onDelete={() => handleDelete(d)}
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              title="View"
+                              onClick={() => navigate(`/admin/masters/department/view/${d.id}`)}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
+                                background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff',
+                                border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+                                color: '#2563eb', cursor: 'pointer',
+                              }}
+                            >
+                              <MdVisibility size={17} />
+                            </button>
+                            <button
+                              type="button"
+                              title="Edit"
+                              onClick={() => navigate(`/admin/masters/department/edit/${d.id}`)}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
+                                background: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff',
+                                border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+                                color: '#7c3aed', cursor: 'pointer',
+                              }}
+                            >
+                              <MdEdit size={17} />
+                            </button>
+                            <button
+                              type="button"
+                              title="Delete"
+                              onClick={() => handleDelete(d)}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
+                                background: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2',
+                                border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+                                color: '#dc2626', cursor: 'pointer',
+                              }}
+                            >
+                              <MdDelete size={17} />
+                            </button>
+                          </div>
+                        )}
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: 13.5, color: t.textSecondary }}>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary }}>
                         {(safePage - 1) * limit + idx + 1}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
@@ -446,7 +578,7 @@ const DepartmentListPage: React.FC = () => {
                           {d.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: 13.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         {formatDate(d.created_at)}
                       </td>
                     </tr>
@@ -459,18 +591,18 @@ const DepartmentListPage: React.FC = () => {
 
         {/* pagination */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4" style={{ borderTop: `1px solid ${t.divider}` }}>
-          <div className="flex items-center gap-2" style={{ fontSize: 13, color: t.textSecondary }}>
+          <div className="flex items-center gap-2" style={{ fontSize: 14, color: t.textPrimary }}>
             <span>Rows per page:</span>
             <select
               value={limit}
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 8, padding: '4px 8px', color: t.inputText, fontSize: 13 }}
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 8, padding: '4px 8px', color: t.inputText, fontSize: 14 }}
             >
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
 
-          <div style={{ fontSize: 13, color: t.textSecondary }}>
+          <div style={{ fontSize: 14, color: t.textPrimary }}>
             Showing {totalFiltered === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, totalFiltered)} of {totalFiltered}
           </div>
 
