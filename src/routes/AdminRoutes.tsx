@@ -15,6 +15,9 @@ import DepartmentCrudPage from '@/pages/Admin/Masters/Department/DepartmentCrudP
 import EmployeeDetailsCrudPage from '../pages/Admin/Employee/Employee-Details/EmployeeDetailsCrudPage';
 import EmployeeDetailsListPage from '../pages/Admin/Employee/Employee-Details/EmployeeDetailsListPage';
 
+import CustomerDetailsListPage from '../pages/Admin/CRM/Customer-Details/CustomerDetailsListPage';
+import CustomerDetailsCrudPage from '../pages/Admin/CRM/Customer-Details/CustomerDetailsCrudPage';
+
 import RoleListPage from '../pages/Admin/Masters/Roles/RoleListPage';
 import RoleCrudPage from '../pages/Admin/Masters/Roles/RoleCrudPage';
 
@@ -83,10 +86,13 @@ const AdminRoutes: React.FC = () => (
       <Route path="employee/employee-details/edit/:id" element={<EmployeeDetailsCrudPage mode="edit" />} />
       <Route path="employee/attendance" element={<PlaceholderPage title="Attendance" />} />
 
-      <Route path="crm/customer-details" element={<PlaceholderPage title="Customer Details" />} />
-      <Route path="crm/leads" element={<PlaceholderPage title="Leads" />} />
-      <Route path="crm/payment-received" element={<PlaceholderPage title="Payment Received" />} />
+      <Route path="crm/customer-details" element={<CustomerDetailsListPage />} />
+      <Route path="crm/customer-details/add" element={<CustomerDetailsCrudPage mode="add" />} />
+      <Route path="crm/customer-details/view/:id" element={<CustomerDetailsCrudPage mode="view" />} />
+      <Route path="crm/customer-details/edit/:id" element={<CustomerDetailsCrudPage mode="edit" />} />
       <Route path="crm/payment-dues" element={<PlaceholderPage title="Payment Dues" />} />
+      <Route path="crm/payment-received" element={<PlaceholderPage title="Payment Received" />} />
+      <Route path="crm/leads" element={<PlaceholderPage title="Leads" />} />
 
       <Route path="audit-history" element={<PlaceholderPage title="Audit History" />} />
       <Route path="interest-free-calculator" element={<PlaceholderPage title="Interest Free Calculator" />} />
