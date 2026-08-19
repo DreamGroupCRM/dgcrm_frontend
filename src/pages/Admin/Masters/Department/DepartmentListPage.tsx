@@ -18,6 +18,11 @@ import { formatDate, showAlert } from '../../../../utils';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
+// Fixed width for the Action column — sized for exactly 3 icon buttons
+// (32px each) + gaps + cell padding, so it never grows/shrinks with the
+// number of other columns in the table.
+const ACTION_COL_WIDTH = 148;
+
 type SortKey = 'name' | 'total' | 'enabled' | null;
 type SortDir = 'asc' | 'desc';
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -340,6 +345,7 @@ const DepartmentListPage: React.FC = () => {
             <thead>
               <tr style={{ background: t.insetBg }}>
                 {[
+                  { label: 'Action', key: null },
                   { label: '#', key: null },
                   { label: 'Department Name', key: 'name' as const },
                   { label: 'Total Designations', key: 'total' as const },
@@ -347,13 +353,15 @@ const DepartmentListPage: React.FC = () => {
                   { label: 'Disabled Designations', key: null },
                   { label: 'Status', key: null },
                   { label: 'Created On', key: null },
-                  { label: 'Action', key: null },
                 ].map((col) => (
                   <th
                     key={col.label}
                     style={{
-                      padding: '12px 16px', textAlign: col.label === 'Action' ? 'right' : 'left', fontSize: 12, fontWeight: 700,
+                      padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700,
                       textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary, whiteSpace: 'nowrap',
+                      ...(col.label === 'Action'
+                        ? { width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH }
+                        : {}),
                     }}
                   >
                     {col.key ? <SortHeader label={col.label} sortField={col.key} /> : col.label}
@@ -371,6 +379,49 @@ const DepartmentListPage: React.FC = () => {
                   const c = departmentCounts(d);
                   return (
                     <tr key={d.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                      <td style={{ padding: '12px 16px', width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH }}>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            title="View"
+                            onClick={() => navigate(`/admin/masters/department/view/${d.id}`)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
+                              background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff',
+                              border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+                              color: '#2563eb', cursor: 'pointer',
+                            }}
+                          >
+                            <MdVisibility size={17} />
+                          </button>
+                          <button
+                            type="button"
+                            title="Edit"
+                            onClick={() => navigate(`/admin/masters/department/edit/${d.id}`)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
+                              background: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff',
+                              border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+                              color: '#7c3aed', cursor: 'pointer',
+                            }}
+                          >
+                            <MdEdit size={17} />
+                          </button>
+                          <button
+                            type="button"
+                            title="Delete"
+                            onClick={() => handleDelete(d)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
+                              background: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2',
+                              border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+                              color: '#dc2626', cursor: 'pointer',
+                            }}
+                          >
+                            <MdDelete size={17} />
+                          </button>
+                        </div>
+                      </td>
                       <td style={{ padding: '12px 16px', fontSize: 13.5, color: t.textSecondary }}>
                         {(safePage - 1) * limit + idx + 1}
                       </td>
@@ -397,43 +448,6 @@ const DepartmentListPage: React.FC = () => {
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 13.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>
                         {formatDate(d.created_at)}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            title="View"
-                            onClick={() => navigate(`/admin/masters/department/view/${d.id}`)}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
-                              background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff', border: 'none', color: '#2563eb', cursor: 'pointer',
-                            }}
-                          >
-                            <MdVisibility size={17} />
-                          </button>
-                          <button
-                            type="button"
-                            title="Edit"
-                            onClick={() => navigate(`/admin/masters/department/edit/${d.id}`)}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
-                              background: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff', border: 'none', color: '#7c3aed', cursor: 'pointer',
-                            }}
-                          >
-                            <MdEdit size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            title="Delete"
-                            onClick={() => handleDelete(d)}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
-                              background: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: 'pointer',
-                            }}
-                          >
-                            <MdDelete size={17} />
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   );

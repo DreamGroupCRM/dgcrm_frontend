@@ -17,6 +17,11 @@ import { formatDate, showAlert } from '../../../../utils';
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 const ACTION_ICON_COLOR = '#4b5563';
 
+// Fixed width for the Actions column — sized for exactly 3 icon buttons
+// (32px each) + gaps + cell padding, so it never grows/shrinks with the
+// number of other columns in the table.
+const ACTION_COL_WIDTH = 148;
+
 const BankAccountListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -122,9 +127,11 @@ const BankAccountListPage: React.FC = () => {
   };
 
   const iconBtn: React.CSSProperties = {
-    background: 'none', border: 'none', cursor: 'pointer',
-    color: ACTION_ICON_COLOR, padding: 6, borderRadius: 6,
-    display: 'inline-flex', alignItems: 'center',
+    width: 32, height: 32, background: 'none',
+    border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+    color: ACTION_ICON_COLOR, padding: 0, borderRadius: 8,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', flexShrink: 0,
   };
 
   const stickyBg = isDark ? t.surfaceBg : '#ffffff';
@@ -180,6 +187,18 @@ const BankAccountListPage: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
             <thead>
               <tr style={{ background: t.tableHeaderBg }}>
+                {/* STICKY Actions — now the first column */}
+                <th style={{
+                  padding: '12px 16px', textAlign: 'center',
+                  width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                  fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '0.05em', color: t.textPrimary,
+                  borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
+                  position: 'sticky', left: 0, zIndex: 2,
+                  background: t.tableHeaderBg,
+                  borderRight: `2px solid ${t.divider}`,
+                  boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                }}>Actions</th>
                 {['ID', 'Company Name', 'Bank Name', 'Account Holder Name', 'Account Number', 'Branch Name', 'IFSC Code', 'Status', 'Created At'].map((h) => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
@@ -188,16 +207,6 @@ const BankAccountListPage: React.FC = () => {
                     borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   }}>{h}</th>
                 ))}
-                <th style={{
-                  padding: '12px 16px', textAlign: 'center',
-                  fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
-                  letterSpacing: '0.05em', color: t.textPrimary,
-                  borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
-                  position: 'sticky', right: 0, zIndex: 2,
-                  background: t.tableHeaderBg,
-                  borderLeft: `2px solid ${t.divider}`,
-                  boxShadow: '-4px 0 8px rgba(0,0,0,0.06)',
-                }}>Actions</th>
               </tr>
             </thead>
 
@@ -216,6 +225,21 @@ const BankAccountListPage: React.FC = () => {
                       style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`, transition: 'background 0.15s' }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
+                      {/* STICKY Actions cell — now the first column */}
+                      <td style={{
+                        padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
+                        width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                        position: 'sticky', left: 0, zIndex: 1,
+                        background: stickyBg,
+                        borderRight: `2px solid ${t.divider}`,
+                        boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                      }}>
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => navigate(`/admin/masters/bank-account/view/${bank.id}`)} title="View" style={iconBtn}><MdVisibility size={17} /></button>
+                          <button onClick={() => navigate(`/admin/masters/bank-account/edit/${bank.id}`)} title="Edit" style={iconBtn}><MdEdit size={17} /></button>
+                          <button onClick={() => handleDelete(bank)} title="Delete" style={iconBtn}><MdDelete size={17} /></button>
+                        </div>
+                      </td>
                       <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{bank.id}</td>
                       <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.company_name ?? '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500, whiteSpace: 'nowrap' }}>{bank.name}</td>
@@ -225,19 +249,6 @@ const BankAccountListPage: React.FC = () => {
                       <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.ifsc_code}</td>
                       <td style={{ padding: '12px 16px' }}>{statusBadge(bank.is_active)}</td>
                       <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(bank.created_at)}</td>
-                      <td style={{
-                        padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
-                        position: 'sticky', right: 0, zIndex: 1,
-                        background: stickyBg,
-                        borderLeft: `2px solid ${t.divider}`,
-                        boxShadow: '-4px 0 8px rgba(0,0,0,0.06)',
-                      }}>
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => navigate(`/admin/masters/bank-account/view/${bank.id}`)} title="View" style={iconBtn}><MdVisibility size={18} /></button>
-                          <button onClick={() => navigate(`/admin/masters/bank-account/edit/${bank.id}`)} title="Edit" style={iconBtn}><MdEdit size={18} /></button>
-                          <button onClick={() => handleDelete(bank)} title="Delete" style={iconBtn}><MdDelete size={18} /></button>
-                        </div>
-                      </td>
                     </tr>
                   );
                 })
