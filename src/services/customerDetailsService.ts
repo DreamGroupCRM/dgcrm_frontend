@@ -32,6 +32,8 @@ import {
   AssignCustomersResponse,
   CustomerPaymentHistoryResponse,
   CustomerSchemeResponse,
+  CustomerFullDetail,
+  CustomerFullDetailResponse,
 } from '../types/index';
 
 // ── Fetch list of all customers (with optional filters) ────────────────────
@@ -66,6 +68,13 @@ export const fetchCustomerById = async (id: string): Promise<CustomerSingleRespo
   return { success: res.data.success, message: res.data.message, data: res.data.data as Customer };
 };
 
+// ── Fetch single customer by ID, full Create-Customer-form shape (Edit/View) ──
+/** GET /api/customers/:id — same endpoint as fetchCustomerById, richer shape */
+export const fetchCustomerFullDetails = async (id: string): Promise<CustomerFullDetailResponse> => {
+  const res = await axiosInstance.get(`/customers/${id}`);
+  return { success: res.data.success, message: res.data.message, data: res.data.data as CustomerFullDetail };
+};
+
 // ── Create new customer ──────────────────────────────────────────────────────
 /** POST /api/customers */
 export const createCustomer = async (payload: CreateCustomerPayload): Promise<CustomerSingleResponse> => {
@@ -77,6 +86,30 @@ export const createCustomer = async (payload: CreateCustomerPayload): Promise<Cu
 /** PUT /api/customers/:id */
 export const updateCustomer = async (id: string, payload: UpdateCustomerPayload): Promise<CustomerSingleResponse> => {
   const res = await axiosInstance.put(`/customers/${id}`, payload);
+  return { success: res.data.success, message: res.data.message, data: res.data.data as Customer };
+};
+
+// ── Create new customer — full Create-Customer form, multipart/form-data ─────
+// Used by the new CustomerDetailsCrudPage: every field on the Create Customer
+// screen (Personal / Property Booking / Payment Details) plus the six file
+// uploads (customer photo, Aadhar photo, PAN photo, Application Form,
+// Declaration Form, Allotment Letter) travels in one FormData body, since
+// createCustomer()/updateCustomer() above only send plain JSON and can't
+// carry files.
+/** POST /api/customers (multipart/form-data) */
+export const createCustomerWithDetails = async (formData: FormData): Promise<CustomerSingleResponse> => {
+  const res = await axiosInstance.post('/customers', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return { success: res.data.success, message: res.data.message, data: res.data.data as Customer };
+};
+
+// ── Update existing customer — full Create-Customer form, multipart/form-data ─
+/** PUT /api/customers/:id (multipart/form-data) */
+export const updateCustomerWithDetails = async (id: string, formData: FormData): Promise<CustomerSingleResponse> => {
+  const res = await axiosInstance.put(`/customers/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return { success: res.data.success, message: res.data.message, data: res.data.data as Customer };
 };
 
@@ -110,12 +143,15 @@ export const fetchCustomerScheme = async (customerId: string): Promise<CustomerS
 
 // Grouped export — same convenience pattern as buildingService / departmentService / employeeService
 export const customerDetailsService = {
-  getAll         : fetchAllCustomerDetails,
-  getById        : fetchCustomerById,
-  create         : createCustomer,
-  update         : updateCustomer,
-  remove         : deleteCustomer,
-  assign         : assignCustomersToEmployee,
-  paymentHistory : fetchCustomerPaymentHistory,
-  scheme         : fetchCustomerScheme,
+  getAll             : fetchAllCustomerDetails,
+  getById            : fetchCustomerById,
+  getFullDetails     : fetchCustomerFullDetails,
+  create             : createCustomer,
+  update             : updateCustomer,
+  createWithDetails  : createCustomerWithDetails,
+  updateWithDetails  : updateCustomerWithDetails,
+  remove             : deleteCustomer,
+  assign             : assignCustomersToEmployee,
+  paymentHistory     : fetchCustomerPaymentHistory,
+  scheme             : fetchCustomerScheme,
 };

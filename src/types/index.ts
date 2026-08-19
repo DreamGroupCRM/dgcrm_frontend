@@ -671,3 +671,99 @@ export interface CustomerSchemeResponse {
   message?: string;
   data    : CustomerScheme | null;
 }
+
+// ── Customer Details — Full Create/Edit Form ────────────────────────────────
+// Mirrors the "Create Customer" screen field-for-field (Personal Details,
+// Property Booking Details, Payment Details, Document Upload) so every
+// visible input has a matching request param. Submitted as
+// multipart/form-data — customer photo, Aadhar/PAN photos and the three
+// documents are real files — so this type describes the CRUD page's FORM
+// STATE before it's packed into a FormData, not a literal JSON body.
+export type ParkingChoice = 'yes' | 'no';
+
+export interface CustomerDetailFormValues {
+  // Personal Details
+  first_name              : string;
+  middle_name              : string;
+  last_name                 : string;
+  customer_photo             : File | null;
+  email                       : string;
+  mobile_country_code          : string;
+  mobile_number                  : string;
+  whatsapp_country_code            : string;
+  whatsapp_number                    : string;
+  aadhar_number                        : string;
+  aadhar_photo                          : File | null;
+  pancard_number                          : string;
+  pancard_photo                             : File | null;
+  address                                     : string;
+  date_of_birth                                 : string;
+  alternate_person_name                           : string;
+  alternate_person_mobile                           : string;
+
+  // Property Booking Details
+  company_name : string;
+  project_name : string;
+  location     : string;
+  building_id  : string;
+  building_name: string;
+  wing_id      : string;
+  wing_name    : string;
+  floor_id     : string;
+  floor_label  : string;
+  flat_id      : string;
+  flat_no      : string;
+  flat_type    : string;
+  area_sqft    : number | null;
+  wants_parking: ParkingChoice;
+  parking_no   : string;
+
+  // Payment Details
+  total_cost                                : number | null;
+  booking_date                               : string;
+  booking_amount                             : number | null;
+  remaining_booking_amount                   : number | null;
+  remaining_booking_date                     : string;
+  possession_amount                          : number | null; // auto-calculated (total − booking − remaining), read-only
+  installment_date                           : string;
+  monthly_emi_before_possession              : number | null;
+  monthly_emi_after_possession               : number | null;
+  total_emi_tenure_months                    : number | null;
+  booster_amount_before_possession           : number | null;
+  booster_amount_after_possession            : number | null;
+  booster_interval_before_possession_months  : number | null;
+  booster_interval_after_possession_months   : number | null;
+
+  // Document Upload
+  application_form  : File | null;
+  declaration_form  : File | null;
+  allotment_letter  : File | null;
+
+  is_active: boolean;
+}
+
+// GET /api/customers/:id response shape for this full form (Edit/View).
+// Same fields as CustomerDetailFormValues, but every uploaded file comes
+// back as an already-hosted URL (or null) instead of a File object, since
+// nothing is re-uploaded just from viewing/loading the record.
+export interface CustomerFullDetail extends Omit<
+  CustomerDetailFormValues,
+  'customer_photo' | 'aadhar_photo' | 'pancard_photo' | 'application_form' | 'declaration_form' | 'allotment_letter'
+> {
+  id            : string;
+  customer_code?: string; // e.g. "C_001", shown as the badge next to "Customer Details"
+  customer_photo_url  : string | null;
+  aadhar_photo_url    : string | null;
+  pancard_photo_url   : string | null;
+  application_form_url: string | null;
+  declaration_form_url: string | null;
+  allotment_letter_url: string | null;
+  created_at : string;
+  updated_at?: string;
+}
+
+export interface CustomerFullDetailResponse {
+  success : boolean;
+  message?: string;
+  data    : CustomerFullDetail;
+}
