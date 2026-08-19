@@ -186,27 +186,13 @@ const DepartmentListPage: React.FC = () => {
   return (
     <div style={{ fontFamily: t.fontFamily }}>
 
-      {/* ── Page header ───────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-6">
-        <div
-          className="flex items-center justify-center rounded-xl flex-shrink-0"
-          style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}
-        >
-          <MdGroups size={22} style={{ color: '#4f46e5' }} />
-        </div>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Department Master</h1>
-          <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>View and manage all departments</p>
-        </div>
-      </div>
-
       {/* ── Summary cards — counts only, no percentages ─────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'Total Departments',   value: summary.totalDepartments,   icon: MdGroups,      color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
-          { label: 'Total Designations',  value: summary.totalDesignations,  icon: MdBadge,       color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)'  : '#f0fdf4' },
-          { label: 'Enabled Designations',value: summary.enabledDesignations,icon: MdCheckCircle, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)'  : '#eff6ff' },
-          { label: 'Disabled Designations',value: summary.disabledDesignations,icon: MdCancel,    color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)'  : '#fef2f2' },
+          { label: 'Total Departments', value: summary.totalDepartments, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
+          { label: 'Total Designations', value: summary.totalDesignations, icon: MdBadge, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
+          { label: 'Enabled Designations', value: summary.enabledDesignations, icon: MdCheckCircle, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff' },
+          { label: 'Disabled Designations', value: summary.disabledDesignations, icon: MdCancel, color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2' },
         ].map((card) => (
           <div
             key={card.label}
@@ -236,18 +222,6 @@ const DepartmentListPage: React.FC = () => {
 
         {/* header row */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
-          <div className="flex items-center gap-3">
-            <div
-              className="flex items-center justify-center rounded-lg flex-shrink-0"
-              style={{ width: 38, height: 38, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}
-            >
-              <MdGroups size={19} style={{ color: '#4f46e5' }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 15.5, fontWeight: 700, color: t.textPrimary }}>All Departments</div>
-              <div style={{ fontSize: 12.5, color: t.textSecondary }}>Manage and view all departments and their designations</div>
-            </div>
-          </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Search — Department Name only */}
@@ -265,45 +239,15 @@ const DepartmentListPage: React.FC = () => {
               />
             </div>
 
-            {/* Filter — Status */}
-            {/* <div style={{ position: 'relative' }}>
-              <button
-                type="button"
-                onClick={() => setFilterOpen((v) => !v)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold"
-                style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}
-              >
-                <MdFilterList size={17} /> Filter
-              </button>
-              {filterOpen && (
-                <div
-                  style={{
-                    position: 'absolute', top: '110%', right: 0, zIndex: 20, minWidth: 180,
-                    background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 12,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '8px 0',
-                  }}
-                >
-                  {([
-                    { key: 'all', label: 'All Status' },
-                    { key: 'active', label: 'Active' },
-                    { key: 'inactive', label: 'Inactive' },
-                  ] as { key: StatusFilter; label: string }[]).map((opt) => (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      onClick={() => { setStatusFilter(opt.key); setFilterOpen(false); }}
-                      className="w-full text-left px-4 py-2 text-sm"
-                      style={{
-                        background: statusFilter === opt.key ? (isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff') : 'transparent',
-                        color: t.textPrimary, border: 'none', cursor: 'pointer', fontFamily: t.fontFamily,
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div> */}
+            {/* Add Department */}
+            <button
+              type="button"
+              onClick={() => navigate('/admin/masters/department/add')}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+              style={{ background: 'linear-gradient(135deg,#4338ca,#4f46e5)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              <MdAdd size={18} /> Add Department
+            </button>
 
             {/* Export */}
             <button
@@ -327,15 +271,7 @@ const DepartmentListPage: React.FC = () => {
               <MdRefresh size={18} />
             </button>
 
-            {/* Add Department */}
-            <button
-              type="button"
-              onClick={() => navigate('/admin/masters/department/add')}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-              style={{ background: 'linear-gradient(135deg,#4338ca,#4f46e5)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
-            >
-              <MdAdd size={18} /> Add Department
-            </button>
+
           </div>
         </div>
 
