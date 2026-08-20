@@ -23,6 +23,13 @@ import {
   UpdateBuildingPayload,
 } from '../types/index';
 
+// Sent as a custom request header on every call below, and echoed back by
+// the backend as a response header (see building.controller.ts) — so the
+// named API operation being called is visible directly in the browser's
+// Network tab (Headers panel), on both the request and the response, not
+// just inferable from the URL/method.
+const API_NAME_HEADER = 'X-Api-Name';
+
 // ── Backend wire shapes (wizard) ────────────────────────────────────────────
 interface WizardFlat { id: number; flatNo: string; flatType: string | null; flatArea: number | null; enabled: boolean; }
 interface WizardFloor { id: number; floorName: string; flats: WizardFlat[]; }
@@ -64,6 +71,10 @@ interface BuildingListRow {
   shop_count?: number;
   enabled_shop_count?: number;
   disabled_shop_count?: number;
+  // Comma-separated wing names for this building, e.g. "A, B, C" — same
+  // aggregation convention as the counts above (an .addSelect(subquery,
+  // 'alias') per building), used by the list table's Wings column.
+  wing_names?: string;
 }
 
 // Client-generated ids (see BuildingCrudPage's simpleId helper) look like
@@ -141,6 +152,11 @@ function fromListRow(row: BuildingListRow): Building {
     has_shops: undefined,
     shops: undefined,
     shop_count: row.shop_count ?? 0,
+    enabled_flats: row.enabled_flat_count ?? 0,
+    disabled_flats: row.disabled_flat_count ?? 0,
+    enabled_shops: row.enabled_shop_count ?? 0,
+    disabled_shops: row.disabled_shop_count ?? 0,
+    wing_names: row.wing_names ?? '',
     has_parking: !!row.b_has_parking,
     parking_count: row.b_parking_count ?? null,
     is_active: row.b_is_active,
@@ -205,7 +221,10 @@ export const FetchBuildingList = async (
   if (search && search.trim()) {
     params.search = search.trim();
   }
-  const res = await axiosInstance.get('/buildings', { params });
+  const res = await axiosInstance.get('/buildings', {
+    params,
+    headers: { [API_NAME_HEADER]: 'FetchBuildingList' },
+  });
   console.log('[buildingService] FetchBuildingList response:', res.data);
 
   const rawRows = (res.data.rows as BuildingListRow[]) || [];
@@ -251,7 +270,9 @@ export const FetchBuildingList = async (
 // ── Fetch single building by ID (with wings -> floors -> flats, + shops) ───
 /** GET /api/buildings/:id/full */
 export const ViewBuilding = async (id: string): Promise<BuildingSingleResponse> => {
-  const res = await axiosInstance.get(`/buildings/${id}/full`);
+  const res = await axiosInstance.get(`/buildings/${id}/full`, {
+    headers: { [API_NAME_HEADER]: 'ViewBuilding' },
+  });
   console.log('[buildingService] ViewBuilding response:', res.data);
   return {
     success: res.data.success,
@@ -265,7 +286,9 @@ export const ViewBuilding = async (id: string): Promise<BuildingSingleResponse> 
 export const CreateBuilding = async (
   payload: CreateBuildingPayload
 ): Promise<BuildingSingleResponse> => {
-  const res = await axiosInstance.post('/buildings/full', toWizardPayload(payload));
+  const res = await axiosInstance.post('/buildings/full', toWizardPayload(payload), {
+    headers: { [API_NAME_HEADER]: 'CreateBuilding' },
+  });
   console.log('[buildingService] CreateBuilding response:', res.data);
   return {
     success: res.data.success,
@@ -280,7 +303,9 @@ export const UpdateBuilding = async (
   id: string,
   payload: UpdateBuildingPayload
 ): Promise<BuildingSingleResponse> => {
-  const res = await axiosInstance.put(`/buildings/${id}/full`, toWizardPayload(payload));
+  const res = await axiosInstance.put(`/buildings/${id}/full`, toWizardPayload(payload), {
+    headers: { [API_NAME_HEADER]: 'UpdateBuilding' },
+  });
   console.log('[buildingService] UpdateBuilding response:', res.data);
   return {
     success: res.data.success,
@@ -292,7 +317,9 @@ export const UpdateBuilding = async (
 // ── Delete building ──────────────────────────────────────────────────────────
 /** DELETE /api/buildings/:id */
 export const DeleteBuilding = async (id: string): Promise<BuildingDeleteResponse> => {
-  const res = await axiosInstance.delete(`/buildings/${id}`);
+  const res = await axiosInstance.delete(`/buildings/${id}`, {
+    headers: { [API_NAME_HEADER]: 'DeleteBuilding' },
+  });
   console.log('[buildingService] DeleteBuilding response:', res.data);
   return res.data;
 };

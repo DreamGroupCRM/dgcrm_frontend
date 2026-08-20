@@ -494,13 +494,13 @@ const DepartmentListPage: React.FC = () => {
                 <SortableTh label="Total Designations" active={sortKey === 'total'} dir={sortDir} onClick={() => toggleSort('total')} />
                 <SortableTh label="Enabled Designations" active={sortKey === 'enabled'} dir={sortDir} onClick={() => toggleSort('enabled')} />
                 <SortableTh label="Disabled Designations" active={sortKey === 'disabled'} dir={sortDir} onClick={() => toggleSort('disabled')} />
-                <th>Status</th>
                 <SortableTh label="Created On" active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} />
 >>>>>>> V_14.0
               </tr>
             </thead>
             <tbody>
               {loading ? (
+<<<<<<< HEAD
 <<<<<<< HEAD
                 <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textPrimary }}>Loading departments...</td></tr>
               ) : pageRows.length === 0 ? (
@@ -509,6 +509,11 @@ const DepartmentListPage: React.FC = () => {
                 <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center' }}>Loading departments...</td></tr>
               ) : pageRows.length === 0 ? (
                 <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center' }}>No departments found.</td></tr>
+>>>>>>> V_14.0
+=======
+                <tr><td colSpan={7} style={{ padding: 28, textAlign: 'center' }}>Loading departments...</td></tr>
+              ) : pageRows.length === 0 ? (
+                <tr><td colSpan={7} style={{ padding: 28, textAlign: 'center' }}>No departments found.</td></tr>
 >>>>>>> V_14.0
               ) : (
                 pageRows.map((d) => {
@@ -621,6 +626,7 @@ const DepartmentListPage: React.FC = () => {
                       <td>{c.total}</td>
                       <td style={{ color: '#16a34a', fontWeight: 600 }}>{c.enabled}</td>
                       <td style={{ color: c.disabled > 0 ? '#dc2626' : undefined, fontWeight: c.disabled > 0 ? 600 : undefined }}>{c.disabled}</td>
+<<<<<<< HEAD
                       <td>
 >>>>>>> V_14.0
                         <span
@@ -636,6 +642,8 @@ const DepartmentListPage: React.FC = () => {
                         {formatDate(d.created_at)}
                       </td>
 =======
+=======
+>>>>>>> V_14.0
                       <td style={{ whiteSpace: 'nowrap' }}>{formatDate(d.created_at)}</td>
 >>>>>>> V_14.0
                     </tr>

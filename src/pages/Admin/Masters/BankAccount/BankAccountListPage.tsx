@@ -143,21 +143,6 @@ const BankAccountListPage: React.FC = () => {
     return Array.from({ length: Math.min(5, totalPages) }, (_, i) => start + i);
   };
 
-  const statusBadge = (isActive: boolean) => (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center',
-      padding: '2px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-      background: isActive
-        ? isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7'
-        : isDark ? 'rgba(239,68,68,0.12)'  : '#fee2e2',
-      color: isActive
-        ? isDark ? '#4ade80' : '#16a34a'
-        : isDark ? '#f87171' : '#dc2626',
-    }}>
-      {isActive ? 'Active' : 'Inactive'}
-    </span>
-  );
-
   return (
     <div className="master-page">
 
@@ -218,7 +203,7 @@ const BankAccountListPage: React.FC = () => {
                 <SortableTh label="Bank Name" active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Account Holder Name" active={sortKey === 'account_holder_name'} dir={sortDir} onClick={() => toggleSort('account_holder_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Account Number" active={sortKey === 'account_number'} dir={sortDir} onClick={() => toggleSort('account_number')} style={{ borderBottom: `1px solid ${t.divider}` }} />
-                {['Branch Name', 'IFSC Code', 'Status'].map((h) => (
+                {['Branch Name', 'IFSC Code'].map((h) => (
                   <th key={h} style={{ borderBottom: `1px solid ${t.divider}` }}>{h}</th>
 >>>>>>> V_14.0
                 ))}
@@ -228,9 +213,9 @@ const BankAccountListPage: React.FC = () => {
 
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} style={{ textAlign: 'center', padding: 48 }}>Loading...</td></tr>
+                <tr><td colSpan={9} style={{ textAlign: 'center', padding: 48 }}>Loading...</td></tr>
               ) : pageRows.length === 0 ? (
-                <tr><td colSpan={10} style={{ textAlign: 'center', padding: 48 }}>
+                <tr><td colSpan={9} style={{ textAlign: 'center', padding: 48 }}>
                   {search ? 'No bank accounts match your search.' : 'No bank accounts found.'}
                 </td></tr>
               ) : (
@@ -264,7 +249,6 @@ const BankAccountListPage: React.FC = () => {
                       <td>{bank.account_number}</td>
                       <td>{bank.branch_name}</td>
                       <td>{bank.ifsc_code}</td>
-                      <td>{statusBadge(bank.is_active)}</td>
                       <td>{formatDate(bank.created_at)}</td>
                     </tr>
                   );

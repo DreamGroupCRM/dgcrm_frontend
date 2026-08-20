@@ -170,7 +170,7 @@ const totalFlatsOf = (b: Building): number =>
 const totalFloorsOf = (b: Building): number =>
   (b.wings ?? []).reduce((sum, w) => sum + (w.floors?.length ?? 0), 0);
 
-type SortKey = 'id' | 'project_name' | 'building_name' | 'location' | 'wings' | 'floors' | 'flats' | 'shops' | 'parking' | 'created_at';
+type SortKey = 'id' | 'project_name' | 'building_name' | 'wings' | 'floors' | 'flats' | 'shops' | 'parking' | 'created_at';
 
 const BuildingListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -231,7 +231,6 @@ const BuildingListPage: React.FC = () => {
       case 'id': return Number(b.id);
       case 'project_name': return b.project_name?.toLowerCase() || '';
       case 'building_name': return b.building_name?.toLowerCase() || '';
-      case 'location': return b.location?.toLowerCase() || '';
       case 'wings': return b.wings?.length ?? 0;
       case 'floors': return totalFloorsOf(b);
       case 'flats': return totalFlatsOf(b);
@@ -305,26 +304,6 @@ const BuildingListPage: React.FC = () => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
     return Array.from({ length: Math.min(5, totalPages) }, (_, i) => start + i);
   };
-
-  // ── status badge ──────────────────────────────────────────────────────────
-  const statusBadge = (isActive: boolean) => (
-    <span style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      padding: '2px 10px',
-      borderRadius: 20,
-      fontSize: 13,
-      fontWeight: 500,
-      background: isActive
-        ? isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7'
-        : isDark ? 'rgba(239,68,68,0.12)'  : '#fee2e2',
-      color: isActive
-        ? isDark ? '#4ade80' : '#16a34a'
-        : isDark ? '#f87171' : '#dc2626',
-    }}>
-      {isActive ? 'Active' : 'Inactive'}
-    </span>
-  );
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -422,10 +401,15 @@ const BuildingListPage: React.FC = () => {
       {/* ── Table card ───────────────────────────────────────────────────── */}
       <div className="master-table-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="master-table-scroll">
-          <table className="master-table" style={{ minWidth: 900 }}>
+          <table className="master-table" style={{ minWidth: 1180 }}>
 
+            {/* 2-row header: Flats and Shops are grouped column headers
+                (colSpan 3) with Total/Enabled/Disabled sub-columns in the
+                second row; every other column spans both rows via rowSpan
+                so its bottom border still lines up with the sub-header row. */}
             <thead>
               <tr style={{ background: t.tableHeaderBg }}>
+<<<<<<< HEAD
 <<<<<<< HEAD
                 {/* STICKY Actions header — now the first column */}
                 <th style={{
@@ -440,6 +424,9 @@ const BuildingListPage: React.FC = () => {
                   boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
 =======
                 <th className="master-table-actions-th" style={{
+=======
+                <th className="master-table-actions-th" rowSpan={2} style={{
+>>>>>>> V_14.0
                   width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
                   borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
                   borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
@@ -447,6 +434,7 @@ const BuildingListPage: React.FC = () => {
                 }}>
                   {isMobile ? '#' : 'Actions'}
                 </th>
+<<<<<<< HEAD
 <<<<<<< HEAD
                 {['ID', 'Project Name', 'Building Name', 'Location', 'Wings', 'Floors', 'Flats', 'Status', 'Created At'].map((h) => (
                   <th key={h} style={{
@@ -471,25 +459,46 @@ const BuildingListPage: React.FC = () => {
                 <th style={{ borderBottom: `1px solid ${t.divider}` }}>Status</th>
                 <SortableTh label="Created At" active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} style={{ borderBottom: `1px solid ${t.divider}` }} />
 >>>>>>> V_14.0
+=======
+                <SortableTh label="ID" rowSpan={2} active={sortKey === 'id'} dir={sortDir} onClick={() => toggleSort('id')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Project Name" rowSpan={2} active={sortKey === 'project_name'} dir={sortDir} onClick={() => toggleSort('project_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Building Name" rowSpan={2} active={sortKey === 'building_name'} dir={sortDir} onClick={() => toggleSort('building_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Wings" rowSpan={2} active={sortKey === 'wings'} dir={sortDir} onClick={() => toggleSort('wings')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Floors" rowSpan={2} active={sortKey === 'floors'} dir={sortDir} onClick={() => toggleSort('floors')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <th colSpan={3} style={{ textAlign: 'center', borderBottom: `1px solid ${t.divider}` }}>Flats</th>
+                <th colSpan={3} style={{ textAlign: 'center', borderBottom: `1px solid ${t.divider}` }}>Shops</th>
+                <SortableTh label="Parking" rowSpan={2} active={sortKey === 'parking'} dir={sortDir} onClick={() => toggleSort('parking')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Created At" rowSpan={2} active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+              </tr>
+              <tr style={{ background: t.tableHeaderBg }}>
+                <SortableTh label="Total" active={sortKey === 'flats'} dir={sortDir} onClick={() => toggleSort('flats')} style={{ borderBottom: `1px solid ${t.divider}`, textAlign: 'center' }} />
+                <th style={{ borderBottom: `1px solid ${t.divider}`, textAlign: 'center' }}>Enabled</th>
+                <th style={{ borderBottom: `1px solid ${t.divider}`, textAlign: 'center' }}>Disabled</th>
+                <SortableTh label="Total" active={sortKey === 'shops'} dir={sortDir} onClick={() => toggleSort('shops')} style={{ borderBottom: `1px solid ${t.divider}`, textAlign: 'center' }} />
+                <th style={{ borderBottom: `1px solid ${t.divider}`, textAlign: 'center' }}>Enabled</th>
+                <th style={{ borderBottom: `1px solid ${t.divider}`, textAlign: 'center' }}>Disabled</th>
+>>>>>>> V_14.0
               </tr>
             </thead>
 
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={12} style={{ textAlign: 'center', padding: 48 }}>
+                  <td colSpan={14} style={{ textAlign: 'center', padding: 48 }}>
                     Loading...
                   </td>
                 </tr>
               ) : pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} style={{ textAlign: 'center', padding: 48 }}>
+                  <td colSpan={14} style={{ textAlign: 'center', padding: 48 }}>
                     {search ? 'No buildings match your search.' : 'No buildings found.'}
                   </td>
                 </tr>
               ) : (
                 pageRows.map((b, idx) => {
                   const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
+                  const disabledFlats = b.disabled_flats ?? 0;
+                  const disabledShops = b.disabled_shops ?? 0;
                   return (
                     <tr
                       key={b.id}
@@ -560,20 +569,32 @@ const BuildingListPage: React.FC = () => {
 >>>>>>> V_14.0
                       </td>
                       <td>{b.id}</td>
-                      <td>{b.project_name}</td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{b.project_name}</div>
+                        {b.location && (
+                          <div style={{ fontSize: 12, color: t.textSecondary, fontWeight: 400 }}>{b.location}</div>
+                        )}
+                      </td>
                       <td>
                         <div className="flex items-center gap-2">
                           <MdApartment size={16} className="master-row-icon" />
                           {b.building_name}
                         </div>
                       </td>
-                      <td>{b.location || '—'}</td>
-                      <td>{b.wings?.length ?? 0}</td>
+                      <td>
+                        <div>{b.wings?.length ?? 0}</div>
+                        {b.wing_names && (
+                          <div style={{ fontSize: 12, color: t.textSecondary }}>{b.wing_names}</div>
+                        )}
+                      </td>
                       <td>{totalFloorsOf(b)}</td>
-                      <td>{totalFlatsOf(b)}</td>
-                      <td>{b.shop_count ?? 0}</td>
+                      <td style={{ textAlign: 'center' }}>{totalFlatsOf(b)}</td>
+                      <td style={{ textAlign: 'center', color: '#16a34a', fontWeight: 600 }}>{b.enabled_flats ?? 0}</td>
+                      <td style={{ textAlign: 'center', color: disabledFlats > 0 ? '#dc2626' : undefined, fontWeight: disabledFlats > 0 ? 600 : undefined }}>{disabledFlats}</td>
+                      <td style={{ textAlign: 'center' }}>{b.shop_count ?? 0}</td>
+                      <td style={{ textAlign: 'center', color: '#16a34a', fontWeight: 600 }}>{b.enabled_shops ?? 0}</td>
+                      <td style={{ textAlign: 'center', color: disabledShops > 0 ? '#dc2626' : undefined, fontWeight: disabledShops > 0 ? 600 : undefined }}>{disabledShops}</td>
                       <td>{b.has_parking ? (b.parking_count ?? 0) : '—'}</td>
-                      <td>{statusBadge(b.is_active)}</td>
                       <td>{formatDate(b.created_at)}</td>
                     </tr>
                   );

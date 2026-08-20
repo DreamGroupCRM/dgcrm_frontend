@@ -460,6 +460,14 @@ export interface Building {
   has_shops?   : boolean;
   shops?       : BuildingShop[];
   shop_count?  : number;         // list-row shop count (fromListRow) — shops[] isn't shipped on the list endpoint
+  // list-row per-building Enabled/Disabled breakdowns (fromListRow) — the
+  // Flats/Shops table columns' sub-columns, distinct from BuildingListSummary's
+  // page-wide totals below.
+  enabled_flats? : number;
+  disabled_flats?: number;
+  enabled_shops? : number;
+  disabled_shops?: number;
+  wing_names?    : string;       // comma-separated wing names, e.g. "A, B, C" (fromListRow)
   has_parking? : boolean;
   parking_count?: number | null;
   is_active    : boolean;
