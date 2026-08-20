@@ -12,7 +12,7 @@ import {
 import { useAppSelector } from '../../../../hooks';
 import { getTheme } from '../../../../styles/theme';
 import {
-  fetchEmployeeById, fetchNextEmployeeCode, createEmployee, updateEmployee,
+  ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
   fetchEmployeePermissions,
   EmployeeFormValues, EmployeeFileValues, EmployeeStatus,
 } from '../../../../services/employeeDetailsService';
@@ -33,6 +33,18 @@ const STATUS_OPTIONS: { value: EmployeeStatus; label: string }[] = [
   { value: 'inactive', label: 'Inactive' },
   { value: 'on_leave', label: 'On Leave' },
 ];
+
+// Sticky crud-footer height, matching every other Master CRUD page's
+// convention — page wrapper reserves this much bottom padding so the
+// fixed footer never overlaps form content.
+const FOOTER_HEIGHT = 76;
+
+// Native date/time inputs only open their picker when the calendar/clock
+// icon itself is clicked — clicking anywhere else in the field just moves
+// the text caret. showPicker() opens it from a click anywhere in the field;
+// it's a no-op (via optional chaining) in browsers that don't support it,
+// where the icon-only click still works as before.
+const openPicker = (e: React.MouseEvent<HTMLInputElement>) => e.currentTarget.showPicker?.();
 
 // A checklist option with a real backend id (department/designation/
 // module-action id) driving selection, and a display label.
@@ -308,12 +320,18 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       try {
         const res = await fetchMappingMatrix();
         if (res.success) {
-          const modulesById = new Map(res.data.modules.map((m) => [m.id, m]));
-          const actionsById = new Map(res.data.actions.map((a) => [a.id, a]));
+          // Map keys normalized to Number — the matrix endpoint returns
+          // modules[].id/actions[].id as numbers but mappings[].module_id/
+          // action_master_id as numeric strings (raw Postgres bigint), so a
+          // strict Map.get() on the raw values always missed, silently
+          // falling back to the literal "Module – Action" placeholder text
+          // for every single checklist row.
+          const modulesById = new Map(res.data.modules.map((m) => [Number(m.id), m]));
+          const actionsById = new Map(res.data.actions.map((a) => [Number(a.id), a]));
           const opts: IdOption[] = res.data.mappings.map((mp) => {
-            const mod = modulesById.get(mp.module_id);
-            const act = actionsById.get(mp.action_master_id);
-            return { value: mp.id, label: `${mod?.name ?? 'Module'} – ${act?.name || act?.code || 'Action'}` };
+            const mod = modulesById.get(Number(mp.module_id));
+            const act = actionsById.get(Number(mp.action_master_id));
+            return { value: Number(mp.id), label: `${mod?.name ?? 'Module'} – ${act?.name || act?.code || 'Action'}` };
           });
           setModuleOptions(opts);
         }
@@ -331,7 +349,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     (async () => {
       setFetching(true);
       try {
-        const res = await fetchEmployeeById(id);
+        const res = await ViewEmployee(id);
         if (res.success && res.data) {
           const e = res.data;
           setEmployeeCode(e.employee_code);
@@ -438,15 +456,16 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     setSaving(true);
     try {
       if (mode === 'edit' && id) {
-        await updateEmployee(id, form, files);
-        toast.success('Employee Updated Successfully');
+        await EditEmployee(id, form, files);
+        toast.success('Employee updated successfully.');
       } else {
         await createEmployee(form, files);
-        toast.success('Employee Created Successfully');
+        toast.success('Employee created successfully.');
       }
       navigate('/admin/employee/employee-details');
-    } catch {
-      toast.error(mode === 'edit' ? 'Failed to update employee.' : 'Failed to create employee.');
+    } catch (err: any) {
+      const fallback = mode === 'edit' ? 'Failed to update employee.' : 'Failed to create employee.';
+      toast.error(err?.response?.data?.message || fallback);
     } finally {
       setSaving(false);
     }
@@ -464,7 +483,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
@@ -527,7 +546,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field t={t} label="Date of Birth" required>
               <input type="date" value={form.date_of_birth} readOnly={isView} disabled={isView}
-                onChange={(e) => set('date_of_birth', e.target.value)} style={fieldStyle} />
+                onChange={(e) => set('date_of_birth', e.target.value)} onClick={openPicker} style={fieldStyle} />
             </Field>
             <Field t={t} label="Email" required>
               <input type="email" placeholder="Enter email address" value={form.email} readOnly={isView} disabled={isView}
@@ -582,7 +601,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Field t={t} label="Employee Joining Date" required>
             <input type="date" value={form.joining_date} readOnly={isView} disabled={isView}
-              onChange={(e) => set('joining_date', e.target.value)} style={fieldStyle} />
+              onChange={(e) => set('joining_date', e.target.value)} onClick={openPicker} style={fieldStyle} />
           </Field>
           <Field t={t} label="Working Hours" required>
             <select value={form.working_hours} disabled={isView} onChange={(e) => set('working_hours', e.target.value)} style={{ ...fieldStyle, cursor: isView ? 'default' : 'pointer' }}>
@@ -592,11 +611,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Check In" required>
             <input type="time" value={form.check_in_time} readOnly={isView} disabled={isView}
-              onChange={(e) => set('check_in_time', e.target.value)} style={fieldStyle} />
+              onChange={(e) => set('check_in_time', e.target.value)} onClick={openPicker} style={fieldStyle} />
           </Field>
           <Field t={t} label="Check Out" required>
             <input type="time" value={form.check_out_time} readOnly={isView} disabled={isView}
-              onChange={(e) => set('check_out_time', e.target.value)} style={fieldStyle} />
+              onChange={(e) => set('check_out_time', e.target.value)} onClick={openPicker} style={fieldStyle} />
           </Field>
         </div>
 
@@ -706,8 +725,8 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
       </div>
 
-      {/* ── Action Buttons — Cancel + Save Employee, bottom-right ──────── */}
-      <div className="flex items-center justify-end gap-3 mt-6">
+      {/* ── Sticky footer — Go Back (always) + Create/Update (add/edit only), centered ──────── */}
+      <div className="master-crud-footer flex items-center justify-center gap-3" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
         <button
           type="button"
           onClick={() => navigate('/admin/employee/employee-details')}
@@ -715,7 +734,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           className="px-6 py-2.5 rounded-xl text-sm font-semibold"
           style={{ background: t.surfaceBg, color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}
         >
-          Cancel
+          Go Back
         </button>
         {!isView && (
           <button
@@ -728,7 +747,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.8 : 1,
             }}
           >
-            {saving ? 'Saving...' : 'Save Employee'}
+            {saving ? 'Saving...' : mode === 'edit' ? 'Update' : 'Create'}
           </button>
         )}
       </div>

@@ -24,17 +24,21 @@ interface StatCardProps {
   // all 7 fit on one row instead of the cards being oversized to fill 4
   // columns' worth of width (see master.css's .master-stat-card-compact).
   compact?: boolean;
+  // Optional override for the label's font-size (e.g. Employee Details'
+  // summary cards ask for 18px specifically) — undefined everywhere else,
+  // so every other caller keeps the CSS class's default label size.
+  labelFontSize?: number;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
-  label, value, icon: Icon, color, bg, surfaceBg, surfaceBorder, textPrimary, textSecondary, loading, compact,
+  label, value, icon: Icon, color, bg, surfaceBg, surfaceBorder, textPrimary, textSecondary, loading, compact, labelFontSize,
 }) => (
   <div className={`master-stat-card${compact ? ' master-stat-card-compact' : ''}`} style={{ background: surfaceBg, border: `1px solid ${surfaceBorder}` }}>
     <div className="master-stat-icon" style={{ background: bg }}>
       <Icon size={compact ? 15 : 19} style={{ color }} />
     </div>
     <div className="master-stat-body">
-      <div className="master-stat-label" style={{ color: textSecondary }}>{label}</div>
+      <div className="master-stat-label" style={{ color: textSecondary, ...(labelFontSize ? { fontSize: labelFontSize } : {}) }}>{label}</div>
       <div className="master-stat-value" style={{ color: textPrimary }}>{loading ? '—' : value}</div>
     </div>
   </div>

@@ -29,6 +29,13 @@
 
 import axiosInstance from './axiosConfig';
 
+// Sent as a custom request header on every call below, and echoed back by
+// the backend as a response header (see employees.controller.ts) — same
+// convention as the Master module's X-Api-Name header (companyService.ts
+// etc.) so the named API operation being called is visible in the
+// browser's Network tab on both the request and the response.
+const API_NAME_HEADER = 'X-Api-Name';
+
 export type EmployeeStatus = 'active' | 'inactive' | 'on_leave';
 
 export interface Employee {
@@ -74,12 +81,51 @@ export interface Employee {
   designation_names                                : string[];
   designation_ids                                  : number[];
   module_keys                                       : string[];
+  // Single primary department/designation name, straight from the list
+  // query's JOIN (department_id/designation_id) — always present on list
+  // rows, unlike department_names/designation_names above (the full
+  // multi-membership set), which the list query doesn't fetch at all to
+  // avoid an N+1 query per row. The card falls back to these when the
+  // multi-membership arrays are empty.
+  department?                                      : string | null;
+  designation?                                      : string | null;
 
   status                                             : EmployeeStatus;
   is_active                                           : boolean;
   created_at                                           : string;
   updated_at?                                           : string;
 }
+
+// The backend's actual column names for several Employee fields differ from
+// the names this form/type use (residential_address vs address,
+// aadhaar_card_number vs aadhar_number, bank_ifsc vs ifsc_code, etc — see
+// EMPLOYEE_TEXT_FIELD_RENAMES below, which handles the OUTGOING direction
+// for Create/Update). Nothing translated the INCOMING GET response back,
+// so `(raw as Employee).address` / `.aadhar_number` / `.pan_number` /
+// `.ifsc_code` / `.profile_photo_url` / `.aadhar_card_url` / `.pan_card_url`
+// / `.appointment_letter_url` were always undefined — View/Edit's form
+// fields for these silently rendered blank even though the data existed in
+// the database, and the List page's location column (derived from address)
+// was blank for every employee. Every GET response (list rows and single)
+// is normalized through this before being handed back to callers.
+const normalizeEmployee = (raw: Record<string, unknown>): Employee => ({
+  ...(raw as unknown as Employee),
+  address: (raw.residential_address as string) ?? '',
+  aadhar_number: (raw.aadhaar_card_number as string) ?? '',
+  pan_number: (raw.pan_card_number as string) ?? '',
+  ifsc_code: (raw.bank_ifsc as string) ?? '',
+  profile_photo_url: (raw.photo_url as string | null) ?? null,
+  aadhar_card_url: (raw.aadhaar_card_img as string | null) ?? null,
+  pan_card_url: (raw.pan_card_img as string | null) ?? null,
+  appointment_letter_url: (raw.offer_letter_url as string | null) ?? null,
+  // <input type="date"> requires exactly "YYYY-MM-DD" — the backend
+  // returns a full ISO timestamp ("1994-03-12T00:00:00.000Z"), which the
+  // date input silently rejects and renders blank instead. Same issue (and
+  // fix) for joining_date, which was resetting on every View/Edit for the
+  // same reason.
+  date_of_birth: raw.date_of_birth ? String(raw.date_of_birth).slice(0, 10) : '',
+  joining_date: raw.joining_date ? String(raw.joining_date).slice(0, 10) : '',
+});
 
 export interface EmployeeListResponse {
   success : boolean;
@@ -162,10 +208,8 @@ export interface EmployeeFileValues {
   pan_card?           : File | null;
   resume?             : File | null;
   appointment_letter? : File | null;
-  // No backend field for a "passbook" document as of V_13.0 (no matching
-  // multer field / column) — kept on the form for UI continuity, but
-  // deliberately NOT translated/sent to the backend. See
-  // EMPLOYEE_FILE_FIELD_MAP below.
+  // V_15.0 — real backend column (passbook_photo_url) and multer field
+  // (passbook_photo) now exist; see EMPLOYEE_FILE_FIELD_MAP below.
   passbook_photo?     : File | null;
 }
 
@@ -216,19 +260,19 @@ const EMPLOYEE_TEXT_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
 // this list is EXHAUSTIVE and must be used as an allowlist (see
 // toBackendEmployeeFormData below) rather than an additive rename: multer's
 // upload.fields(DOCUMENT_FIELDS) only accepts photo/aadhaar_card_img/
-// pan_card_img/offer_letter/resume/salary_slip as file field names and
-// rejects the WHOLE request (LIMIT_UNEXPECTED_FILE) if a file arrives under
-// any other fieldname — so a file field with no entry here (passbook_photo)
+// pan_card_img/offer_letter/resume/salary_slip/passbook_photo as file field
+// names and rejects the WHOLE request (LIMIT_UNEXPECTED_FILE) if a file
+// arrives under any other fieldname — so a file field with no entry here
 // must never be forwarded at all, and one that already matches the backend
-// name (`resume`) still needs an identity entry so it doesn't get dropped.
-// `passbook_photo` has no backend equivalent (no such multer field/column)
-// as of V_13.0 — deliberately left unmapped rather than guessed at.
+// name (`resume`, `passbook_photo`) still needs an identity entry so it
+// doesn't get dropped.
 const EMPLOYEE_FILE_FIELD_MAP: ReadonlyArray<readonly [string, string]> = [
   ['profile_photo', 'photo'],
   ['aadhar_card', 'aadhaar_card_img'],
   ['pan_card', 'pan_card_img'],
   ['resume', 'resume'],
   ['appointment_letter', 'offer_letter'],
+  ['passbook_photo', 'passbook_photo'],
 ];
 
 // Builds the FormData actually sent to the backend: every TEXT entry
@@ -261,18 +305,21 @@ const toBackendEmployeeFormData = (formData: FormData): FormData => {
 
 // ── Fetch list of all employees ─────────────────────────────────────────────
 /** GET /api/employees?page=1&limit=10&search=... */
-export const fetchEmployeeList = async (
+export const FetchEmployeeDetails = async (
   page: number,
   limit: number,
   search?: string
 ): Promise<EmployeeListResponse> => {
   const params: Record<string, string | number> = { page, limit };
   if (search && search.trim()) params.search = search.trim();
-  const res = await axiosInstance.get('/employees', { params });
+  const res = await axiosInstance.get('/employees', {
+    params,
+    headers: { [API_NAME_HEADER]: 'FetchEmployeeDetails' },
+  });
   return {
     success: res.data.success,
     message: res.data.message,
-    rows: res.data.rows as Employee[],
+    rows: (res.data.rows as Record<string, unknown>[]).map(normalizeEmployee),
     total: res.data.total,
     page: res.data.page,
     limit: res.data.limit,
@@ -281,9 +328,11 @@ export const fetchEmployeeList = async (
 
 // ── Fetch single employee by ID ─────────────────────────────────────────────
 /** GET /api/employees/:id */
-export const fetchEmployeeById = async (id: string): Promise<EmployeeSingleResponse> => {
-  const res = await axiosInstance.get(`/employees/${id}`);
-  return { success: res.data.success, message: res.data.message, data: res.data.data as Employee };
+export const ViewEmployee = async (id: string): Promise<EmployeeSingleResponse> => {
+  const res = await axiosInstance.get(`/employees/${id}`, {
+    headers: { [API_NAME_HEADER]: 'ViewEmployee' },
+  });
+  return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
 };
 
 // ── Preview the next auto-generated employee code (optional) ───────────────
@@ -306,26 +355,28 @@ export const createEmployee = async (
   const res = await axiosInstance.post('/employees', toBackendEmployeeFormData(buildEmployeeFormData(values, files)), {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return { success: res.data.success, message: res.data.message, data: res.data.data as Employee };
+  return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
 };
 
 // ── Update existing employee ────────────────────────────────────────────────
 /** PUT /api/employees/:id (multipart/form-data) */
-export const updateEmployee = async (
+export const EditEmployee = async (
   id: string,
   values: EmployeeFormValues,
   files: EmployeeFileValues
 ): Promise<EmployeeSingleResponse> => {
   const res = await axiosInstance.put(`/employees/${id}`, toBackendEmployeeFormData(buildEmployeeFormData(values, files)), {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': 'multipart/form-data', [API_NAME_HEADER]: 'EditEmployee' },
   });
-  return { success: res.data.success, message: res.data.message, data: res.data.data as Employee };
+  return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
 };
 
 // ── Delete employee ──────────────────────────────────────────────────────────
 /** DELETE /api/employees/:id */
-export const deleteEmployee = async (id: string): Promise<EmployeeDeleteResponse> => {
-  const res = await axiosInstance.delete(`/employees/${id}`);
+export const DeleteEmployee = async (id: string): Promise<EmployeeDeleteResponse> => {
+  const res = await axiosInstance.delete(`/employees/${id}`, {
+    headers: { [API_NAME_HEADER]: 'DeleteEmployee' },
+  });
   return res.data;
 };
 
@@ -362,11 +413,11 @@ export const fetchEmployeePermissions = async (employeeId: string): Promise<Empl
 
 // Grouped export — same convenience pattern as buildingService / departmentService
 export const employeeDetailsService = {
-  getAll      : fetchEmployeeList,
-  getById     : fetchEmployeeById,
+  getAll      : FetchEmployeeDetails,
+  getById     : ViewEmployee,
   nextCode    : fetchNextEmployeeCode,
   create      : createEmployee,
-  update      : updateEmployee,
-  remove      : deleteEmployee,
+  update      : EditEmployee,
+  remove      : DeleteEmployee,
   permissions : fetchEmployeePermissions,
 };

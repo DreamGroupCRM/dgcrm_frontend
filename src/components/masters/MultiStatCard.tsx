@@ -21,11 +21,14 @@ interface MultiStatCardProps {
   textPrimary: string;
   textSecondary: string;
   loading?: boolean;
+  // Optional override for the label's font-size — same purpose as
+  // StatCard's labelFontSize prop, undefined keeps the CSS class default.
+  labelFontSize?: number;
 }
 
 const MultiStatCard: React.FC<MultiStatCardProps> = ({
   label, icon: Icon, color, bg, total, enabled, disabled,
-  surfaceBg, surfaceBorder, textPrimary, textSecondary, loading,
+  surfaceBg, surfaceBorder, textPrimary, textSecondary, loading, labelFontSize,
 }) => (
   <div
     className="master-stat-card master-stat-card-compact master-stat-card-multi"
@@ -35,7 +38,7 @@ const MultiStatCard: React.FC<MultiStatCardProps> = ({
       <Icon size={15} style={{ color }} />
     </div>
     <div className="master-stat-body-multi">
-      <div className="master-stat-label" style={{ color: textSecondary }}>{label}</div>
+      <div className="master-stat-label" style={{ color: textSecondary, ...(labelFontSize ? { fontSize: labelFontSize } : {}) }}>{label}</div>
       <div className="master-stat-multi-row">
         <div className="master-stat-multi-item">
           <span className="master-stat-multi-value" style={{ color: textPrimary }}>{loading ? '—' : total}</span>

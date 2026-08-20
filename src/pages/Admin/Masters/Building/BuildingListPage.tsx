@@ -350,21 +350,21 @@ const BuildingListPage: React.FC = () => {
           .master-stat-grid-5 replaces the old 7-column grid. */}
       <div className="master-stat-grid-5">
         <StatCard label="Total Projects" value={summary?.total_projects ?? 0} icon={MdBusiness}
-          color="#2563eb" bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loading} compact
+          color="#2563eb" bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loading} compact labelFontSize={16}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Buildings" value={summary?.total_buildings ?? allBuildings.length} icon={MdApartment}
-          color="#7c3aed" bg={isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff'} loading={loading} compact
+          color="#7c3aed" bg={isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff'} loading={loading} compact labelFontSize={16}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Wings" value={summary?.total_wings ?? 0} icon={MdLayers}
-          color="#0891b2" bg={isDark ? 'rgba(8,145,178,0.12)' : '#ecfeff'} loading={loading} compact
+          color="#0891b2" bg={isDark ? 'rgba(8,145,178,0.12)' : '#ecfeff'} loading={loading} compact labelFontSize={16}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <MultiStatCard label="Flats" icon={MdHome} color="#ea580c" bg={isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed'}
           total={summary?.total_flats ?? 0} enabled={summary?.enabled_flats ?? 0} disabled={summary?.disabled_flats ?? 0}
-          loading={loading}
+          loading={loading} labelFontSize={16}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <MultiStatCard label="Shops" icon={MdStorefront} color="#db2777" bg={isDark ? 'rgba(219,39,119,0.12)' : '#fdf2f8'}
           total={summary?.total_shops ?? 0} enabled={summary?.enabled_shops ?? 0} disabled={summary?.disabled_shops ?? 0}
-          loading={loading}
+          loading={loading} labelFontSize={16}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
 >>>>>>> V_14.0
       </div>

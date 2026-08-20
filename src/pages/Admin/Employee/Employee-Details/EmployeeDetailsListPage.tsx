@@ -13,9 +13,25 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
-import { fetchEmployeeList, deleteEmployee, Employee, EmployeeStatus } from '../../../../services/employeeDetailsService';
+import { FetchEmployeeDetails, DeleteEmployee, Employee, EmployeeStatus } from '../../../../services/employeeDetailsService';
 import { formatDate, showAlert } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
+
+// Age in years + months from a 'YYYY-MM-DD' date_of_birth — same "derive
+// from existing data, no schema change" approach as cityStateFromAddress
+// below. e.g. DOB 22-03-1994 today -> "32 yrs 5 months", not just "32 yrs".
+const ageFromDob = (dob: string): string | null => {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  if (Number.isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let years = today.getFullYear() - birth.getFullYear();
+  let months = today.getMonth() - birth.getMonth();
+  if (today.getDate() < birth.getDate()) months--;
+  if (months < 0) { years--; months += 12; }
+  if (years < 0) return null;
+  return months > 0 ? `${years} yrs ${months} months` : `${years} yrs`;
+};
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
@@ -55,7 +71,7 @@ const EmployeeDetailsListPage: React.FC = () => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(5);
+  const [limit, setLimit] = useState(10);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -64,7 +80,7 @@ const EmployeeDetailsListPage: React.FC = () => {
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchEmployeeList(1, 1000);
+      const res = await FetchEmployeeDetails(1, 1000);
       if (res.success) {
         setAllEmployees(res.rows ?? []);
       } else {
@@ -112,7 +128,7 @@ const EmployeeDetailsListPage: React.FC = () => {
     return { total, active, onLeave, inactive, activePct: pct(active), onLeavePct: pct(onLeave), inactivePct: pct(inactive) };
   }, [allEmployees]);
 
-  // ── search + filters + sort ─────────────────────────────────────────
+  // ── search (employee name OR employee ID) + filters + sort ─────────────
   useEffect(() => {
     const q = search.trim().toLowerCase();
     let rows = [...allEmployees];
@@ -120,8 +136,6 @@ const EmployeeDetailsListPage: React.FC = () => {
     if (q) {
       rows = rows.filter((e) =>
         `${e.first_name} ${e.last_name}`.toLowerCase().includes(q) ||
-        e.email?.toLowerCase().includes(q) ||
-        e.mobile_number?.includes(q) ||
         e.employee_code?.toLowerCase().includes(q)
       );
     }
@@ -161,8 +175,8 @@ const EmployeeDetailsListPage: React.FC = () => {
     );
     if (!result.isConfirmed) return;
     try {
-      await deleteEmployee(emp.id);
-      toast.success('Employee Deleted Successfully');
+      await DeleteEmployee(emp.id);
+      toast.success('Employee deleted successfully.');
       fetchEmployees();
     } catch {
       toast.error('Failed to delete employee.');
@@ -202,23 +216,38 @@ const EmployeeDetailsListPage: React.FC = () => {
       <div className="rounded-2xl p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3 min-w-0">
-            {emp.profile_photo_url ? (
-              <img src={emp.profile_photo_url} alt="" className="rounded-full flex-shrink-0" style={{ width: 48, height: 48, objectFit: 'cover' }} />
-            ) : (
-              <div
-                className="flex items-center justify-center rounded-full flex-shrink-0 text-white font-bold"
-                style={{ width: 48, height: 48, background: 'linear-gradient(135deg,#4338ca,#4f46e5)', fontSize: 15 }}
+            {/* Status badge lives under the photo (small, out of the name's
+                way) rather than beside the name — at card width, a badge
+                next to the name was eating enough space to truncate names
+                like "Sohel" down to "Soh…". */}
+            <div className="flex flex-col items-center flex-shrink-0" style={{ gap: 4 }}>
+              {emp.profile_photo_url ? (
+                <img src={emp.profile_photo_url} alt="" className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
+              ) : (
+                <div
+                  className="flex items-center justify-center rounded-full text-white font-bold"
+                  style={{ width: 48, height: 48, background: 'linear-gradient(135deg,#4338ca,#4f46e5)', fontSize: 15 }}
+                >
+                  {initials(emp.first_name, emp.last_name)}
+                </div>
+              )}
+              <span
+                className="inline-flex items-center gap-1 px-1.5 rounded-full font-semibold"
+                style={{ background: status.bg, color: status.color, fontSize: 9, lineHeight: '14px', whiteSpace: 'nowrap' }}
               >
-                {initials(emp.first_name, emp.last_name)}
-              </div>
-            )}
+                <span className="w-1 h-1 rounded-full bg-current" /> {status.label}
+              </span>
+            </div>
             <div className="min-w-0">
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {/* Wraps onto a 2nd line instead of truncating with "…" — at
+                  card width, a single-line ellipsis was cutting "Sohel" down
+                  to "Soh…"; wrapping keeps the full name readable. */}
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, lineHeight: 1.25, wordBreak: 'break-word' }}>
                 {emp.first_name} {emp.last_name}
               </div>
               <button
                 type="button"
-                onClick={() => navigate(`/admin/employees/view/${emp.id}`)}
+                onClick={() => navigate(`/admin/employee/employee-details/view/${emp.id}`)}
                 style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#4f46e5', fontSize: 12.5, fontWeight: 600 }}
               >
                 {emp.employee_code}
@@ -227,12 +256,12 @@ const EmployeeDetailsListPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
-              style={{ background: status.bg, color: status.color }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-current" /> {status.label}
-            </span>
+            {/* 3-dot menu — the card itself is not clickable; only this button
+                exposes View/Edit/Delete, as a vertical dropdown beneath the
+                button (matching the reference design). Positioned within the
+                button's own relative wrapper (not the whole card) so it
+                can't get clipped by the card's edge in the grid's
+                rightmost columns. */}
             <div style={{ position: 'relative' }} ref={openMenuId === emp.id ? menuRef : undefined}>
               <button
                 type="button"
@@ -246,18 +275,18 @@ const EmployeeDetailsListPage: React.FC = () => {
                   style={{
                     position: 'absolute', top: '110%', right: 0, zIndex: 20, minWidth: 140,
                     background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '6px 0',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.14)', padding: '6px 0',
                   }}
                 >
-                  <button type="button" onClick={() => { setOpenMenuId(null); navigate(`/admin/employees/view/${emp.id}`); }}
+                  <button type="button" title="View" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/view/${emp.id}`); }}
                     className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
                     <MdVisibility size={16} color="#2563eb" /> View
                   </button>
-                  <button type="button" onClick={() => { setOpenMenuId(null); navigate(`/admin/employees/edit/${emp.id}`); }}
+                  <button type="button" title="Edit" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/edit/${emp.id}`); }}
                     className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
                     <MdEdit size={15} color="#7c3aed" /> Edit
                   </button>
-                  <button type="button" onClick={() => handleDelete(emp)}
+                  <button type="button" title="Delete" onClick={() => handleDelete(emp)}
                     className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
                     <MdDelete size={16} /> Delete
                   </button>
@@ -267,30 +296,48 @@ const EmployeeDetailsListPage: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ fontSize: 13, color: t.textSecondary, marginBottom: 8 }}>
-          {(emp.designation_names || [])[0] || '—'}
-        </div>
+        {(() => {
+          // department_names/designation_names (the full multi-membership
+          // set) come back empty on list rows — the list query doesn't fetch
+          // them to avoid an N+1 per row (see employees.repository.ts). Fall
+          // back to the single primary department/designation the list
+          // query DOES join in, so the card isn't just blank dashes.
+          const designationDisplay = (emp.designation_names || [])[0] || emp.designation;
+          const departmentDisplay = (emp.department_names || [])[0] || emp.department;
+          const age = ageFromDob(emp.date_of_birth);
+          return (
+            <>
+              <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 13, color: t.textSecondary, marginBottom: 8 }}>
+                <span>{designationDisplay || '—'}</span>
+                {age != null && (
+                  <>
+                    <span style={{ color: t.divider }}>•</span>
+                    <span>{age}</span>
+                  </>
+                )}
+              </div>
 
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {(emp.department_names || []).slice(0, 1).map((d) => (
-            <span
-              key={`dept-${d}`}
-              className="px-2 py-0.5 rounded-full text-xs font-semibold"
-              style={{ background: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff', color: '#2563eb' }}
-            >
-              {d}
-            </span>
-          ))}
-          {(emp.designation_names || []).slice(0, 1).map((d) => (
-            <span
-              key={`desig-${d}`}
-              className="px-2 py-0.5 rounded-full text-xs font-semibold"
-              style={{ background: isDark ? 'rgba(124,58,237,0.15)' : '#f5f3ff', color: '#7c3aed' }}
-            >
-              {d}
-            </span>
-          ))}
-        </div>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {departmentDisplay && (
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                    style={{ background: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff', color: '#2563eb' }}
+                  >
+                    {departmentDisplay}
+                  </span>
+                )}
+                {designationDisplay && (
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                    style={{ background: isDark ? 'rgba(124,58,237,0.15)' : '#f5f3ff', color: '#7c3aed' }}
+                  >
+                    {designationDisplay}
+                  </span>
+                )}
+              </div>
+            </>
+          );
+        })()}
 
         <div className="space-y-1.5" style={{ fontSize: 12.5, color: t.textSecondary }}>
           <div className="flex items-center gap-1.5 min-w-0">
@@ -316,11 +363,12 @@ const EmployeeDetailsListPage: React.FC = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div className="master-page" style={{ fontFamily: t.fontFamily }}>
 
-      {/* ── Summary cards — compact, label on top / count below (item 10),
-          same size as Building master's boxes instead of the previous
-          oversized cards. ────────────────────────────────────────────── */}
+      {/* ── Summary cards — same compact sizing/spacing as Building master's
+          boxes; label font-size fixed at 16px (StatCard's labelFontSize
+          prop — every other caller leaves it unset and keeps the CSS
+          class's default label size). ──────────────────────────── */}
       <div className="master-stat-grid">
         {[
           { label: 'Total Employees', value: summary.total, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
@@ -328,47 +376,46 @@ const EmployeeDetailsListPage: React.FC = () => {
           { label: 'On Leave', value: summary.onLeave, icon: MdEventBusy, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff' },
           { label: 'Inactive Employees', value: summary.inactive, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
         ].map((card) => (
-          <StatCard key={card.label} {...card} loading={loading}
+          <StatCard key={card.label} {...card} loading={loading} compact labelFontSize={16}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
       </div>
 
+      {/* ── Search (left) | Add + Export + Refresh (right) — same
+          master-topbar/master-search-box/master-actions classes and
+          button styling every other master's list page uses, so this row
+          inherits the same responsive stacking behavior at narrower
+          widths for free. ──────────────────────────────────────────── */}
+      <div className="master-topbar">
+        <div className="master-search-box" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
+          <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
+          <input
+            type="text"
+            placeholder="Search by Employee Name or ID"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="master-search-input"
+            style={{ color: t.inputText }}
+          />
+        </div>
+
+        <div className="master-actions">
+          <button type="button" onClick={() => navigate('/admin/employee/employee-details/add')} className="master-btn-primary">
+            <MdAdd size={18} /> Add Employee
+          </button>
+          <button type="button" onClick={handleExportCsv} title="Export CSV" className="master-btn-icon"
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
+            <MdDownload size={18} />
+          </button>
+          <button type="button" onClick={fetchEmployees} title="Refresh" className="master-btn-icon"
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
+            <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
       {/* ── All Employees panel ──────────────────────────────────────── */}
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 260 }}>
-              <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
-              <input
-                type="text" placeholder="Search by name, email, phone or employee code..."
-                value={search} onChange={(e) => setSearch(e.target.value)}
-                style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 13, width: '100%' }}
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate('/admin/employee/employee-details/add')}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-              style={{ background: 'linear-gradient(135deg,#4338ca,#4f46e5)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
-            >
-              <MdAdd size={18} /> Add Employee
-            </button>
-
-            <button type="button" onClick={handleExportCsv} title="Export CSV"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold"
-              style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
-              <MdDownload size={17} /> Export CSV
-            </button>
-
-            <button type="button" onClick={fetchEmployees} title="Refresh" className="flex items-center justify-center rounded-xl"
-              style={{ width: 34, height: 34, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
-              <MdRefresh size={17} />
-            </button>
-
-          </div>
-        </div>
 
         {/* cards */}
         <div className="p-5">
