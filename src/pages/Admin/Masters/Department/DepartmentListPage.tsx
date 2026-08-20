@@ -150,7 +150,7 @@ const DepartmentListPage: React.FC = () => {
       toast.error('No departments to export.');
       return;
     }
-    const header = ['#', 'Department Name', 'Total Designations', 'Enabled Designations', 'Disabled Designations', 'Status', 'Created On'];
+    const header = ['ID', 'Department Name', 'Total Designations', 'Enabled Designations', 'Disabled Designations', 'Status', 'Created On'];
     const rows = sorted.map((d, i) => {
       const c = departmentCounts(d);
       return [i + 1, d.name, c.total, c.enabled, c.disabled, d.is_active ? 'Active' : 'Inactive', formatDate(d.created_at)];
@@ -224,7 +224,7 @@ const DepartmentListPage: React.FC = () => {
                   width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
                   background: t.insetBg, borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                 }}>Action</th>
-                <th>#</th>
+                <th>ID</th>
                 <SortableTh label="Department Name" active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} />
                 <SortableTh label="Total Designations" active={sortKey === 'total'} dir={sortDir} onClick={() => toggleSort('total')} />
                 <SortableTh label="Enabled Designations" active={sortKey === 'enabled'} dir={sortDir} onClick={() => toggleSort('enabled')} />
