@@ -198,25 +198,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
   return (
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
 
-      {/* ── Page header ───────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-4">
-        <div
-          className="flex items-center justify-center rounded-xl flex-shrink-0"
-          style={{ width: 40, height: 40, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}
-        >
-          <MdApartment size={20} style={{ color: '#4f46e5' }} />
-        </div>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 800, color: t.textPrimary, margin: 0 }}>
-            {mode === 'add' ? 'Add Department' : mode === 'edit' ? 'Edit Department' : 'View Department'}
-          </h1>
-          <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>
-            Add Department and related Designations
-          </p>
-        </div>
-      </div>
-
-      {/* ── Step 1: Department Details ───────────────────────────────── */}
+        {/* ── Step 1: Department Details ───────────────────────────────── */}
       <div
         className="rounded-2xl mb-4"
         style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
