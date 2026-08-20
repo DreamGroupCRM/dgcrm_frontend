@@ -11,13 +11,12 @@
 // in the array (same "send the whole current state" pattern already used
 // by Building's shops in buildingService.ts).
 //
-// ASSUMPTION: this targets a plural `/departments` REST resource, matching
-// the convention already used by `/buildings` in buildingService.ts. The
-// previous Department/Designation pages and services were deleted before
-// this rewrite, so there was no existing endpoint contract to match — if
-// your backend uses different paths (e.g. singular `/department`), only
-// the URL strings below need to change; nothing else in this file depends
-// on the exact path.
+// V_13.0 fix: this originally guessed a plural `/departments` REST
+// resource. The real backend (src/app.ts) mounts this module at the
+// singular `/api/department` — same convention as its siblings
+// roleService.ts (`/role`), companyService.ts (`/company`), and
+// moduleMasterService.ts (`/module`), which all correctly use singular
+// paths. `/departments` 404'd; corrected to `/department` below.
 
 import axiosInstance from './axiosConfig';
 import {
@@ -30,7 +29,7 @@ import {
 } from '../types/index';
 
 // ── Fetch list of all departments ───────────────────────────────────────────
-/** GET /api/departments?is_active=true&page=1&limit=10&search=... */
+/** GET /api/department?is_active=true&page=1&limit=10&search=... */
 export const fetchDepartmentList = async (
   page: number,
   limit: number,
@@ -44,7 +43,7 @@ export const fetchDepartmentList = async (
   if (search && search.trim()) {
     params.search = search.trim();
   }
-  const res = await axiosInstance.get('/departments', { params });
+  const res = await axiosInstance.get('/department', { params });
   return {
     success: res.data.success,
     message: res.data.message,
@@ -56,9 +55,9 @@ export const fetchDepartmentList = async (
 };
 
 // ── Fetch single department by ID (with its designations) ──────────────────
-/** GET /api/departments/:id */
+/** GET /api/department/:id */
 export const fetchDepartmentById = async (id: string): Promise<DepartmentSingleResponse> => {
-  const res = await axiosInstance.get(`/departments/${id}`);
+  const res = await axiosInstance.get(`/department/${id}`);
   return {
     success: res.data.success,
     message: res.data.message,
@@ -67,11 +66,11 @@ export const fetchDepartmentById = async (id: string): Promise<DepartmentSingleR
 };
 
 // ── Create new department (with its designations, if any) ──────────────────
-/** POST /api/departments */
+/** POST /api/department */
 export const createDepartment = async (
   payload: CreateDepartmentPayload
 ): Promise<DepartmentSingleResponse> => {
-  const res = await axiosInstance.post('/departments', payload);
+  const res = await axiosInstance.post('/department', payload);
   return {
     success: res.data.success,
     message: res.data.message,
@@ -80,12 +79,12 @@ export const createDepartment = async (
 };
 
 // ── Update existing department (with its designations, if any) ─────────────
-/** PUT /api/departments/:id */
+/** PUT /api/department/:id */
 export const updateDepartment = async (
   id: string,
   payload: UpdateDepartmentPayload
 ): Promise<DepartmentSingleResponse> => {
-  const res = await axiosInstance.put(`/departments/${id}`, payload);
+  const res = await axiosInstance.put(`/department/${id}`, payload);
   return {
     success: res.data.success,
     message: res.data.message,
@@ -94,9 +93,9 @@ export const updateDepartment = async (
 };
 
 // ── Delete department (and, on the backend, its designations with it) ──────
-/** DELETE /api/departments/:id */
+/** DELETE /api/department/:id */
 export const deleteDepartment = async (id: string): Promise<DepartmentDeleteResponse> => {
-  const res = await axiosInstance.delete(`/departments/${id}`);
+  const res = await axiosInstance.delete(`/department/${id}`);
   return res.data;
 };
 
