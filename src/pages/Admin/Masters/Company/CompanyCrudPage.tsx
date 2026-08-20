@@ -76,6 +76,10 @@ interface FormErrors {
 const ALPHA_REGEX = /^[a-zA-Z\s]*$/;
 const NUMERIC_REGEX = /^\d*$/;
 
+// Sticky footer height — same value/pattern as the other masters'
+// FOOTER_HEIGHT, so Go Back/Create are always reachable without scrolling.
+const FOOTER_HEIGHT = 76;
+
 const empty: FormState = {
   name: '', email: '', phone: '', whatsapp_number: '',
   city: '', state: '', country: '', pincode: '', pan: '', gst: '', company_code: '',
@@ -128,7 +132,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
     if (isAdd || !id) return;
     (async () => {
       try {
-        const res = await companyService.getById(id);
+        const res = await companyService.ViewCompany(id);
         if (res.success && res.data) {
           setForm(fromCompany(res.data));
           if (res.data.logo_url && res.data.logo_url !== 'string') {
@@ -215,8 +219,8 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
       }
 
       const res = isEdit
-        ? await companyService.update(id!, payload)
-        : await companyService.create(payload);
+        ? await companyService.UpdateCompany(id!, payload)
+        : await companyService.CreateCompany(payload);
 
       if (res.success) {
         toast.success(
@@ -258,7 +262,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
       <div style={{
         background: t.surfaceBg,
         border: `1px solid ${t.surfaceBorder}`,
@@ -548,9 +552,14 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
 
         </div>
 
-        {/* ── Buttons — centered, Go Back left, Create/Update right ── */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 8 }}>
+      </div>
 
+      {/* ── Buttons — fixed to the viewport bottom, always visible, both
+          centered (same pattern as every other master's crud footer). ── */}
+      <div
+        className="master-crud-footer flex items-center justify-center flex-wrap gap-3"
+        style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}
+      >
           <button
             onClick={() => navigate(ROUTES.ADMIN.COMPANY)}
             disabled={saving}
@@ -582,8 +591,6 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
               {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
             </button>
           )}
-
-        </div>
       </div>
     </div>
   );

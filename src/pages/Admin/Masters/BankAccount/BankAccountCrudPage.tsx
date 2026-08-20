@@ -8,9 +8,9 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme, AppTheme } from '../../../../styles/theme';
 import {
-  fetchBankAccountById,
-  createBankAccount,
-  updateBankAccount,
+  ViewBankAccount,
+  CreateBankAccount,
+  UpdateBankAccount,
 } from '../../../../services/bankAccountService';
 import axiosInstance from '../../../../services/axiosConfig';
 
@@ -76,6 +76,10 @@ const empty: FormState = {
   account_number: '', branch_name: '', ifsc_code: '',
 };
 
+// Sticky footer height — same value/pattern as the other masters'
+// FOOTER_HEIGHT, so Go Back/Create are always reachable without scrolling.
+const FOOTER_HEIGHT = 76;
+
 const PAGE_TITLES: Record<Mode, string> = {
   add : 'Add Bank A/C',
   edit: 'Edit Bank A/C',
@@ -135,7 +139,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
     if (mode === 'add' || !id) return;
     (async () => {
       try {
-        const res = await fetchBankAccountById(id);
+        const res = await ViewBankAccount(id);
         if (res.success && res.data) {
           setForm({
             company_id          : String(res.data.company_id ?? ''),
@@ -208,8 +212,8 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
       };
 
       const res = isEdit
-        ? await updateBankAccount(id!, payload)
-        : await createBankAccount(payload);
+        ? await UpdateBankAccount(id!, payload)
+        : await CreateBankAccount(payload);
 
       if (res.success) {
         toast.success(
@@ -273,7 +277,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
       <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 28 }}>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
@@ -348,8 +352,14 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
 
         </div>
 
-        {/* ── Buttons ─────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 8 }}>
+      </div>
+
+      {/* ── Buttons — fixed to the viewport bottom, always visible, both
+          centered (same pattern as every other master's crud footer). ── */}
+      <div
+        className="master-crud-footer flex items-center justify-center flex-wrap gap-3"
+        style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}
+      >
           <button onClick={() => navigate('/admin/masters/bank-account')} disabled={saving}
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold"
             style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}>
@@ -368,7 +378,6 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
               {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
             </button>
           )}
-        </div>
       </div>
     </div>
   );

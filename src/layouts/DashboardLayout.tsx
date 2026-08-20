@@ -12,6 +12,7 @@ import '../styles/Responsive.css';
 
 const DashboardLayout: React.FC = () => {
   const { mode } = useAppSelector((s) => s.theme);
+  const { sidebarCollapsed } = useAppSelector((s) => s.ui);
   const [mobileOpen, setMobileOpen] = useState(false);
   const isDark = mode === 'dark';
   const t = getTheme(isDark);
@@ -19,7 +20,14 @@ const DashboardLayout: React.FC = () => {
   return (
     <div
       className="flex h-screen overflow-hidden"
-      style={{ background: t.pageBg, fontFamily: t.fontFamily }}
+      style={{
+        background: t.pageBg, fontFamily: t.fontFamily,
+        // Exposed to every page (incl. deeply nested master CRUD pages'
+        // fixed footers) as a CSS custom property — inheritance isn't
+        // affected by transforms/position on elements in between, unlike
+        // the `position:fixed` offsets those footers compute from it.
+        ['--sidebar-w' as string]: sidebarCollapsed ? '70px' : '260px',
+      } as React.CSSProperties}
     >
       {/* Mobile backdrop */}
       {mobileOpen && (

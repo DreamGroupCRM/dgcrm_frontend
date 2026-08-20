@@ -19,7 +19,7 @@ import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fet
 import {
   collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, PAYMENT_FOR_OPTIONS, paymentForLabel,
 } from '../../../../services/paymentService';
-import { fetchBuildingList } from '../../../../services/buildingService';
+import { FetchBuildingList } from '../../../../services/buildingService';
 import { fetchEmployeeList } from '../../../../services/employeeDetailsService';
 import {
   Customer, Building, CustomerPaymentRecord, CustomerScheme,
@@ -28,7 +28,7 @@ import {
 import { formatDate, showAlert } from '../../../../utils';
 
 type Theme = ReturnType<typeof getTheme>;
-const PAGE_SIZE = 8;
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 // ── SearchableSelect — module scope (not inside the page component), so
 // typing in it never causes the "cursor disappears" bug seen before.
@@ -124,6 +124,7 @@ const CustomerDetailsListPage: React.FC = () => {
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(5);
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [employees, setEmployees] = useState<{ id: string; label: string }[]>([]);
@@ -194,7 +195,7 @@ const CustomerDetailsListPage: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetchBuildingList(1, 1000);
+        const res = await FetchBuildingList(1, 1000);
         if (res.success) setBuildings(res.rows ?? []);
       } catch { /* dropdowns just stay empty if this fails */ }
     })();
@@ -253,9 +254,9 @@ const CustomerDetailsListPage: React.FC = () => {
 
   useEffect(() => { setPage(1); }, [customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / limit));
   const safePage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pageRows = filtered.slice((safePage - 1) * limit, safePage * limit);
 
   const pageBtns = () => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
@@ -578,7 +579,11 @@ const CustomerDetailsListPage: React.FC = () => {
                   <input type="checkbox" checked={pageRows.length > 0 && pageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
                 {['Action', 'Employee Code', 'Employee Name', 'Customer Name', 'Contact Details', 'Project / Flat Details', 'Flat Booking Date', 'Monthly EMI Amount'].map((h) => (
+<<<<<<< HEAD
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, textTransform: 'camelcase', letterSpacing: '0.03em', color: t.textSecondary, whiteSpace: 'nowrap' }}>
+=======
+                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12.5, fontWeight: 700, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+>>>>>>> V_14.0
                     {h}
                   </th>
                 ))}
@@ -623,17 +628,14 @@ const CustomerDetailsListPage: React.FC = () => {
                             </div>
                           )}
                         </div>
-                        <button type="button" title="Show Payment History" onClick={() => openPaymentHistory(c)}
-                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff', border: 'none', color: '#2563eb', cursor: 'pointer' }}>
-                          <MdReceiptLong size={16} />
+                        <button type="button" title="Show Payment History" className="master-icon-btn" onClick={() => openPaymentHistory(c)}>
+                          <MdReceiptLong size={15} />
                         </button>
-                        <button type="button" title="Show Scheme" onClick={() => openScheme(c)}
-                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, background: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4', border: 'none', color: '#16a34a', cursor: 'pointer' }}>
-                          <MdLoyalty size={16} />
+                        <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => openScheme(c)}>
+                          <MdLoyalty size={15} />
                         </button>
-                        <button type="button" title="Collect Payment" onClick={() => openCollectPayment(c)}
-                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, background: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed', border: 'none', color: '#ea580c', cursor: 'pointer' }}>
-                          <MdPayments size={16} />
+                        <button type="button" title="Collect Payment" className="master-icon-btn" onClick={() => openCollectPayment(c)}>
+                          <MdPayments size={15} />
                         </button>
                       </div>
                     </td>
@@ -646,21 +648,26 @@ const CustomerDetailsListPage: React.FC = () => {
                             {(c.assigned_employee_name || '—').slice(0, 1).toUpperCase()}
                           </div>
                         )}
-                        <span style={{ fontSize: 13, fontWeight: 600, color: t.textPrimary }}>{c.assigned_employee_code || '—'}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? '#ffffff' : '#000000' }}>{c.assigned_employee_code || '—'}</span>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 13.5, color: t.textPrimary }}>{c.assigned_employee_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{c.customer_name}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: t.textSecondary }}>
+                    <td style={{ padding: '12px 14px', fontSize: 13.5, color: isDark ? '#ffffff' : '#000000' }}>{c.assigned_employee_name || '—'}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                      <div className="flex items-center gap-1.5">
+                        <MdGroups size={15} className="master-row-icon" />
+                        {c.customer_name}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: isDark ? '#ffffff' : '#000000' }}>
                       <div className="flex items-center gap-1.5"><MdPhone size={13} /> {c.mobile_number}</div>
                       <div className="flex items-center gap-1.5 mt-0.5"><MdEmail size={13} /> {c.email}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5 }}>
-                      <div style={{ fontWeight: 700, color: t.textPrimary }}>{c.building_name}</div>
-                      <div style={{ color: t.textSecondary }}>{c.wing_name} Wing, {c.flat_no} ({c.flat_type}{c.area_sqft ? ` - ${c.area_sqft} Sqft` : ''})</div>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: isDark ? '#ffffff' : '#000000' }}>
+                      <div style={{ fontWeight: 700 }}>{c.building_name}</div>
+                      <div>{c.wing_name} Wing, {c.flat_no} ({c.flat_type}{c.area_sqft ? ` - ${c.area_sqft} Sqft` : ''})</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(c.booking_date)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 13, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{formatDate(c.booking_date)}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       {c.monthly_emi != null ? `₹ ${c.monthly_emi.toLocaleString('en-IN')}` : '—'}
                     </td>
                   </tr>
@@ -672,8 +679,15 @@ const CustomerDetailsListPage: React.FC = () => {
 
         {/* pagination — bottom-center, First/Prev/[numbers]/Next/Last */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4" style={{ borderTop: `1px solid ${t.divider}` }}>
+          <div className="flex items-center gap-2">
+            <span style={{ fontSize: 12.5, color: t.textSecondary }}>Rows per page:</span>
+            <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 12.5, cursor: 'pointer', outline: 'none' }}>
+              {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
           <div style={{ fontSize: 12.5, color: t.textSecondary }}>
-            Showing {filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
+            Showing {filtered.length === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, filtered.length)} of {filtered.length}
           </div>
           <div className="flex-1 flex items-center justify-center gap-1.5">
             <button type="button" disabled={safePage <= 1} onClick={() => setPage(1)}

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
+<<<<<<< HEAD
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh,
   MdSearch, MdVisibility, MdApartment, MdMoreVert,
   MdBusiness, MdLayers, MdHome, MdCheckCircle, MdCancel, MdStorefront,
@@ -12,15 +13,28 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme, AppTheme } from '../../../../styles/theme';
 import { fetchBuildingList, deleteBuilding } from '../../../../services/buildingService';
+=======
+  MdAdd, MdDownload, MdRefresh,
+  MdSearch, MdApartment,
+  MdBusiness, MdLayers, MdHome, MdStorefront,
+} from 'react-icons/md';
+import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { setPageTitle } from '../../../../redux/slices/uiSlice';
+import { getTheme } from '../../../../styles/theme';
+import { FetchBuildingList, DeleteBuilding } from '../../../../services/buildingService';
+>>>>>>> V_14.0
 import { Building, BuildingListSummary } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
+import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
+import SortableTh from '../../../../components/masters/SortableTh';
+import { useSortedRows } from '../../../../components/masters/useSortedRows';
+import StatCard from '../../../../components/masters/StatCard';
+import MultiStatCard from '../../../../components/masters/MultiStatCard';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
-// All action icons use the same dark-grey color — same as every other master list
-const ACTION_ICON_COLOR = '#4b5563';
-
 // Fixed width for the Actions column — sized for exactly 3 icon buttons
+<<<<<<< HEAD
 // (32px each) + gaps + cell padding, so it never grows/shrinks with the
 // number of other columns in the table. On mobile the 3 buttons collapse
 // into a single 3-dot menu button, so the column shrinks to match.
@@ -140,6 +154,11 @@ const RowActionMenu: React.FC<{
     </>
   );
 };
+=======
+// + gaps + cell padding, so it never grows/shrinks with the number of
+// other columns in the table.
+const ACTION_COL_WIDTH = 96;
+>>>>>>> V_14.0
 
 // ── derived helpers ──────────────────────────────────────────────────────────
 const totalFlatsOf = (b: Building): number =>
@@ -150,6 +169,8 @@ const totalFlatsOf = (b: Building): number =>
 
 const totalFloorsOf = (b: Building): number =>
   (b.wings ?? []).reduce((sum, w) => sum + (w.floors?.length ?? 0), 0);
+
+type SortKey = 'id' | 'project_name' | 'building_name' | 'location' | 'wings' | 'floors' | 'flats' | 'shops' | 'parking' | 'created_at';
 
 const BuildingListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -174,7 +195,7 @@ const BuildingListPage: React.FC = () => {
   const fetchBuildings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchBuildingList(1, 1000);
+      const res = await FetchBuildingList(1, 1000);
       if (res.success) {
         setAllBuildings(res.rows ?? []);
         setSummary(res.summary ?? null);
@@ -203,6 +224,24 @@ const BuildingListPage: React.FC = () => {
     setPage(1);
   }, [search, allBuildings]);
 
+  // Default sort: newest first (item 5) — a newly-added building appears at
+  // the top of the table until the user picks a different column.
+  const getSortValue = (b: Building, key: SortKey): string | number => {
+    switch (key) {
+      case 'id': return Number(b.id);
+      case 'project_name': return b.project_name?.toLowerCase() || '';
+      case 'building_name': return b.building_name?.toLowerCase() || '';
+      case 'location': return b.location?.toLowerCase() || '';
+      case 'wings': return b.wings?.length ?? 0;
+      case 'floors': return totalFloorsOf(b);
+      case 'flats': return totalFlatsOf(b);
+      case 'shops': return b.shop_count ?? 0;
+      case 'parking': return b.parking_count ?? 0;
+      case 'created_at': return b.created_at || '';
+    }
+  };
+  const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<Building, SortKey>(filtered, getSortValue, 'created_at', 'desc');
+
   // ── delete ──────────────────────────────────────────────────────────────
   const handleDelete = async (building: Building) => {
     const result = await showAlert.confirm(
@@ -211,7 +250,7 @@ const BuildingListPage: React.FC = () => {
     );
     if (!result.isConfirmed) return;
     try {
-      const res = await deleteBuilding(building.id);
+      const res = await DeleteBuilding(building.id);
       if (res.success) {
         toast.success('Building Deleted Successfully', { autoClose: 1000 });
         fetchBuildings();
@@ -225,13 +264,13 @@ const BuildingListPage: React.FC = () => {
 
   // ── export CSV ─────────────────────────────────────────────────────────
   const exportCSV = () => {
-    if (filtered.length === 0) { toast.info('No data to Export'); return; }
+    if (sorted.length === 0) { toast.info('No data to Export'); return; }
     const headers = [
       'ID', 'Project Name', 'Building Name', 'Location',
-      'No. of Wings', 'No. of Floors', 'No. of Flats',
+      'No. of Wings', 'No. of Floors', 'No. of Flats', 'No. of Shops', 'Parking',
       'Status', 'Created At', 'Updated At',
     ];
-    const rows = filtered.map((b) => [
+    const rows = sorted.map((b) => [
       b.id,
       `"${b.project_name}"`,
       `"${b.building_name}"`,
@@ -239,6 +278,8 @@ const BuildingListPage: React.FC = () => {
       b.wings?.length ?? 0,
       totalFloorsOf(b),
       totalFlatsOf(b),
+      b.shop_count ?? 0,
+      b.parking_count ?? 0,
       b.is_active ? 'Active' : 'Inactive',
       formatDate(b.created_at),
       formatDate(b.updated_at || ''),
@@ -249,15 +290,14 @@ const BuildingListPage: React.FC = () => {
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Building List CSV Exported Successfully', { autoClose: 1000 });
-    console.log('[BuildingListPage] CSV exported, rows:', filtered.length);
   };
 
   // ── pagination (client-side) ─────────────────────────────────────────────
-  const totalFiltered = filtered.length;
+  const totalFiltered = sorted.length;
   const totalPages    = Math.max(1, Math.ceil(totalFiltered / limit));
   const safePage      = Math.min(page, totalPages);
   const startIdx      = (safePage - 1) * limit;
-  const pageRows      = filtered.slice(startIdx, startIdx + limit);
+  const pageRows      = sorted.slice(startIdx, startIdx + limit);
   const showingFrom   = totalFiltered === 0 ? 0 : startIdx + 1;
   const showingTo     = Math.min(startIdx + limit, totalFiltered);
 
@@ -266,17 +306,6 @@ const BuildingListPage: React.FC = () => {
     return Array.from({ length: Math.min(5, totalPages) }, (_, i) => start + i);
   };
 
-  // ── same iconBtn style as every other master page ────────────────────────
-  const iconBtn: React.CSSProperties = {
-    width: 32, height: 32, background: 'none',
-    border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-    padding: 0, borderRadius: 8,
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    cursor: 'pointer', flexShrink: 0,
-  };
-
-  const stickyBg = isDark ? t.surfaceBg : '#ffffff';
-
   // ── status badge ──────────────────────────────────────────────────────────
   const statusBadge = (isActive: boolean) => (
     <span style={{
@@ -284,7 +313,7 @@ const BuildingListPage: React.FC = () => {
       alignItems: 'center',
       padding: '2px 10px',
       borderRadius: 20,
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: 500,
       background: isActive
         ? isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7'
@@ -299,8 +328,9 @@ const BuildingListPage: React.FC = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div className="master-page">
 
+<<<<<<< HEAD
       {/* ── Summary cards — counts only, no percentages ─────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-4">
         {[
@@ -333,88 +363,70 @@ const BuildingListPage: React.FC = () => {
             </div>
           </div>
         ))}
+=======
+      {/* ── Summary cards — Total Projects/Buildings/Wings as single-value
+          boxes, Flats and Shops as grouped Total/Enabled/Disabled boxes
+          (item 4) instead of splitting Enabled/Disabled across separate
+          combined-flats-and-shops cards. 5 boxes total now (was 7), so
+          .master-stat-grid-5 replaces the old 7-column grid. */}
+      <div className="master-stat-grid-5">
+        <StatCard label="Total Projects" value={summary?.total_projects ?? 0} icon={MdBusiness}
+          color="#2563eb" bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loading} compact
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        <StatCard label="Total Buildings" value={summary?.total_buildings ?? allBuildings.length} icon={MdApartment}
+          color="#7c3aed" bg={isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff'} loading={loading} compact
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        <StatCard label="Total Wings" value={summary?.total_wings ?? 0} icon={MdLayers}
+          color="#0891b2" bg={isDark ? 'rgba(8,145,178,0.12)' : '#ecfeff'} loading={loading} compact
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        <MultiStatCard label="Flats" icon={MdHome} color="#ea580c" bg={isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed'}
+          total={summary?.total_flats ?? 0} enabled={summary?.enabled_flats ?? 0} disabled={summary?.disabled_flats ?? 0}
+          loading={loading}
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        <MultiStatCard label="Shops" icon={MdStorefront} color="#db2777" bg={isDark ? 'rgba(219,39,119,0.12)' : '#fdf2f8'}
+          total={summary?.total_shops ?? 0} enabled={summary?.enabled_shops ?? 0} disabled={summary?.disabled_shops ?? 0}
+          loading={loading}
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+>>>>>>> V_14.0
       </div>
 
       {/* ── Top bar: Search | Add + Download + Refresh ─────────────────── */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-
-        {/* Search — left, Building Name only per spec */}
-        <div
-          className="flex items-center gap-2 px-3 py-2 rounded-xl"
-          style={{
-            flex: '1 1 200px', maxWidth: 320,
-            background: t.inputBg,
-            border: `1px solid ${t.inputBorder}`,
-          }}
-        >
+      <div className="master-topbar">
+        <div className="master-search-box" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input
             type="text"
             placeholder="Search by Building Name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{
-              background: 'transparent', border: 'none', outline: 'none',
-              color: t.inputText, fontSize: 14, width: '100%',
-            }}
+            className="master-search-input"
+            style={{ color: t.inputText }}
           />
         </div>
 
-        {/* Right: Add + Download + Refresh — identical layout to other masters */}
-        <div className="flex items-center gap-2 ml-auto flex-wrap">
-          <button
-            onClick={() => navigate('/admin/masters/building/add')}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-            style={{
-              background: 'linear-gradient(135deg,#1d4ed8,#2563eb)',
-              border: 'none', cursor: 'pointer',
-            }}
-          >
+        <div className="master-actions">
+          <button onClick={() => navigate('/admin/masters/building/add')} className="master-btn-primary">
             <MdAdd size={18} /> Add New Building
           </button>
-
-          <button
-            onClick={exportCSV}
-            title="Export CSV"
-            className="p-2 rounded-xl"
-            style={{
-              background: t.insetBg,
-              border: `1px solid ${t.surfaceBorder}`,
-              cursor: 'pointer',
-              color: t.textPrimary,
-            }}
-          >
+          <button onClick={exportCSV} title="Export CSV" className="master-btn-icon"
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
             <MdDownload size={18} />
           </button>
-
-          <button
-            onClick={fetchBuildings}
-            title="Refresh"
-            className="p-2 rounded-xl"
-            style={{
-              background: t.insetBg,
-              border: `1px solid ${t.surfaceBorder}`,
-              cursor: 'pointer',
-              color: t.textPrimary,
-            }}
-          >
+          <button onClick={fetchBuildings} title="Refresh" className="master-btn-icon"
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
       {/* ── Table card ───────────────────────────────────────────────────── */}
-      <div style={{
-        background: t.surfaceBg,
-        border: `1px solid ${t.surfaceBorder}`,
-        borderRadius: 12,
-        overflow: 'hidden',
-      }}>
-        <div style={{ overflowX: 'auto', position: 'relative' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+      <div className="master-table-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="master-table-scroll">
+          <table className="master-table" style={{ minWidth: 900 }}>
 
             <thead>
               <tr style={{ background: t.tableHeaderBg }}>
+<<<<<<< HEAD
                 {/* STICKY Actions header — now the first column */}
                 <th style={{
                   padding: '12px 16px', textAlign: 'center',
@@ -426,9 +438,16 @@ const BuildingListPage: React.FC = () => {
                   background: t.tableHeaderBg,
                   borderRight: `2px solid ${t.divider}`,
                   boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+=======
+                <th className="master-table-actions-th" style={{
+                  width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                  borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
+                  borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+>>>>>>> V_14.0
                 }}>
                   {isMobile ? '#' : 'Actions'}
                 </th>
+<<<<<<< HEAD
                 {['ID', 'Project Name', 'Building Name', 'Location', 'Wings', 'Floors', 'Flats', 'Status', 'Created At'].map((h) => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
@@ -439,19 +458,32 @@ const BuildingListPage: React.FC = () => {
                     {h}
                   </th>
                 ))}
+=======
+                <SortableTh label="ID" active={sortKey === 'id'} dir={sortDir} onClick={() => toggleSort('id')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Project Name" active={sortKey === 'project_name'} dir={sortDir} onClick={() => toggleSort('project_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Building Name" active={sortKey === 'building_name'} dir={sortDir} onClick={() => toggleSort('building_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Location" active={sortKey === 'location'} dir={sortDir} onClick={() => toggleSort('location')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Wings" active={sortKey === 'wings'} dir={sortDir} onClick={() => toggleSort('wings')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Floors" active={sortKey === 'floors'} dir={sortDir} onClick={() => toggleSort('floors')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Flats" active={sortKey === 'flats'} dir={sortDir} onClick={() => toggleSort('flats')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Shops" active={sortKey === 'shops'} dir={sortDir} onClick={() => toggleSort('shops')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Parking" active={sortKey === 'parking'} dir={sortDir} onClick={() => toggleSort('parking')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <th style={{ borderBottom: `1px solid ${t.divider}` }}>Status</th>
+                <SortableTh label="Created At" active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+>>>>>>> V_14.0
               </tr>
             </thead>
 
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>
+                  <td colSpan={12} style={{ textAlign: 'center', padding: 48 }}>
                     Loading...
                   </td>
                 </tr>
               ) : pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>
+                  <td colSpan={12} style={{ textAlign: 'center', padding: 48 }}>
                     {search ? 'No buildings match your search.' : 'No buildings found.'}
                   </td>
                 </tr>
@@ -469,6 +501,7 @@ const BuildingListPage: React.FC = () => {
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}
                     >
+<<<<<<< HEAD
                       {/* STICKY Actions cell — now the first column */}
                       <td style={{
                         padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
@@ -513,37 +546,35 @@ const BuildingListPage: React.FC = () => {
                             </button>
                           </div>
                         )}
+=======
+                      <td className="master-table-actions-td" style={{
+                        width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                        zIndex: 1, background: isDark ? t.surfaceBg : '#ffffff',
+                        borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                      }}>
+                        <MasterIconButtons
+                          onView={() => navigate(`/admin/masters/building/view/${b.id}`)}
+                          onEdit={() => navigate(`/admin/masters/building/edit/${b.id}`)}
+                          onDelete={() => handleDelete(b)}
+                        />
+>>>>>>> V_14.0
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {b.id}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {b.project_name}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                      <td>{b.id}</td>
+                      <td>{b.project_name}</td>
+                      <td>
                         <div className="flex items-center gap-2">
-                          <MdApartment size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
+                          <MdApartment size={16} className="master-row-icon" />
                           {b.building_name}
                         </div>
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {b.location}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {b.wings?.length ?? 0}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {totalFloorsOf(b)}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {totalFlatsOf(b)}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        {statusBadge(b.is_active)}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        {formatDate(b.created_at)}
-                      </td>
+                      <td>{b.location || '—'}</td>
+                      <td>{b.wings?.length ?? 0}</td>
+                      <td>{totalFloorsOf(b)}</td>
+                      <td>{totalFlatsOf(b)}</td>
+                      <td>{b.shop_count ?? 0}</td>
+                      <td>{b.has_parking ? (b.parking_count ?? 0) : '—'}</td>
+                      <td>{statusBadge(b.is_active)}</td>
+                      <td>{formatDate(b.created_at)}</td>
                     </tr>
                   );
                 })
@@ -553,26 +584,23 @@ const BuildingListPage: React.FC = () => {
         </div>
 
         {/* ── Footer: Rows per page | Showing | Prev/Pages/Next ────────── */}
-        <div
-          className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-          style={{ borderTop: `1px solid ${t.divider}` }}
-        >
+        <div className="master-pagination" style={{ borderTop: `1px solid ${t.divider}` }}>
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 14, color: t.textPrimary }}>Rows per page:</span>
+            <span style={{ fontSize: 13, color: t.textPrimary }}>Rows per page:</span>
             <select
               value={limit}
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
               style={{
                 background: t.inputBg, border: `1px solid ${t.inputBorder}`,
                 color: t.inputText, borderRadius: 8, padding: '4px 8px',
-                fontSize: 14, cursor: 'pointer', outline: 'none',
+                fontSize: 13, cursor: 'pointer', outline: 'none',
               }}
             >
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
 
-          <span style={{ fontSize: 14, color: t.textPrimary }}>
+          <span style={{ fontSize: 13, color: t.textPrimary }}>
             Showing {showingFrom}–{showingTo} of {totalFiltered}
           </span>
 
@@ -580,13 +608,13 @@ const BuildingListPage: React.FC = () => {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={safePage === 1}
+              className="master-page-btn"
               style={{
-                padding: '4px 10px', borderRadius: 8,
+                padding: '4px 10px', width: 'auto',
                 border: `1px solid ${t.surfaceBorder}`,
                 background: t.btnSecondaryBg,
                 color: t.textPrimary,
                 cursor: safePage === 1 ? 'not-allowed' : 'pointer',
-                fontSize: 14,
               }}
             >
               Prev
@@ -596,12 +624,11 @@ const BuildingListPage: React.FC = () => {
               <button
                 key={pg}
                 onClick={() => setPage(pg)}
+                className="master-page-btn"
                 style={{
-                  width: 32, height: 32, borderRadius: 8,
                   border: `1px solid ${pg === safePage ? '#2563eb' : t.surfaceBorder}`,
                   background: pg === safePage ? '#2563eb' : t.btnSecondaryBg,
                   color: pg === safePage ? '#fff' : t.textPrimary,
-                  cursor: 'pointer', fontSize: 14,
                   fontWeight: pg === safePage ? 700 : 400,
                 }}
               >
@@ -612,13 +639,13 @@ const BuildingListPage: React.FC = () => {
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={safePage >= totalPages}
+              className="master-page-btn"
               style={{
-                padding: '4px 10px', borderRadius: 8,
+                padding: '4px 10px', width: 'auto',
                 border: `1px solid ${t.surfaceBorder}`,
                 background: t.btnSecondaryBg,
                 color: t.textPrimary,
                 cursor: safePage >= totalPages ? 'not-allowed' : 'pointer',
-                fontSize: 14,
               }}
             >
               Next

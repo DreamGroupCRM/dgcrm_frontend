@@ -31,31 +31,31 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
       },
     },
     typography: {
-      fontFamily: '"Inter", "Arial", serif',
-      h1: { fontFamily: '"Inter", "Arial", serif', fontWeight: 700 },
-      h2: { fontFamily: '"Inter", "Arial", serif', fontWeight: 700 },
-      h3: { fontFamily: '"Inter", "Arial", serif', fontWeight: 700 },
-      h4: { fontFamily: '"Inter", "Arial", serif', fontWeight: 600 },
-      h5: { fontFamily: '"Inter", "Arial", serif', fontWeight: 600 },
-      h6: { fontFamily: '"Inter", "Arial", serif', fontWeight: 600 },
-      body1    : { fontFamily: '"Inter", "Arial", serif' },
-      body2    : { fontFamily: '"Inter", "Arial", serif' },
-      subtitle1: { fontFamily: '"Inter", "Arial", serif' },
-      subtitle2: { fontFamily: '"Inter", "Arial", serif' },
-      button   : { fontFamily: '"Inter", "Arial", serif', textTransform: 'none', fontWeight: 600 },
-      caption  : { fontFamily: '"Inter", "Arial", serif' },
-      overline : { fontFamily: '"Inter", "Arial", serif' },
+      fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
+      h1: { fontFamily: '"Roboto", "Inter", "Arial", sans-serif', fontWeight: 700 },
+      h2: { fontFamily: '"Roboto", "Inter", "Arial", sans-serif', fontWeight: 700 },
+      h3: { fontFamily: '"Roboto", "Inter", "Arial", sans-serif', fontWeight: 700 },
+      h4: { fontFamily: '"Roboto", "Inter", "Arial", sans-serif', fontWeight: 600 },
+      h5: { fontFamily: '"Roboto", "Inter", "Arial", sans-serif', fontWeight: 600 },
+      h6: { fontFamily: '"Roboto", "Inter", "Arial", sans-serif', fontWeight: 600 },
+      body1    : { fontFamily: '"Roboto", "Inter", "Arial", sans-serif' },
+      body2    : { fontFamily: '"Roboto", "Inter", "Arial", sans-serif' },
+      subtitle1: { fontFamily: '"Roboto", "Inter", "Arial", sans-serif' },
+      subtitle2: { fontFamily: '"Roboto", "Inter", "Arial", sans-serif' },
+      button   : { fontFamily: '"Roboto", "Inter", "Arial", sans-serif', textTransform: 'none', fontWeight: 600 },
+      caption  : { fontFamily: '"Roboto", "Inter", "Arial", sans-serif' },
+      overline : { fontFamily: '"Roboto", "Inter", "Arial", sans-serif' },
     },
     shape: { borderRadius: 12 },
     components: {
       // ── CssBaseline — Inter on body + scrollbar ──────────────────────
       MuiCssBaseline: {
         styleOverrides: (theme) => ({
-          '*': { fontFamily: '"Inter", "Arial", serif', boxSizing: 'border-box' },
+          '*': { fontFamily: '"Roboto", "Inter", "Arial", sans-serif', boxSizing: 'border-box' },
           'html, body': {
             margin: 0,
             padding: 0,
-            fontFamily: '"Inter", "Arial", serif',
+            fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             backgroundColor: theme.palette.background.default,
             color: theme.palette.text.primary,
           },
@@ -74,33 +74,33 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
       MuiOutlinedInput: {
         styleOverrides: {
           root: ({ theme }) => ({
-            fontFamily: '"Inter", "Arial", serif',
+            fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             backgroundColor: theme.palette.mode === 'dark' ? '#0d0d0d' : '#ffffff',
             color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000',
             '& fieldset': { borderColor: theme.palette.mode === 'dark' ? '#2a2a2a' : '#d1d5db' },
             '&:hover fieldset': { borderColor: theme.palette.mode === 'dark' ? '#404040' : '#2563eb' },
             '&.Mui-focused fieldset': { borderColor: theme.palette.mode === 'dark' ? '#525252' : '#2563eb' },
           }),
-          input: { fontFamily: '"Inter", "Arial", serif' },
+          input: { fontFamily: '"Roboto", "Inter", "Arial", sans-serif' },
         },
       },
       MuiInputLabel: {
         styleOverrides: {
           root: ({ theme }) => ({
-            fontFamily: '"Inter", "Arial", serif',
+            fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             color: theme.palette.mode === 'dark' ? '#a3a3a3' : '#4b5563',
             '&.Mui-focused': { color: theme.palette.mode === 'dark' ? '#d4d4d4' : '#2563eb' },
           }),
         },
       },
       MuiFormHelperText: {
-        styleOverrides: { root: { fontFamily: '"Inter", "Arial", serif' } },
+        styleOverrides: { root: { fontFamily: '"Roboto", "Inter", "Arial", sans-serif' } },
       },
       // ── Button ────────────────────────────────────────────────────────
       MuiButton: {
         styleOverrides: {
           root: {
-            fontFamily: '"Inter", "Arial", serif',
+            fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             textTransform: 'none',
             fontWeight: 600,
             borderRadius: 10,
@@ -128,7 +128,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
       MuiTableCell: {
         styleOverrides: {
           root: ({ theme }) => ({
-            fontFamily: '"Inter", "Arial", serif',
+            fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             borderColor: theme.palette.mode === 'dark' ? '#141414' : '#f3f4f6',
             color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000',
           }),
@@ -159,7 +159,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
       MuiMenuItem: {
         styleOverrides: {
           root: ({ theme }) => ({
-            fontFamily: '"Inter", "Arial", serif',
+            fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000',
             '&:hover': {
               backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#eff6ff',
@@ -181,7 +181,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
       MuiChip: {
         styleOverrides: {
           root: ({ theme }) => ({
-            fontFamily: '"Inter", "Arial", serif',
+            fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             backgroundColor: theme.palette.mode === 'dark' ? '#141414' : '#eff6ff',
             color: theme.palette.mode === 'dark' ? '#a3a3a3' : '#2563eb',
           }),
@@ -191,7 +191,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
       MuiTooltip: {
         styleOverrides: {
           tooltip: {
-            fontFamily: '"Inter", "Arial", serif',
+            fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             backgroundColor: '#000000',
             color: '#ffffff',
             fontSize: 12,

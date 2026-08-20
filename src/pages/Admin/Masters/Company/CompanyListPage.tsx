@@ -15,13 +15,14 @@ import { companyService } from '../../../../services/companyService';
 import { Company } from '../../../../types';
 import { formatDate, showAlert } from '../../../../utils';
 import { ROUTES } from '../../../../constants';
+import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
+import SortableTh from '../../../../components/masters/SortableTh';
+import { useSortedRows } from '../../../../components/masters/useSortedRows';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
-// All 3 action icons use the same dark-grey color
-const ACTION_ICON_COLOR = '#4b5563';
-
 // Fixed width for the Actions column — sized for exactly 3 icon buttons
+<<<<<<< HEAD
 // (32px each) + gaps + cell padding, so it never grows/shrinks with the
 // number of other columns in the table. On mobile the 3 buttons collapse
 // into a single 3-dot menu button, so the column shrinks to match.
@@ -141,6 +142,13 @@ const RowActionMenu: React.FC<{
     </>
   );
 };
+=======
+// + gaps + cell padding, so it never grows/shrinks with the number of
+// other columns in the table.
+const ACTION_COL_WIDTH = 96;
+
+type SortKey = 'id' | 'name' | 'email' | 'phone' | 'city' | 'created_at';
+>>>>>>> V_14.0
 
 const CompanyListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -157,18 +165,19 @@ const CompanyListPage: React.FC = () => {
   const [loading, setLoading]     = useState(false);
   const [page, setPage]           = useState(1);
   const [limit, setLimit]         = useState(5);
-  const [total, setTotal]         = useState(0);
 
   useEffect(() => { dispatch(setPageTitle('Company')); }, [dispatch]);
 
-  const fetchCompanies = useCallback(async (pg: number, lim: number) => {
+  // Fetch ALL once (same client-side search/sort/paginate pattern as every
+  // other master) rather than paging server-side — needed so "sort by any
+  // column" and "newest first by default" both apply across the whole
+  // dataset, not just whatever page the server happened to return.
+  const fetchCompanies = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await companyService.getAll(pg, lim);
+      const res = await companyService.FetchCompanyList(1, 1000);
       if (res.success) {
         setCompanies(res.rows ?? []);
-        setTotal(res.total ?? 0);
-        // toast.success('Company Fetched Successfully', { autoClose: 1000 });
       } else {
         toast.error(res.message || 'Failed to fetch companies');
       }
@@ -179,12 +188,27 @@ const CompanyListPage: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { fetchCompanies(page, limit); }, [page, limit, fetchCompanies]);
+  useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
 
   useEffect(() => {
     const q = search.trim().toLowerCase();
     setFiltered(q ? companies.filter((c) => c.name.toLowerCase().includes(q)) : companies);
+    setPage(1);
   }, [search, companies]);
+
+  // Default sort: newest first (item 5) — a newly-added company appears at
+  // the top of the table until the user picks a different column.
+  const getSortValue = (c: Company, key: SortKey): string | number => {
+    switch (key) {
+      case 'id': return Number(c.id);
+      case 'name': return c.name?.toLowerCase() || '';
+      case 'email': return c.email?.toLowerCase() || '';
+      case 'phone': return c.phone || '';
+      case 'city': return c.city?.toLowerCase() || '';
+      case 'created_at': return c.created_at || '';
+    }
+  };
+  const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<Company, SortKey>(filtered, getSortValue, 'created_at', 'desc');
 
   const handleDelete = async (company: Company) => {
     const result = await showAlert.confirm(
@@ -193,10 +217,10 @@ const CompanyListPage: React.FC = () => {
     );
     if (!result.isConfirmed) return;
     try {
-      const res = await companyService.remove(company.id);
+      const res = await companyService.DeleteCompany(company.id);
       if (res.success) {
         toast.success('Company Deleted Successfully', { autoClose: 1000 });
-        fetchCompanies(page, limit);
+        fetchCompanies();
       } else {
         toast.error(res.message || 'Failed to delete');
       }
@@ -210,7 +234,7 @@ const CompanyListPage: React.FC = () => {
       'ID', 'Company Name', 'Email', 'Phone',
       'City', 'State', 'Country', 'GST', 'PAN', 'Created At',
     ];
-    const rows = filtered.map((c) => [
+    const rows = sorted.map((c) => [
       c.id, `"${c.name}"`, c.email, c.phone,
       c.city || '', c.state || '', c.country || '', c.gst || '', c.pan || '',
       formatDate(c.created_at),
@@ -221,60 +245,56 @@ const CompanyListPage: React.FC = () => {
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Company List CSV Exported Successfully', { autoClose: 1000 });
-    console.log('[CompanyListPage] CSV exported, rows:', filtered.length);
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / limit));
-  const pageBtns   = () => {
-    const start = Math.max(1, Math.min(page - 2, totalPages - 4));
+  // ── pagination (client-side) ─────────────────────────────────────────────
+  const totalFiltered = sorted.length;
+  const totalPages    = Math.max(1, Math.ceil(totalFiltered / limit));
+  const safePage      = Math.min(page, totalPages);
+  const startIdx      = (safePage - 1) * limit;
+  const pageRows       = sorted.slice(startIdx, startIdx + limit);
+  const showingFrom    = totalFiltered === 0 ? 0 : startIdx + 1;
+  const showingTo      = Math.min(startIdx + limit, totalFiltered);
+
+  const pageBtns = () => {
+    const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
     return Array.from({ length: Math.min(5, totalPages) }, (_, i) => start + i);
-  };
-
-  // Same dark-grey for all 3 action icons
-  const iconBtn: React.CSSProperties = {
-    width: 32, height: 32, background: 'none',
-    border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-    padding: 0, borderRadius: 8,
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    cursor: 'pointer', flexShrink: 0,
   };
 
   const stickyBg = isDark ? t.surfaceBg : '#ffffff';
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div className="master-page">
 
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
-          style={{ flex: '1 1 200px', maxWidth: 320, background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
+      <div className="master-topbar">
+        <div className="master-search-box" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input type="text" placeholder="Search by Company Name..." value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 14, width: '100%' }} />
+            className="master-search-input" style={{ color: t.inputText }} />
         </div>
 
-        <div className="flex items-center gap-2 ml-auto flex-wrap">
-          <button onClick={() => navigate(`${ROUTES.ADMIN.COMPANY}/add`)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'linear-gradient(135deg,#1d4ed8,#2563eb)', border: 'none', cursor: 'pointer' }}>
+        <div className="master-actions">
+          <button onClick={() => navigate(`${ROUTES.ADMIN.COMPANY}/add`)} className="master-btn-primary">
             <MdAdd size={18} /> Add Company
           </button>
-          <button onClick={exportCSV} title="Export CSV" className="p-2 rounded-xl"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}>
+          <button onClick={exportCSV} title="Export CSV" className="master-btn-icon"
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
             <MdDownload size={18} />
           </button>
-          <button onClick={() => fetchCompanies(page, limit)} title="Refresh" className="p-2 rounded-xl"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}>
+          <button onClick={fetchCompanies} title="Refresh" className="master-btn-icon"
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
-      <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto', position: 'relative' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1250 }}>
+      <div className="master-table-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="master-table-scroll">
+          <table className="master-table" style={{ minWidth: 1250 }}>
             <thead>
               <tr style={{ background: t.tableHeaderBg }}>
+<<<<<<< HEAD
                 {/* STICKY Actions — now the first column; vertical right border marks the sticky boundary */}
                 <th style={{
                   padding: '12px 16px', textAlign: 'center',
@@ -286,9 +306,16 @@ const CompanyListPage: React.FC = () => {
                   background: t.tableHeaderBg,
                   borderRight: `2px solid ${t.divider}`,
                   boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+=======
+                <th className="master-table-actions-th" style={{
+                  width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                  borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
+                  borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+>>>>>>> V_14.0
                 }}>
                   {isMobile ? '#' : 'Actions'}
                 </th>
+<<<<<<< HEAD
                 {[
                   'ID', 'Company', 'Email', 'Phone',
                   'City', 'State', 'Country', 'GST', 'PAN', 'Created At',
@@ -299,19 +326,29 @@ const CompanyListPage: React.FC = () => {
                     letterSpacing: '0.05em', color: t.textPrimary,
                     borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   }}>{h}</th>
+=======
+                <SortableTh label="ID" active={sortKey === 'id'} dir={sortDir} onClick={() => toggleSort('id')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Company" active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Email" active={sortKey === 'email'} dir={sortDir} onClick={() => toggleSort('email')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Phone" active={sortKey === 'phone'} dir={sortDir} onClick={() => toggleSort('phone')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="City" active={sortKey === 'city'} dir={sortDir} onClick={() => toggleSort('city')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                {['State', 'Country', 'GST', 'PAN'].map((h) => (
+                  <th key={h} style={{ borderBottom: `1px solid ${t.divider}` }}>{h}</th>
+>>>>>>> V_14.0
                 ))}
+                <SortableTh label="Created At" active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} style={{ borderBottom: `1px solid ${t.divider}` }} />
               </tr>
             </thead>
 
             <tbody>
               {loading ? (
                 <tr><td colSpan={11} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
-              ) : filtered.length === 0 ? (
+              ) : pageRows.length === 0 ? (
                 <tr><td colSpan={11} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>
                   {search ? 'No companies match your search.' : 'No companies found.'}
                 </td></tr>
               ) : (
-                filtered.map((company, idx) => {
+                pageRows.map((company, idx) => {
                   const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
                   return (
                     <tr key={company.id}
@@ -319,6 +356,7 @@ const CompanyListPage: React.FC = () => {
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
 
+<<<<<<< HEAD
                       {/* STICKY Actions cell — now the first column */}
                       <td style={{
                         padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
@@ -345,26 +383,37 @@ const CompanyListPage: React.FC = () => {
                             <button onClick={() => handleDelete(company)} title="Delete" style={iconBtn}><MdDelete size={17} /></button>
                           </div>
                         )}
+=======
+                      <td className="master-table-actions-td" style={{
+                        width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                        zIndex: 1, background: stickyBg,
+                        borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                      }}>
+                        <MasterIconButtons
+                          onView={() => navigate(`${ROUTES.ADMIN.COMPANY}/view/${company.id}`)}
+                          onEdit={() => navigate(`${ROUTES.ADMIN.COMPANY}/edit/${company.id}`)}
+                          onDelete={() => handleDelete(company)}
+                        />
+>>>>>>> V_14.0
                       </td>
 
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.id}</td>
+                      <td>{company.id}</td>
 
-                      <td style={{ padding: '12px 16px' }}>
+                      <td>
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
                             style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}` }}>
                             {company.logo_url && company.logo_url !== 'string' ? (
                               <img src={company.logo_url} alt="" className="w-full h-full object-contain" />
                             ) : (
-                              <MdBusiness size={16} style={{ color: '#2563eb' }} />
+                              <MdBusiness size={16} className="master-row-icon" />
                             )}
                           </div>
-                          <span style={{ fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                            {company.name}
-                          </span>
+                          <span>{company.name}</span>
                         </div>
                       </td>
 
+<<<<<<< HEAD
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary }}>{company.email || '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.phone || '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.city || '—'}</td>
@@ -373,6 +422,16 @@ const CompanyListPage: React.FC = () => {
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap', fontFamily: 'monospace', textTransform: 'camelcase' }}>{company.gst || '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap', fontFamily: 'monospace', textTransform: 'camelcase' }}>{company.pan || '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(company.created_at)}</td>
+=======
+                      <td>{company.email || '—'}</td>
+                      <td>{company.phone || '—'}</td>
+                      <td>{company.city || '—'}</td>
+                      <td>{company.state || '—'}</td>
+                      <td>{company.country || '—'}</td>
+                      <td style={{ fontFamily: 'monospace' }}>{company.gst || '—'}</td>
+                      <td style={{ fontFamily: 'monospace' }}>{company.pan || '—'}</td>
+                      <td>{formatDate(company.created_at)}</td>
+>>>>>>> V_14.0
                     </tr>
                   );
                 })
@@ -381,30 +440,30 @@ const CompanyListPage: React.FC = () => {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" style={{ borderTop: `1px solid ${t.divider}` }}>
+        <div className="master-pagination" style={{ borderTop: `1px solid ${t.divider}` }}>
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 14, color: t.textPrimary }}>Rows per page:</span>
+            <span style={{ fontSize: 13, color: t.textPrimary }}>Rows per page:</span>
             <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 14, cursor: 'pointer', outline: 'none' }}>
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
 
-          <span style={{ fontSize: 14, color: t.textPrimary }}>
-            Showing {filtered.length === 0 ? 0 : (page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
+          <span style={{ fontSize: 13, color: t.textPrimary }}>
+            Showing {showingFrom}–{showingTo} of {totalFiltered}
           </span>
 
           <div className="flex items-center gap-1">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-              style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: page === 1 ? t.textPrimary : t.textPrimary, cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: 14 }}>Prev</button>
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className="master-page-btn"
+              style={{ padding: '4px 10px', width: 'auto', border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage === 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
             {pageBtns().map((pg) => (
-              <button key={pg} onClick={() => setPage(pg)}
-                style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${pg === page ? '#2563eb' : t.surfaceBorder}`, background: pg === page ? '#2563eb' : t.btnSecondaryBg, color: pg === page ? '#fff' : t.textPrimary, cursor: 'pointer', fontSize: 14, fontWeight: pg === page ? 700 : 400 }}>
+              <button key={pg} onClick={() => setPage(pg)} className="master-page-btn"
+                style={{ border: `1px solid ${pg === safePage ? '#2563eb' : t.surfaceBorder}`, background: pg === safePage ? '#2563eb' : t.btnSecondaryBg, color: pg === safePage ? '#fff' : t.textPrimary, fontWeight: pg === safePage ? 700 : 400 }}>
                 {pg}
               </button>
             ))}
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
-              style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: page >= totalPages ? t.textPrimary : t.textPrimary, cursor: page >= totalPages ? 'not-allowed' : 'pointer', fontSize: 14 }}>Next</button>
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} className="master-page-btn"
+              style={{ padding: '4px 10px', width: 'auto', border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer' }}>Next</button>
           </div>
         </div>
       </div>

@@ -29,7 +29,10 @@ interface WizardFloor { id: number; floorName: string; flats: WizardFlat[]; }
 interface WizardWing { id: number; wingName: string; withGroundFloor: boolean; numberOfFloors: number | null; floors: WizardFloor[]; }
 interface WizardShop { id: number; shopNo: string; shopArea: number | null; enabled: boolean; }
 interface WizardBuilding {
-  id: number; name: string; code: string | null; has_parking: boolean; parkingCount: number | null;
+  // Backend spreads the Building entity's raw (snake_case) columns
+  // directly onto the response — see building.service.ts's projectOf() —
+  // so this stays snake_case to match, same as has_parking already does.
+  id: number; name: string; code: string | null; has_parking: boolean; parking_count: number | null;
   is_active: boolean; sort_order: number; created_at: string; updated_at?: string;
   project: { projectName: string; location: string | null } | null;
 }
@@ -47,21 +50,20 @@ interface WizardFullResponse {
 // come through unprefixed. Same convention as the "u_password_hash" style
 // keys seen from auth's raw queries.
 interface BuildingListRow {
-  b_id: number; b_name: string; b_code: string | null; b_address: string | null;
+  b_id: number; b_name: string; b_code: string | null; b_address: string | null; b_location: string | null;
   b_has_parking: boolean; b_parking_count: number | null; b_is_active: boolean; b_sort_order: number;
   b_created_at: string; b_updated_at: string;
   project: string | null;
   wing_count: number; floor_count: number; flat_count: number;
-  // NEW — needed for the Building List page's summary cards. Same
-  // aggregation convention as wing_count/floor_count/flat_count above
-  // (an .addSelect(subquery, 'alias') per building), so the backend query
-  // needs three more of those: how many of this building's flats are
-  // enabled vs disabled, and how many shops it has. Optional here so this
-  // still degrades gracefully (summary cards show 0, nothing crashes) if
-  // the backend hasn't added these columns yet.
+  // Building List page's summary cards — enabled/disabled counts for both
+  // flats and shops, combined into single "Enabled Units"/"Disabled Units"
+  // cards (V_14.0). Same aggregation convention as wing_count/floor_count/
+  // flat_count above (an .addSelect(subquery, 'alias') per building).
   enabled_flat_count?: number;
   disabled_flat_count?: number;
   shop_count?: number;
+  enabled_shop_count?: number;
+  disabled_shop_count?: number;
 }
 
 // Client-generated ids (see BuildingCrudPage's simpleId helper) look like
@@ -103,8 +105,9 @@ function fromWizardResponse(data: WizardFullResponse): Building {
       area_sqft: s.shopArea,
       is_active: s.enabled,
     })),
+    shop_count: (shops || []).length,
     has_parking: !!b.has_parking,
-    parking_count: b.parkingCount ?? null,
+    parking_count: b.parking_count ?? null,
     is_active: b.is_active,
     created_at: b.created_at,
     updated_at: b.updated_at,
@@ -132,11 +135,12 @@ function fromListRow(row: BuildingListRow): Building {
   return {
     id: String(row.b_id),
     project_name: row.project || '',
-    location: '',
+    location: row.b_location || '',
     building_name: row.b_name,
     wings: placeholderWings,
     has_shops: undefined,
     shops: undefined,
+    shop_count: row.shop_count ?? 0,
     has_parking: !!row.b_has_parking,
     parking_count: row.b_parking_count ?? null,
     is_active: row.b_is_active,
@@ -188,7 +192,7 @@ function toWizardPayload(payload: CreateBuildingPayload) {
 
 // ── Fetch list of all buildings ─────────────────────────────────────────────
 /** GET /api/buildings?is_active=true&page=1&limit=10 */
-export const fetchBuildingList = async (
+export const FetchBuildingList = async (
   page: number,
   limit: number,
   search?: string
@@ -202,7 +206,7 @@ export const fetchBuildingList = async (
     params.search = search.trim();
   }
   const res = await axiosInstance.get('/buildings', { params });
-  console.log('[buildingService] fetchBuildingList response:', res.data);
+  console.log('[buildingService] FetchBuildingList response:', res.data);
 
   const rawRows = (res.data.rows as BuildingListRow[]) || [];
 
@@ -212,14 +216,25 @@ export const fetchBuildingList = async (
   // building — same pre-existing assumption the rest of this page already
   // makes. `total_buildings` uses the server's own `total` instead of
   // rows.length so it stays correct even past that cap.
+  const enabledFlats = rawRows.reduce((sum, r) => sum + (r.enabled_flat_count || 0), 0);
+  const disabledFlats = rawRows.reduce((sum, r) => sum + (r.disabled_flat_count || 0), 0);
+  const enabledShops = rawRows.reduce((sum, r) => sum + (r.enabled_shop_count || 0), 0);
+  const disabledShops = rawRows.reduce((sum, r) => sum + (r.disabled_shop_count || 0), 0);
+
   const summary: BuildingListSummary = {
     total_projects : new Set(rawRows.map((r) => r.project).filter((p): p is string => !!p)).size,
     total_buildings: res.data.total ?? rawRows.length,
     total_wings    : rawRows.reduce((sum, r) => sum + (r.wing_count || 0), 0),
     total_flats    : rawRows.reduce((sum, r) => sum + (r.flat_count || 0), 0),
-    enabled_flats  : rawRows.reduce((sum, r) => sum + (r.enabled_flat_count || 0), 0),
-    disabled_flats : rawRows.reduce((sum, r) => sum + (r.disabled_flat_count || 0), 0),
+    enabled_flats  : enabledFlats,
+    disabled_flats : disabledFlats,
     total_shops    : rawRows.reduce((sum, r) => sum + (r.shop_count || 0), 0),
+    enabled_shops  : enabledShops,
+    disabled_shops : disabledShops,
+    // Combined units — flats + shops together, per the list page's summary
+    // cards (V_14.0).
+    enabled_units  : enabledFlats + enabledShops,
+    disabled_units : disabledFlats + disabledShops,
   };
 
   return {
@@ -235,9 +250,9 @@ export const fetchBuildingList = async (
 
 // ── Fetch single building by ID (with wings -> floors -> flats, + shops) ───
 /** GET /api/buildings/:id/full */
-export const fetchBuildingById = async (id: string): Promise<BuildingSingleResponse> => {
+export const ViewBuilding = async (id: string): Promise<BuildingSingleResponse> => {
   const res = await axiosInstance.get(`/buildings/${id}/full`);
-  console.log('[buildingService] fetchBuildingById response:', res.data);
+  console.log('[buildingService] ViewBuilding response:', res.data);
   return {
     success: res.data.success,
     message: res.data.message,
@@ -247,11 +262,11 @@ export const fetchBuildingById = async (id: string): Promise<BuildingSingleRespo
 
 // ── Create new building ─────────────────────────────────────────────────────
 /** POST /api/buildings/full */
-export const createBuilding = async (
+export const CreateBuilding = async (
   payload: CreateBuildingPayload
 ): Promise<BuildingSingleResponse> => {
   const res = await axiosInstance.post('/buildings/full', toWizardPayload(payload));
-  console.log('[buildingService] createBuilding response:', res.data);
+  console.log('[buildingService] CreateBuilding response:', res.data);
   return {
     success: res.data.success,
     message: res.data.message,
@@ -261,12 +276,12 @@ export const createBuilding = async (
 
 // ── Update existing building ────────────────────────────────────────────────
 /** PUT /api/buildings/:id/full */
-export const updateBuilding = async (
+export const UpdateBuilding = async (
   id: string,
   payload: UpdateBuildingPayload
 ): Promise<BuildingSingleResponse> => {
   const res = await axiosInstance.put(`/buildings/${id}/full`, toWizardPayload(payload));
-  console.log('[buildingService] updateBuilding response:', res.data);
+  console.log('[buildingService] UpdateBuilding response:', res.data);
   return {
     success: res.data.success,
     message: res.data.message,
@@ -276,17 +291,17 @@ export const updateBuilding = async (
 
 // ── Delete building ──────────────────────────────────────────────────────────
 /** DELETE /api/buildings/:id */
-export const deleteBuilding = async (id: string): Promise<BuildingDeleteResponse> => {
+export const DeleteBuilding = async (id: string): Promise<BuildingDeleteResponse> => {
   const res = await axiosInstance.delete(`/buildings/${id}`);
-  console.log('[buildingService] deleteBuilding response:', res.data);
+  console.log('[buildingService] DeleteBuilding response:', res.data);
   return res.data;
 };
 
 // Grouped export — same convenience pattern as companyService
 export const buildingService = {
-  getAll  : fetchBuildingList,
-  getById : fetchBuildingById,
-  create  : createBuilding,
-  update  : updateBuilding,
-  remove  : deleteBuilding,
+  getAll  : FetchBuildingList,
+  getById : ViewBuilding,
+  create  : CreateBuilding,
+  update  : UpdateBuilding,
+  remove  : DeleteBuilding,
 };

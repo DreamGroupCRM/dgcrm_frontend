@@ -1,24 +1,42 @@
 // ==========================================
 // DREAM GROUP CRM - DEPARTMENT LIST PAGE
 // ==========================================
+<<<<<<< HEAD
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh, MdSearch, MdVisibility,
   MdFilterList, MdGroups, MdBadge, MdCheckCircle, MdCancel, MdSwapVert, MdMoreVert,
+=======
+import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import {
+  MdAdd, MdDownload, MdRefresh, MdSearch,
+  MdGroups,
+>>>>>>> V_14.0
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
+<<<<<<< HEAD
 import { getTheme, AppTheme } from '../../../../styles/theme';
 import { fetchDepartmentList, deleteDepartment } from '../../../../services/departmentService';
+=======
+import { getTheme } from '../../../../styles/theme';
+import { FetchDepartmentList, DeleteDepartment } from '../../../../services/departmentService';
+>>>>>>> V_14.0
 import { Department } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
+import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
+import SortableTh from '../../../../components/masters/SortableTh';
+import { useSortedRows } from '../../../../components/masters/useSortedRows';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 // Fixed width for the Action column — sized for exactly 3 icon buttons
+<<<<<<< HEAD
 // (32px each) + gaps + cell padding, so it never grows/shrinks with the
 // number of other columns in the table. On mobile the 3 buttons collapse
 // into a single 3-dot menu button, so the column shrinks to match.
@@ -138,9 +156,13 @@ const RowActionMenu: React.FC<{
     </>
   );
 };
+=======
+// + gaps + cell padding, so it never grows/shrinks with the number of
+// other columns in the table.
+const ACTION_COL_WIDTH = 96;
+>>>>>>> V_14.0
 
-type SortKey = 'name' | 'total' | 'enabled' | null;
-type SortDir = 'asc' | 'desc';
+type SortKey = 'id' | 'name' | 'total' | 'enabled' | 'disabled' | 'created_at';
 type StatusFilter = 'all' | 'active' | 'inactive';
 
 const departmentCounts = (d: Department) => {
@@ -162,10 +184,7 @@ const DepartmentListPage: React.FC = () => {
   const [allDepartments, setAllDepartments] = useState<Department[]>([]);
   const [filtered, setFiltered] = useState<Department[]>([]);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>(null);
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [statusFilter] = useState<StatusFilter>('all');
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(5);
@@ -176,7 +195,7 @@ const DepartmentListPage: React.FC = () => {
   const fetchDepartments = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchDepartmentList(1, 1000);
+      const res = await FetchDepartmentList(1, 1000);
       if (res.success) {
         setAllDepartments(res.rows ?? []);
       } else {
@@ -191,58 +210,37 @@ const DepartmentListPage: React.FC = () => {
 
   useEffect(() => { fetchDepartments(); }, [fetchDepartments]);
 
-  // ── summary cards — counts only, no percentages ─────────────────────────
-  const summary = useMemo(() => {
-    let totalDesignations = 0, enabledDesignations = 0, disabledDesignations = 0;
-    allDepartments.forEach((d) => {
-      const c = departmentCounts(d);
-      totalDesignations += c.total;
-      enabledDesignations += c.enabled;
-      disabledDesignations += c.disabled;
-    });
-    return {
-      totalDepartments: allDepartments.length,
-      totalDesignations,
-      enabledDesignations,
-      disabledDesignations,
-    };
-  }, [allDepartments]);
-
-  // ── search (department name only) + status filter + sort ──────────────
+  // ── search (department name only) + status filter ──────────────────────
   useEffect(() => {
     const q = search.trim().toLowerCase();
     let rows = q ? allDepartments.filter((d) => d.name?.toLowerCase().includes(q)) : [...allDepartments];
-
     if (statusFilter !== 'all') {
       rows = rows.filter((d) => (statusFilter === 'active' ? d.is_active : !d.is_active));
     }
-
-    if (sortKey) {
-      rows.sort((a, b) => {
-        let av: number | string, bv: number | string;
-        if (sortKey === 'name') { av = a.name?.toLowerCase() || ''; bv = b.name?.toLowerCase() || ''; }
-        else if (sortKey === 'total') { av = departmentCounts(a).total; bv = departmentCounts(b).total; }
-        else { av = departmentCounts(a).enabled; bv = departmentCounts(b).enabled; }
-        if (av < bv) return sortDir === 'asc' ? -1 : 1;
-        if (av > bv) return sortDir === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-
     setFiltered(rows);
     setPage(1);
-  }, [search, statusFilter, sortKey, sortDir, allDepartments]);
+  }, [search, statusFilter, allDepartments]);
 
-  const toggleSort = (key: Exclude<SortKey, null>) => {
-    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    else { setSortKey(key); setSortDir('asc'); }
+  // Default sort: newest first (item 5) — a newly-added department appears
+  // at the top of the table until the user picks a different column.
+  const getSortValue = (d: Department, key: SortKey): string | number => {
+    const c = departmentCounts(d);
+    switch (key) {
+      case 'id': return Number(d.id);
+      case 'name': return d.name?.toLowerCase() || '';
+      case 'total': return c.total;
+      case 'enabled': return c.enabled;
+      case 'disabled': return c.disabled;
+      case 'created_at': return d.created_at || '';
+    }
   };
+  const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<Department, SortKey>(filtered, getSortValue, 'created_at', 'desc');
 
   // ── pagination — same pattern as the rest of the Masters section ──────
-  const totalFiltered = filtered.length;
+  const totalFiltered = sorted.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / limit));
   const safePage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((safePage - 1) * limit, safePage * limit);
+  const pageRows = sorted.slice((safePage - 1) * limit, safePage * limit);
 
   const pageBtns = () => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
@@ -260,7 +258,7 @@ const DepartmentListPage: React.FC = () => {
     );
     if (!result.isConfirmed) return;
     try {
-      await deleteDepartment(dept.id);
+      await DeleteDepartment(dept.id);
       toast.success('Department Deleted Successfully');
       fetchDepartments();
     } catch {
@@ -269,14 +267,14 @@ const DepartmentListPage: React.FC = () => {
   };
 
   const handleExportCsv = () => {
-    if (filtered.length === 0) {
+    if (sorted.length === 0) {
       toast.error('No departments to export.');
       return;
     }
-    const header = ['#', 'Department Name', 'Total Designations', 'Enabled Designations', 'Disabled Designations', 'Status', 'Created On'];
-    const rows = filtered.map((d, i) => {
+    const header = ['ID', 'Department Name', 'Total Designations', 'Enabled Designations', 'Disabled Designations', 'Status', 'Created On'];
+    const rows = sorted.map((d) => {
       const c = departmentCounts(d);
-      return [i + 1, d.name, c.total, c.enabled, c.disabled, d.is_active ? 'Active' : 'Inactive', formatDate(d.created_at)];
+      return [d.id, d.name, c.total, c.enabled, c.disabled, d.is_active ? 'Active' : 'Inactive', formatDate(d.created_at)];
     });
     const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -288,22 +286,11 @@ const DepartmentListPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const SortHeader: React.FC<{ label: string; sortField: Exclude<SortKey, null> }> = ({ label, sortField }) => (
-    <button
-      type="button"
-      onClick={() => toggleSort(sortField)}
-      className="flex items-center gap-1"
-      style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', font: 'inherit' }}
-    >
-      {label}
-      <MdSwapVert size={14} style={{ opacity: sortKey === sortField ? 1 : 0.4 }} />
-    </button>
-  );
-
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div className="master-page">
 
+<<<<<<< HEAD
 <<<<<<< HEAD
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 mb-6">
@@ -459,18 +446,76 @@ const DepartmentListPage: React.FC = () => {
                       : (col.key ? <SortHeader label={col.label} sortField={col.key} /> : col.label)}
                   </th>
                 ))}
+=======
+      {/* ── Top bar: Search (left) | Add + Export + Refresh (right) ────────
+          Same layout as every other master (item 3) — previously Add
+          Department/Export/Refresh sat inline with the search box instead
+          of separated to the right. */}
+      <div className="master-topbar">
+        <div className="master-search-box" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
+          <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
+          <input
+            type="text"
+            placeholder="Search by department name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="master-search-input"
+            style={{ color: t.inputText }}
+          />
+        </div>
+
+        <div className="master-actions">
+          <button type="button" onClick={() => navigate('/admin/masters/department/add')} className="master-btn-primary">
+            <MdAdd size={18} /> Add Department
+          </button>
+          <button type="button" onClick={handleExportCsv} title="Export CSV" className="master-btn-icon"
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
+            <MdDownload size={18} />
+          </button>
+          <button type="button" onClick={fetchDepartments} title="Refresh" className="master-btn-icon"
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
+            <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── All Departments panel ───────────────────────────────────────── */}
+      <div className="master-table-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="master-table-scroll">
+          <table className="master-table" style={{ minWidth: 760 }}>
+            <thead>
+              <tr style={{ background: t.insetBg }}>
+                <th className="master-table-actions-th" style={{
+                  width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                  background: t.insetBg, borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                }}>Action</th>
+                <SortableTh label="ID" active={sortKey === 'id'} dir={sortDir} onClick={() => toggleSort('id')} />
+                <SortableTh label="Department Name" active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} />
+                <SortableTh label="Total Designations" active={sortKey === 'total'} dir={sortDir} onClick={() => toggleSort('total')} />
+                <SortableTh label="Enabled Designations" active={sortKey === 'enabled'} dir={sortDir} onClick={() => toggleSort('enabled')} />
+                <SortableTh label="Disabled Designations" active={sortKey === 'disabled'} dir={sortDir} onClick={() => toggleSort('disabled')} />
+                <th>Status</th>
+                <SortableTh label="Created On" active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} />
+>>>>>>> V_14.0
               </tr>
             </thead>
             <tbody>
               {loading ? (
+<<<<<<< HEAD
                 <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textPrimary }}>Loading departments...</td></tr>
               ) : pageRows.length === 0 ? (
                 <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textPrimary }}>No departments found.</td></tr>
+=======
+                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center' }}>Loading departments...</td></tr>
+              ) : pageRows.length === 0 ? (
+                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center' }}>No departments found.</td></tr>
+>>>>>>> V_14.0
               ) : (
-                pageRows.map((d, idx) => {
+                pageRows.map((d) => {
                   const c = departmentCounts(d);
                   return (
                     <tr key={d.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+<<<<<<< HEAD
 <<<<<<< HEAD
                       <td style={{ padding: '12px 16px', width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth }}>
                         {isMobile ? (
@@ -528,49 +573,34 @@ const DepartmentListPage: React.FC = () => {
                         )}
 =======
                       <td style={{ padding: '12px 16px', width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH }}>
+=======
+                      <td className="master-table-actions-td" style={{
+                        width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                        background: t.surfaceBg,
+                        borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                      }}>
+                        <MasterIconButtons
+                          onView={() => navigate(`/admin/masters/department/view/${d.id}`)}
+                          onEdit={() => navigate(`/admin/masters/department/edit/${d.id}`)}
+                          onDelete={() => handleDelete(d)}
+                        />
+                      </td>
+                      <td>{d.id}</td>
+                      <td>
+>>>>>>> V_14.0
                         <div className="flex items-center gap-2">
+                          <MdGroups size={16} className="master-row-icon" />
                           <button
                             type="button"
-                            title="View"
                             onClick={() => navigate(`/admin/masters/department/view/${d.id}`)}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
-                              background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff',
-                              border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-                              color: isDark ? '#ffffff' : '#000000', cursor: 'pointer',
-                            }}
+                            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', fontWeight: 700, fontSize: 'inherit', fontFamily: t.fontFamily }}
                           >
-                            <MdVisibility size={17} />
-                          </button>
-                          <button
-                            type="button"
-                            title="Edit"
-                            onClick={() => navigate(`/admin/masters/department/edit/${d.id}`)}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
-                              background: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff',
-                              border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-                              color: isDark ? '#ffffff' : '#000000', cursor: 'pointer',
-                            }}
-                          >
-                            <MdEdit size={17} />
-                          </button>
-                          <button
-                            type="button"
-                            title="Delete"
-                            onClick={() => handleDelete(d)}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
-                              background: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2',
-                              border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-                              color: isDark ? '#ffffff' : '#000000', cursor: 'pointer',
-                            }}
-                          >
-                            <MdDelete size={17} />
+                            {d.name}
                           </button>
                         </div>
 >>>>>>> V_13.0
                       </td>
+<<<<<<< HEAD
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary }}>
                         {(safePage - 1) * limit + idx + 1}
                       </td>
@@ -587,6 +617,12 @@ const DepartmentListPage: React.FC = () => {
                       <td style={{ padding: '12px 16px', fontSize: 14, color: '#16a34a', fontWeight: 600 }}>{c.enabled}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: c.disabled > 0 ? '#dc2626' : t.textPrimary, fontWeight: c.disabled > 0 ? 600 : 400 }}>{c.disabled}</td>
                       <td style={{ padding: '12px 16px' }}>
+=======
+                      <td>{c.total}</td>
+                      <td style={{ color: '#16a34a', fontWeight: 600 }}>{c.enabled}</td>
+                      <td style={{ color: c.disabled > 0 ? '#dc2626' : undefined, fontWeight: c.disabled > 0 ? 600 : undefined }}>{c.disabled}</td>
+                      <td>
+>>>>>>> V_14.0
                         <span
                           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
                           style={{ background: d.is_active ? '#dcfce7' : '#f1f5f9', color: d.is_active ? '#16a34a' : '#64748b' }}
@@ -595,9 +631,13 @@ const DepartmentListPage: React.FC = () => {
                           {d.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
+<<<<<<< HEAD
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         {formatDate(d.created_at)}
                       </td>
+=======
+                      <td style={{ whiteSpace: 'nowrap' }}>{formatDate(d.created_at)}</td>
+>>>>>>> V_14.0
                     </tr>
                   );
                 })
@@ -607,8 +647,13 @@ const DepartmentListPage: React.FC = () => {
         </div>
 
         {/* pagination */}
+<<<<<<< HEAD
         <div className="flex flex-wrap items-center justify-between gap-3 p-4" style={{ borderTop: `1px solid ${t.divider}` }}>
           <div className="flex items-center gap-2" style={{ fontSize: 14, color: t.textPrimary }}>
+=======
+        <div className="master-pagination" style={{ borderTop: `1px solid ${t.divider}` }}>
+          <div className="flex items-center gap-2" style={{ fontSize: 13, color: t.textSecondary }}>
+>>>>>>> V_14.0
             <span>Rows per page:</span>
             <select
               value={limit}

@@ -18,7 +18,7 @@ import {
   createCustomerWithDetails,
   updateCustomerWithDetails,
 } from '../../../../services/customerDetailsService';
-import { fetchBuildingList } from '../../../../services/buildingService';
+import { FetchBuildingList } from '../../../../services/buildingService';
 import { Building, ParkingChoice } from '../../../../types/index';
 
 type Mode = 'add' | 'edit' | 'view';
@@ -363,7 +363,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetchBuildingList(1, 1000);
+        const res = await FetchBuildingList(1, 1000);
         if (res.success) setBuildings(res.rows ?? []);
       } catch { /* dropdowns just stay empty if this fails */ }
     })();
@@ -438,7 +438,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   }, [mode, id]);
 
   // ── cascading Project -> Building -> Wing -> Floor -> Flat, sourced live
-  // from the Building module (fetchBuildingList) ─────────────────────────
+  // from the Building module (FetchBuildingList) ─────────────────────────
   const projectNameOptions = useMemo(() => Array.from(new Set(buildings.map((b) => b.project_name))), [buildings]);
   const buildingsForProject = useMemo(
     () => (projectName ? buildings.filter((b) => b.project_name === projectName) : buildings),

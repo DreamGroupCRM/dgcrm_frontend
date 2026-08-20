@@ -20,7 +20,7 @@ export const getTheme = (isDark: boolean) => ({
   divider       : isDark ? '#1a1a1a' : '#e5e7eb',   // horizontal lines
 
   // ── Typography ───────────────────────────────────────────────────────────
-  fontFamily    : '"Inter", "Arial", serif',
+  fontFamily    : '"Roboto", "Inter", "Arial", sans-serif',
   textPrimary   : isDark ? '#ffffff' : '#000000',
   textSecondary : isDark ? '#a3a3a3' : '#111827',
   textMuted     : isDark ? '#525252' : '#374151',

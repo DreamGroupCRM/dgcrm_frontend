@@ -1,0 +1,43 @@
+// ==========================================
+// DREAM GROUP CRM — COMPACT SUMMARY STAT CARD
+// ==========================================
+// Shared list-page summary box — label on top, count below, same compact
+// size everywhere (item 10). Structural sizing lives in master.css
+// (.master-stat-card/.master-stat-icon/.master-stat-label/-value); only
+// the per-card accent color/icon/value stay as props since those
+// legitimately differ card to card.
+import React from 'react';
+import { IconType } from 'react-icons';
+
+interface StatCardProps {
+  label: string;
+  value: number | string;
+  icon: IconType;
+  color: string;
+  bg: string;
+  surfaceBg: string;
+  surfaceBorder: string;
+  textPrimary: string;
+  textSecondary: string;
+  loading?: boolean;
+  // Smaller icon/padding/font — used on Building's 7-card summary row so
+  // all 7 fit on one row instead of the cards being oversized to fill 4
+  // columns' worth of width (see master.css's .master-stat-card-compact).
+  compact?: boolean;
+}
+
+const StatCard: React.FC<StatCardProps> = ({
+  label, value, icon: Icon, color, bg, surfaceBg, surfaceBorder, textPrimary, textSecondary, loading, compact,
+}) => (
+  <div className={`master-stat-card${compact ? ' master-stat-card-compact' : ''}`} style={{ background: surfaceBg, border: `1px solid ${surfaceBorder}` }}>
+    <div className="master-stat-icon" style={{ background: bg }}>
+      <Icon size={compact ? 15 : 19} style={{ color }} />
+    </div>
+    <div className="master-stat-body">
+      <div className="master-stat-label" style={{ color: textSecondary }}>{label}</div>
+      <div className="master-stat-value" style={{ color: textPrimary }}>{loading ? '—' : value}</div>
+    </div>
+  </div>
+);
+
+export default StatCard;
