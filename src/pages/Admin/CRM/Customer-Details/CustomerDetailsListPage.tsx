@@ -540,17 +540,17 @@ const CustomerDetailsListPage: React.FC = () => {
 
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="mb-6">
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Customer Details</h1>
-        <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Dashboard / Customer Details</p>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Customer List</h1>
+        <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Dashboard / Customer List</p>
       </div>
 
       {/* ── KPI cards ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'Total Customers', sub: 'All Customers', value: summary.total, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
-          { label: 'Active Customers', sub: `${summary.activePct}% of total`, value: summary.active, icon: MdCheckCircle, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
-          { label: 'New Customers This Month', sub: 'This Month', value: summary.newThisMonth, icon: MdPersonAddAlt1, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
-          { label: 'Inactive Customers', sub: `${summary.inactivePct}% of total`, value: summary.inactive, icon: MdPersonOff, color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2' },
+          { label: 'Total Customers', value: summary.total, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
+          { label: 'Active Customers', value: summary.active, icon: MdCheckCircle, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
+          { label: 'New Customers This Month', value: summary.newThisMonth, icon: MdPersonAddAlt1, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
+          { label: 'Inactive Customers', value: summary.inactive, icon: MdPersonOff, color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2' },
         ].map((card) => (
           <div key={card.label} className="flex items-center gap-3 rounded-2xl p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
             <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: card.bg }}>
@@ -559,7 +559,6 @@ const CustomerDetailsListPage: React.FC = () => {
             <div className="min-w-0">
               <div style={{ fontSize: 12.5, fontWeight: 600, color: t.textSecondary }}>{card.label}</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, lineHeight: 1.3 }}>{loading ? '—' : card.value}</div>
-              <div style={{ fontSize: 11.5, color: t.textSecondary }}>{card.sub}</div>
             </div>
           </div>
         ))}

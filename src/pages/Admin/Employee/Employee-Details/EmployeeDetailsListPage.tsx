@@ -334,16 +334,22 @@ const EmployeeDetailsListPage: React.FC = () => {
   return (
     <div className="master-page" style={{ fontFamily: t.fontFamily }}>
 
+      {/* ── Page header ───────────────────────────────────────────────── */}
+      <div className="mb-6">
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Employee List</h1>
+        <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Dashboard / Employee List</p>
+      </div>
+
       {/* ── Summary cards — same compact sizing/spacing as Building master's
           boxes; label font-size fixed at 16px (StatCard's labelFontSize
           prop — every other caller leaves it unset and keeps the CSS
           class's default label size). ──────────────────────────── */}
-      <div className="master-stat-grid">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Total Employees', value: summary.total, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
           { label: 'Active Employees', value: summary.active, icon: MdLayers, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
-          { label: 'On Leave', value: summary.onLeave, icon: MdEventBusy, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff' },
           { label: 'Inactive Employees', value: summary.inactive, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
+          { label: 'On Leave', value: summary.onLeave, icon: MdEventBusy, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff' },
         ].map((card) => (
           <StatCard key={card.label} {...card} loading={loading} compact labelFontSize={16}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
