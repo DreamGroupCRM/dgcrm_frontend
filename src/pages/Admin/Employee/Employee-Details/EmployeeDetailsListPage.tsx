@@ -297,46 +297,15 @@ const EmployeeDetailsListPage: React.FC = () => {
         </div>
 
         {(() => {
-          // department_names/designation_names (the full multi-membership
-          // set) come back empty on list rows — the list query doesn't fetch
-          // them to avoid an N+1 per row (see employees.repository.ts). Fall
-          // back to the single primary department/designation the list
-          // query DOES join in, so the card isn't just blank dashes.
-          const designationDisplay = (emp.designation_names || [])[0] || emp.designation;
-          const departmentDisplay = (emp.department_names || [])[0] || emp.department;
+          // Department/Designation deliberately not shown on the profile
+          // card (removed per request) — still available via the Department/
+          // Designation filter dropdowns and the employee's own View page.
           const age = ageFromDob(emp.date_of_birth);
-          return (
-            <>
-              <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 13, color: t.textSecondary, marginBottom: 8 }}>
-                <span>{designationDisplay || '—'}</span>
-                {age != null && (
-                  <>
-                    <span style={{ color: t.divider }}>•</span>
-                    <span>{age}</span>
-                  </>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                {departmentDisplay && (
-                  <span
-                    className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                    style={{ background: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff', color: '#2563eb' }}
-                  >
-                    {departmentDisplay}
-                  </span>
-                )}
-                {designationDisplay && (
-                  <span
-                    className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                    style={{ background: isDark ? 'rgba(124,58,237,0.15)' : '#f5f3ff', color: '#7c3aed' }}
-                  >
-                    {designationDisplay}
-                  </span>
-                )}
-              </div>
-            </>
-          );
+          return age != null ? (
+            <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 13, color: t.textSecondary, marginBottom: 8 }}>
+              <span>{age}</span>
+            </div>
+          ) : null;
         })()}
 
         <div className="space-y-1.5" style={{ fontSize: 12.5, color: t.textSecondary }}>
