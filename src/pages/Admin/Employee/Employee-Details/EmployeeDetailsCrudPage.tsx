@@ -13,8 +13,12 @@ import { useAppSelector } from '../../../../hooks';
 import { getTheme } from '../../../../styles/theme';
 import {
   fetchEmployeeById, fetchNextEmployeeCode, createEmployee, updateEmployee,
+  fetchEmployeePermissions,
   EmployeeFormValues, EmployeeFileValues,
 } from '../../../../services/employeeDetailsService';
+import { fetchDepartmentList } from '../../../../services/departmentService';
+import { fetchDesignationList } from '../../../../services/designationService';
+import { fetchMappingMatrix } from '../../../../services/moduleActionService';
 
 type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
@@ -25,25 +29,9 @@ const WORKING_HOURS_OPTIONS = ['8', '9', '10'];
 const HOLIDAYS_OPTIONS = ['Sunday Only', 'Alternate Saturdays + Sunday', 'All Saturdays + Sunday', 'Custom / As per Company Policy'];
 const ACCOUNT_TYPE_OPTIONS = ['Savings', 'Current'];
 
-// Fixed lists matching the screenshot exactly. The Employee module is
-// self-contained — these are NOT fetched from Department Master (or any
-// other master's) API; that was the source of the "clicking Employees
-// calls the department API" bug. If you'd rather these stay in sync with
-// real Department/Designation records later, that would need an explicit
-// employees-side endpoint (e.g. `/employees/assignable-departments`) —
-// not a direct call into departmentService.
-const DEPARTMENT_OPTIONS = ['Sales', 'HR', 'Finance', 'Marketing', 'IT', 'Operations', 'Admin', 'Support', 'Purchase', 'Accounts'];
-const DESIGNATION_OPTIONS = ['Manager', 'Executive', 'Supervisor', 'Analyst', 'Coordinator', 'Specialist', 'Assistant', 'Intern', 'Lead', 'Director'];
-
-// Static module/feature list matching the screenshot. Ideally this would be
-// sourced from the app's existing Module Master API (see AdminRoutes.tsx's
-// masters/module routes) — swap MODULE_OPTIONS for a fetched list once that
-// service is available here too.
-const MODULE_OPTIONS = [
-  'Dashboard', 'Employee Management', 'Attendance', 'Leave Management', 'Payroll', 'Reports',
-  'Department Management', 'Designation Management', 'Project Management', 'Task Management',
-  'Settings', 'Notifications', 'Documents', 'Performance', 'Recruitment', 'Claims',
-];
+// A checklist option with a real backend id (department/designation/
+// module-action id) driving selection, and a display label.
+interface IdOption { value: number; label: string; }
 
 const emptyForm: EmployeeFormValues = {
   first_name: '', middle_name: '', last_name: '', date_of_birth: '', email: '',
@@ -55,6 +43,7 @@ const emptyForm: EmployeeFormValues = {
   holidays: '', salary: '',
   account_holder_name: '', bank_name: '', bank_account_number: '', account_type: '', ifsc_code: '', branch: '',
   department_names: [], designation_names: [], module_keys: [],
+  department_ids: [], designation_ids: [], module_action_ids: [],
   is_active: true,
 };
 
@@ -155,21 +144,28 @@ const FileUploadBox: React.FC<{
   );
 };
 
+// Checkbox checklist driven by real {value, label} options (department/
+// designation ids from Department & Designation Master, module_action ids
+// from the module-action mapping table) rather than a hardcoded string
+// list. `loading` renders a lightweight placeholder while the options are
+// still being fetched.
 const CheckboxGroup: React.FC<{
   t: Theme; isView: boolean;
-  label: string; required?: boolean; options: string[];
-  selected: string[]; onToggle: (v: string) => void; emptyHint?: string;
-}> = ({ t, isView, label, required, options, selected, onToggle, emptyHint }) => (
+  label: string; required?: boolean; options: IdOption[];
+  selected: number[]; onToggle: (v: number) => void; emptyHint?: string; loading?: boolean;
+}> = ({ t, isView, label, required, options, selected, onToggle, emptyHint, loading }) => (
   <div className="mb-5">
     <label style={getLabelStyle(t)}>{label}{required && <span style={{ color: '#ef4444' }}> *</span>}</label>
-    {options.length === 0 ? (
+    {loading ? (
+      <p style={{ fontSize: 12.5, color: t.textSecondary, margin: 0 }}>Loading...</p>
+    ) : options.length === 0 ? (
       <p style={{ fontSize: 12.5, color: t.textSecondary, margin: 0 }}>{emptyHint}</p>
     ) : (
       <div className="flex flex-wrap gap-x-5 gap-y-2.5">
         {options.map((opt) => (
-          <label key={opt} className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
-            <input type="checkbox" checked={selected.includes(opt)} disabled={isView} onChange={() => onToggle(opt)} />
-            {opt}
+          <label key={opt.value} className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+            <input type="checkbox" checked={selected.includes(opt.value)} disabled={isView} onChange={() => onToggle(opt.value)} />
+            {opt.label}
           </label>
         ))}
       </div>
@@ -244,6 +240,17 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [existingUrls, setExistingUrls] = useState<Record<string, string | null | undefined>>({});
   const [employeeCode, setEmployeeCode] = useState<string | null>(null);
 
+  // Assign Departments / Assign Designations / Assign Actions & Modules
+  // checklist options — fetched from the real Department, Designation and
+  // Module/Action masters (see file header note in employeeDetailsService.ts;
+  // this used to be a fixed static list with no real ids at all).
+  const [departmentOptions, setDepartmentOptions] = useState<IdOption[]>([]);
+  const [designationOptions, setDesignationOptions] = useState<IdOption[]>([]);
+  const [moduleOptions, setModuleOptions] = useState<IdOption[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
+  const [loadingDesignations, setLoadingDesignations] = useState(true);
+  const [loadingModules, setLoadingModules] = useState(true);
+
   const set = <K extends keyof EmployeeFormValues>(key: K, value: EmployeeFormValues[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -256,6 +263,59 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     (async () => {
       const code = await fetchNextEmployeeCode();
       setEmployeeCode(code); // null -> falls back to "Auto-generated" in the UI
+    })();
+  }, [mode]);
+
+  // ── Assign Departments / Assign Designations checklist options — real
+  //    Department & Designation Master data, needed in every mode ────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetchDepartmentList(1, 1000);
+        if (res.success) setDepartmentOptions((res.rows || []).map((d) => ({ value: Number(d.id), label: d.name })));
+      } catch {
+        toast.error('Failed to load departments.');
+      } finally {
+        setLoadingDepartments(false);
+      }
+    })();
+    (async () => {
+      try {
+        const res = await fetchDesignationList(1, 1000);
+        if (res.success) setDesignationOptions((res.rows || []).map((d) => ({ value: Number(d.id), label: d.name })));
+      } catch {
+        toast.error('Failed to load designations.');
+      } finally {
+        setLoadingDesignations(false);
+      }
+    })();
+  }, []);
+
+  // ── Assign Actions & Modules checklist options — Add mode only. There's
+  //    no employeeId yet, so /employee-permissions/:id can't be used; build
+  //    the checklist from the full Module x Action mapping matrix instead,
+  //    all unchecked initially. (Edit/View mode builds this same checklist,
+  //    pre-checked, from fetchEmployeePermissions in the load effect below.)
+  useEffect(() => {
+    if (mode !== 'add') return;
+    (async () => {
+      try {
+        const res = await fetchMappingMatrix();
+        if (res.success) {
+          const modulesById = new Map(res.data.modules.map((m) => [m.id, m]));
+          const actionsById = new Map(res.data.actions.map((a) => [a.id, a]));
+          const opts: IdOption[] = res.data.mappings.map((mp) => {
+            const mod = modulesById.get(mp.module_id);
+            const act = actionsById.get(mp.action_master_id);
+            return { value: mp.id, label: `${mod?.name ?? 'Module'} – ${act?.name || act?.code || 'Action'}` };
+          });
+          setModuleOptions(opts);
+        }
+      } catch {
+        toast.error('Failed to load module/action list.');
+      } finally {
+        setLoadingModules(false);
+      }
     })();
   }, [mode]);
 
@@ -283,7 +343,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             bank_account_number: e.bank_account_number || '', account_type: e.account_type || '',
             ifsc_code: e.ifsc_code || '', branch: e.branch || '',
             department_names: e.department_names || [], designation_names: e.designation_names || [],
-            module_keys: e.module_keys || [],
+            module_keys: [],
+            department_ids: (e.department_ids || []).map(Number),
+            designation_ids: (e.designation_ids || []).map(Number),
+            module_action_ids: [], // filled in below once /employee-permissions loads
             is_active: e.is_active,
           });
           setExistingUrls({
@@ -298,10 +361,33 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       } finally {
         setFetching(false);
       }
+
+      // Assign Actions & Modules checklist, pre-checked — one call gives
+      // both the full assignable list AND which ones are currently
+      // assigned, for this existing employee.
+      try {
+        const permRes = await fetchEmployeePermissions(id);
+        if (permRes.success) {
+          const opts: IdOption[] = [];
+          const assignedIds: number[] = [];
+          (permRes.data || []).forEach((mod) => {
+            mod.actions.forEach((a) => {
+              opts.push({ value: a.module_action_id, label: `${mod.module_name} – ${a.label || a.action}` });
+              if (a.assigned) assignedIds.push(a.module_action_id);
+            });
+          });
+          setModuleOptions(opts);
+          setForm((prev) => ({ ...prev, module_action_ids: assignedIds }));
+        }
+      } catch {
+        toast.error('Failed to load module/action permissions.');
+      } finally {
+        setLoadingModules(false);
+      }
     })();
   }, [mode, id]);
 
-  const toggleInArray = (key: 'department_names' | 'designation_names' | 'module_keys', value: string) => {
+  const toggleIdInArray = (key: 'department_ids' | 'designation_ids' | 'module_action_ids', value: number) => {
     setForm((prev) => {
       const arr = prev[key];
       return { ...prev, [key]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value] };
@@ -328,9 +414,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     if (!form.ifsc_code.trim()) return 'Please enter the IFSC Code.';
     if (!form.branch.trim()) return 'Please enter the Branch.';
     if (!files.passbook_photo && !existingUrls.passbook_photo) return 'Please upload the Bank Passbook Photo.';
-    if (form.department_names.length === 0) return 'Please assign at least one Department.';
-    if (form.designation_names.length === 0) return 'Please assign at least one Designation.';
-    if (form.module_keys.length === 0) return 'Please assign at least one Action/Module.';
+    if (form.department_ids.length === 0) return 'Please assign at least one Department.';
+    if (form.designation_ids.length === 0) return 'Please assign at least one Designation.';
+    if (form.module_action_ids.length === 0) return 'Please assign at least one Action/Module.';
     return null;
   };
 
@@ -580,20 +666,23 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <CheckboxGroup
           t={t} isView={isView}
           label="Assign Departments" required
-          options={DEPARTMENT_OPTIONS} selected={form.department_names}
-          onToggle={(v) => toggleInArray('department_names', v)}
+          options={departmentOptions} selected={form.department_ids}
+          onToggle={(v) => toggleIdInArray('department_ids', v)}
+          loading={loadingDepartments} emptyHint="No departments available."
         />
         <CheckboxGroup
           t={t} isView={isView}
           label="Assign Designations" required
-          options={DESIGNATION_OPTIONS} selected={form.designation_names}
-          onToggle={(v) => toggleInArray('designation_names', v)}
+          options={designationOptions} selected={form.designation_ids}
+          onToggle={(v) => toggleIdInArray('designation_ids', v)}
+          loading={loadingDesignations} emptyHint="No designations available."
         />
         <CheckboxGroup
           t={t} isView={isView}
           label="Assign Actions & Modules" required
-          options={MODULE_OPTIONS} selected={form.module_keys}
-          onToggle={(v) => toggleInArray('module_keys', v)}
+          options={moduleOptions} selected={form.module_action_ids}
+          onToggle={(v) => toggleIdInArray('module_action_ids', v)}
+          loading={loadingModules} emptyHint="No modules available."
         />
 
         <div
