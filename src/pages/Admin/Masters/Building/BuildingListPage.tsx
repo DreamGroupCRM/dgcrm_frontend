@@ -20,6 +20,11 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 // All action icons use the same dark-grey color — same as every other master list
 const ACTION_ICON_COLOR = '#4b5563';
 
+// Fixed width for the Actions column — sized for exactly 3 icon buttons
+// (32px each) + gaps + cell padding, so it never grows/shrinks with the
+// number of other columns in the table.
+const ACTION_COL_WIDTH = 148;
+
 // ── derived helpers ──────────────────────────────────────────────────────────
 const totalFlatsOf = (b: Building): number =>
   (b.wings ?? []).reduce(
@@ -145,9 +150,11 @@ const BuildingListPage: React.FC = () => {
 
   // ── same iconBtn style as every other master page ────────────────────────
   const iconBtn: React.CSSProperties = {
-    background: 'none', border: 'none', cursor: 'pointer',
-    padding: 6, borderRadius: 6,
-    display: 'inline-flex', alignItems: 'center',
+    width: 32, height: 32, background: 'none',
+    border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+    padding: 0, borderRadius: 8,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', flexShrink: 0,
   };
 
   const stickyBg = isDark ? t.surfaceBg : '#ffffff';
@@ -290,6 +297,20 @@ const BuildingListPage: React.FC = () => {
 
             <thead>
               <tr style={{ background: t.tableHeaderBg }}>
+                {/* STICKY Actions header — now the first column */}
+                <th style={{
+                  padding: '12px 16px', textAlign: 'center',
+                  width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                  fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '0.05em', color: t.textPrimary,
+                  borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
+                  position: 'sticky', left: 0, zIndex: 2,
+                  background: t.tableHeaderBg,
+                  borderRight: `2px solid ${t.divider}`,
+                  boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                }}>
+                  Actions
+                </th>
                 {['ID', 'Project Name', 'Building Name', 'Location', 'Wings', 'Floors', 'Flats', 'Status', 'Created At'].map((h) => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
@@ -300,20 +321,6 @@ const BuildingListPage: React.FC = () => {
                     {h}
                   </th>
                 ))}
-
-                {/* STICKY Actions header */}
-                <th style={{
-                  padding: '12px 16px', textAlign: 'center',
-                  fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
-                  letterSpacing: '0.05em', color: t.textPrimary,
-                  borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
-                  position: 'sticky', right: 0, zIndex: 2,
-                  background: t.tableHeaderBg,
-                  borderLeft: `2px solid ${t.divider}`,
-                  boxShadow: '-4px 0 8px rgba(0,0,0,0.06)',
-                }}>
-                  Actions
-                </th>
               </tr>
             </thead>
 
@@ -344,6 +351,39 @@ const BuildingListPage: React.FC = () => {
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}
                     >
+                      {/* STICKY Actions cell — now the first column */}
+                      <td style={{
+                        padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
+                        width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                        position: 'sticky', left: 0, zIndex: 1,
+                        background: stickyBg,
+                        borderRight: `2px solid ${t.divider}`,
+                        boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                      }}>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => navigate(`/admin/masters/building/view/${b.id}`)}
+                            title="View"
+                            style={iconBtn}
+                          >
+                            <MdVisibility size={17} color={ACTION_ICON_COLOR} />
+                          </button>
+                          <button
+                            onClick={() => navigate(`/admin/masters/building/edit/${b.id}`)}
+                            title="Edit"
+                            style={iconBtn}
+                          >
+                            <MdEdit size={17} color={ACTION_ICON_COLOR} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(b)}
+                            title="Delete"
+                            style={iconBtn}
+                          >
+                            <MdDelete size={17} color={ACTION_ICON_COLOR} />
+                          </button>
+                        </div>
+                      </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         {b.id}
                       </td>
@@ -373,39 +413,6 @@ const BuildingListPage: React.FC = () => {
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         {formatDate(b.created_at)}
-                      </td>
-
-                      {/* STICKY Actions cell */}
-                      <td style={{
-                        padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
-                        position: 'sticky', right: 0, zIndex: 1,
-                        background: stickyBg,
-                        borderLeft: `2px solid ${t.divider}`,
-                        boxShadow: '-4px 0 8px rgba(0,0,0,0.06)',
-                      }}>
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => navigate(`/admin/masters/building/view/${b.id}`)}
-                            title="View"
-                            style={iconBtn}
-                          >
-                            <MdVisibility size={18} color={ACTION_ICON_COLOR} />
-                          </button>
-                          <button
-                            onClick={() => navigate(`/admin/masters/building/edit/${b.id}`)}
-                            title="Edit"
-                            style={iconBtn}
-                          >
-                            <MdEdit size={18} color={ACTION_ICON_COLOR} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(b)}
-                            title="Delete"
-                            style={iconBtn}
-                          >
-                            <MdDelete size={18} color={ACTION_ICON_COLOR} />
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   );

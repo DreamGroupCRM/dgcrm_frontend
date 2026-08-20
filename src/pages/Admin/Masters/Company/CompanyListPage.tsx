@@ -21,6 +21,11 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 // All 3 action icons use the same dark-grey color
 const ACTION_ICON_COLOR = '#4b5563';
 
+// Fixed width for the Actions column — sized for exactly 3 icon buttons
+// (32px each) + gaps + cell padding, so it never grows/shrinks with the
+// number of other columns in the table.
+const ACTION_COL_WIDTH = 148;
+
 const CompanyListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -83,8 +88,15 @@ const CompanyListPage: React.FC = () => {
   };
 
   const exportCSV = () => {
-    const headers = ['ID', 'Company Name', 'Email', 'Phone', 'Created At'];
-    const rows    = filtered.map((c) => [c.id, `"${c.name}"`, c.email, c.phone, formatDate(c.created_at)]);
+    const headers = [
+      'ID', 'Company Name', 'Email', 'Phone',
+      'City', 'State', 'Country', 'GST', 'PAN', 'Created At',
+    ];
+    const rows = filtered.map((c) => [
+      c.id, `"${c.name}"`, c.email, c.phone,
+      c.city || '', c.state || '', c.country || '', c.gst || '', c.pan || '',
+      formatDate(c.created_at),
+    ]);
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     const a   = Object.assign(document.createElement('a'), { href: url, download: 'companies.csv' });
@@ -102,9 +114,11 @@ const CompanyListPage: React.FC = () => {
 
   // Same dark-grey for all 3 action icons
   const iconBtn: React.CSSProperties = {
-    background: 'none', border: 'none', cursor: 'pointer',
-    padding: 6, borderRadius: 6,
-    display: 'inline-flex', alignItems: 'center',
+    width: 32, height: 32, background: 'none',
+    border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
+    padding: 0, borderRadius: 8,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', flexShrink: 0,
   };
 
   const stickyBg = isDark ? t.surfaceBg : '#ffffff';
@@ -140,10 +154,27 @@ const CompanyListPage: React.FC = () => {
 
       <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto', position: 'relative' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 650 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1250 }}>
             <thead>
               <tr style={{ background: t.tableHeaderBg }}>
-                {['ID', 'Company', 'Email', 'Phone', 'Created At'].map((h) => (
+                {/* STICKY Actions — now the first column; vertical right border marks the sticky boundary */}
+                <th style={{
+                  padding: '12px 16px', textAlign: 'center',
+                  width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                  fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '0.05em', color: t.textPrimary,
+                  borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
+                  position: 'sticky', left: 0, zIndex: 2,
+                  background: t.tableHeaderBg,
+                  borderRight: `2px solid ${t.divider}`,
+                  boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                }}>
+                  Actions
+                </th>
+                {[
+                  'ID', 'Company', 'Email', 'Phone',
+                  'City', 'State', 'Country', 'GST', 'PAN', 'Created At',
+                ].map((h) => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
                     fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
@@ -151,28 +182,14 @@ const CompanyListPage: React.FC = () => {
                     borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   }}>{h}</th>
                 ))}
-
-                {/* STICKY Actions — vertical left border marks the sticky boundary */}
-                <th style={{
-                  padding: '12px 16px', textAlign: 'center',
-                  fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
-                  letterSpacing: '0.05em', color: t.textPrimary,
-                  borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
-                  position: 'sticky', right: 0, zIndex: 2,
-                  background: t.tableHeaderBg,
-                  borderLeft: `2px solid ${t.divider}`,
-                  boxShadow: '-4px 0 8px rgba(0,0,0,0.06)',
-                }}>
-                  Actions
-                </th>
               </tr>
             </thead>
 
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
+                <tr><td colSpan={11} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>
+                <tr><td colSpan={11} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>
                   {search ? 'No companies match your search.' : 'No companies found.'}
                 </td></tr>
               ) : (
@@ -183,6 +200,22 @@ const CompanyListPage: React.FC = () => {
                       style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`, transition: 'background 0.15s' }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
+
+                      {/* STICKY Actions cell — now the first column */}
+                      <td style={{
+                        padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
+                        width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                        position: 'sticky', left: 0, zIndex: 1,
+                        background: stickyBg,
+                        borderRight: `2px solid ${t.divider}`,
+                        boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                      }}>
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => navigate(`${ROUTES.ADMIN.COMPANY}/view/${company.id}`)} title="View" style={iconBtn}><MdVisibility size={17} /></button>
+                          <button onClick={() => navigate(`${ROUTES.ADMIN.COMPANY}/edit/${company.id}`)} title="Edit" style={iconBtn}><MdEdit size={17} /></button>
+                          <button onClick={() => handleDelete(company)} title="Delete" style={iconBtn}><MdDelete size={17} /></button>
+                        </div>
+                      </td>
 
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.id}</td>
 
@@ -204,22 +237,12 @@ const CompanyListPage: React.FC = () => {
 
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary }}>{company.email || '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.phone || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.city || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.state || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{company.country || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap', fontFamily: 'monospace', textTransform: 'uppercase' }}>{company.gst || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap', fontFamily: 'monospace', textTransform: 'uppercase' }}>{company.pan || '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(company.created_at)}</td>
-
-                      {/* STICKY Actions cell */}
-                      <td style={{
-                        padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
-                        position: 'sticky', right: 0, zIndex: 1,
-                        background: stickyBg,
-                        borderLeft: `2px solid ${t.divider}`,
-                        boxShadow: '-4px 0 8px rgba(0,0,0,0.06)',
-                      }}>
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => navigate(`${ROUTES.ADMIN.COMPANY}/view/${company.id}`)} title="View" style={iconBtn}><MdVisibility size={18} /></button>
-                          <button onClick={() => navigate(`${ROUTES.ADMIN.COMPANY}/edit/${company.id}`)} title="Edit" style={iconBtn}><MdEdit size={18} /></button>
-                          <button onClick={() => handleDelete(company)} title="Delete" style={iconBtn}><MdDelete size={18} /></button>
-                        </div>
-                      </td>
                     </tr>
                   );
                 })

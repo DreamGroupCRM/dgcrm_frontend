@@ -136,9 +136,6 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
   // ── validation ────────────────────────────────────────────────────────
   const isFormValid = departmentName.trim() !== '';
 
-  // Purely cosmetic progress indicator at the top of the page.
-  const currentStep = !departmentName.trim() ? 1 : wantDesignations ? 2 : 3;
-
   const handleSubmit = async () => {
     if (!isFormValid) {
       toast.error('Please enter a Department Name.');
@@ -186,12 +183,6 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
     fontSize: 14, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
   };
 
-  const steps = [
-    { n: 1, label: 'Department Details' },
-    { n: 2, label: 'Add Designations (Optional)' },
-    { n: 3, label: 'Review & Save' },
-  ];
-
   if (fetching) {
     return (
       <div className="flex items-center justify-center" style={{ minHeight: 300, color: t.textSecondary, fontFamily: t.fontFamily }}>
@@ -204,15 +195,15 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
     <div style={{ fontFamily: t.fontFamily }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <div
           className="flex items-center justify-center rounded-xl flex-shrink-0"
-          style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}
+          style={{ width: 40, height: 40, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}
         >
-          <MdApartment size={22} style={{ color: '#4f46e5' }} />
+          <MdApartment size={20} style={{ color: '#4f46e5' }} />
         </div>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: t.textPrimary, margin: 0 }}>
             {mode === 'add' ? 'Add Department' : mode === 'edit' ? 'Edit Department' : 'View Department'}
           </h1>
           <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>
@@ -221,42 +212,12 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
       </div>
 
-      {/* ── Stepper ───────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-center mb-6 px-2 overflow-x-auto">
-        {steps.map((s, i) => (
-          <React.Fragment key={s.n}>
-            <div className="flex flex-col items-center flex-shrink-0" style={{ minWidth: 90 }}>
-              <div
-                className="flex items-center justify-center rounded-full"
-                style={{
-                  width: 32, height: 32, fontSize: 13.5, fontWeight: 700,
-                  background: s.n <= currentStep ? '#4338ca' : 'transparent',
-                  color: s.n <= currentStep ? '#fff' : t.textSecondary,
-                  border: s.n <= currentStep ? 'none' : `1.5px solid ${t.surfaceBorder}`,
-                }}
-              >
-                {s.n}
-              </div>
-              <span
-                className="mt-1.5 text-center"
-                style={{ fontSize: 12, fontWeight: 600, color: s.n <= currentStep ? '#4338ca' : t.textSecondary, whiteSpace: 'nowrap' }}
-              >
-                {s.label}
-              </span>
-            </div>
-            {i < steps.length - 1 && (
-              <div style={{ width: 60, height: 2, background: s.n < currentStep ? '#4338ca' : t.surfaceBorder, flexShrink: 0, marginBottom: 18 }} />
-            )}
-          </React.Fragment>
-        ))}
-      </div>
-
       {/* ── Step 1: Department Details ───────────────────────────────── */}
       <div
-        className="rounded-2xl mb-5"
+        className="rounded-2xl mb-4"
         style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
       >
-        <div className="p-5 sm:p-6">
+        <div className="p-4 sm:p-5">
           <div className="flex items-center gap-2.5 mb-4">
             <span
               className="flex items-center justify-center rounded-full text-white text-xs font-bold flex-shrink-0"
@@ -267,65 +228,57 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
             <h2 style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Department Details</h2>
           </div>
 
-          <label style={labelStyle}>
-            Department Name <span style={{ color: '#ef4444' }}>*</span>
-          </label>
-          <input
-            type="text"
-            placeholder="Enter department name"
-            value={departmentName}
-            readOnly={isView}
-            disabled={isView}
-            onChange={(e) => setDepartmentName(e.target.value)}
-            style={{ ...fieldStyle, maxWidth: 480 }}
-          />
+          <div className="flex flex-col md:flex-row md:items-end gap-4">
+            <div style={{ flex: '0 1 400px', minWidth: 220 }}>
+              <label style={labelStyle}>
+                Department Name <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Enter department name"
+                value={departmentName}
+                readOnly={isView}
+                disabled={isView}
+                onChange={(e) => setDepartmentName(e.target.value)}
+                style={fieldStyle}
+              />
+            </div>
 
-          <div
-            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-5 px-4 py-3 rounded-xl"
-            style={{ background: t.insetBg }}
-          >
-            <span style={{ fontSize: 13.5, fontWeight: 600, color: t.textPrimary }}>
-              Do you want to add designations for this department?
-            </span>
-            <div className="flex items-center gap-5">
-              <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
-                <input
-                  type="radio" name="want_designations" checked={wantDesignations === true} disabled={isView}
-                  onChange={() => setWantDesignations(true)}
-                />
-                Yes
-              </label>
-              <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
-                <input
-                  type="radio" name="want_designations" checked={wantDesignations === false} disabled={isView}
-                  onChange={() => setWantDesignations(false)}
-                />
-                No
-              </label>
+            <div
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 rounded-xl"
+              style={{ background: t.insetBg, flex: 1 }}
+            >
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: t.textPrimary }}>
+                Do you want to add designations for this department?
+              </span>
+              <div className="flex items-center gap-5 flex-shrink-0">
+                <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+                  <input
+                    type="radio" name="want_designations" checked={wantDesignations === true} disabled={isView}
+                    onChange={() => setWantDesignations(true)}
+                  />
+                  Yes
+                </label>
+                <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+                  <input
+                    type="radio" name="want_designations" checked={wantDesignations === false} disabled={isView}
+                    onChange={() => setWantDesignations(false)}
+                  />
+                  No
+                </label>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── connector arrow — purely decorative, matches the screenshot ── */}
-      {wantDesignations && (
-        <div className="flex justify-center mb-5" style={{ marginTop: -12 }}>
-          <div
-            className="flex items-center justify-center rounded-full"
-            style={{ width: 32, height: 32, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: '#4338ca' }}
-          >
-            ↓
-          </div>
-        </div>
-      )}
-
       {/* ── Step 2: Add Designations ─────────────────────────────────── */}
       {wantDesignations && (
         <div
-          className="rounded-2xl mb-5"
+          className="rounded-2xl mb-4"
           style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
         >
-          <div className="p-5 sm:p-6">
+          <div className="p-4 sm:p-5">
             <div className="flex items-center gap-2.5 mb-4">
               <span
                 className="flex items-center justify-center rounded-full text-white text-xs font-bold flex-shrink-0"
@@ -390,9 +343,15 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                   </thead>
                   <tbody>
                     {designations.map((d, idx) => (
-                      <tr key={d.id ?? idx} style={{ borderTop: `1px solid ${t.divider}` }}>
+                      <tr
+                        key={d.id ?? idx}
+                        style={{
+                          borderTop: `1px solid ${t.divider}`,
+                          background: d.is_active ? 'transparent' : (isDark ? 'rgba(148,163,184,0.10)' : '#f3f4f6'),
+                        }}
+                      >
                         <td style={{ padding: '10px 16px', fontSize: 13.5, color: t.textSecondary, width: 48 }}>{idx + 1}</td>
-                        <td style={{ padding: '10px 16px', fontSize: 14, fontWeight: 600, color: t.textPrimary }}>{d.name}</td>
+                        <td style={{ padding: '10px 16px', fontSize: 14, fontWeight: 600, color: d.is_active ? t.textPrimary : t.textSecondary }}>{d.name}</td>
                         <td style={{ padding: '10px 16px' }}>
                           <StatusPill active={d.is_active} />
                         </td>
@@ -431,8 +390,8 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
       )}
 
-      {/* ── Action Buttons — Go Back (left) / Save Department (right) ─── */}
-      <div className="flex items-center justify-between gap-3 mt-6">
+      {/* ── Action Buttons — centered ─────────────────────────────────── */}
+      <div className="flex items-center justify-center gap-3 mt-2">
         <button
           type="button"
           onClick={() => navigate('/admin/masters/department')}

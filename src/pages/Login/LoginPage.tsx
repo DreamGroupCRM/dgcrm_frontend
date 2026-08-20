@@ -9,7 +9,7 @@
 //   4. Multi-step login to match API v12: email+password -> OTP -> session
 //      (and, for a first-time login, OTP -> set new password -> session)
 //
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { loginThunk, verifyOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
@@ -105,7 +105,11 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
 
-  const [otp, setOtp] = useState('');
+  // OTP is stored as 6 individual boxes (professional PIN-entry UI),
+  // `otp` below is simply the 6 boxes joined together into one string.
+  const [otpDigits, setOtpDigits] = useState<string[]>(Array(6).fill(''));
+  const otp = otpDigits.join('');
+  const otpInputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [otpError, setOtpError] = useState('');
   const [otpTouched, setOtpTouched] = useState(false);
   const [justRequestedOtp, setJustRequestedOtp] = useState(false);
@@ -155,6 +159,70 @@ const LoginPage: React.FC = () => {
       setJustRequestedOtp(false);
     }
   }, [step, justRequestedOtp, otpMessage]);
+
+  // ── Auto-focus the first verification-code box the moment the OTP
+  //    step appears, so the user can start typing immediately without
+  //    having to click into the field first ──
+  useEffect(() => {
+    if (step === 'otp') {
+      const focusTimer = setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 50);
+      return () => clearTimeout(focusTimer);
+    }
+  }, [step]);
+
+  // ── OTP box handlers (6-box PIN-style input) ──
+  const handleOtpDigitChange = (index: number, rawValue: string) => {
+    const digit = rawValue.replace(/[^0-9]/g, '').slice(-1); // keep only the last digit typed
+    const next = [...otpDigits];
+    next[index] = digit;
+    setOtpDigits(next);
+    setOtpTouched(true);
+    setOtpError(validateOtp(next.join('')));
+
+    // Auto-advance to the next box as soon as a digit is entered
+    if (digit && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      const next = [...otpDigits];
+      if (next[index]) {
+        // Clear the current box
+        next[index] = '';
+        setOtpDigits(next);
+        setOtpError(validateOtp(next.join('')));
+      } else if (index > 0) {
+        // Already empty — step back and clear the previous box
+        next[index - 1] = '';
+        setOtpDigits(next);
+        setOtpError(validateOtp(next.join('')));
+        otpInputRefs.current[index - 1]?.focus();
+      }
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      e.preventDefault();
+      otpInputRefs.current[index - 1]?.focus();
+    } else if (e.key === 'ArrowRight' && index < 5) {
+      e.preventDefault();
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+    if (!pasted) return;
+    const next = Array(6).fill('');
+    pasted.split('').forEach((ch, i) => { next[i] = ch; });
+    setOtpDigits(next);
+    setOtpTouched(true);
+    setOtpError(validateOtp(next.join('')));
+    const focusIndex = Math.min(pasted.length, 5);
+    otpInputRefs.current[focusIndex]?.focus();
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -255,7 +323,7 @@ const LoginPage: React.FC = () => {
   );
 
   const handleBackToLogin = () => {
-    setOtp('');
+    setOtpDigits(Array(6).fill(''));
     setOtpError('');
     setOtpTouched(false);
     setNewPassword('');
@@ -455,28 +523,42 @@ const LoginPage: React.FC = () => {
                   It expires in 5 minutes.
                 </p>
 
-                <TextField
-                  fullWidth required name="otp" label="Verification Code"
-                  inputMode="numeric"
-                  value={otp}
-                  onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
-                    setOtp(cleaned);
-                    if (otpTouched) setOtpError(validateOtp(cleaned));
-                  }}
-                  onBlur={() => { setOtpTouched(true); setOtpError(validateOtp(otp)); }}
-                  error={otpTouched && !!otpError}
-                  helperText={otpTouched && otpError}
-                  size="small"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Lock sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 20 }} />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ ...glassFieldSx, '& input': { letterSpacing: '0.4em', fontSize: '1.1rem' } }}
-                />
+                <div className="flex flex-col items-center">
+                  <div
+                    className="flex items-center justify-center gap-2 sm:gap-3"
+                    onPaste={handleOtpPaste}
+                  >
+                    {otpDigits.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => { otpInputRefs.current[index] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                        maxLength={1}
+                        value={digit}
+                        autoFocus={index === 0}
+                        onChange={(e) => handleOtpDigitChange(index, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                        onFocus={(e) => e.target.select()}
+                        aria-label={`Verification code digit ${index + 1}`}
+                        style={{ width: '3rem', height: '3.4rem' }}
+                        className={`text-center text-xl font-semibold
+                          rounded-xl text-white bg-white/[0.08] outline-none border
+                          transition-all duration-200
+                          focus:bg-white/[0.14] focus:ring-2 focus:ring-blue-500/40
+                          ${otpTouched && otpError
+                            ? 'border-red-400'
+                            : 'border-white/20 focus:border-blue-500'}`}
+                      />
+                    ))}
+                  </div>
+
+                  {otpTouched && otpError && (
+                    <p className="text-red-300 text-xs mt-2 text-center">{otpError}</p>
+                  )}
+                </div>
 
                 <button
                   type="submit"
