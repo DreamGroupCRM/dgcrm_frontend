@@ -406,7 +406,7 @@ const BuildingListPage: React.FC = () => {
 
         <div className="master-actions">
           <button onClick={() => navigate('/admin/masters/building/add')} className="master-btn-primary">
-            <MdAdd size={18} /> Add New Building
+            <MdAdd size={18} /> Add Building
           </button>
           <button onClick={exportCSV} title="Export CSV" className="master-btn-icon"
             style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>

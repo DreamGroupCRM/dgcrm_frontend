@@ -449,7 +449,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   const newlyAddedWingIdRef = React.useRef<string | null>(null);
 
   const PAGE_TITLES: Record<Mode, string> = {
-    add: 'Add New Building',
+    add: 'Add Building',
     edit: 'Edit Building',
     view: 'View Building',
   };
@@ -847,45 +847,6 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
-
-      {/* ── Page Header ─────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
-        <div className="flex items-center gap-3">
-          <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <MdApartment size={24} style={{ color: '#4338ca' }} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>
-              {PAGE_TITLES[mode]}
-            </h1>
-            <p style={{ fontSize: 13.5, color: t.textSecondary, margin: '2px 0 0' }}>
-              Add Building, Wings, Floors &amp; Flats in one go
-            </p>
-          </div>
-        </div>
-
-        {!isView && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 999,
-            background: dirty
-              ? isDark ? 'rgba(245,158,11,0.12)' : '#fef3c7'
-              : isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7',
-            color: dirty
-              ? isDark ? '#fbbf24' : '#b45309'
-              : isDark ? '#4ade80' : '#16a34a',
-            fontSize: 13, fontWeight: 600,
-          }}>
-            {dirty
-              ? <><MdFiberManualRecord size={12} /> Unsaved changes</>
-              : <><MdCheckCircle size={16} /> All changes saved</>}
-          </div>
-        )}
-      </div>
 
       {/* ── Step 1: Project Details ─────────────────────────────────────── */}
       <SectionCard t={t}>
