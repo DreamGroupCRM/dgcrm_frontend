@@ -25,12 +25,23 @@
 // extra backend-shaped fields appended alongside the existing ones (so
 // nothing already being sent is removed), and incoming responses are
 // mapped from the backend's real shape into the Customer/CustomerFullDetail
-// shape this app's pages already expect. Fields with no confident backend
-// equivalent (booster amounts/intervals, remaining_booking_amount/date,
-// company_name/project_name/floor_id/floor_label as customer-level fields,
-// and the "scheme" concept generally) are deliberately left exactly as
-// they were — untouched, still unmapped — per explicit product decision
-// not to guess at those.
+// shape this app's pages already expect.
+//
+// V_16.0: booster amounts/intervals and remaining_booking_amount/date now
+// map onto real backend columns — annual_amount/annual_amount1/
+// annual_amount_every_months/annual_amount2_every_months (booster) and
+// pay_after_booking/pay_after_booking_date (remaining booking) already
+// existed or were added specifically for this; see
+// database/2026-08-24-customer-pay-after-booking-date.sql. company_name
+// now has a real column too (database/2026-08-24-customer-company-name.sql)
+// — it was always collected by the Create/Edit form but silently dropped
+// on save, coming back blank on every Edit. floor_id/floor_label are
+// recovered via the flat's own floor relation (Customer has no floor_id
+// column of its own — see findCustomerById on the backend) rather than a
+// new column, since Floor is already fully determined by which Flat is
+// selected. Only project_name has no backend counterpart of its own — it's
+// derived instead from the selected Building's own project_name, which
+// already round-trips correctly.
 
 import axiosInstance from './axiosConfig';
 import {
@@ -45,10 +56,20 @@ import {
   AssignCustomersResponse,
   CustomerPaymentHistoryResponse,
   CustomerPaymentRecord,
-  CustomerSchemeResponse,
+  CustomerSchemeDetailResponse,
   CustomerFullDetail,
   CustomerFullDetailResponse,
 } from '../types/index';
+
+// booking_date/installment_date/pay_after_booking_date are `timestamp`
+// columns on the backend (not `date`), so they come back as full ISO
+// strings like "2026-08-15T00:00:00.000Z" — an HTML <input type="date">
+// requires exactly "yyyy-mm-dd" and silently renders BLANK for anything
+// else, which is why Edit Customer's Booking Date / Installment Date /
+// Remaining Booking Date fields all came back empty despite having been
+// saved correctly. date_of_birth doesn't need this — it's a `date` column
+// and already comes back as a plain "yyyy-mm-dd" string.
+const toDateOnly = (iso: string | null): string => (iso ? iso.slice(0, 10) : '');
 
 // ── Backend response shapes (V_13.0) — only the fields this file reads ──
 // See Customer.entity.ts / Building.entity.ts / Wing.entity.ts /
@@ -56,7 +77,12 @@ import {
 // authoritative field list.
 interface BackendBuilding { id: number | string; name: string; project_name: string | null; location: string | null; }
 interface BackendWing { id: number | string; name: string; }
-interface BackendFlat { id: number | string; flat_number: string; flat_type: string | null; area_sqft: number | string | null; }
+// floor is nested under flat (not a direct customers.floor_id column — see
+// customer.repository.ts's findCustomerById on the backend), since Floor
+// sits between Wing and Flat in the Building hierarchy and this is the
+// only place to recover which floor a customer's flat is on.
+interface BackendFloor { id: number | string; name: string; }
+interface BackendFlat { id: number | string; flat_number: string; flat_type: string | null; area_sqft: number | string | null; floor: BackendFloor | null; }
 interface BackendCustomer {
   id: number | string;
   customer_code: string;
@@ -70,6 +96,7 @@ interface BackendCustomer {
   date_of_birth: string | null;
   alternate_contact_name: string | null;
   alternate_contact_mobile: string | null;
+  company_name: string | null;
   has_parking: boolean;
   parking_no: string | null;
   building_id: number | string | null;
@@ -78,6 +105,10 @@ interface BackendCustomer {
   wing: BackendWing | null;
   flat_id: number | string | null;
   flat: BackendFlat | null;
+  assigned_employee_id: number | string | null;
+  assigned_employee_code: string | null;
+  assigned_employee_name: string | null;
+  assigned_employee_photo_url: string | null;
   customer_image: string | null;
   aadhar_card_no: string;
   pan_card_no: string | null;
@@ -92,8 +123,14 @@ interface BackendCustomer {
   installment_amount1: number;
   installment_tenure: number;
   booking_amount: number | null;
+  pay_after_booking: number | null;
+  pay_after_booking_date: string | null;
   possession_amount: number | null;
   booking_date: string | null;
+  annual_amount: number | null;
+  annual_amount1: number | null;
+  annual_amount_every_months: number;
+  annual_amount2_every_months: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -117,10 +154,11 @@ interface BackendAmountTransaction {
 }
 
 // Backend Customer (+ building/wing/flat relations) -> the flat `Customer`
-// shape the List page already renders. Fields the backend doesn't track at
-// all (assigned employee — customer.repository.ts's list/detail queries
-// don't join the customer-assignment module yet) are left undefined; the
-// List page already renders those as "—" when absent.
+// shape the List page already renders. assigned_employee_* now comes from
+// a real backend join (customer.repository.ts's findCustomerList) — the
+// "Assign to Employee" button was always saving the assignment correctly,
+// it just never came back on the list response for the Employee Name
+// column to show; this fixes the read side, not the write side.
 const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   id: String(bc.id),
   customer_name: [bc.name, bc.middle_name, bc.last_name].filter(Boolean).join(' '),
@@ -136,10 +174,10 @@ const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   area_sqft: bc.flat?.area_sqft != null ? Number(bc.flat.area_sqft) : null,
   booking_date: bc.booking_date ?? '',
   monthly_emi: bc.installment_amount,
-  assigned_employee_id: undefined,
-  assigned_employee_code: undefined,
-  assigned_employee_name: undefined,
-  assigned_employee_photo_url: undefined,
+  assigned_employee_id: bc.assigned_employee_id != null ? String(bc.assigned_employee_id) : undefined,
+  assigned_employee_code: bc.assigned_employee_code ?? undefined,
+  assigned_employee_name: bc.assigned_employee_name ?? undefined,
+  assigned_employee_photo_url: bc.assigned_employee_photo_url,
   status: bc.is_active ? 'active' : 'inactive',
   is_active: bc.is_active,
   created_at: bc.created_at,
@@ -171,15 +209,17 @@ const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
   alternate_person_name: bc.alternate_contact_name ?? '',
   alternate_person_mobile: bc.alternate_contact_mobile ?? '',
 
-  company_name: '', // no backend column — see file header
+  company_name: bc.company_name ?? '',
   project_name: bc.building?.project_name ?? '',
   location: bc.building?.location ?? '',
   building_id: bc.building_id != null ? String(bc.building_id) : '',
   building_name: bc.building?.name ?? '',
   wing_id: bc.wing_id != null ? String(bc.wing_id) : '',
   wing_name: bc.wing?.name ?? '',
-  floor_id: '', // Customer has no floor_id column on the backend
-  floor_label: '',
+  // Customer has no floor_id column of its own — recovered via the flat's
+  // own floor relation instead (see BackendFloor/BackendFlat above).
+  floor_id: bc.flat?.floor?.id != null ? String(bc.flat.floor.id) : '',
+  floor_label: bc.flat?.floor?.name ?? '',
   flat_id: bc.flat_id != null ? String(bc.flat_id) : '',
   flat_no: bc.flat?.flat_number ?? '',
   flat_type: bc.flat?.flat_type ?? '',
@@ -188,19 +228,19 @@ const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
   parking_no: bc.parking_no ?? '',
 
   total_cost: bc.flat_amount,
-  booking_date: bc.booking_date ?? '',
+  booking_date: toDateOnly(bc.booking_date),
   booking_amount: bc.booking_amount,
-  remaining_booking_amount: null, // no backend equivalent — see file header
-  remaining_booking_date: '',
+  remaining_booking_amount: bc.pay_after_booking,
+  remaining_booking_date: toDateOnly(bc.pay_after_booking_date),
   possession_amount: bc.possession_amount,
-  installment_date: bc.installment_date ?? '',
+  installment_date: toDateOnly(bc.installment_date),
   monthly_emi_before_possession: bc.installment_amount,
   monthly_emi_after_possession: bc.installment_amount1,
   total_emi_tenure_months: bc.installment_tenure,
-  booster_amount_before_possession: null, // no confident backend equivalent — see file header
-  booster_amount_after_possession: null,
-  booster_interval_before_possession_months: null,
-  booster_interval_after_possession_months: null,
+  booster_amount_before_possession: bc.annual_amount,
+  booster_amount_after_possession: bc.annual_amount1,
+  booster_interval_before_possession_months: bc.annual_amount_every_months,
+  booster_interval_after_possession_months: bc.annual_amount2_every_months,
 
   application_form_url: bc.application_form,
   declaration_form_url: bc.declaration_form,
@@ -243,6 +283,14 @@ const CUSTOMER_TEXT_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
   ['monthly_emi_before_possession', 'installment_amount'],
   ['monthly_emi_after_possession', 'installment_amount1'],
   ['total_emi_tenure_months', 'installment_tenure'],
+  // V_16.0 — these were always collected by the form but silently dropped
+  // on save (see the file header note above).
+  ['remaining_booking_amount', 'pay_after_booking'],
+  ['remaining_booking_date', 'pay_after_booking_date'],
+  ['booster_amount_before_possession', 'annual_amount'],
+  ['booster_amount_after_possession', 'annual_amount1'],
+  ['booster_interval_before_possession_months', 'annual_amount_every_months'],
+  ['booster_interval_after_possession_months', 'annual_amount2_every_months'],
 ];
 
 const CUSTOMER_FILE_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
@@ -255,9 +303,25 @@ const CUSTOMER_FILE_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
 // already put in `formData` is carried over unchanged (nothing is
 // removed), plus the backend-named duplicates it needs to actually be
 // understood by CreateCustomerSchema/UpdateCustomerSchema.
+//
+// File fields are the one exception to "carried over unchanged": Multer's
+// upload.fields([...]) on the backend rejects ANY file field name that
+// isn't in its declared list with a hard 500 ("Unexpected field") — for
+// the whole request, not just that one field — so forwarding customer_photo/
+// aadhar_photo/pancard_photo under their ORIGINAL names as well as their
+// renamed ones (customer_image/aadhar_card/pan_card) broke every single
+// Create/Update Customer submission that included a photo, which is all of
+// them (Customer Photo, Aadhar Photo and Pancard Photo are mandatory).
+// Text fields don't have this problem — multer puts unrecognized text
+// fields straight into req.body with no rejection — so only file fields
+// need to be excluded from the unchanged copy-through.
+const CUSTOMER_FILE_FIELD_RENAME_FROM_KEYS = new Set(CUSTOMER_FILE_FIELD_RENAMES.map(([from]) => from));
 const toBackendCustomerFormData = (formData: FormData): FormData => {
   const out = new FormData();
-  formData.forEach((value, key) => out.append(key, value as string | Blob));
+  formData.forEach((value, key) => {
+    if (CUSTOMER_FILE_FIELD_RENAME_FROM_KEYS.has(key)) return; // re-appended under its backend name below
+    out.append(key, value as string | Blob);
+  });
 
   for (const [from, to] of CUSTOMER_TEXT_FIELD_RENAMES) {
     const v = formData.get(from);
@@ -402,14 +466,13 @@ export const fetchCustomerPaymentHistory = async (customerId: string): Promise<C
   return { success: res.data.success, message: res.data.message, rows: ((res.data.rows ?? []) as BackendAmountTransaction[]).map(mapTransactionToPaymentRecord) };
 };
 
-// ── Scheme ────────────────────────────────────────────────────────────────
-// NOTE: left exactly as originally written. There is no "scheme" concept
-// anywhere in the backend (no Scheme entity, no scheme-shaped fields on
-// Customer/AmountTransaction) as of V_13.0 — this call still 404s. Kept
-// as-is rather than removed, per explicit product decision, until the
-// backend actually models this.
+// ── Scheme (V_16.0) ─────────────────────────────────────────────────────
+// Now a real, working endpoint (backend customer.controller.ts's
+// getCustomerScheme) — customer info + EMI Scheme summary + EMI Schedule,
+// computed from this customer's own saved Payment Details. Powers the
+// Customer Scheme view page.
 /** GET /api/customers/:id/scheme */
-export const fetchCustomerScheme = async (customerId: string): Promise<CustomerSchemeResponse> => {
+export const fetchCustomerScheme = async (customerId: string): Promise<CustomerSchemeDetailResponse> => {
   const res = await axiosInstance.get(`/customers/${customerId}/scheme`);
   return { success: res.data.success, message: res.data.message, data: res.data.data ?? null };
 };

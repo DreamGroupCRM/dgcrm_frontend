@@ -17,6 +17,7 @@ import EmployeeDetailsListPage from '../pages/Admin/Employee/Employee-Details/Em
 
 import CustomerDetailsListPage from '../pages/Admin/CRM/Customer-Details/CustomerDetailsListPage';
 import CustomerDetailsCrudPage from '../pages/Admin/CRM/Customer-Details/CustomerDetailsCrudPage';
+import CustomerSchemeViewPage from '../pages/Admin/CRM/Customer-Details/CustomerSchemeViewPage';
 
 import RoleListPage from '../pages/Admin/Masters/Roles/RoleListPage';
 import RoleCrudPage from '../pages/Admin/Masters/Roles/RoleCrudPage';
@@ -35,6 +36,10 @@ import ModuleMappingPage from '../pages/Admin/Masters/ModuleMapping/ModuleMappin
 // Due Report — real data for the "Payment Dues" sidebar entry, replacing
 // its former PlaceholderPage now that GET /api/payments/due-report exists.
 import DueReportPage from '../pages/Admin/CRM/DueReport/DueReportPage';
+
+// Customize Scheme — replaces the former "Interest Free Calculator"
+// placeholder with a real EMI Scheme & Schedule builder.
+import CustomizeSchemePage from '../pages/Admin/CustomizeScheme/CustomizeSchemePage';
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
@@ -94,12 +99,13 @@ const AdminRoutes: React.FC = () => (
       <Route path="crm/customer-details/add" element={<CustomerDetailsCrudPage mode="add" />} />
       <Route path="crm/customer-details/view/:id" element={<CustomerDetailsCrudPage mode="view" />} />
       <Route path="crm/customer-details/edit/:id" element={<CustomerDetailsCrudPage mode="edit" />} />
+      <Route path="crm/customer-details/scheme/:id" element={<CustomerSchemeViewPage />} />
       <Route path="crm/payment-dues" element={<DueReportPage />} />
       <Route path="crm/payment-received" element={<PlaceholderPage title="Payment Received" />} />
       <Route path="crm/leads" element={<PlaceholderPage title="Leads" />} />
 
       <Route path="audit-history" element={<PlaceholderPage title="Audit History" />} />
-      <Route path="interest-free-calculator" element={<PlaceholderPage title="Interest Free Calculator" />} />
+      <Route path="customize-scheme" element={<CustomizeSchemePage />} />
       <Route path="backup-database" element={<PlaceholderPage title="Backup Database" />} />
     </Route>
   </Routes>

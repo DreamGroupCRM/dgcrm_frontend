@@ -672,18 +672,49 @@ export interface CustomerPaymentHistoryResponse {
   rows    : CustomerPaymentRecord[];
 }
 
-export interface CustomerScheme {
-  id               : string;
-  scheme_name      : string;
-  description?     : string;
-  discount_percent?: number | null;
-  valid_till?      : string;
+// ── Customer Scheme page (V_16.0) — customer info + EMI Scheme summary +
+// EMI Schedule, computed server-side from this customer's own saved
+// Payment Details (see backend customer.service.ts's getCustomerScheme /
+// scheduleGenerator.ts). Replaces the old CustomerScheme/CustomerSchemeResponse
+// "discount scheme" concept, which never had a real backend behind it. ────
+export interface CustomerSchemeSummaryRow { label: string; amount: number; }
+export interface CustomerScheduleRow { sr: number; date: string | null; label: string; amount: number; }
+
+export interface CustomerSchemeCustomerInfo {
+  id             : string;
+  customer_code  : string;
+  name           : string | null;
+  middle_name    : string | null;
+  last_name      : string | null;
+  email          : string | null;
+  mobile_number  : string | null;
+  whatsapp_number: string | null;
+  address        : string | null;
+  customer_image : string | null;
+  building_name  : string | null;
+  wing_name      : string | null;
+  flat_no        : string | null;
+  flat_type      : string | null;
+  area_sqft      : number | null;
+  booking_date   : string | null;
+  flat_amount    : number;
 }
 
-export interface CustomerSchemeResponse {
+export interface CustomerSchemeData {
+  customer   : CustomerSchemeCustomerInfo;
+  summaryA   : CustomerSchemeSummaryRow[];
+  summaryB   : CustomerSchemeSummaryRow[];
+  totalA     : number;
+  totalB     : number;
+  grandTotal : number;
+  scheduleA  : CustomerScheduleRow[];
+  scheduleB  : CustomerScheduleRow[];
+}
+
+export interface CustomerSchemeDetailResponse {
   success : boolean;
   message?: string;
-  data    : CustomerScheme | null;
+  data    : CustomerSchemeData | null;
 }
 
 // ── Customer Details — Full Create/Edit Form ────────────────────────────────

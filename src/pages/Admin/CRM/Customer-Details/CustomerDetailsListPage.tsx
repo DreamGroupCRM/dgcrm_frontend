@@ -2,6 +2,7 @@
 // DREAM GROUP CRM - CUSTOMER DETAILS LIST PAGE
 // ==========================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -15,14 +16,14 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
-import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory, fetchCustomerScheme } from '../../../../services/customerDetailsService';
+import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory } from '../../../../services/customerDetailsService';
 import {
   collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, PAYMENT_FOR_OPTIONS, paymentForLabel,
 } from '../../../../services/paymentService';
-import { FetchBuildingList } from '../../../../services/buildingService';
+import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
-  Customer, Building, CustomerPaymentRecord, CustomerScheme,
+  Customer, Building, CustomerPaymentRecord,
   PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload,
 } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
@@ -41,7 +42,13 @@ const SearchableSelect: React.FC<{
   value: string;
   onChange: (v: string) => void;
   disabled?: boolean;
-}> = ({ t, placeholder, options, value, onChange, disabled }) => {
+  // Overrides only the DISPLAYED text of each dropdown option — filtering,
+  // the stored value, and what lands in the input box on selection all
+  // still work off the plain option string. Used by the Flat No filter to
+  // show "A-101 · 2 BHK · 850 Sqft" per option while still filtering
+  // customers by the bare flat number underneath.
+  labelFor?: (opt: string) => string;
+}> = ({ t, placeholder, options, value, onChange, disabled, labelFor }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
@@ -100,7 +107,7 @@ const SearchableSelect: React.FC<{
               className="w-full text-left px-3.5 py-2 text-sm"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}
             >
-              {opt}
+              {labelFor ? labelFor(opt) : opt}
             </button>
           ))}
         </div>
@@ -113,6 +120,52 @@ const dateFieldStyle = (t: Theme): React.CSSProperties => ({
   width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10,
   padding: '8px 12px', fontSize: 13, color: t.inputText, fontFamily: t.fontFamily, cursor: 'pointer',
 });
+
+// Fires showPicker() on both click AND focus — a plain onClick alone opens
+// the calendar when the browser-drawn icon is clicked, but clicking into
+// the day/month/year text segments only moves focus between them without
+// reopening it. Wrapped in try/catch — showPicker() throws if called
+// without an active user gesture or while already open.
+const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
+  try { e.currentTarget.showPicker?.(); } catch { /* already open / no gesture — ignore */ }
+};
+
+// The View/Edit/Delete row menu used to render `position:absolute` inside
+// the table's own `overflow-x:auto` wrapper — setting only overflow-x
+// (with overflow-y left as the default) makes the browser clip BOTH axes
+// per the CSS spec, so the dropdown was getting cut off (sometimes down to
+// a sliver of the "View" row) any time it opened near the bottom of the
+// table. Rendering it into a portal at document.body, positioned with
+// `fixed` from the trigger button's own bounding rect, escapes that
+// clipped container entirely — the dropdown always shows all three
+// options in full, wherever the row sits on screen.
+const RowActionMenu: React.FC<{
+  t: Theme; pos: { top: number; left: number };
+  onView: () => void; onEdit: () => void; onDelete: () => void;
+}> = ({ t, pos, onView, onEdit, onDelete }) => createPortal(
+  <div
+    data-customer-row-menu
+    style={{
+      position: 'fixed', top: pos.top, left: pos.left, zIndex: 100, minWidth: 130,
+      background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
+      boxShadow: '0 8px 24px rgba(0,0,0,0.16)', padding: '6px 0',
+    }}
+  >
+    <button type="button" onClick={onView}
+      className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+      <MdVisibility size={16} color="#2563eb" /> View
+    </button>
+    <button type="button" onClick={onEdit}
+      className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+      <MdEdit size={15} color="#7c3aed" /> Edit
+    </button>
+    <button type="button" onClick={onDelete}
+      className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
+      <MdDelete size={16} /> Delete
+    </button>
+  </div>,
+  document.body
+);
 
 const CustomerDetailsListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -133,6 +186,7 @@ const CustomerDetailsListPage: React.FC = () => {
   const [customerNameFilter, setCustomerNameFilter] = useState('');
   const [buildingFilter, setBuildingFilter] = useState('');
   const [wingFilter, setWingFilter] = useState('');
+  const [floorFilter, setFloorFilter] = useState('');
   const [flatNoFilter, setFlatNoFilter] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -144,10 +198,11 @@ const CustomerDetailsListPage: React.FC = () => {
 
   // ── row action menu + modals ────────────────────────────────────────
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [infoModal, setInfoModal] = useState<{
-    type: 'payment' | 'scheme'; customer: Customer; loading: boolean;
-    payments?: CustomerPaymentRecord[]; scheme?: CustomerScheme | null;
+    type: 'payment'; customer: Customer; loading: boolean;
+    payments?: CustomerPaymentRecord[];
     // Customer Due view — fetched alongside payment history, additive to
     // the existing Payment History modal (see openPaymentHistory below).
     due?: CustomerDueSummary; remaining?: CustomerRemainingAmounts;
@@ -211,31 +266,68 @@ const CustomerDetailsListPage: React.FC = () => {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenuId(null);
+      const target = e.target as HTMLElement;
+      // The dropdown itself now lives in a document.body portal (see
+      // RowActionMenu), so it's no longer inside menuRef — it's tagged
+      // with data-customer-row-menu instead, and both are checked here.
+      if (menuRef.current?.contains(target)) return;
+      if (target.closest?.('[data-customer-row-menu]')) return;
+      setOpenMenuId(null);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── cascading Building -> Wing -> Flat option lists, sourced live from
-  //    the existing Building module (not duplicated/hardcoded here) ─────
+  // ── cascading Building -> Wing -> Floor -> Flat option lists ────────────
+  // FetchBuildingList (used for the Building Name options below) is a LIST
+  // endpoint — its wings/floors/flats are placeholder entries sized to match
+  // aggregate counts only (empty name/label/flat_no on every one of them;
+  // see buildingService.ts's fromListRow), never real names. Real wing/
+  // floor/flat names only come from the per-building detail endpoint
+  // (ViewBuilding), so once a specific building is selected here its real
+  // detail is fetched and THAT backs the Wing/Floor/Flat option lists below
+  // — not the list row's placeholders. Floor itself isn't a customer field
+  // (customers only carry flat_no), so it's purely a narrowing step for the
+  // Flat No list, not a filter criterion applied to customers directly. ────
   const buildingNameOptions = useMemo(() => Array.from(new Set(buildings.map((b) => b.building_name))), [buildings]);
   const selectedBuilding = useMemo(() => buildings.find((b) => b.building_name === buildingFilter), [buildings, buildingFilter]);
-  const wingNameOptions = useMemo(() => {
-    const source = selectedBuilding ? [selectedBuilding] : buildings;
-    return Array.from(new Set(source.flatMap((b) => b.wings.map((w) => w.name))));
-  }, [buildings, selectedBuilding]);
-  const selectedWing = useMemo(() => selectedBuilding?.wings.find((w) => w.name === wingFilter), [selectedBuilding, wingFilter]);
-  const flatNoOptions = useMemo(() => {
-    const wingsSource = selectedWing ? [selectedWing] : selectedBuilding ? selectedBuilding.wings : buildings.flatMap((b) => b.wings);
-    return Array.from(new Set(wingsSource.flatMap((w) => w.floors.flatMap((f) => f.flats.map((fl) => fl.flat_no)))));
-  }, [buildings, selectedBuilding, selectedWing]);
+
+  const [buildingDetail, setBuildingDetail] = useState<Building | null>(null);
+  const [loadingBuildingDetail, setLoadingBuildingDetail] = useState(false);
+  useEffect(() => {
+    if (!selectedBuilding) { setBuildingDetail(null); return; }
+    let cancelled = false;
+    setLoadingBuildingDetail(true);
+    (async () => {
+      try {
+        const res = await ViewBuilding(selectedBuilding.id);
+        if (!cancelled && res.success) setBuildingDetail(res.data);
+      } catch { /* Wing/Floor/Flat just stay empty if this fails */ }
+      finally { if (!cancelled) setLoadingBuildingDetail(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedBuilding?.id]);
+
+  const wingNameOptions = useMemo(() => (buildingDetail ? Array.from(new Set(buildingDetail.wings.map((w) => w.name))) : []), [buildingDetail]);
+  const selectedWing = useMemo(() => buildingDetail?.wings.find((w) => w.name === wingFilter), [buildingDetail, wingFilter]);
+  const floorLabelOptions = useMemo(() => (selectedWing ? Array.from(new Set(selectedWing.floors.map((f) => f.label))) : []), [selectedWing]);
+  const selectedFloor = useMemo(() => selectedWing?.floors.find((f) => f.label === floorFilter), [selectedWing, floorFilter]);
+  const flatsInScope = useMemo(() => selectedFloor?.flats ?? [], [selectedFloor]);
+  const flatNoOptions = useMemo(() => Array.from(new Set(flatsInScope.map((fl) => fl.flat_no))), [flatsInScope]);
+  // "A-101" -> "A-101 · 2 BHK · 850 Sqft" for the Flat No dropdown's option
+  // text — filtering/selection still work off the bare flat_no.
+  const flatLabelFor = (flatNo: string): string => {
+    const fl = flatsInScope.find((f) => f.flat_no === flatNo);
+    if (!fl) return flatNo;
+    const parts = [flatNo, fl.flat_type, fl.area_sqft != null ? `${fl.area_sqft} Sqft` : null].filter(Boolean);
+    return parts.join(' · ');
+  };
 
   const customerNameOptions = useMemo(() => Array.from(new Set(allCustomers.map((c) => c.customer_name))), [allCustomers]);
   const employeeOptions = useMemo(() => employees.map((e) => e.label), [employees]);
 
   const clearAllFilters = () => {
-    setCustomerNameFilter(''); setBuildingFilter(''); setWingFilter(''); setFlatNoFilter('');
+    setCustomerNameFilter(''); setBuildingFilter(''); setWingFilter(''); setFloorFilter(''); setFlatNoFilter('');
     setFromDate(''); setToDate('');
   };
 
@@ -357,17 +449,6 @@ const CustomerDetailsListPage: React.FC = () => {
     }
   };
 
-  const openScheme = async (c: Customer) => {
-    setInfoModal({ type: 'scheme', customer: c, loading: true });
-    try {
-      const res = await fetchCustomerScheme(c.id);
-      setInfoModal({ type: 'scheme', customer: c, loading: false, scheme: res.data });
-    } catch {
-      toast.error('Failed to load scheme.');
-      setInfoModal(null);
-    }
-  };
-
   // ── Collect Payment ──────────────────────────────────────────────────
   const openCollectPayment = (c: Customer) => {
     setOpenMenuId(null);
@@ -459,17 +540,17 @@ const CustomerDetailsListPage: React.FC = () => {
 
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="mb-6">
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Customer Details</h1>
-        <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Dashboard / Customer Details</p>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Customer List</h1>
+        <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Dashboard / Customer List</p>
       </div>
 
       {/* ── KPI cards ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'Total Customers', sub: 'All Customers', value: summary.total, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
-          { label: 'Active Customers', sub: `${summary.activePct}% of total`, value: summary.active, icon: MdCheckCircle, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
-          { label: 'New Customers This Month', sub: 'This Month', value: summary.newThisMonth, icon: MdPersonAddAlt1, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
-          { label: 'Inactive Customers', sub: `${summary.inactivePct}% of total`, value: summary.inactive, icon: MdPersonOff, color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2' },
+          { label: 'Total Customers', value: summary.total, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
+          { label: 'Active Customers', value: summary.active, icon: MdCheckCircle, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
+          { label: 'New Customers This Month', value: summary.newThisMonth, icon: MdPersonAddAlt1, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
+          { label: 'Inactive Customers', value: summary.inactive, icon: MdPersonOff, color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2' },
         ].map((card) => (
           <div key={card.label} className="flex items-center gap-3 rounded-2xl p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
             <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: card.bg }}>
@@ -478,7 +559,6 @@ const CustomerDetailsListPage: React.FC = () => {
             <div className="min-w-0">
               <div style={{ fontSize: 12.5, fontWeight: 600, color: t.textSecondary }}>{card.label}</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, lineHeight: 1.3 }}>{loading ? '—' : card.value}</div>
-              <div style={{ fontSize: 11.5, color: t.textSecondary }}>{card.sub}</div>
             </div>
           </div>
         ))}
@@ -486,7 +566,7 @@ const CustomerDetailsListPage: React.FC = () => {
 
       {/* ── Filters row ───────────────────────────────────────────────── */}
       <div className="rounded-2xl p-5 mb-5" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Search Customer Name</label>
             <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={setCustomerNameFilter} />
@@ -494,25 +574,31 @@ const CustomerDetailsListPage: React.FC = () => {
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Search Building Name</label>
             <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter}
-              onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFlatNoFilter(''); }} />
+              onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFloorFilter(''); setFlatNoFilter(''); }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Select Wing</label>
-            <SearchableSelect t={t} placeholder="Select wing" options={wingNameOptions} value={wingFilter}
-              onChange={(v) => { setWingFilter(v); setFlatNoFilter(''); }} />
+            <SearchableSelect t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingFilter}
+              disabled={!selectedBuilding || loadingBuildingDetail}
+              onChange={(v) => { setWingFilter(v); setFloorFilter(''); setFlatNoFilter(''); }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Select Floor</label>
+            <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter} disabled={!selectedWing}
+              onChange={(v) => { setFloorFilter(v); setFlatNoFilter(''); }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Select Flat No</label>
-            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} onChange={setFlatNoFilter} />
+            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} disabled={!selectedFloor} onChange={setFlatNoFilter} labelFor={flatLabelFor} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>From Date</label>
-            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={dateFieldStyle(t)} />
+            <input type="date" value={fromDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setFromDate(e.target.value)} style={dateFieldStyle(t)} />
           </div>
           <div className="flex items-end gap-2">
             <div className="flex-1">
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>To Date</label>
-              <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={dateFieldStyle(t)} />
+              <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} style={dateFieldStyle(t)} />
             </div>
             <button
               type="button" onClick={clearAllFilters}
@@ -603,35 +689,30 @@ const CustomerDetailsListPage: React.FC = () => {
                     <td style={{ padding: '12px 14px' }}>
                       <div className="flex items-center gap-1.5" ref={openMenuId === c.id ? menuRef : undefined}>
                         <div style={{ position: 'relative' }}>
-                          <button type="button" onClick={() => setOpenMenuId((v) => (v === c.id ? null : c.id))}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              if (openMenuId === c.id) { setOpenMenuId(null); setMenuPos(null); return; }
+                              const r = e.currentTarget.getBoundingClientRect();
+                              setMenuPos({ top: r.bottom + 4, left: r.left });
+                              setOpenMenuId(c.id);
+                            }}
                             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 4 }}>
                             <MdMoreVert size={18} />
                           </button>
-                          {openMenuId === c.id && (
-                            <div style={{
-                              position: 'absolute', top: '110%', left: 0, zIndex: 20, minWidth: 130,
-                              background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
-                              boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '6px 0',
-                            }}>
-                              <button type="button" onClick={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/view/${c.id}`); }}
-                                className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-                                <MdVisibility size={16} color="#2563eb" /> View
-                              </button>
-                              <button type="button" onClick={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/edit/${c.id}`); }}
-                                className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-                                <MdEdit size={15} color="#7c3aed" /> Edit
-                              </button>
-                              <button type="button" onClick={() => handleDelete(c)}
-                                className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
-                                <MdDelete size={16} /> Delete
-                              </button>
-                            </div>
+                          {openMenuId === c.id && menuPos && (
+                            <RowActionMenu
+                              t={t} pos={menuPos}
+                              onView={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/view/${c.id}`); }}
+                              onEdit={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/edit/${c.id}`); }}
+                              onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
+                            />
                           )}
                         </div>
                         <button type="button" title="Show Payment History" className="master-icon-btn" onClick={() => openPaymentHistory(c)}>
                           <MdReceiptLong size={15} />
                         </button>
-                        <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => openScheme(c)}>
+                        <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => navigate(`/admin/crm/customer-details/scheme/${c.id}`)}>
                           <MdLoyalty size={15} />
                         </button>
                         <button type="button" title="Collect Payment" className="master-icon-btn" onClick={() => openCollectPayment(c)}>
@@ -720,7 +801,7 @@ const CustomerDetailsListPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Payment History / Scheme modal ───────────────────────────── */}
+      {/* ── Payment History modal ────────────────────────────────────── */}
       {infoModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -735,7 +816,7 @@ const CustomerDetailsListPage: React.FC = () => {
             <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
               <div>
                 <div style={{ fontSize: 15.5, fontWeight: 700, color: t.textPrimary }}>
-                  {infoModal.type === 'payment' ? 'Payment History' : 'Scheme'}
+                  Payment History
                 </div>
                 <div style={{ fontSize: 12.5, color: t.textSecondary }}>{infoModal.customer.customer_name}</div>
               </div>
@@ -746,7 +827,7 @@ const CustomerDetailsListPage: React.FC = () => {
             <div className="p-5">
               {infoModal.loading ? (
                 <p style={{ color: t.textSecondary, fontSize: 13.5 }}>Loading...</p>
-              ) : infoModal.type === 'payment' ? (
+              ) : (
                 <>
                   {/* ── Customer Due panel — total_due/remaining_amount +
                       per-type remaining breakdown, additive above the
@@ -804,19 +885,6 @@ const CustomerDetailsListPage: React.FC = () => {
                     </div>
                   )}
                 </>
-              ) : !infoModal.scheme ? (
-                <p style={{ color: t.textSecondary, fontSize: 13.5 }}>No scheme applied for this customer.</p>
-              ) : (
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: t.textPrimary, marginBottom: 4 }}>{infoModal.scheme.scheme_name}</div>
-                  {infoModal.scheme.description && <p style={{ fontSize: 13, color: t.textSecondary, marginBottom: 8 }}>{infoModal.scheme.description}</p>}
-                  {infoModal.scheme.discount_percent != null && (
-                    <div style={{ fontSize: 13.5, color: t.textPrimary }}>Discount: <strong>{infoModal.scheme.discount_percent}%</strong></div>
-                  )}
-                  {infoModal.scheme.valid_till && (
-                    <div style={{ fontSize: 13.5, color: t.textPrimary }}>Valid till: <strong>{formatDate(infoModal.scheme.valid_till)}</strong></div>
-                  )}
-                </div>
               )}
             </div>
           </div>
@@ -857,7 +925,7 @@ const CustomerDetailsListPage: React.FC = () => {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Installment Date</label>
-                <input type="date" value={cpInstDate} onChange={(e) => setCpInstDate(e.target.value)} style={dateFieldStyle(t)} />
+                <input type="date" value={cpInstDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpInstDate(e.target.value)} style={dateFieldStyle(t)} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Mode of Payment</label>
@@ -871,7 +939,7 @@ const CustomerDetailsListPage: React.FC = () => {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Clearance Date</label>
-                <input type="date" value={cpClearanceDate} onChange={(e) => setCpClearanceDate(e.target.value)} style={dateFieldStyle(t)} />
+                <input type="date" value={cpClearanceDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpClearanceDate(e.target.value)} style={dateFieldStyle(t)} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Company</label>
@@ -889,11 +957,11 @@ const CustomerDetailsListPage: React.FC = () => {
                   silently forced to "now" instead (see paymentService.ts). */}
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Date <span style={{ fontWeight: 400 }}>(Admin only)</span></label>
-                <input type="date" value={cpDate} onChange={(e) => setCpDate(e.target.value)} style={dateFieldStyle(t)} />
+                <input type="date" value={cpDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpDate(e.target.value)} style={dateFieldStyle(t)} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Payment Date <span style={{ fontWeight: 400 }}>(Admin only)</span></label>
-                <input type="date" value={cpPaymentDate} onChange={(e) => setCpPaymentDate(e.target.value)} style={dateFieldStyle(t)} />
+                <input type="date" value={cpPaymentDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpPaymentDate(e.target.value)} style={dateFieldStyle(t)} />
               </div>
               {cpPaymentFor === 'EMIAmount' && (
                 <div className="sm:col-span-2 flex items-center gap-2">
