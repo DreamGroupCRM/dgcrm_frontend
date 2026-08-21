@@ -193,14 +193,18 @@ const buildEmployeeFormData = (values: EmployeeFormValues, files: EmployeeFileVa
 // real column names — see the Employee entity / Create/Update Employee
 // schema in dgcrm_backend. Fields not listed here already share the same
 // name on both sides (first_name, last_name, email, mobile_number,
-// whatsapp_number, joining_date, bank_account_number, bank_name) or have
-// no backend counterpart and are deliberately left unmapped. Extra keys
-// are harmless: the backend's Zod schemas here are non-strict, so unknown
-// fields are silently ignored server-side rather than rejected.
+// whatsapp_number, joining_date, bank_account_number, bank_name, and, as
+// of the V_13.0 backend schema extension, also middle_name, date_of_birth,
+// working_hours, check_in_time, check_out_time, holidays, salary,
+// account_holder_name, account_type, branch, and status — all now real
+// Employee columns, so nothing further needs mapping for them here).
+// Extra keys are harmless: the backend's Zod schemas here are non-strict,
+// so unknown fields are silently ignored server-side rather than rejected.
 const EMPLOYEE_TEXT_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
   ['aadhar_number', 'aadhaar_card_number'], // backend spells it "aadhaar", not "aadhar"
   ['pan_number', 'pan_card_number'],
   ['ifsc_code', 'bank_ifsc'],
+  ['address', 'residential_address'], // backend column is "residential_address", not "address"
 ];
 
 // File field source -> real backend multer field name. Unlike text fields,
