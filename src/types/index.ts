@@ -767,3 +767,140 @@ export interface CustomerFullDetailResponse {
   message?: string;
   data    : CustomerFullDetail;
 }
+
+// ── Payments ─────────────────────────────────────────────────────────────
+// Talks to the real backend `payments` module (`/api/payments`, ported
+// from legacy AmountTransactionsController — see paymentService.ts).
+// `CustomerPaymentRecord`/`CustomerPaymentHistoryResponse` above already
+// cover the existing "Payment History" viewer (GET /payments/customer/:id)
+// and are untouched; everything below is additive for Collect Payment,
+// the Due Report, a customer's due/remaining amounts, and receipts.
+export type PaymentFor = 'EMIAmount' | 'BookingAmount' | 'PayAfterbooking' | 'PossessionAmount' | 'AnnualAmount' | 'AnnualAmount1';
+
+// Form payload a page builds before calling collectPayment — mirrors
+// CollectPaymentSchema on the backend field-for-field. All but the first
+// three fields are optional there; kept optional here too rather than
+// forcing the Collect Payment form to always send every one.
+export interface CollectPaymentPayload {
+  customer_id    : number;
+  amount         : number;
+  payment_for    : PaymentFor;
+  date?          : string;   // ISO date — non-admin callers: server forces "now" regardless
+  inst_date?     : string;   // ISO date — which installment this payment counts against
+  payment_date?  : string;   // ISO date — same non-admin override as `date`
+  cheque_number? : string;
+  clearance_date?: string;   // ISO date
+  company?       : string;
+  mode_of_payment?: string;  // free text — no enum on the backend
+  maintenance?   : number;
+  is_advance_pay?: boolean;  // only meaningful when payment_for = 'EMIAmount'
+}
+
+export interface CollectPaymentResponse {
+  success      : boolean;
+  transactionId: number;
+  receiptNumber: string;
+  message      : string;
+  tag?         : string;     // "Extra Pay" — only present when is_advance_pay was used
+}
+
+// One row of the due report — covers only the 4 "simple" payment types
+// (EMIAmount/AnnualAmount1 are deliberately not part of this report, see
+// paymentService.ts).
+export interface DueReportRow {
+  customer_id             : number;
+  customer_name           : string;
+  building_id             : number | null;
+  wing_id                 : number | null;
+  flat_id                 : number | null;
+  booking_amount          : number;
+  possession_amount       : number;
+  pay_after_booking        : number;
+  annual_amount            : number;
+  is_booking_amount_due     : boolean;
+  is_possession_amount_due  : boolean;
+  is_pay_after_booking_due  : boolean;
+  is_annual_amount_due      : boolean;
+}
+
+export interface DueReportResponse {
+  success: boolean;
+  rows   : DueReportRow[];
+  total  : number;
+}
+
+export interface CustomerDueSummary {
+  total_due       : number; // owed per the EMI schedule right now
+  remaining_amount: number; // total_due minus what's actually been paid so far
+}
+
+export interface CustomerDueResponse {
+  success: boolean;
+  data   : CustomerDueSummary;
+}
+
+// How much is left to collect, per payment type, right now.
+export interface CustomerRemainingAmounts {
+  customer_id     : number;
+  EMIAmount       : number;
+  BookingAmount   : number;
+  PossessionAmount: number;
+  PayAfterbooking : number;
+  AnnualAmount    : number;
+  AnnualAmount1   : number;
+}
+
+export interface CustomerRemainingResponse {
+  success: boolean;
+  data   : CustomerRemainingAmounts;
+}
+
+// Receipt data for one transaction — clean shape mapped from the backend's
+// raw AmountTransaction + Customer rows (see paymentService.ts's
+// BackendAmountTransaction / BackendReceiptCustomer for the raw shape this
+// is mapped from, and its file header for why `customer` only carries
+// building_id/wing_id/flat_id, not building/wing/flat names).
+export interface PaymentReceiptTransaction {
+  id             : string;
+  receipt_number : string;
+  payment_type   : PaymentFor;
+  amount         : number; // whichever type-specific column was non-null
+  company        : string | null;
+  mode_of_payment: string | null;
+  date           : string | null;
+  inst_date      : string | null;
+  payment_date   : string | null;
+  cheque_number  : string | null;
+  clearance_date : string | null;
+  maintenance    : number | null;
+  received_by    : string | null;
+  payment_tag    : string | null; // "Extra Pay" for advance-pay EMI transactions
+  is_approved    : boolean;
+  created_at     : string;
+}
+
+export interface PaymentReceiptCustomer {
+  id           : string;
+  customer_code: string;
+  customer_name: string;
+  mobile_number: string;
+  email        : string;
+  address      : string;
+  building_id  : number | null;
+  wing_id      : number | null;
+  flat_id      : number | null;
+}
+
+export interface PaymentReceipt {
+  transaction: PaymentReceiptTransaction;
+  customer   : PaymentReceiptCustomer;
+  paid_emis  : number;
+  future_emis: number;
+  total_emis : number;
+  emi_number : number; // only meaningful when transaction.payment_type === 'EMIAmount'
+}
+
+export interface PaymentReceiptResponse {
+  success: boolean;
+  data   : PaymentReceipt;
+}
