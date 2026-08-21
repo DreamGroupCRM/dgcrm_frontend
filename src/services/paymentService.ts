@@ -18,15 +18,10 @@
 //
 // ── Response-shape note (verified against payment.service.ts /
 // payment.controller.ts at V_13.0, not guessed) ──────────────────────────
-// GET /payments/:id/receipt's `customer` comes from a plain
-// `customerRepo().findOne({ where: { id } })` with NO `relations` option —
-// so `customer.building` / `customer.wing` / `customer.flat` are never
-// populated on that response, only the raw `building_id` / `wing_id` /
-// `flat_id` foreign keys are reliable. The receipt UI below only ever
-// renders those raw ids (labelled "Building #4" etc.) rather than a
-// building/wing/flat NAME, since the name genuinely isn't in this
-// response. (fetchCustomerPaymentHistory's customer rows are unaffected —
-// that's a different endpoint.)
+// GET /payments/:id/receipt's `customer` lookup now loads the
+// building/wing/flat relations (fixed in payment.service.ts's
+// getPaymentReceipt), so building_name/wing_name/flat_no below are real
+// names, not just the raw foreign-key ids.
 
 import axiosInstance from './axiosConfig';
 import {
@@ -78,8 +73,11 @@ interface BackendReceiptCustomer {
   email: string | null;
   address: string | null;
   building_id: number | string | null;
+  building: { id: number | string; name: string } | null;
   wing_id: number | string | null;
+  wing: { id: number | string; name: string } | null;
   flat_id: number | string | null;
+  flat: { id: number | string; flat_number: string } | null;
 }
 
 // AmountTransaction -> the clean PaymentReceiptTransaction shape. Same
@@ -104,7 +102,7 @@ const mapReceiptTransaction = (t: BackendAmountTransaction): PaymentReceiptTrans
   created_at: t.created_at,
 });
 
-// Backend Customer (raw, no relations loaded on this endpoint — see file
+// Backend Customer (building/wing/flat relations now loaded — see file
 // header) -> the clean PaymentReceiptCustomer shape.
 const mapReceiptCustomer = (c: BackendReceiptCustomer): PaymentReceiptCustomer => ({
   id: String(c.id),
@@ -114,8 +112,11 @@ const mapReceiptCustomer = (c: BackendReceiptCustomer): PaymentReceiptCustomer =
   email: c.email ?? '',
   address: c.address ?? '',
   building_id: c.building_id != null ? Number(c.building_id) : null,
+  building_name: c.building?.name ?? null,
   wing_id: c.wing_id != null ? Number(c.wing_id) : null,
+  wing_name: c.wing?.name ?? null,
   flat_id: c.flat_id != null ? Number(c.flat_id) : null,
+  flat_no: c.flat?.flat_number ?? null,
 });
 
 // Readable labels for the 6 payment_for enum values — shared by the

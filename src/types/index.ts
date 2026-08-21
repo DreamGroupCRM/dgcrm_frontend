@@ -887,8 +887,11 @@ export interface PaymentReceiptCustomer {
   email        : string;
   address      : string;
   building_id  : number | null;
+  building_name: string | null;
   wing_id      : number | null;
+  wing_name    : string | null;
   flat_id      : number | null;
+  flat_no      : string | null;
 }
 
 export interface PaymentReceipt {

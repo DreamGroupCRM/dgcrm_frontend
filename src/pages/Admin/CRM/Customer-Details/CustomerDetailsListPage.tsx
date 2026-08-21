@@ -949,14 +949,15 @@ const CustomerDetailsListPage: React.FC = () => {
                     <div style={{ fontSize: 11.5, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Customer</div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>{receiptModal.data.customer.customer_name || '—'}</div>
                     <div style={{ fontSize: 12.5, color: t.textSecondary }}>{receiptModal.data.customer.customer_code}{receiptModal.data.customer.mobile_number ? ` · ${receiptModal.data.customer.mobile_number}` : ''}</div>
-                    {/* Only raw building/wing/flat ids are available on this
-                        endpoint (no relations loaded server-side — see
-                        paymentService.ts) — shown as ids, not names. */}
+                    {/* Prefers real building/wing/flat names (the backend now
+                        loads those relations — see paymentService.ts); falls
+                        back to the raw id only if a relation didn't resolve
+                        (e.g. a deleted building). */}
                     {(receiptModal.data.customer.building_id || receiptModal.data.customer.wing_id || receiptModal.data.customer.flat_id) && (
                       <div style={{ fontSize: 11.5, color: t.textSecondary }}>
-                        {receiptModal.data.customer.building_id ? `Building #${receiptModal.data.customer.building_id} ` : ''}
-                        {receiptModal.data.customer.wing_id ? `· Wing #${receiptModal.data.customer.wing_id} ` : ''}
-                        {receiptModal.data.customer.flat_id ? `· Flat #${receiptModal.data.customer.flat_id}` : ''}
+                        {receiptModal.data.customer.building_id ? `${receiptModal.data.customer.building_name || `Building #${receiptModal.data.customer.building_id}`} ` : ''}
+                        {receiptModal.data.customer.wing_id ? `· ${receiptModal.data.customer.wing_name ? `Wing ${receiptModal.data.customer.wing_name}` : `Wing #${receiptModal.data.customer.wing_id}`} ` : ''}
+                        {receiptModal.data.customer.flat_id ? `· ${receiptModal.data.customer.flat_no ? `Flat ${receiptModal.data.customer.flat_no}` : `Flat #${receiptModal.data.customer.flat_id}`}` : ''}
                       </div>
                     )}
                   </div>
