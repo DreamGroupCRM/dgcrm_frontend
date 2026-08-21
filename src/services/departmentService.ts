@@ -33,14 +33,15 @@
 // response shape into the single flat `Department` object (with
 // `designations` nested inside it) this app's pages already expect.
 //
-// Known gap, not fixed here: the `/full` endpoints' designation schema is
-// `{ id?, name }` only — there's no way to send a designation's is_active
-// flag through create/update. A designation omitted from the array is
-// deactivated server-side, but one INCLUDED in the array is always treated
-// as active — so DepartmentCrudPage's per-designation enable/disable
-// toggle has no backend effect until Save, at which point a toggled-off
-// (but not removed) designation is saved back as active anyway. Flagging
-// for a follow-up rather than guessing at a schema change here.
+// V_13.0 fix #3 (designation is_active not persisting): the `/full`
+// endpoints' designation schema was `{ id?, name }` only, so this file's
+// own `designations[].is_active` (already sent on every create/update —
+// see DepartmentCrudPage.tsx's handleSubmit) was silently stripped before
+// the backend ever saw it, and getFullDepartmentTree filtered its query to
+// active-only rows, so a disabled designation vanished from the response
+// entirely instead of round-tripping as disabled. Both fixed on the
+// backend; mapFullDepartment below now reads the real value instead of
+// hardcoding true.
 
 import axiosInstance from './axiosConfig';
 import {
@@ -65,16 +66,16 @@ interface BackendFullDepartment {
     created_at: string;
     updated_at: string;
   };
-  designations: { id: number | string; name: string }[];
+  designations: { id: number | string; name: string; is_active: boolean }[];
 }
 
-// getFullDepartmentTree only ever returns active designations (its own
-// WHERE clause filters is_active = true), so every row here is active.
+// getFullDepartmentTree now returns every designation (active and
+// inactive) with its real is_active value — see file header.
 const mapFullDepartment = (raw: BackendFullDepartment): Department => ({
   id: String(raw.department.id),
   name: raw.department.name,
   is_active: raw.department.is_active,
-  designations: raw.designations.map((d): Designation => ({ id: String(d.id), name: d.name, is_active: true })),
+  designations: raw.designations.map((d): Designation => ({ id: String(d.id), name: d.name, is_active: d.is_active })),
   created_at: raw.department.created_at,
   updated_at: raw.department.updated_at,
 });

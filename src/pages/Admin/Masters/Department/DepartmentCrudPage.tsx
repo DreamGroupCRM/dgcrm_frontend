@@ -20,6 +20,10 @@ const localId = () => `local_${Date.now()}_${localIdCounter++}`;
 type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
 
+// Sticky footer height — same value/pattern as CustomerDetailsCrudPage.tsx's
+// FOOTER_HEIGHT, so Go Back/Save are always reachable without scrolling.
+const FOOTER_HEIGHT = 76;
+
 // ── small shared bits, styled to match the rest of the Masters section ─────
 const StatusToggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }> = (
   { checked, onChange, disabled }
@@ -192,7 +196,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16 }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 mb-4">
@@ -390,13 +394,24 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
       )}
 
-      {/* ── Action Buttons — centered ─────────────────────────────────── */}
-      <div className="flex items-center justify-center gap-3 mt-2">
+      {/* ── Action Buttons — fixed to the viewport bottom, always visible,
+          not just once you scroll all the way down (same pattern as
+          CustomerDetailsCrudPage.tsx's footer). Wraps + shrinks padding on
+          narrow screens so both buttons stay fully reachable and tappable
+          on mobile instead of overflowing. ───────────────────────────── */}
+      <div
+        className="flex items-center justify-center flex-wrap gap-2 sm:gap-3 px-3 sm:px-6"
+        style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, height: FOOTER_HEIGHT, zIndex: 40,
+          background: t.surfaceBg, borderTop: `1px solid ${t.surfaceBorder}`,
+          boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
+        }}
+      >
         <button
           type="button"
           onClick={() => navigate('/admin/masters/department')}
           disabled={saving}
-          className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold"
+          className="flex items-center gap-1.5 px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold"
           style={{ background: isDark ? '#374151' : '#e5e7eb', color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}
         >
           <MdArrowBack size={16} /> Go Back
@@ -407,7 +422,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
             type="button"
             onClick={handleSubmit}
             disabled={!isFormValid || saving}
-            className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
+            className="flex items-center gap-1.5 px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
             style={{
               background: !isFormValid || saving ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)',
               border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer',

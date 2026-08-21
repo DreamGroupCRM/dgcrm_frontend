@@ -253,7 +253,7 @@ const DepartmentListPage: React.FC = () => {
             {/* Search — Department Name only */}
             <div
               className="flex items-center gap-2 px-3 py-2 rounded-xl"
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 240 }}
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: '100%', maxWidth: 240, minWidth: 160, flex: '1 1 200px' }}
             >
               <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
               <input
@@ -389,7 +389,7 @@ const DepartmentListPage: React.FC = () => {
                               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
                               background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff',
                               border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-                              color: '#2563eb', cursor: 'pointer',
+                              color: isDark ? '#ffffff' : '#000000', cursor: 'pointer',
                             }}
                           >
                             <MdVisibility size={17} />
@@ -402,7 +402,7 @@ const DepartmentListPage: React.FC = () => {
                               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
                               background: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff',
                               border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-                              color: '#7c3aed', cursor: 'pointer',
+                              color: isDark ? '#ffffff' : '#000000', cursor: 'pointer',
                             }}
                           >
                             <MdEdit size={17} />
@@ -415,7 +415,7 @@ const DepartmentListPage: React.FC = () => {
                               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8,
                               background: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2',
                               border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-                              color: '#dc2626', cursor: 'pointer',
+                              color: isDark ? '#ffffff' : '#000000', cursor: 'pointer',
                             }}
                           >
                             <MdDelete size={17} />
