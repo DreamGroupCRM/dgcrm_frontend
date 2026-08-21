@@ -14,7 +14,7 @@ import { getTheme } from '../../../../styles/theme';
 import {
   fetchEmployeeById, fetchNextEmployeeCode, createEmployee, updateEmployee,
   fetchEmployeePermissions,
-  EmployeeFormValues, EmployeeFileValues,
+  EmployeeFormValues, EmployeeFileValues, EmployeeStatus,
 } from '../../../../services/employeeDetailsService';
 import { fetchDepartmentList } from '../../../../services/departmentService';
 import { fetchDesignationList } from '../../../../services/designationService';
@@ -28,6 +28,11 @@ const COUNTRY_CODES = ['+91', '+1', '+44', '+61', '+971'];
 const WORKING_HOURS_OPTIONS = ['8', '9', '10'];
 const HOLIDAYS_OPTIONS = ['Sunday Only', 'Alternate Saturdays + Sunday', 'All Saturdays + Sunday', 'Custom / As per Company Policy'];
 const ACCOUNT_TYPE_OPTIONS = ['Savings', 'Current'];
+const STATUS_OPTIONS: { value: EmployeeStatus; label: string }[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'on_leave', label: 'On Leave' },
+];
 
 // A checklist option with a real backend id (department/designation/
 // module-action id) driving selection, and a display label.
@@ -44,6 +49,7 @@ const emptyForm: EmployeeFormValues = {
   account_holder_name: '', bank_name: '', bank_account_number: '', account_type: '', ifsc_code: '', branch: '',
   department_names: [], designation_names: [], module_keys: [],
   department_ids: [], designation_ids: [], module_action_ids: [],
+  status: 'active',
   is_active: true,
 };
 
@@ -347,6 +353,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             department_ids: (e.department_ids || []).map(Number),
             designation_ids: (e.designation_ids || []).map(Number),
             module_action_ids: [], // filled in below once /employee-permissions loads
+            status: e.status || 'active',
             is_active: e.is_active,
           });
           setExistingUrls({
@@ -614,6 +621,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             file={files.resume} existingUrl={existingUrls.resume} onChange={setFile('resume')} />
           <FileUploadBox t={t} isView={isView} label="Appointment Letter" hint="PDF, DOC, DOCX (Max 5MB)" accept=".pdf,.doc,.docx"
             file={files.appointment_letter} existingUrl={existingUrls.appointment_letter} onChange={setFile('appointment_letter')} />
+          <Field t={t} label="Employee Status" required>
+            <select value={form.status} disabled={isView} onChange={(e) => set('status', e.target.value as EmployeeStatus)} style={{ ...fieldStyle, cursor: isView ? 'default' : 'pointer' }}>
+              {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </Field>
         </div>
       </div>
 

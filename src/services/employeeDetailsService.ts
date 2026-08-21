@@ -148,6 +148,11 @@ export interface EmployeeFormValues {
   designation_ids                                                             : number[];
   module_action_ids                                                           : number[];
 
+  // Real backend column as of V_13.0 (active/inactive/on_leave) — separate
+  // from is_active, which stays the plain enabled/disabled flag used for
+  // list filtering and soft-delete. See employees.repository.ts's
+  // softDeleteEmployee, which sets both together on delete.
+  status                                                                      : EmployeeStatus;
   is_active                                                                   : boolean;
 }
 
