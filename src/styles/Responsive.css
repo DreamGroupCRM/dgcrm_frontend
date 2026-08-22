@@ -316,8 +316,8 @@
    ===========================================================
    Covers every Master (Company/Department/Bank/Building) list + crud page
    plus Employee/Customer, all built on the shared master.css classes
-   (.master-topbar/.master-actions/.master-table-card/.master-stat-grid*/
-   .master-pagination/.master-crud-footer). Centralized here per item 8 —
+   (.master-topbar/.master-actions/.master-table-card/.master-stat-grid
+   variants/.master-pagination/.master-crud-footer). Centralized here per item 8 —
    one file for every page's mobile/tablet breakpoints instead of
    scattering @media blocks across each page. Desktop layout/logic is
    untouched — everything below only fires under its max-width. */
