@@ -24,7 +24,7 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 // Fixed width for the Actions column — sized for exactly 3 icon buttons
 // + gaps + cell padding, so it never grows/shrinks with the number of
 // other columns in the table.
-const ACTION_COL_WIDTH = 128;
+const ACTION_COL_WIDTH = 96;
 
 // ── derived helpers ──────────────────────────────────────────────────────────
 const totalFlatsOf = (b: Building): number =>
@@ -190,18 +190,22 @@ const BuildingListPage: React.FC = () => {
   return (
     <div className="master-page">
 
-      {/* ── Summary cards — flats + shops combined into Enabled/Disabled ── */}
-      <div className="master-stat-grid">
+      {/* ── Summary cards — flats + shops combined into Enabled/Disabled ──
+          Compact variant + the 7-column grid (item 4): the default 4-col
+          .master-stat-grid stretched these 7 cards oversized to fill 4
+          columns' worth of width; .master-stat-grid-7 gives its own wider
+          step so all 7 sit on one row at desktop width instead. */}
+      <div className="master-stat-grid-7">
         {[
           { label: 'Total Projects',  value: summary?.total_projects  ?? 0, icon: MdBusiness,    color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)'  : '#eff6ff' },
           { label: 'Total Buildings', value: summary?.total_buildings ?? allBuildings.length, icon: MdApartment,  color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
           { label: 'Total Wings',     value: summary?.total_wings     ?? 0, icon: MdLayers,      color: '#0891b2', bg: isDark ? 'rgba(8,145,178,0.12)'  : '#ecfeff' },
           { label: 'Total Flats',     value: summary?.total_flats     ?? 0, icon: MdHome,        color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)'  : '#fff7ed' },
           { label: 'Total Shops',     value: summary?.total_shops     ?? 0, icon: MdStorefront,  color: '#db2777', bg: isDark ? 'rgba(219,39,119,0.12)' : '#fdf2f8' },
-          { label: 'Enabled (Flats + Shops)',  value: summary?.enabled_units  ?? 0, icon: MdCheckCircle, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)'  : '#f0fdf4' },
-          { label: 'Disabled (Flats + Shops)', value: summary?.disabled_units ?? 0, icon: MdCancel,     color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)'  : '#fef2f2' },
+          { label: 'Enabled Units',  value: summary?.enabled_units  ?? 0, icon: MdCheckCircle, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)'  : '#f0fdf4' },
+          { label: 'Disabled Units', value: summary?.disabled_units ?? 0, icon: MdCancel,     color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)'  : '#fef2f2' },
         ].map((card) => (
-          <StatCard key={card.label} {...card} loading={loading}
+          <StatCard key={card.label} {...card} loading={loading} compact
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
       </div>

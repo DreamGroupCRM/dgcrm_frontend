@@ -579,7 +579,7 @@ const CustomerDetailsListPage: React.FC = () => {
                   <input type="checkbox" checked={pageRows.length > 0 && pageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
                 {['Action', 'Employee Code', 'Employee Name', 'Customer Name', 'Contact Details', 'Project / Flat Details', 'Flat Booking Date', 'Monthly EMI Amount'].map((h) => (
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12.5, fontWeight: 700, color: isDark ? '#ffffff' : '#2563eb', whiteSpace: 'nowrap' }}>
+                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12.5, fontWeight: 700, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
                 ))}
@@ -644,26 +644,26 @@ const CustomerDetailsListPage: React.FC = () => {
                             {(c.assigned_employee_name || '—').slice(0, 1).toUpperCase()}
                           </div>
                         )}
-                        <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? '#ffffff' : '#2563eb' }}>{c.assigned_employee_code || '—'}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? '#ffffff' : '#000000' }}>{c.assigned_employee_code || '—'}</span>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 13.5, color: isDark ? '#ffffff' : '#2563eb' }}>{c.assigned_employee_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: isDark ? '#ffffff' : '#2563eb', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 13.5, color: isDark ? '#ffffff' : '#000000' }}>{c.assigned_employee_name || '—'}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       <div className="flex items-center gap-1.5">
                         <MdGroups size={15} className="master-row-icon" />
                         {c.customer_name}
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: isDark ? '#ffffff' : '#2563eb' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: isDark ? '#ffffff' : '#000000' }}>
                       <div className="flex items-center gap-1.5"><MdPhone size={13} /> {c.mobile_number}</div>
                       <div className="flex items-center gap-1.5 mt-0.5"><MdEmail size={13} /> {c.email}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: isDark ? '#ffffff' : '#2563eb' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: isDark ? '#ffffff' : '#000000' }}>
                       <div style={{ fontWeight: 700 }}>{c.building_name}</div>
                       <div>{c.wing_name} Wing, {c.flat_no} ({c.flat_type}{c.area_sqft ? ` - ${c.area_sqft} Sqft` : ''})</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 13, color: isDark ? '#ffffff' : '#2563eb', whiteSpace: 'nowrap' }}>{formatDate(c.booking_date)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: isDark ? '#ffffff' : '#2563eb', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 13, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{formatDate(c.booking_date)}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       {c.monthly_emi != null ? `₹ ${c.monthly_emi.toLocaleString('en-IN')}` : '—'}
                     </td>
                   </tr>

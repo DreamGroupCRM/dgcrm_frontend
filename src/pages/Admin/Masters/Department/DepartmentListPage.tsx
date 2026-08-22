@@ -25,7 +25,7 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 // Fixed width for the Action column — sized for exactly 3 icon buttons
 // + gaps + cell padding, so it never grows/shrinks with the number of
 // other columns in the table.
-const ACTION_COL_WIDTH = 128;
+const ACTION_COL_WIDTH = 96;
 
 type SortKey = 'name' | 'total' | 'enabled' | 'disabled' | 'created_at';
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -220,7 +220,10 @@ const DepartmentListPage: React.FC = () => {
           <table className="master-table" style={{ minWidth: 760 }}>
             <thead>
               <tr style={{ background: t.insetBg }}>
-                <th className="master-table-actions-th" style={{ width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH }}>Action</th>
+                <th className="master-table-actions-th" style={{
+                  width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                  background: t.insetBg, borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                }}>Action</th>
                 <th>#</th>
                 <SortableTh label="Department Name" active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} />
                 <SortableTh label="Total Designations" active={sortKey === 'total'} dir={sortDir} onClick={() => toggleSort('total')} />
@@ -240,7 +243,11 @@ const DepartmentListPage: React.FC = () => {
                   const c = departmentCounts(d);
                   return (
                     <tr key={d.id} style={{ borderTop: `1px solid ${t.divider}` }}>
-                      <td style={{ width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH }}>
+                      <td className="master-table-actions-td" style={{
+                        width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
+                        background: t.surfaceBg,
+                        borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                      }}>
                         <MasterIconButtons
                           onView={() => navigate(`/admin/masters/department/view/${d.id}`)}
                           onEdit={() => navigate(`/admin/masters/department/edit/${d.id}`)}

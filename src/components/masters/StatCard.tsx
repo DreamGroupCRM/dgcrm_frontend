@@ -20,14 +20,18 @@ interface StatCardProps {
   textPrimary: string;
   textSecondary: string;
   loading?: boolean;
+  // Smaller icon/padding/font — used on Building's 7-card summary row so
+  // all 7 fit on one row instead of the cards being oversized to fill 4
+  // columns' worth of width (see master.css's .master-stat-card-compact).
+  compact?: boolean;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
-  label, value, icon: Icon, color, bg, surfaceBg, surfaceBorder, textPrimary, textSecondary, loading,
+  label, value, icon: Icon, color, bg, surfaceBg, surfaceBorder, textPrimary, textSecondary, loading, compact,
 }) => (
-  <div className="master-stat-card" style={{ background: surfaceBg, border: `1px solid ${surfaceBorder}` }}>
+  <div className={`master-stat-card${compact ? ' master-stat-card-compact' : ''}`} style={{ background: surfaceBg, border: `1px solid ${surfaceBorder}` }}>
     <div className="master-stat-icon" style={{ background: bg }}>
-      <Icon size={19} style={{ color }} />
+      <Icon size={compact ? 15 : 19} style={{ color }} />
     </div>
     <div className="master-stat-body">
       <div className="master-stat-label" style={{ color: textSecondary }}>{label}</div>

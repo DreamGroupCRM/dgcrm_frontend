@@ -17,7 +17,7 @@ interface MasterIconButtonsProps {
 }
 
 const MasterIconButtons: React.FC<MasterIconButtonsProps> = ({ onView, onEdit, onDelete, size = 15 }) => (
-  <div className="flex items-center justify-center gap-2">
+  <div className="flex items-center justify-center gap-1">
     {onView && (
       <button type="button" title="View" className="master-icon-btn" onClick={onView}>
         <MdVisibility size={size} />

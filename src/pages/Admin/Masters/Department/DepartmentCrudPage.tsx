@@ -398,13 +398,14 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
           not just once you scroll all the way down (same pattern as
           CustomerDetailsCrudPage.tsx's footer). Wraps + shrinks padding on
           narrow screens so both buttons stay fully reachable and tappable
-          on mobile instead of overflowing. ───────────────────────────── */}
+          on mobile instead of overflowing. Rounded top corners + full
+          border via master.css's .master-crud-footer, matching
+          BuildingCrudPage.tsx's footer and the SectionCards above it. ── */}
       <div
-        className="flex items-center justify-center flex-wrap gap-2 sm:gap-3 px-3 sm:px-6"
+        className="master-crud-footer flex items-center justify-center flex-wrap gap-2 sm:gap-3"
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, height: FOOTER_HEIGHT, zIndex: 40,
-          background: t.surfaceBg, borderTop: `1px solid ${t.surfaceBorder}`,
-          boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
+          background: t.surfaceBg, borderColor: t.surfaceBorder,
         }}
       >
         <button

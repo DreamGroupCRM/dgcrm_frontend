@@ -67,6 +67,11 @@ interface Props { mode: Mode; }
 const FLAT_TYPES = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Studio', 'Other'];
 const WING_COLORS = ['#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#db2777'];
 
+// Sticky footer height — same value/pattern as DepartmentCrudPage.tsx's
+// FOOTER_HEIGHT, so Go Back/Save are always reachable without scrolling
+// even with many wings/floors/flats filled in.
+const FOOTER_HEIGHT = 76;
+
 /** Finds the highest numeric suffix already used for a given id prefix, e.g.
  *  maxNumericSuffix(['wing_001','wing_002'], 'wing_') === 2 — so the next id is wing_003. */
 const maxNumericSuffix = (ids: string[], prefix: string): number =>
@@ -841,7 +846,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16 }}>
 
       {/* ── Page Header ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
@@ -1413,13 +1418,20 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       </SectionCard>
 
       {/* ── Action Buttons ───────────────────────────────────────────────── */}
-      {/* Sticky footer bar — stays pinned to the bottom of the viewport
-          while scrolling through the form, with both buttons centered
-          inside it (rather than just centered at the end of the page
-          content, which could sit anywhere depending on scroll position). */}
+      {/* Fixed footer bar — always pinned to the viewport bottom regardless
+          of how many wings/floors/flats/shops are filled in, not just once
+          you've scrolled all the way down (position: fixed instead of
+          sticky, same as DepartmentCrudPage.tsx, guarantees this even if
+          the sticky-positioning container situation ever changes). Rounded
+          top corners + a full border give it the same card-like edge the
+          SectionCards above it already have — see master.css's
+          .master-crud-footer. */}
       <div
-        className="sticky bottom-0 left-0 right-0 flex justify-center items-center gap-3 mt-4 py-4 z-10"
-        style={{ background: t.surfaceBg, borderTop: `1px solid ${t.surfaceBorder}` }}
+        className="master-crud-footer flex justify-center items-center gap-3 z-10"
+        style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, height: FOOTER_HEIGHT,
+          background: t.surfaceBg, borderColor: t.surfaceBorder,
+        }}
       >
         <button
           onClick={() => navigate('/admin/masters/building')}

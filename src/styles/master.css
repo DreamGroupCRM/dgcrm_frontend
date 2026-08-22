@@ -21,7 +21,7 @@
 
 /* ── Page shell ────────────────────────────────────────────────────────── */
 .master-page {
-  font-family: "Inter", "Arial", sans-serif;
+  font-family: "Roboto", "Inter", "Arial", sans-serif;
 }
 
 /* ── Top bar: search (left) + action buttons (right) ─────────────────────
@@ -102,23 +102,23 @@
   border-collapse: collapse;
 }
 
-/* Header/body text color: blue in light theme, unchanged (theme white) in
-   dark theme — item 4. camelCase headers: no more uppercase transform/
-   letter-spacing, just the label text itself in normal case — item 7. */
+/* Header/body text color: black in light theme, unchanged (theme white) in
+   dark theme. camelCase headers: no more uppercase transform/letter-
+   spacing, just the label text itself in normal case — item 7. */
 .master-table th {
   padding: 12px 16px;
   text-align: left;
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
-  color: #2563eb;
+  color: #000000;
 }
 
 .master-table td {
   padding: 12px 16px;
   font-size: 13.5px;
   white-space: nowrap;
-  color: #2563eb;
+  color: #000000;
 }
 
 html.dark .master-table th,
@@ -128,13 +128,17 @@ html.dark .master-table td {
 
 /* Sticky Actions column — same boxed-shadow-divider look every master
    already used, now centralized. Width itself stays inline (it's computed
-   per-page from icon count) since CSS can't see that constant. */
+   per-page from icon count) since CSS can't see that constant. Padding is
+   tightened well below the table's normal 12px/16px cell padding — with
+   3 icon buttons this column doesn't need nearly as much breathing room,
+   and the old padding left a lot of visibly empty space around them. */
 .master-table-actions-th,
 .master-table-actions-td {
   position: sticky;
   left: 0;
   text-align: center;
   white-space: nowrap;
+  padding: 8px 6px !important;
 }
 
 /* ── Sortable column headers — up/down arrow, click to toggle ────────────
@@ -176,10 +180,10 @@ html.dark .master-table td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   padding: 2px;
-  border-radius: 7px;
+  border-radius: 6px;
   background: none;
   cursor: pointer;
   flex-shrink: 0;
@@ -286,4 +290,65 @@ html.dark .master-row-icon {
   font-size: 19px;
   font-weight: 800;
   line-height: 1.15;
+}
+
+/* Building master's 7-card summary row — the default .master-stat-grid
+   caps at 4 columns (right for Department/Employee's 4 cards), but
+   Building has 7 and needs its own wider step so they can all sit on one
+   row instead of the cards themselves being stretched oversized to fill
+   4 columns' worth of width. Compact variant shrinks icon/padding/font
+   size to match — sized to the content instead of a fixed large box. */
+.master-stat-grid-7 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 640px) { .master-stat-grid-7 { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .master-stat-grid-7 { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1280px) { .master-stat-grid-7 { grid-template-columns: repeat(7, 1fr); } }
+
+.master-stat-card-compact {
+  padding: 8px 10px;
+  gap: 8px;
+}
+
+.master-stat-card-compact .master-stat-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.master-stat-card-compact .master-stat-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.master-stat-card-compact .master-stat-label {
+  font-size: 10.5px;
+}
+
+.master-stat-card-compact .master-stat-value {
+  font-size: 16px;
+}
+
+/* ── CRUD page fixed footer — Company/Department/Bank/Building/Customer's
+   Go Back+Save bar. Rounded top corners + a full border give it the same
+   card edge the SectionCards above it already have (border-color is set
+   inline per-page from the theme, since master.css can't see light/dark
+   state directly). Positioning (fixed/left/right/bottom/height) stays
+   inline too — it needs the page's own FOOTER_HEIGHT constant. */
+.master-crud-footer {
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  padding: 0 12px;
+}
+
+@media (min-width: 640px) {
+  .master-crud-footer {
+    padding: 0 24px;
+  }
 }

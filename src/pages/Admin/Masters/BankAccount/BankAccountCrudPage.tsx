@@ -76,6 +76,10 @@ const empty: FormState = {
   account_number: '', branch_name: '', ifsc_code: '',
 };
 
+// Sticky footer height — same value/pattern as the other masters'
+// FOOTER_HEIGHT, so Go Back/Create are always reachable without scrolling.
+const FOOTER_HEIGHT = 76;
+
 const PAGE_TITLES: Record<Mode, string> = {
   add : 'Add Bank A/C',
   edit: 'Edit Bank A/C',
@@ -273,7 +277,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16 }}>
       <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 28 }}>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
@@ -348,8 +352,17 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
 
         </div>
 
-        {/* ── Buttons ─────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 8 }}>
+      </div>
+
+      {/* ── Buttons — fixed to the viewport bottom, always visible, both
+          centered (same pattern as every other master's crud footer). ── */}
+      <div
+        className="master-crud-footer flex items-center justify-center flex-wrap gap-3"
+        style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, height: FOOTER_HEIGHT, zIndex: 40,
+          background: t.surfaceBg, borderColor: t.surfaceBorder,
+        }}
+      >
           <button onClick={() => navigate('/admin/masters/bank-account')} disabled={saving}
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold"
             style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}>
@@ -368,7 +381,6 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
               {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
             </button>
           )}
-        </div>
       </div>
     </div>
   );
