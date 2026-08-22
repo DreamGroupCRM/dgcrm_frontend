@@ -26,7 +26,7 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 // other columns in the table.
 const ACTION_COL_WIDTH = 96;
 
-type SortKey = 'name' | 'total' | 'enabled' | 'disabled' | 'created_at';
+type SortKey = 'id' | 'name' | 'total' | 'enabled' | 'disabled' | 'created_at';
 type StatusFilter = 'all' | 'active' | 'inactive';
 
 const departmentCounts = (d: Department) => {
@@ -88,6 +88,7 @@ const DepartmentListPage: React.FC = () => {
   const getSortValue = (d: Department, key: SortKey): string | number => {
     const c = departmentCounts(d);
     switch (key) {
+      case 'id': return Number(d.id);
       case 'name': return d.name?.toLowerCase() || '';
       case 'total': return c.total;
       case 'enabled': return c.enabled;
@@ -133,9 +134,9 @@ const DepartmentListPage: React.FC = () => {
       return;
     }
     const header = ['ID', 'Department Name', 'Total Designations', 'Enabled Designations', 'Disabled Designations', 'Status', 'Created On'];
-    const rows = sorted.map((d, i) => {
+    const rows = sorted.map((d) => {
       const c = departmentCounts(d);
-      return [i + 1, d.name, c.total, c.enabled, c.disabled, d.is_active ? 'Active' : 'Inactive', formatDate(d.created_at)];
+      return [d.id, d.name, c.total, c.enabled, c.disabled, d.is_active ? 'Active' : 'Inactive', formatDate(d.created_at)];
     });
     const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -193,7 +194,7 @@ const DepartmentListPage: React.FC = () => {
                   width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
                   background: t.insetBg, borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                 }}>Action</th>
-                <th>ID</th>
+                <SortableTh label="ID" active={sortKey === 'id'} dir={sortDir} onClick={() => toggleSort('id')} />
                 <SortableTh label="Department Name" active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} />
                 <SortableTh label="Total Designations" active={sortKey === 'total'} dir={sortDir} onClick={() => toggleSort('total')} />
                 <SortableTh label="Enabled Designations" active={sortKey === 'enabled'} dir={sortDir} onClick={() => toggleSort('enabled')} />
@@ -208,7 +209,7 @@ const DepartmentListPage: React.FC = () => {
               ) : pageRows.length === 0 ? (
                 <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center' }}>No departments found.</td></tr>
               ) : (
-                pageRows.map((d, idx) => {
+                pageRows.map((d) => {
                   const c = departmentCounts(d);
                   return (
                     <tr key={d.id} style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -223,7 +224,7 @@ const DepartmentListPage: React.FC = () => {
                           onDelete={() => handleDelete(d)}
                         />
                       </td>
-                      <td>{(safePage - 1) * limit + idx + 1}</td>
+                      <td>{d.id}</td>
                       <td>
                         <div className="flex items-center gap-2">
                           <MdGroups size={16} className="master-row-icon" />
