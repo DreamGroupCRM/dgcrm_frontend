@@ -1,0 +1,289 @@
+/* ==========================================================================
+   DREAM GROUP CRM — MASTER MODULE STYLESHEET
+   ==========================================================================
+   Single shared stylesheet for every Master's list + crud page (Company,
+   Department, Bank Account, Building) plus the Employee and Customer list
+   pages' tables. Previously each page carried its own copy of this styling
+   as inline `style={{...}}` objects; this file is the one place that now
+   controls it, so a visual change (icon colors, table typography, card
+   layout, pagination) only needs to happen here instead of N times.
+
+   Dark mode: the app already toggles a `.dark` class on <html>
+   (see App.tsx) for Tailwind's dark: variant — the rules below piggyback
+   on that same class rather than introducing a second theming mechanism.
+
+   Each section names the page(s) it was extracted from. Colors that
+   generally do vary per record (status badges: green=active/red=inactive,
+   summary-card accent colors) are intentionally left as inline styles at
+   the call site — this file only owns the structural/repeated part of the
+   design system.
+   ========================================================================== */
+
+/* ── Page shell ────────────────────────────────────────────────────────── */
+.master-page {
+  font-family: "Inter", "Arial", sans-serif;
+}
+
+/* ── Top bar: search (left) + action buttons (right) ─────────────────────
+   From CompanyListPage/BankAccountListPage/BuildingListPage's top bar div,
+   and now also DepartmentListPage's (previously Add/Export/Refresh sat
+   next to the search box instead of separated to the right). */
+.master-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.master-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  flex: 1 1 200px;
+  max-width: 320px;
+}
+
+.master-search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  width: 100%;
+}
+
+.master-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.master-btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  white-space: nowrap;
+}
+
+.master-btn-icon {
+  padding: 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Table card ────────────────────────────────────────────────────────── */
+.master-table-card {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.master-table-scroll {
+  overflow-x: auto;
+  position: relative;
+}
+
+.master-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Header/body text color: blue in light theme, unchanged (theme white) in
+   dark theme — item 4. camelCase headers: no more uppercase transform/
+   letter-spacing, just the label text itself in normal case — item 7. */
+.master-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #2563eb;
+}
+
+.master-table td {
+  padding: 12px 16px;
+  font-size: 13.5px;
+  white-space: nowrap;
+  color: #2563eb;
+}
+
+html.dark .master-table th,
+html.dark .master-table td {
+  color: #ffffff;
+}
+
+/* Sticky Actions column — same boxed-shadow-divider look every master
+   already used, now centralized. Width itself stays inline (it's computed
+   per-page from icon count) since CSS can't see that constant. */
+.master-table-actions-th,
+.master-table-actions-td {
+  position: sticky;
+  left: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ── Sortable column headers — up/down arrow, click to toggle ────────────
+   New (item 2): every master table's sortable columns show a small
+   up/down arrow pair; the active sort direction is highlighted. */
+.master-th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.master-sort-arrows {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 0;
+  margin-left: 1px;
+}
+
+.master-sort-arrows svg {
+  opacity: 0.35;
+}
+
+.master-sort-arrows svg.active {
+  opacity: 1;
+}
+
+/* ── Icon action buttons (View / Edit / Delete) ───────────────────────────
+   Item 1: light theme = blue icon + blue border, dark theme = white icon +
+   white border, padding tightened to the icon's own size so the border
+   hugs it closely instead of leaving a lot of empty space. */
+.master-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 2px;
+  border-radius: 7px;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 1.5px solid #2563eb;
+  color: #2563eb;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.master-icon-btn:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.master-icon-btn:active {
+  transform: scale(0.93);
+}
+
+html.dark .master-icon-btn {
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+html.dark .master-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Small icon shown inline next to a name/value cell (company/bank/project/
+   building/department name, account holder name, branch name) — item 7. */
+.master-row-icon {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+html.dark .master-row-icon {
+  color: #60a5fa;
+}
+
+/* ── Pagination footer ─────────────────────────────────────────────────── */
+.master-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.master-page-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* ── Compact summary/stat cards — label on top, count below ──────────────
+   Item 10: replaces the old oversized Employee cards; matches Building
+   master's existing compact box style, reused everywhere now. */
+.master-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 640px) {
+  .master-stat-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .master-stat-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.master-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.master-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.master-stat-body {
+  min-width: 0;
+}
+
+/* Label on top, count below — same order for every stat card project-wide. */
+.master-stat-label {
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.master-stat-value {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.15;
+}

@@ -15,8 +15,9 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
 import { fetchEmployeeList, deleteEmployee, Employee, EmployeeStatus } from '../../../../services/employeeDetailsService';
 import { formatDate, showAlert } from '../../../../utils';
+import StatCard from '../../../../components/masters/StatCard';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 // The CRUD form only captures one free-text Address field (no separate
 // City/State inputs), but the card design shows "City, State" — this
@@ -54,6 +55,7 @@ const EmployeeDetailsListPage: React.FC = () => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(5);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -139,9 +141,9 @@ const EmployeeDetailsListPage: React.FC = () => {
     setPage(1);
   }, [search, departmentFilter, designationFilter, statusFilter, locationFilter, sortBy, allEmployees]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / limit));
   const safePage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pageRows = filtered.slice((safePage - 1) * limit, safePage * limit);
 
   const pageBtns = () => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
@@ -316,22 +318,18 @@ const EmployeeDetailsListPage: React.FC = () => {
   return (
     <div style={{ fontFamily: t.fontFamily }}>
 
-      {/* ── Summary cards ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      {/* ── Summary cards — compact, label on top / count below (item 10),
+          same size as Building master's boxes instead of the previous
+          oversized cards. ────────────────────────────────────────────── */}
+      <div className="master-stat-grid">
         {[
           { label: 'Total Employees', value: summary.total, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
           { label: 'Active Employees', value: summary.active, icon: MdLayers, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
           { label: 'On Leave', value: summary.onLeave, icon: MdEventBusy, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff' },
           { label: 'Inactive Employees', value: summary.inactive, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
         ].map((card) => (
-          <div key={card.label} className="rounded-2xl p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <div className="flex items-center justify-center rounded-xl mb-3" style={{ width: 42, height: 42, background: card.bg }}>
-              <card.icon size={21} style={{ color: card.color }} />
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: t.textSecondary }}>{card.label}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: t.textPrimary, lineHeight: 1.3 }}>{loading ? '—' : card.value}</div>
-            <div style={{ fontSize: 11.5, color: t.textSecondary }}>{card.sub}</div>
-          </div>
+          <StatCard key={card.label} {...card} loading={loading}
+            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
       </div>
 
@@ -387,8 +385,15 @@ const EmployeeDetailsListPage: React.FC = () => {
 
         {/* pagination */}
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4" style={{ borderTop: `1px solid ${t.divider}` }}>
+          <div className="flex items-center gap-2">
+            <span style={{ fontSize: 13, color: t.textSecondary }}>Rows per page:</span>
+            <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
+              {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
           <div style={{ fontSize: 13, color: t.textSecondary }}>
-            Showing {filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} employees
+            Showing {filtered.length === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, filtered.length)} of {filtered.length} employees
           </div>
           <div className="flex items-center gap-1.5">
             <button type="button" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}

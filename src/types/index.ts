@@ -475,6 +475,11 @@ export interface BuildingListSummary {
   enabled_flats  : number;
   disabled_flats : number;
   total_shops    : number;
+  enabled_shops  : number;
+  disabled_shops : number;
+  // Flats + shops combined — V_14.0's list page summary cards.
+  enabled_units  : number;
+  disabled_units : number;
 }
 
 export interface BuildingListResponse {

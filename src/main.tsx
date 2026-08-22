@@ -12,6 +12,7 @@ import { Provider } from 'react-redux';
 import { store } from './app/store';
 import App from './App';
 import './styles/Responsive.css';
+import './styles/master.css';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

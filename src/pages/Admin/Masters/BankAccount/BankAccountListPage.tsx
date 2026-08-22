@@ -4,8 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh,
-  MdSearch, MdVisibility,
+  MdAdd, MdDownload, MdRefresh, MdSearch, MdAccountBalance,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
@@ -13,14 +12,18 @@ import { getTheme } from '../../../../styles/theme';
 import { fetchBankAccountList, deleteBankAccount } from '../../../../services/bankAccountService';
 import { BankAccount } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
+import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
+import SortableTh from '../../../../components/masters/SortableTh';
+import { useSortedRows } from '../../../../components/masters/useSortedRows';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
-const ACTION_ICON_COLOR = '#4b5563';
 
 // Fixed width for the Actions column — sized for exactly 3 icon buttons
-// (32px each) + gaps + cell padding, so it never grows/shrinks with the
-// number of other columns in the table.
-const ACTION_COL_WIDTH = 148;
+// + gaps + cell padding, so it never grows/shrinks with the number of
+// other columns in the table.
+const ACTION_COL_WIDTH = 128;
+
+type SortKey = 'id' | 'company_name' | 'name' | 'account_holder_name' | 'account_number' | 'created_at';
 
 const BankAccountListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -34,7 +37,7 @@ const BankAccountListPage: React.FC = () => {
   const [search, setSearch]           = useState('');
   const [loading, setLoading]         = useState(false);
   const [page, setPage]               = useState(1);
-  const [limit, setLimit]             = useState(10);
+  const [limit, setLimit]             = useState(5);
 
   useEffect(() => { dispatch(setPageTitle('Bank A/C')); }, [dispatch]);
 
@@ -47,7 +50,7 @@ const BankAccountListPage: React.FC = () => {
       } else {
         toast.error('Failed to Fetch Bank Accounts');
       }
-    } catch (e) {
+    } catch {
       toast.error('Failed to fetch bank accounts. Please try again.');
     } finally {
       setLoading(false);
@@ -74,6 +77,20 @@ const BankAccountListPage: React.FC = () => {
     setPage(1);
   }, [search, allBanks]);
 
+  // Default sort: newest first (item 5) — a newly-added bank account
+  // appears at the top of the table until the user picks a different column.
+  const getSortValue = (b: BankAccount, key: SortKey): string | number => {
+    switch (key) {
+      case 'id': return Number(b.id);
+      case 'company_name': return (b.company_name ?? '').toLowerCase();
+      case 'name': return b.name?.toLowerCase() || '';
+      case 'account_holder_name': return (b.account_holder_name ?? '').toLowerCase();
+      case 'account_number': return b.account_number ?? '';
+      case 'created_at': return b.created_at || '';
+    }
+  };
+  const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<BankAccount, SortKey>(filtered, getSortValue, 'created_at', 'desc');
+
   const handleDelete = async (bank: BankAccount) => {
     const result = await showAlert.confirm(
       `Are you sure you want to delete "${bank.name}"?`,
@@ -91,9 +108,9 @@ const BankAccountListPage: React.FC = () => {
   };
 
   const exportCSV = () => {
-    if (filtered.length === 0) { toast.info('No data to Export'); return; }
+    if (sorted.length === 0) { toast.info('No data to Export'); return; }
     const headers = ['ID', 'Company Name', 'Bank Name', 'Account Holder Name', 'Account Number', 'Branch Name', 'IFSC Code', 'Status', 'Created At'];
-    const rows    = filtered.map((b) => [
+    const rows    = sorted.map((b) => [
       b.id,
       `"${b.company_name ?? ''}"`,
       `"${b.name}"`,
@@ -113,11 +130,11 @@ const BankAccountListPage: React.FC = () => {
   };
 
   // ── pagination ─────────────────────────────────────────────────────────
-  const totalFiltered = filtered.length;
+  const totalFiltered = sorted.length;
   const totalPages    = Math.max(1, Math.ceil(totalFiltered / limit));
   const safePage      = Math.min(page, totalPages);
   const startIdx      = (safePage - 1) * limit;
-  const pageRows      = filtered.slice(startIdx, startIdx + limit);
+  const pageRows      = sorted.slice(startIdx, startIdx + limit);
   const showingFrom   = totalFiltered === 0 ? 0 : startIdx + 1;
   const showingTo     = Math.min(startIdx + limit, totalFiltered);
 
@@ -125,16 +142,6 @@ const BankAccountListPage: React.FC = () => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
     return Array.from({ length: Math.min(5, totalPages) }, (_, i) => start + i);
   };
-
-  const iconBtn: React.CSSProperties = {
-    width: 32, height: 32, background: 'none',
-    border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-    color: ACTION_ICON_COLOR, padding: 0, borderRadius: 8,
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    cursor: 'pointer', flexShrink: 0,
-  };
-
-  const stickyBg = isDark ? t.surfaceBg : '#ffffff';
 
   const statusBadge = (isActive: boolean) => (
     <span style={{
@@ -152,69 +159,60 @@ const BankAccountListPage: React.FC = () => {
   );
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div className="master-page">
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
-          style={{ flex: '1 1 200px', maxWidth: 320, background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
+      <div className="master-topbar">
+        <div className="master-search-box" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input type="text" placeholder="Search by bank name, IFSC, company..."
             value={search} onChange={(e) => setSearch(e.target.value)}
-            style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 14, width: '100%' }} />
+            className="master-search-input" style={{ color: t.inputText }} />
         </div>
 
-        <div className="flex items-center gap-2 ml-auto flex-wrap">
-          <button onClick={() => navigate('/admin/masters/bank-account/add')}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'linear-gradient(135deg,#1d4ed8,#2563eb)', border: 'none', cursor: 'pointer' }}>
+        <div className="master-actions">
+          <button onClick={() => navigate('/admin/masters/bank-account/add')} className="master-btn-primary">
             <MdAdd size={18} /> Add Bank A/C
           </button>
-          <button onClick={exportCSV} title="Export CSV" className="p-2 rounded-xl"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}>
+          <button onClick={exportCSV} title="Export CSV" className="master-btn-icon"
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
             <MdDownload size={18} />
           </button>
-          <button onClick={fetchBanks} title="Refresh" className="p-2 rounded-xl"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textPrimary }}>
+          <button onClick={fetchBanks} title="Refresh" className="master-btn-icon"
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
       {/* ── Table ───────────────────────────────────────────────────────── */}
-      <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto', position: 'relative' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+      <div className="master-table-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="master-table-scroll">
+          <table className="master-table" style={{ minWidth: 900 }}>
             <thead>
               <tr style={{ background: t.tableHeaderBg }}>
-                {/* STICKY Actions — now the first column */}
-                <th style={{
-                  padding: '12px 16px', textAlign: 'center',
+                <th className="master-table-actions-th" style={{
                   width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
-                  fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
-                  letterSpacing: '0.05em', color: t.textPrimary,
-                  borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
-                  position: 'sticky', left: 0, zIndex: 2,
-                  background: t.tableHeaderBg,
-                  borderRight: `2px solid ${t.divider}`,
-                  boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                  borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
+                  borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                 }}>Actions</th>
-                {['ID', 'Company Name', 'Bank Name', 'Account Holder Name', 'Account Number', 'Branch Name', 'IFSC Code', 'Status', 'Created At'].map((h) => (
-                  <th key={h} style={{
-                    padding: '12px 16px', textAlign: 'left',
-                    fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
-                    letterSpacing: '0.05em', color: t.textPrimary,
-                    borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
-                  }}>{h}</th>
+                <SortableTh label="ID" active={sortKey === 'id'} dir={sortDir} onClick={() => toggleSort('id')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Company Name" active={sortKey === 'company_name'} dir={sortDir} onClick={() => toggleSort('company_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Bank Name" active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Account Holder Name" active={sortKey === 'account_holder_name'} dir={sortDir} onClick={() => toggleSort('account_holder_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Account Number" active={sortKey === 'account_number'} dir={sortDir} onClick={() => toggleSort('account_number')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                {['Branch Name', 'IFSC Code', 'Status'].map((h) => (
+                  <th key={h} style={{ borderBottom: `1px solid ${t.divider}` }}>{h}</th>
                 ))}
+                <SortableTh label="Created At" active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} style={{ borderBottom: `1px solid ${t.divider}` }} />
               </tr>
             </thead>
 
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
+                <tr><td colSpan={10} style={{ textAlign: 'center', padding: 48 }}>Loading...</td></tr>
               ) : pageRows.length === 0 ? (
-                <tr><td colSpan={10} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>
+                <tr><td colSpan={10} style={{ textAlign: 'center', padding: 48 }}>
                   {search ? 'No bank accounts match your search.' : 'No bank accounts found.'}
                 </td></tr>
               ) : (
@@ -225,30 +223,31 @@ const BankAccountListPage: React.FC = () => {
                       style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`, transition: 'background 0.15s' }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
-                      {/* STICKY Actions cell — now the first column */}
-                      <td style={{
-                        padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
+                      <td className="master-table-actions-td" style={{
                         width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
-                        position: 'sticky', left: 0, zIndex: 1,
-                        background: stickyBg,
-                        borderRight: `2px solid ${t.divider}`,
-                        boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                        zIndex: 1, background: isDark ? t.surfaceBg : '#ffffff',
+                        borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                       }}>
-                        <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => navigate(`/admin/masters/bank-account/view/${bank.id}`)} title="View" style={iconBtn}><MdVisibility size={17} /></button>
-                          <button onClick={() => navigate(`/admin/masters/bank-account/edit/${bank.id}`)} title="Edit" style={iconBtn}><MdEdit size={17} /></button>
-                          <button onClick={() => handleDelete(bank)} title="Delete" style={iconBtn}><MdDelete size={17} /></button>
+                        <MasterIconButtons
+                          onView={() => navigate(`/admin/masters/bank-account/view/${bank.id}`)}
+                          onEdit={() => navigate(`/admin/masters/bank-account/edit/${bank.id}`)}
+                          onDelete={() => handleDelete(bank)}
+                        />
+                      </td>
+                      <td>{bank.id}</td>
+                      <td>{bank.company_name ?? '—'}</td>
+                      <td style={{ fontWeight: 500 }}>
+                        <div className="flex items-center gap-2">
+                          <MdAccountBalance size={16} className="master-row-icon" />
+                          {bank.name}
                         </div>
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{bank.id}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.company_name ?? '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500, whiteSpace: 'nowrap' }}>{bank.name}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.account_holder_name ?? '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.account_number}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.branch_name}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{bank.ifsc_code}</td>
-                      <td style={{ padding: '12px 16px' }}>{statusBadge(bank.is_active)}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(bank.created_at)}</td>
+                      <td>{bank.account_holder_name ?? '—'}</td>
+                      <td>{bank.account_number}</td>
+                      <td>{bank.branch_name}</td>
+                      <td>{bank.ifsc_code}</td>
+                      <td>{statusBadge(bank.is_active)}</td>
+                      <td>{formatDate(bank.created_at)}</td>
                     </tr>
                   );
                 })
@@ -258,8 +257,7 @@ const BankAccountListPage: React.FC = () => {
         </div>
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-          style={{ borderTop: `1px solid ${t.divider}` }}>
+        <div className="master-pagination" style={{ borderTop: `1px solid ${t.divider}` }}>
           <div className="flex items-center gap-2">
             <span style={{ fontSize: 13, color: t.textPrimary }}>Rows per page:</span>
             <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
@@ -273,16 +271,16 @@ const BankAccountListPage: React.FC = () => {
           </span>
 
           <div className="flex items-center gap-1">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
-              style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage === 1 ? 'not-allowed' : 'pointer', fontSize: 13 }}>Prev</button>
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className="master-page-btn"
+              style={{ padding: '4px 10px', width: 'auto', border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage === 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
             {pageBtns().map((pg) => (
-              <button key={pg} onClick={() => setPage(pg)}
-                style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${pg === safePage ? '#2563eb' : t.surfaceBorder}`, background: pg === safePage ? '#2563eb' : t.btnSecondaryBg, color: pg === safePage ? '#fff' : t.textPrimary, cursor: 'pointer', fontSize: 13, fontWeight: pg === safePage ? 700 : 400 }}>
+              <button key={pg} onClick={() => setPage(pg)} className="master-page-btn"
+                style={{ border: `1px solid ${pg === safePage ? '#2563eb' : t.surfaceBorder}`, background: pg === safePage ? '#2563eb' : t.btnSecondaryBg, color: pg === safePage ? '#fff' : t.textPrimary, fontWeight: pg === safePage ? 700 : 400 }}>
                 {pg}
               </button>
             ))}
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
-              style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', fontSize: 13 }}>Next</button>
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} className="master-page-btn"
+              style={{ padding: '4px 10px', width: 'auto', border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer' }}>Next</button>
           </div>
         </div>
       </div>
