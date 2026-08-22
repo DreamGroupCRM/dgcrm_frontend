@@ -314,12 +314,13 @@
 /* ===========================================================
    MASTER MODULE — RESPONSIVE RULES (V_14.0)
    ===========================================================
-   Covers every Master (Company/Department/Bank/Building) list page plus
-   Employee/Customer, all built on the shared master.css classes
-   (.master-topbar/.master-actions/.master-table-card/.master-stat-grid/
-   .master-pagination). Centralized here per item 8 — one file for every
-   page's mobile/tablet breakpoints instead of scattering @media blocks
-   across each page. */
+   Covers every Master (Company/Department/Bank/Building) list + crud page
+   plus Employee/Customer, all built on the shared master.css classes
+   (.master-topbar/.master-actions/.master-table-card/.master-stat-grid*/
+   .master-pagination/.master-crud-footer). Centralized here per item 8 —
+   one file for every page's mobile/tablet breakpoints instead of
+   scattering @media blocks across each page. Desktop layout/logic is
+   untouched — everything below only fires under its max-width. */
 
 /* Tablet and below — search box gets full width instead of a fixed max,
    action buttons wrap under it instead of overflowing off-screen. */
@@ -346,9 +347,20 @@
 }
 
 /* Phones — summary cards drop to a single column so labels/values never
-   get squeezed, and the pagination footer stacks instead of overflowing. */
+   get squeezed, and the pagination footer stacks instead of overflowing.
+
+   Action row fix: previously every button in .master-actions (the Add
+   button AND the icon-only Download/Refresh buttons) got stacked into
+   full-width bars — a big blue "Add" bar followed by two nearly-empty
+   full-width bars with a tiny centered icon each. Now only the primary
+   Add button takes its own full-width row (flex-basis 100% forces the
+   wrap); the icon buttons wrap onto the row after it and share that
+   row's width evenly via flex-grow, so Download/Refresh sit side by side
+   as two compact square-ish buttons instead of two odd full-width bars. */
 @media (max-width: 480px) {
-  .master-stat-grid {
+  .master-stat-grid,
+  .master-stat-grid-5,
+  .master-stat-grid-7 {
     grid-template-columns: 1fr;
   }
 
@@ -359,26 +371,96 @@
   }
 
   .master-actions {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .master-actions .master-btn-primary {
+    flex: 1 1 100%;
   }
 
   .master-actions .master-btn-icon {
-    width: 100%;
+    flex: 1 1 0;
+    width: auto;
+  }
+
+  /* Grouped Total/Enabled/Disabled cards (Building's Flats/Shops boxes) —
+     give the 3-up value row a little breathing room now that the card
+     itself is full-width instead of squeezed into a 2-column grid. */
+  .master-stat-multi-row {
+    gap: 16px;
   }
 }
 
-/* Very small phones — tighten table cell padding so more columns stay
-   legible before the horizontal scroll kicks in. */
+/* Realistic phone widths (390–430px covers the vast majority of phones —
+   iPhone 12-16, Pixel 6-10, most Samsung Galaxy models — all of which sat
+   ABOVE the old 380px-only breakpoint below and so never actually got the
+   tightened table styling on a real device). Slightly tighter padding so
+   more columns are visible before the horizontal scroll kicks in.
+
+   .master-icon-btn is deliberately NOT resized here — every list page's
+   Actions column has a fixed inline ACTION_COL_WIDTH (96px) sized exactly
+   for 3 icon buttons at their current 24px size plus the column's own
+   padding/gaps; enlarging the icons without also widening that per-page
+   constant would overflow the sticky Actions column on phones instead of
+   fixing anything. */
+@media (max-width: 600px) {
+  .master-table th,
+  .master-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .master-table-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* iOS Safari zooms the whole page in on focus of any input/select whose
+     computed font-size is under 16px — every master search box and CRUD
+     form field is 14px, so bump them back up to 16px on phones only
+     (desktop keeps its existing 14px). Master list pages have a
+     `.master-page` wrapper to hook into; master CRUD pages don't carry a
+     shared class, so `main` (DashboardLayout's single scroll container
+     for every routed page) is the fallback that reaches them without any
+     JSX changes. */
+  .master-search-input,
+  .master-page input,
+  .master-page select,
+  .master-page textarea,
+  main input,
+  main select,
+  main textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Very small phones — tighten table cell padding further so more columns
+   stay legible before the horizontal scroll kicks in. */
 @media (max-width: 380px) {
   .master-table th,
   .master-table td {
-    padding: 10px 10px;
+    padding: 8px 8px;
     font-size: 12.5px;
   }
+}
 
-  .master-icon-btn {
-    width: 24px;
-    height: 24px;
+/* ── Master CRUD footer — Go Back/Create-Update bar ────────────────────
+   Wrap-safety net for very narrow phones: if the two buttons together
+   ever don't fit the floating footer's width (16px inset either side),
+   let them wrap onto a second line instead of overflowing/clipping,
+   and let the footer grow taller to fit both rows instead of staying
+   locked to the desktop 76px height. !important is needed here because
+   several pages already carry Tailwind's `gap-3`/no-wrap utility classes
+   inline, which this file needs to be able to override on phones without
+   touching those pages' JSX. */
+@media (max-width: 480px) {
+  .master-crud-footer {
+    flex-wrap: wrap !important;
+    height: auto !important;
+    min-height: 76px;
+    row-gap: 8px !important;
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
 }
 
