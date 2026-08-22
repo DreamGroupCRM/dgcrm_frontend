@@ -16,10 +16,15 @@ interface SortableThProps {
   dir: SortDir;
   onClick: () => void;
   style?: React.CSSProperties;
+  // Optional — only used by tables with a grouped 2-row header (e.g.
+  // Building's Flats/Shops Total/Enabled/Disabled sub-columns), where a
+  // plain column needs to span both header rows. Undefined elsewhere, same
+  // as before this prop existed.
+  rowSpan?: number;
 }
 
-const SortableTh: React.FC<SortableThProps> = ({ label, active, dir, onClick, style }) => (
-  <th className="master-table-th" style={style}>
+const SortableTh: React.FC<SortableThProps> = ({ label, active, dir, onClick, style, rowSpan }) => (
+  <th className="master-table-th" style={style} rowSpan={rowSpan}>
     <button type="button" className="master-th-sort" onClick={onClick}>
       {label}
       <span className="master-sort-arrows">
