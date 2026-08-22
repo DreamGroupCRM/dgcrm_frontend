@@ -44,6 +44,13 @@
 // hardcoding true.
 
 import axiosInstance from './axiosConfig';
+
+// Sent as a custom request header on every call below, and echoed back by
+// the backend as a response header (see department.controller.ts) — so the
+// named API operation being called is visible directly in the browser's
+// Network tab (Headers panel), on both the request and the response, not
+// just inferable from the URL/method.
+const API_NAME_HEADER = 'X-Api-Name';
 import {
   Department,
   Designation,
@@ -95,7 +102,10 @@ export const FetchDepartmentList = async (
   if (search && search.trim()) {
     params.search = search.trim();
   }
-  const res = await axiosInstance.get('/department', { params });
+  const res = await axiosInstance.get('/department', {
+    params,
+    headers: { [API_NAME_HEADER]: 'FetchDepartmentList' },
+  });
   return {
     success: res.data.success,
     message: res.data.message,
@@ -109,7 +119,9 @@ export const FetchDepartmentList = async (
 // ── Fetch single department by ID, with its designations ───────────────────
 /** GET /api/department/:id/full */
 export const ViewDepartment = async (id: string): Promise<DepartmentSingleResponse> => {
-  const res = await axiosInstance.get(`/department/${id}/full`);
+  const res = await axiosInstance.get(`/department/${id}/full`, {
+    headers: { [API_NAME_HEADER]: 'ViewDepartment' },
+  });
   return {
     success: res.data.success,
     message: res.data.message,
@@ -122,7 +134,9 @@ export const ViewDepartment = async (id: string): Promise<DepartmentSingleRespon
 export const CreateDepartment = async (
   payload: CreateDepartmentPayload
 ): Promise<DepartmentSingleResponse> => {
-  const res = await axiosInstance.post('/department/full', payload);
+  const res = await axiosInstance.post('/department/full', payload, {
+    headers: { [API_NAME_HEADER]: 'CreateDepartment' },
+  });
   return {
     success: res.data.success,
     message: res.data.message,
@@ -136,7 +150,9 @@ export const UpdateDepartment = async (
   id: string,
   payload: UpdateDepartmentPayload
 ): Promise<DepartmentSingleResponse> => {
-  const res = await axiosInstance.put(`/department/${id}/full`, payload);
+  const res = await axiosInstance.put(`/department/${id}/full`, payload, {
+    headers: { [API_NAME_HEADER]: 'UpdateDepartment' },
+  });
   return {
     success: res.data.success,
     message: res.data.message,
@@ -147,7 +163,9 @@ export const UpdateDepartment = async (
 // ── Delete department (and, on the backend, its designations with it) ──────
 /** DELETE /api/department/:id */
 export const DeleteDepartment = async (id: string): Promise<DepartmentDeleteResponse> => {
-  const res = await axiosInstance.delete(`/department/${id}`);
+  const res = await axiosInstance.delete(`/department/${id}`, {
+    headers: { [API_NAME_HEADER]: 'DeleteDepartment' },
+  });
   return res.data;
 };
 
