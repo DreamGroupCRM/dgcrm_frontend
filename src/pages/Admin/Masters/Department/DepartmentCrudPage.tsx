@@ -196,7 +196,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16 }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 mb-4">
@@ -403,10 +403,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
           BuildingCrudPage.tsx's footer and the SectionCards above it. ── */}
       <div
         className="master-crud-footer flex items-center justify-center flex-wrap gap-2 sm:gap-3"
-        style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0, height: FOOTER_HEIGHT, zIndex: 40,
-          background: t.surfaceBg, borderColor: t.surfaceBorder,
-        }}
+        style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}
       >
         <button
           type="button"
@@ -430,7 +427,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
               opacity: saving ? 0.8 : 1,
             }}
           >
-            <MdSave size={17} /> {saving ? 'Saving...' : 'Save Department'}
+            <MdSave size={17} /> {saving ? 'Saving...' : mode === 'edit' ? 'Update' : 'Create'}
           </button>
         )}
       </div>

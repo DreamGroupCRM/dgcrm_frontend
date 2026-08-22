@@ -277,7 +277,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16 }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
       <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 28 }}>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
@@ -358,10 +358,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
           centered (same pattern as every other master's crud footer). ── */}
       <div
         className="master-crud-footer flex items-center justify-center flex-wrap gap-3"
-        style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0, height: FOOTER_HEIGHT, zIndex: 40,
-          background: t.surfaceBg, borderColor: t.surfaceBorder,
-        }}
+        style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}
       >
           <button onClick={() => navigate('/admin/masters/bank-account')} disabled={saving}
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold"

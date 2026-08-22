@@ -42,9 +42,22 @@
 @layer utilities {
   .no-underline { text-decoration: none !important; }
 
-  /* Fade-in animation used in DashboardLayout */
+  /* Fade-in animation used in DashboardLayout. No `forwards`/`both` fill
+     mode: the 'to' keyframe (opacity:1, transform:translateY(0)) is
+     visually identical to the element's un-animated resting state, so
+     dropping the fill mode after the animation ends doesn't change how it
+     looks — but it matters a lot structurally. `animation-fill-mode:
+     forwards` keeps the *specified* transform value applied to this
+     element indefinitely (even translateY(0), an identity transform is
+     still a non-`none` transform value), and any non-`none` transform on
+     an ancestor becomes the containing block for descendants with
+     position:fixed. That was silently breaking every "fixed" CRUD-page
+     footer nested inside this div: `bottom:0` was resolving against this
+     wrapper's own content-height box (as tall as the whole page) instead
+     of the viewport, so the footer only ever appeared once you'd scrolled
+     all the way to the true bottom of the page. */
   .animate-fade-in {
-    animation: fadeIn 0.35s ease-out both;
+    animation: fadeIn 0.35s ease-out;
   }
 
   @keyframes fadeIn {

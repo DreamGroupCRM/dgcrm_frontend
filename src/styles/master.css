@@ -334,16 +334,32 @@ html.dark .master-row-icon {
 }
 
 /* ── CRUD page fixed footer — Company/Department/Bank/Building/Customer's
-   Go Back+Save bar. Rounded top corners + a full border give it the same
-   card edge the SectionCards above it already have (border-color is set
-   inline per-page from the theme, since master.css can't see light/dark
-   state directly). Positioning (fixed/left/right/bottom/height) stays
-   inline too — it needs the page's own FOOTER_HEIGHT constant. */
+   Go Back+Save bar. A genuinely viewport-fixed floating card: rounded
+   corners on all 4 sides (not just the top) + a full border + an all-round
+   shadow, inset a little from the screen edges instead of flush against
+   them. Position/left/right/bottom/height/z-index/padding now all live
+   here (previously duplicated inline per-page with `position:'fixed'`) so
+   every master CRUD page's footer is pixel-identical and there's one place
+   to fix it — border-color/background are the only things still set
+   inline per-page, since master.css can't see light/dark theme state.
+
+   `left` is offset by --sidebar-w (set by DashboardLayout from the
+   sidebar's collapsed/expanded state) at the desktop breakpoint, so the
+   floating card never overlaps the sidebar now that it's genuinely pinned
+   to the viewport instead of scrolling along with the page content (see
+   index.css's .animate-fade-in fix — a lingering `transform` on the page
+   wrapper was quietly turning every "fixed" footer into something that
+   only ever reached the bottom once you'd scrolled all the way down). */
 .master-crud-footer {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  height: 76px;
+  z-index: 40;
   border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
   padding: 0 12px;
 }
 
@@ -351,4 +367,58 @@ html.dark .master-row-icon {
   .master-crud-footer {
     padding: 0 24px;
   }
+}
+
+@media (min-width: 1024px) {
+  .master-crud-footer {
+    left: calc(var(--sidebar-w, 260px) + 16px);
+  }
+}
+
+/* ── Grouped multi-stat card — one box showing Total/Enabled/Disabled
+   together (Building list page's Flats and Shops boxes) instead of 3
+   separate single-value cards. Reuses .master-stat-card/-icon/-label's
+   sizing; only the body layout differs (a label row + a 3-up value row). */
+.master-stat-grid-5 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 640px) { .master-stat-grid-5 { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .master-stat-grid-5 { grid-template-columns: repeat(5, 1fr); } }
+
+.master-stat-card-multi {
+  align-items: flex-start;
+}
+
+.master-stat-body-multi {
+  min-width: 0;
+  flex: 1;
+}
+
+.master-stat-multi-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.master-stat-multi-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.master-stat-multi-value {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.master-stat-multi-sublabel {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.75;
 }

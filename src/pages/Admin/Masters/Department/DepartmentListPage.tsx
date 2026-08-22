@@ -1,12 +1,12 @@
 // ==========================================
 // DREAM GROUP CRM - DEPARTMENT LIST PAGE
 // ==========================================
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdAdd, MdDownload, MdRefresh, MdSearch,
-  MdGroups, MdBadge, MdCheckCircle, MdCancel,
+  MdGroups,
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
@@ -18,7 +18,6 @@ import { formatDate, showAlert } from '../../../../utils';
 import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
 import SortableTh from '../../../../components/masters/SortableTh';
 import { useSortedRows } from '../../../../components/masters/useSortedRows';
-import StatCard from '../../../../components/masters/StatCard';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
@@ -72,23 +71,6 @@ const DepartmentListPage: React.FC = () => {
   }, []);
 
   useEffect(() => { fetchDepartments(); }, [fetchDepartments]);
-
-  // ── summary cards — counts only, no percentages ─────────────────────────
-  const summary = useMemo(() => {
-    let totalDesignations = 0, enabledDesignations = 0, disabledDesignations = 0;
-    allDepartments.forEach((d) => {
-      const c = departmentCounts(d);
-      totalDesignations += c.total;
-      enabledDesignations += c.enabled;
-      disabledDesignations += c.disabled;
-    });
-    return {
-      totalDepartments: allDepartments.length,
-      totalDesignations,
-      enabledDesignations,
-      disabledDesignations,
-    };
-  }, [allDepartments]);
 
   // ── search (department name only) + status filter ──────────────────────
   useEffect(() => {
@@ -168,19 +150,6 @@ const DepartmentListPage: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="master-page">
-
-      {/* ── Summary cards — counts only, no percentages ─────────────────── */}
-      <div className="master-stat-grid">
-        {[
-          { label: 'Total Departments', value: summary.totalDepartments, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
-          { label: 'Total Designations', value: summary.totalDesignations, icon: MdBadge, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
-          { label: 'Enabled Designations', value: summary.enabledDesignations, icon: MdCheckCircle, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff' },
-          { label: 'Disabled Designations', value: summary.disabledDesignations, icon: MdCancel, color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2' },
-        ].map((card) => (
-          <StatCard key={card.label} {...card} loading={loading}
-            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-        ))}
-      </div>
 
       {/* ── Top bar: Search (left) | Add + Export + Refresh (right) ────────
           Same layout as every other master (item 3) — previously Add

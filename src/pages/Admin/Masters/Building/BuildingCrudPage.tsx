@@ -846,7 +846,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16 }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
 
       {/* ── Page Header ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
@@ -1418,20 +1418,16 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       </SectionCard>
 
       {/* ── Action Buttons ───────────────────────────────────────────────── */}
-      {/* Fixed footer bar — always pinned to the viewport bottom regardless
-          of how many wings/floors/flats/shops are filled in, not just once
-          you've scrolled all the way down (position: fixed instead of
-          sticky, same as DepartmentCrudPage.tsx, guarantees this even if
-          the sticky-positioning container situation ever changes). Rounded
-          top corners + a full border give it the same card-like edge the
-          SectionCards above it already have — see master.css's
-          .master-crud-footer. */}
+      {/* Fixed footer bar — truly pinned to the viewport bottom regardless of
+          how many wings/floors/flats/shops are filled in, not just once
+          you've scrolled all the way down. Position/left/right/bottom/
+          height/border-radius/border/shadow all live in master.css's
+          .master-crud-footer now (including the sidebar-width offset via
+          --sidebar-w) so every master CRUD page's footer behaves and looks
+          identically — only the theme colors stay inline here. */}
       <div
         className="master-crud-footer flex justify-center items-center gap-3 z-10"
-        style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0, height: FOOTER_HEIGHT,
-          background: t.surfaceBg, borderColor: t.surfaceBorder,
-        }}
+        style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}
       >
         <button
           onClick={() => navigate('/admin/masters/building')}
@@ -1453,7 +1449,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
               opacity: saving ? 0.8 : 1,
             }}
           >
-            <MdSave size={17} /> {saving ? 'Saving...' : 'Save'}
+            <MdSave size={17} /> {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
           </button>
         )}
       </div>

@@ -262,7 +262,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16 }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
       <div style={{
         background: t.surfaceBg,
         border: `1px solid ${t.surfaceBorder}`,
@@ -558,10 +558,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
           centered (same pattern as every other master's crud footer). ── */}
       <div
         className="master-crud-footer flex items-center justify-center flex-wrap gap-3"
-        style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0, height: FOOTER_HEIGHT, zIndex: 40,
-          background: t.surfaceBg, borderColor: t.surfaceBorder,
-        }}
+        style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}
       >
           <button
             onClick={() => navigate(ROUTES.ADMIN.COMPANY)}

@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import {
   MdAdd, MdDownload, MdRefresh,
   MdSearch, MdApartment,
-  MdBusiness, MdLayers, MdHome, MdCheckCircle, MdCancel, MdStorefront,
+  MdBusiness, MdLayers, MdHome, MdStorefront,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
@@ -18,6 +18,7 @@ import MasterIconButtons from '../../../../components/masters/MasterIconButtons'
 import SortableTh from '../../../../components/masters/SortableTh';
 import { useSortedRows } from '../../../../components/masters/useSortedRows';
 import StatCard from '../../../../components/masters/StatCard';
+import MultiStatCard from '../../../../components/masters/MultiStatCard';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
@@ -194,24 +195,29 @@ const BuildingListPage: React.FC = () => {
   return (
     <div className="master-page">
 
-      {/* ── Summary cards — flats + shops combined into Enabled/Disabled ──
-          Compact variant + the 7-column grid (item 4): the default 4-col
-          .master-stat-grid stretched these 7 cards oversized to fill 4
-          columns' worth of width; .master-stat-grid-7 gives its own wider
-          step so all 7 sit on one row at desktop width instead. */}
-      <div className="master-stat-grid-7">
-        {[
-          { label: 'Total Projects',  value: summary?.total_projects  ?? 0, icon: MdBusiness,    color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)'  : '#eff6ff' },
-          { label: 'Total Buildings', value: summary?.total_buildings ?? allBuildings.length, icon: MdApartment,  color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
-          { label: 'Total Wings',     value: summary?.total_wings     ?? 0, icon: MdLayers,      color: '#0891b2', bg: isDark ? 'rgba(8,145,178,0.12)'  : '#ecfeff' },
-          { label: 'Total Flats',     value: summary?.total_flats     ?? 0, icon: MdHome,        color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)'  : '#fff7ed' },
-          { label: 'Total Shops',     value: summary?.total_shops     ?? 0, icon: MdStorefront,  color: '#db2777', bg: isDark ? 'rgba(219,39,119,0.12)' : '#fdf2f8' },
-          { label: 'Enabled Flat & Shop',  value: summary?.enabled_units  ?? 0, icon: MdCheckCircle, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)'  : '#f0fdf4' },
-          { label: 'Disabled Flat & Shop', value: summary?.disabled_units ?? 0, icon: MdCancel,     color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)'  : '#fef2f2' },
-        ].map((card) => (
-          <StatCard key={card.label} {...card} loading={loading} compact
-            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-        ))}
+      {/* ── Summary cards — Total Projects/Buildings/Wings as single-value
+          boxes, Flats and Shops as grouped Total/Enabled/Disabled boxes
+          (item 4) instead of splitting Enabled/Disabled across separate
+          combined-flats-and-shops cards. 5 boxes total now (was 7), so
+          .master-stat-grid-5 replaces the old 7-column grid. */}
+      <div className="master-stat-grid-5">
+        <StatCard label="Total Projects" value={summary?.total_projects ?? 0} icon={MdBusiness}
+          color="#2563eb" bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loading} compact
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        <StatCard label="Total Buildings" value={summary?.total_buildings ?? allBuildings.length} icon={MdApartment}
+          color="#7c3aed" bg={isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff'} loading={loading} compact
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        <StatCard label="Total Wings" value={summary?.total_wings ?? 0} icon={MdLayers}
+          color="#0891b2" bg={isDark ? 'rgba(8,145,178,0.12)' : '#ecfeff'} loading={loading} compact
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        <MultiStatCard label="Flats" icon={MdHome} color="#ea580c" bg={isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed'}
+          total={summary?.total_flats ?? 0} enabled={summary?.enabled_flats ?? 0} disabled={summary?.disabled_flats ?? 0}
+          loading={loading}
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        <MultiStatCard label="Shops" icon={MdStorefront} color="#db2777" bg={isDark ? 'rgba(219,39,119,0.12)' : '#fdf2f8'}
+          total={summary?.total_shops ?? 0} enabled={summary?.enabled_shops ?? 0} disabled={summary?.disabled_shops ?? 0}
+          loading={loading}
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
       {/* ── Top bar: Search | Add + Download + Refresh ─────────────────── */}
