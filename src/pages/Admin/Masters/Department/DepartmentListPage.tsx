@@ -12,7 +12,7 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
-import { fetchDepartmentList, deleteDepartment } from '../../../../services/departmentService';
+import { FetchDepartmentList, DeleteDepartment } from '../../../../services/departmentService';
 import { Department } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
 import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
@@ -57,7 +57,7 @@ const DepartmentListPage: React.FC = () => {
   const fetchDepartments = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchDepartmentList(1, 1000);
+      const res = await FetchDepartmentList(1, 1000);
       if (res.success) {
         setAllDepartments(res.rows ?? []);
       } else {
@@ -120,7 +120,7 @@ const DepartmentListPage: React.FC = () => {
     );
     if (!result.isConfirmed) return;
     try {
-      await deleteDepartment(dept.id);
+      await DeleteDepartment(dept.id);
       toast.success('Department Deleted Successfully');
       fetchDepartments();
     } catch {

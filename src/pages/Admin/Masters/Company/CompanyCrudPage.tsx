@@ -132,7 +132,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
     if (isAdd || !id) return;
     (async () => {
       try {
-        const res = await companyService.getById(id);
+        const res = await companyService.ViewCompany(id);
         if (res.success && res.data) {
           setForm(fromCompany(res.data));
           if (res.data.logo_url && res.data.logo_url !== 'string') {
@@ -219,8 +219,8 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
       }
 
       const res = isEdit
-        ? await companyService.update(id!, payload)
-        : await companyService.create(payload);
+        ? await companyService.UpdateCompany(id!, payload)
+        : await companyService.CreateCompany(payload);
 
       if (res.success) {
         toast.success(

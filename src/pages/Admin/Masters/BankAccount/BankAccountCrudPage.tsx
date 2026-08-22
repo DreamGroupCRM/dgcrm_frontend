@@ -8,9 +8,9 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme, AppTheme } from '../../../../styles/theme';
 import {
-  fetchBankAccountById,
-  createBankAccount,
-  updateBankAccount,
+  ViewBankAccount,
+  CreateBankAccount,
+  UpdateBankAccount,
 } from '../../../../services/bankAccountService';
 import axiosInstance from '../../../../services/axiosConfig';
 
@@ -139,7 +139,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
     if (mode === 'add' || !id) return;
     (async () => {
       try {
-        const res = await fetchBankAccountById(id);
+        const res = await ViewBankAccount(id);
         if (res.success && res.data) {
           setForm({
             company_id          : String(res.data.company_id ?? ''),
@@ -212,8 +212,8 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
       };
 
       const res = isEdit
-        ? await updateBankAccount(id!, payload)
-        : await createBankAccount(payload);
+        ? await UpdateBankAccount(id!, payload)
+        : await CreateBankAccount(payload);
 
       if (res.success) {
         toast.success(

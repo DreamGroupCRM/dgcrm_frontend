@@ -11,7 +11,7 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
-import { fetchBuildingList, deleteBuilding } from '../../../../services/buildingService';
+import { FetchBuildingList, DeleteBuilding } from '../../../../services/buildingService';
 import { Building, BuildingListSummary } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
 import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
@@ -60,7 +60,7 @@ const BuildingListPage: React.FC = () => {
   const fetchBuildings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchBuildingList(1, 1000);
+      const res = await FetchBuildingList(1, 1000);
       if (res.success) {
         setAllBuildings(res.rows ?? []);
         setSummary(res.summary ?? null);
@@ -115,7 +115,7 @@ const BuildingListPage: React.FC = () => {
     );
     if (!result.isConfirmed) return;
     try {
-      const res = await deleteBuilding(building.id);
+      const res = await DeleteBuilding(building.id);
       if (res.success) {
         toast.success('Building Deleted Successfully', { autoClose: 1000 });
         fetchBuildings();

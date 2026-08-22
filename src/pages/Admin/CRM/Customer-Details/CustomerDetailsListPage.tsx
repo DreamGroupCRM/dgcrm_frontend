@@ -19,7 +19,7 @@ import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fet
 import {
   collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, PAYMENT_FOR_OPTIONS, paymentForLabel,
 } from '../../../../services/paymentService';
-import { fetchBuildingList } from '../../../../services/buildingService';
+import { FetchBuildingList } from '../../../../services/buildingService';
 import { fetchEmployeeList } from '../../../../services/employeeDetailsService';
 import {
   Customer, Building, CustomerPaymentRecord, CustomerScheme,
@@ -195,7 +195,7 @@ const CustomerDetailsListPage: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetchBuildingList(1, 1000);
+        const res = await FetchBuildingList(1, 1000);
         if (res.success) setBuildings(res.rows ?? []);
       } catch { /* dropdowns just stay empty if this fails */ }
     })();

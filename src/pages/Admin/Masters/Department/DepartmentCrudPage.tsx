@@ -11,7 +11,7 @@ import {
 import { useAppSelector } from '../../../../hooks';
 import { getTheme } from '../../../../styles/theme';
 import { Designation, CreateDepartmentPayload } from '../../../../types/index';
-import { fetchDepartmentById, createDepartment, updateDepartment } from '../../../../services/departmentService';
+import { ViewDepartment, CreateDepartment, UpdateDepartment } from '../../../../services/departmentService';
 
 // ── local id helper for not-yet-saved designation rows ──────────────────────
 let localIdCounter = 0;
@@ -91,7 +91,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
     (async () => {
       setFetching(true);
       try {
-        const res = await fetchDepartmentById(id);
+        const res = await ViewDepartment(id);
         if (res.success && res.data) {
           const d = res.data;
           setDepartmentName(d.name || '');
@@ -163,10 +163,10 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
       };
 
       if (mode === 'edit' && id) {
-        await updateDepartment(id, payload);
+        await UpdateDepartment(id, payload);
         toast.success('Department Updated Successfully');
       } else {
-        await createDepartment(payload);
+        await CreateDepartment(payload);
         toast.success('Department Created Successfully');
       }
       navigate('/admin/masters/department');

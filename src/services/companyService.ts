@@ -23,7 +23,7 @@ export interface CompanyPayload {
 export const companyService = {
 
   /** GET /api/company?is_active=true&page=1&limit=10 */
-  getAll: async (page = 1, limit = 10) => {
+  FetchCompanyList: async (page = 1, limit = 10) => {
     const res = await axiosInstance.get('/company', {
       params: { is_active: true, page, limit },
     });
@@ -32,28 +32,28 @@ export const companyService = {
   },
 
   /** GET /api/company/:id */
-  getById: async (id: string) => {
+  ViewCompany: async (id: string) => {
     const res = await axiosInstance.get(`/company/${id}`);
     console.log('View Company Response:', res.data);
     return res.data;
   },
 
 /** POST /api/company — JSON body, or multipart/form-data when a logo file is included */
-create: async (payload: CompanyPayload | FormData) => {
+CreateCompany: async (payload: CompanyPayload | FormData) => {
   const res = await axiosInstance.post('/company', payload);
   console.log('Create Company Response:', res.data);
   return res.data;
 },
 
 /** PUT /api/company/:id — JSON body, or multipart/form-data when a logo file is included */
-update: async (id: string, payload: CompanyPayload | FormData) => {
+UpdateCompany: async (id: string, payload: CompanyPayload | FormData) => {
   const res = await axiosInstance.put(`/company/${id}`, payload);
   console.log('Update Company Response:', res.data);
   return res.data;
 },
 
   /** DELETE /api/company/:id */
-  remove: async (id: string) => {
+  DeleteCompany: async (id: string) => {
     const res = await axiosInstance.delete(`/company/${id}`);
     console.log('Delete Company Response:', res.data);
     return res.data;

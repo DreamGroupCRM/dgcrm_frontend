@@ -16,7 +16,7 @@ import {
   fetchEmployeePermissions,
   EmployeeFormValues, EmployeeFileValues, EmployeeStatus,
 } from '../../../../services/employeeDetailsService';
-import { fetchDepartmentList } from '../../../../services/departmentService';
+import { FetchDepartmentList } from '../../../../services/departmentService';
 import { fetchDesignationList } from '../../../../services/designationService';
 import { fetchMappingMatrix } from '../../../../services/moduleActionService';
 
@@ -277,7 +277,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetchDepartmentList(1, 1000);
+        const res = await FetchDepartmentList(1, 1000);
         if (res.success) setDepartmentOptions((res.rows || []).map((d) => ({ value: Number(d.id), label: d.name })));
       } catch {
         toast.error('Failed to load departments.');

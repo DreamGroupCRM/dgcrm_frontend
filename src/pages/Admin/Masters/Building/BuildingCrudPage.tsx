@@ -14,9 +14,9 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme, AppTheme } from '../../../../styles/theme';
 import { useAccordion } from '../../../../hooks/useAccordion';
 import {
-  fetchBuildingById,
-  createBuilding,
-  updateBuilding,
+  ViewBuilding,
+  CreateBuilding,
+  UpdateBuilding,
 } from '../../../../services/buildingService';
 import { CreateBuildingPayload, BuildingShop } from '../../../../types/index';
 
@@ -461,7 +461,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
     if (mode === 'add' || !id) return;
     (async () => {
       try {
-        const res = await fetchBuildingById(id);
+        const res = await ViewBuilding(id);
         if (res.success && res.data) {
           const b = res.data;
           setProjectName(b.project_name || '');
@@ -806,8 +806,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       };
 
       const res = isEdit
-        ? await updateBuilding(id!, payload)
-        : await createBuilding(payload);
+        ? await UpdateBuilding(id!, payload)
+        : await CreateBuilding(payload);
 
       if (res.success) {
         toast.success(isEdit ? 'Building Updated Successfully' : 'Building Created Successfully', { autoClose: 1000 });

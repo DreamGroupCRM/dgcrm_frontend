@@ -51,7 +51,7 @@ const CompanyListPage: React.FC = () => {
   const fetchCompanies = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await companyService.getAll(1, 1000);
+      const res = await companyService.FetchCompanyList(1, 1000);
       if (res.success) {
         setCompanies(res.rows ?? []);
       } else {
@@ -93,7 +93,7 @@ const CompanyListPage: React.FC = () => {
     );
     if (!result.isConfirmed) return;
     try {
-      const res = await companyService.remove(company.id);
+      const res = await companyService.DeleteCompany(company.id);
       if (res.success) {
         toast.success('Company Deleted Successfully', { autoClose: 1000 });
         fetchCompanies();

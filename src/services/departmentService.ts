@@ -82,7 +82,7 @@ const mapFullDepartment = (raw: BackendFullDepartment): Department => ({
 
 // ── Fetch list of all departments ───────────────────────────────────────────
 /** GET /api/department?is_active=true&page=1&limit=10&search=... */
-export const fetchDepartmentList = async (
+export const FetchDepartmentList = async (
   page: number,
   limit: number,
   search?: string
@@ -108,7 +108,7 @@ export const fetchDepartmentList = async (
 
 // ── Fetch single department by ID, with its designations ───────────────────
 /** GET /api/department/:id/full */
-export const fetchDepartmentById = async (id: string): Promise<DepartmentSingleResponse> => {
+export const ViewDepartment = async (id: string): Promise<DepartmentSingleResponse> => {
   const res = await axiosInstance.get(`/department/${id}/full`);
   return {
     success: res.data.success,
@@ -119,7 +119,7 @@ export const fetchDepartmentById = async (id: string): Promise<DepartmentSingleR
 
 // ── Create new department, with its designations ────────────────────────────
 /** POST /api/department/full */
-export const createDepartment = async (
+export const CreateDepartment = async (
   payload: CreateDepartmentPayload
 ): Promise<DepartmentSingleResponse> => {
   const res = await axiosInstance.post('/department/full', payload);
@@ -132,7 +132,7 @@ export const createDepartment = async (
 
 // ── Update existing department, with its designations ───────────────────────
 /** PUT /api/department/:id/full */
-export const updateDepartment = async (
+export const UpdateDepartment = async (
   id: string,
   payload: UpdateDepartmentPayload
 ): Promise<DepartmentSingleResponse> => {
@@ -146,16 +146,16 @@ export const updateDepartment = async (
 
 // ── Delete department (and, on the backend, its designations with it) ──────
 /** DELETE /api/department/:id */
-export const deleteDepartment = async (id: string): Promise<DepartmentDeleteResponse> => {
+export const DeleteDepartment = async (id: string): Promise<DepartmentDeleteResponse> => {
   const res = await axiosInstance.delete(`/department/${id}`);
   return res.data;
 };
 
 // Grouped export — same convenience pattern as buildingService
 export const departmentService = {
-  getAll  : fetchDepartmentList,
-  getById : fetchDepartmentById,
-  create  : createDepartment,
-  update  : updateDepartment,
-  remove  : deleteDepartment,
+  getAll  : FetchDepartmentList,
+  getById : ViewDepartment,
+  create  : CreateDepartment,
+  update  : UpdateDepartment,
+  remove  : DeleteDepartment,
 };

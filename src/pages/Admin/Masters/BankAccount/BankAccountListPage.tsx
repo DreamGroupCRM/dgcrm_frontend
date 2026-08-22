@@ -9,7 +9,7 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
-import { fetchBankAccountList, deleteBankAccount } from '../../../../services/bankAccountService';
+import { FetchBankAccount, DeleteBankAccount } from '../../../../services/bankAccountService';
 import { BankAccount } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
 import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
@@ -44,7 +44,7 @@ const BankAccountListPage: React.FC = () => {
   const fetchBanks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchBankAccountList(1, 1000);
+      const res = await FetchBankAccount(1, 1000);
       if (res.success) {
         setAllBanks(res.rows ?? []);
       } else {
@@ -98,7 +98,7 @@ const BankAccountListPage: React.FC = () => {
     );
     if (!result.isConfirmed) return;
     try {
-      await deleteBankAccount(String(bank.id));
+      await DeleteBankAccount(String(bank.id));
       toast.success('Bank Account Deleted Successfully', { autoClose: 1000 });
       fetchBanks();
     } catch (e: any) {

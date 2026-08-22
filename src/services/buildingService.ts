@@ -192,7 +192,7 @@ function toWizardPayload(payload: CreateBuildingPayload) {
 
 // ── Fetch list of all buildings ─────────────────────────────────────────────
 /** GET /api/buildings?is_active=true&page=1&limit=10 */
-export const fetchBuildingList = async (
+export const FetchBuildingList = async (
   page: number,
   limit: number,
   search?: string
@@ -206,7 +206,7 @@ export const fetchBuildingList = async (
     params.search = search.trim();
   }
   const res = await axiosInstance.get('/buildings', { params });
-  console.log('[buildingService] fetchBuildingList response:', res.data);
+  console.log('[buildingService] FetchBuildingList response:', res.data);
 
   const rawRows = (res.data.rows as BuildingListRow[]) || [];
 
@@ -250,9 +250,9 @@ export const fetchBuildingList = async (
 
 // ── Fetch single building by ID (with wings -> floors -> flats, + shops) ───
 /** GET /api/buildings/:id/full */
-export const fetchBuildingById = async (id: string): Promise<BuildingSingleResponse> => {
+export const ViewBuilding = async (id: string): Promise<BuildingSingleResponse> => {
   const res = await axiosInstance.get(`/buildings/${id}/full`);
-  console.log('[buildingService] fetchBuildingById response:', res.data);
+  console.log('[buildingService] ViewBuilding response:', res.data);
   return {
     success: res.data.success,
     message: res.data.message,
@@ -262,11 +262,11 @@ export const fetchBuildingById = async (id: string): Promise<BuildingSingleRespo
 
 // ── Create new building ─────────────────────────────────────────────────────
 /** POST /api/buildings/full */
-export const createBuilding = async (
+export const CreateBuilding = async (
   payload: CreateBuildingPayload
 ): Promise<BuildingSingleResponse> => {
   const res = await axiosInstance.post('/buildings/full', toWizardPayload(payload));
-  console.log('[buildingService] createBuilding response:', res.data);
+  console.log('[buildingService] CreateBuilding response:', res.data);
   return {
     success: res.data.success,
     message: res.data.message,
@@ -276,12 +276,12 @@ export const createBuilding = async (
 
 // ── Update existing building ────────────────────────────────────────────────
 /** PUT /api/buildings/:id/full */
-export const updateBuilding = async (
+export const UpdateBuilding = async (
   id: string,
   payload: UpdateBuildingPayload
 ): Promise<BuildingSingleResponse> => {
   const res = await axiosInstance.put(`/buildings/${id}/full`, toWizardPayload(payload));
-  console.log('[buildingService] updateBuilding response:', res.data);
+  console.log('[buildingService] UpdateBuilding response:', res.data);
   return {
     success: res.data.success,
     message: res.data.message,
@@ -291,17 +291,17 @@ export const updateBuilding = async (
 
 // ── Delete building ──────────────────────────────────────────────────────────
 /** DELETE /api/buildings/:id */
-export const deleteBuilding = async (id: string): Promise<BuildingDeleteResponse> => {
+export const DeleteBuilding = async (id: string): Promise<BuildingDeleteResponse> => {
   const res = await axiosInstance.delete(`/buildings/${id}`);
-  console.log('[buildingService] deleteBuilding response:', res.data);
+  console.log('[buildingService] DeleteBuilding response:', res.data);
   return res.data;
 };
 
 // Grouped export — same convenience pattern as companyService
 export const buildingService = {
-  getAll  : fetchBuildingList,
-  getById : fetchBuildingById,
-  create  : createBuilding,
-  update  : updateBuilding,
-  remove  : deleteBuilding,
+  getAll  : FetchBuildingList,
+  getById : ViewBuilding,
+  create  : CreateBuilding,
+  update  : UpdateBuilding,
+  remove  : DeleteBuilding,
 };
