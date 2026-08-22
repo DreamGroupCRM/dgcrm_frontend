@@ -459,6 +459,7 @@ export interface Building {
   wings        : BuildingWing[];
   has_shops?   : boolean;
   shops?       : BuildingShop[];
+  shop_count?  : number;         // list-row shop count (fromListRow) — shops[] isn't shipped on the list endpoint
   has_parking? : boolean;
   parking_count?: number | null;
   is_active    : boolean;

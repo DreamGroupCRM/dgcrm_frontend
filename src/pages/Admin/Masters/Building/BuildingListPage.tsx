@@ -36,7 +36,7 @@ const totalFlatsOf = (b: Building): number =>
 const totalFloorsOf = (b: Building): number =>
   (b.wings ?? []).reduce((sum, w) => sum + (w.floors?.length ?? 0), 0);
 
-type SortKey = 'id' | 'project_name' | 'building_name' | 'location' | 'wings' | 'floors' | 'flats' | 'created_at';
+type SortKey = 'id' | 'project_name' | 'building_name' | 'location' | 'wings' | 'floors' | 'flats' | 'shops' | 'parking' | 'created_at';
 
 const BuildingListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -99,6 +99,8 @@ const BuildingListPage: React.FC = () => {
       case 'wings': return b.wings?.length ?? 0;
       case 'floors': return totalFloorsOf(b);
       case 'flats': return totalFlatsOf(b);
+      case 'shops': return b.shop_count ?? 0;
+      case 'parking': return b.parking_count ?? 0;
       case 'created_at': return b.created_at || '';
     }
   };
@@ -129,7 +131,7 @@ const BuildingListPage: React.FC = () => {
     if (sorted.length === 0) { toast.info('No data to Export'); return; }
     const headers = [
       'ID', 'Project Name', 'Building Name', 'Location',
-      'No. of Wings', 'No. of Floors', 'No. of Flats',
+      'No. of Wings', 'No. of Floors', 'No. of Flats', 'No. of Shops', 'Parking',
       'Status', 'Created At', 'Updated At',
     ];
     const rows = sorted.map((b) => [
@@ -140,6 +142,8 @@ const BuildingListPage: React.FC = () => {
       b.wings?.length ?? 0,
       totalFloorsOf(b),
       totalFlatsOf(b),
+      b.shop_count ?? 0,
+      b.parking_count ?? 0,
       b.is_active ? 'Active' : 'Inactive',
       formatDate(b.created_at),
       formatDate(b.updated_at || ''),
@@ -202,8 +206,8 @@ const BuildingListPage: React.FC = () => {
           { label: 'Total Wings',     value: summary?.total_wings     ?? 0, icon: MdLayers,      color: '#0891b2', bg: isDark ? 'rgba(8,145,178,0.12)'  : '#ecfeff' },
           { label: 'Total Flats',     value: summary?.total_flats     ?? 0, icon: MdHome,        color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)'  : '#fff7ed' },
           { label: 'Total Shops',     value: summary?.total_shops     ?? 0, icon: MdStorefront,  color: '#db2777', bg: isDark ? 'rgba(219,39,119,0.12)' : '#fdf2f8' },
-          { label: 'Enabled Units',  value: summary?.enabled_units  ?? 0, icon: MdCheckCircle, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)'  : '#f0fdf4' },
-          { label: 'Disabled Units', value: summary?.disabled_units ?? 0, icon: MdCancel,     color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)'  : '#fef2f2' },
+          { label: 'Enabled Flat & Shop',  value: summary?.enabled_units  ?? 0, icon: MdCheckCircle, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)'  : '#f0fdf4' },
+          { label: 'Disabled Flat & Shop', value: summary?.disabled_units ?? 0, icon: MdCancel,     color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)'  : '#fef2f2' },
         ].map((card) => (
           <StatCard key={card.label} {...card} loading={loading} compact
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
@@ -260,6 +264,8 @@ const BuildingListPage: React.FC = () => {
                 <SortableTh label="Wings" active={sortKey === 'wings'} dir={sortDir} onClick={() => toggleSort('wings')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Floors" active={sortKey === 'floors'} dir={sortDir} onClick={() => toggleSort('floors')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Flats" active={sortKey === 'flats'} dir={sortDir} onClick={() => toggleSort('flats')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Shops" active={sortKey === 'shops'} dir={sortDir} onClick={() => toggleSort('shops')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Parking" active={sortKey === 'parking'} dir={sortDir} onClick={() => toggleSort('parking')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <th style={{ borderBottom: `1px solid ${t.divider}` }}>Status</th>
                 <SortableTh label="Created At" active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} style={{ borderBottom: `1px solid ${t.divider}` }} />
               </tr>
@@ -268,13 +274,13 @@ const BuildingListPage: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: 48 }}>
+                  <td colSpan={12} style={{ textAlign: 'center', padding: 48 }}>
                     Loading...
                   </td>
                 </tr>
               ) : pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: 48 }}>
+                  <td colSpan={12} style={{ textAlign: 'center', padding: 48 }}>
                     {search ? 'No buildings match your search.' : 'No buildings found.'}
                   </td>
                 </tr>
@@ -315,6 +321,8 @@ const BuildingListPage: React.FC = () => {
                       <td>{b.wings?.length ?? 0}</td>
                       <td>{totalFloorsOf(b)}</td>
                       <td>{totalFlatsOf(b)}</td>
+                      <td>{b.shop_count ?? 0}</td>
+                      <td>{b.has_parking ? (b.parking_count ?? 0) : '—'}</td>
                       <td>{statusBadge(b.is_active)}</td>
                       <td>{formatDate(b.created_at)}</td>
                     </tr>
