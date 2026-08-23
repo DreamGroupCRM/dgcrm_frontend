@@ -411,6 +411,39 @@ export const fetchEmployeePermissions = async (employeeId: string): Promise<Empl
   return res.data;
 };
 
+// ── Assign Visible Employees ────────────────────────────────────────────────
+// "Which employees can this employee view/manage" — reuses the backend's
+// existing reporting-line mechanism (assigning X as visible to M sets
+// X.reporting_manager_id = M), exposed under the Employee module's naming/
+// header convention. See employees.controller.ts for the full explanation.
+export interface VisibleEmployee {
+  id: number;
+  first_name: string;
+  last_name: string | null;
+  employee_code: string | null;
+}
+
+export interface FetchVisibleEmployeesResponse {
+  success: boolean;
+  data: VisibleEmployee[];
+}
+
+/** GET /api/employees/:managerId/reports — employees currently visible to (reporting to) managerId */
+export const FetchVisibleEmployees = async (managerId: string): Promise<FetchVisibleEmployeesResponse> => {
+  const res = await axiosInstance.get(`/employees/${managerId}/reports`, {
+    headers: { [API_NAME_HEADER]: 'FetchVisibleEmployees' },
+  });
+  return res.data;
+};
+
+/** PUT /api/employees/:managerId/reports — replaces the full visible-employees set for managerId */
+export const AssignVisibleEmployees = async (managerId: string, employeeIds: number[]): Promise<{ success: boolean; message?: string }> => {
+  const res = await axiosInstance.put(`/employees/${managerId}/reports`, { employeeIds }, {
+    headers: { [API_NAME_HEADER]: 'AssignVisibleEmployees' },
+  });
+  return res.data;
+};
+
 // Grouped export — same convenience pattern as buildingService / departmentService
 export const employeeDetailsService = {
   getAll      : FetchEmployeeDetails,
