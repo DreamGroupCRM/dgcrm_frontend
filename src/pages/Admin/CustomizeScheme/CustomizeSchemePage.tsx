@@ -80,8 +80,16 @@ const getLabelStyle = (t: Theme): React.CSSProperties => ({
   display: 'block', fontSize: 13, fontWeight: 600, color: t.textPrimary, marginBottom: 6,
 });
 
+// Fixed, content-appropriate width instead of stretching to fill a grid
+// column — the earlier 4-per-row CSS grid made every field (even "₹ 0")
+// as wide as the widest column, which looked oversized and sparse. 232px
+// comfortably fits an amount/date value and lets the longer labels
+// (e.g. "Booster Interval After Possession (Months)") wrap onto 2 lines
+// without the field itself needing to be any wider.
+const FIELD_WIDTH = 232;
+
 const FieldWrap: React.FC<{ t: Theme; label: string; className?: string; children: React.ReactNode }> = ({ t, label, className, children }) => (
-  <div className={className}>
+  <div className={className} style={{ width: FIELD_WIDTH, flex: `0 0 ${FIELD_WIDTH}px` }}>
     <label style={getLabelStyle(t)}>{label}</label>
     {children}
   </div>
@@ -117,18 +125,22 @@ const SliderField: React.FC<{
         />
         {suffix && <span style={{ color: t.textSecondary, flexShrink: 0, whiteSpace: 'nowrap' }}>{suffix}</span>}
       </div>
-      <div style={{ position: 'relative', marginTop: dragging ? 22 : 8 }}>
-        {dragging && (
-          <div
-            style={{
-              position: 'absolute', top: -20, left: `${percent}%`, transform: 'translateX(-50%)',
-              background: '#4338ca', color: '#fff', fontSize: 11, fontWeight: 700, lineHeight: 1,
-              padding: '3px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none',
-            }}
-          >
-            {bubbleText}
-          </div>
-        )}
+      {/* marginTop/the bubble's slot are always reserved at a fixed size —
+          toggling them only on `dragging` (as before) shifted the range
+          input itself (and everything below it) up/down by ~14px the
+          instant a drag started or ended. Visibility toggles instead, so
+          the layout height never changes. */}
+      <div style={{ position: 'relative', marginTop: 22 }}>
+        <div
+          style={{
+            position: 'absolute', top: -20, left: `${percent}%`, transform: 'translateX(-50%)',
+            background: '#4338ca', color: '#fff', fontSize: 11, fontWeight: 700, lineHeight: 1,
+            padding: '3px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none',
+            visibility: dragging ? 'visible' : 'hidden',
+          }}
+        >
+          {bubbleText}
+        </div>
         <input
           type="range" min={min} max={sliderMax} step={step} value={clamped}
           onChange={(e) => onChange(Number(e.target.value))}
@@ -375,34 +387,34 @@ const CustomizeSchemePage: React.FC = () => {
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
         <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" color="#059669" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div className="flex flex-wrap gap-4 mb-4">
           <FieldWrap t={t} label="Flat Type">
             <select value={flatType} onChange={(e) => setFlatType(e.target.value)} style={{ ...getFieldStyle(t), cursor: 'pointer' }}>
               {FLAT_TYPES.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
           </FieldWrap>
-          <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={50000000} step={1000} prefix="₹" />
+          <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={50000000} step={10000} prefix="₹" />
           <DateField t={t} label="Booking Date" value={bookingDate} onChange={setBookingDate} />
-          <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={1000} prefix="₹" />
+          <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <SliderField t={t} label="Remaining Booking Amount (₹)" value={remainingBookingAmount} onChange={setRemainingBookingAmount} max={Math.max(totalCost, 100000)} step={1000} prefix="₹" />
+        <div className="flex flex-wrap gap-4 mb-4">
+          <SliderField t={t} label="Remaining Booking Amount (₹)" value={remainingBookingAmount} onChange={setRemainingBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
           <DateField t={t} label="Remaining Booking Date" value={remainingBookingDate} onChange={setRemainingBookingDate} />
-          <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={1000} prefix="₹" />
+          <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
           <DateField t={t} label="Installment Date (1st EMI)" value={installmentDate} onChange={setInstallmentDate} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+        <div className="flex flex-wrap gap-4 mb-4">
           <SliderField t={t} label="Total EMI Tenure (Months)" value={totalEmiTenure} onChange={setTotalEmiTenure} max={120} step={1} suffix="months" />
-          <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={1000} prefix="₹" />
-          <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={1000} prefix="₹" />
+          <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" />
+          <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={1000} prefix="₹" />
+        <div className="flex flex-wrap gap-4">
+          <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" />
           <SliderField t={t} label="Booster Interval Before Possession (Months)" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" />
-          <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={1000} prefix="₹" />
+          <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" />
           <SliderField t={t} label="Booster Interval After Possession (Months)" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" />
         </div>
 
