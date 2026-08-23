@@ -170,26 +170,6 @@ const BuildingListPage: React.FC = () => {
     return Array.from({ length: Math.min(5, totalPages) }, (_, i) => start + i);
   };
 
-  // ── status badge ──────────────────────────────────────────────────────────
-  const statusBadge = (isActive: boolean) => (
-    <span style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      padding: '2px 10px',
-      borderRadius: 20,
-      fontSize: 13,
-      fontWeight: 500,
-      background: isActive
-        ? isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7'
-        : isDark ? 'rgba(239,68,68,0.12)'  : '#fee2e2',
-      color: isActive
-        ? isDark ? '#4ade80' : '#16a34a'
-        : isDark ? '#f87171' : '#dc2626',
-    }}>
-      {isActive ? 'Active' : 'Inactive'}
-    </span>
-  );
-
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="master-page">
@@ -274,7 +254,6 @@ const BuildingListPage: React.FC = () => {
                 <th colSpan={3} style={{ textAlign: 'center', borderBottom: `1px solid ${t.divider}` }}>Flats</th>
                 <th colSpan={3} style={{ textAlign: 'center', borderBottom: `1px solid ${t.divider}` }}>Shops</th>
                 <SortableTh label="Parking" rowSpan={2} active={sortKey === 'parking'} dir={sortDir} onClick={() => toggleSort('parking')} style={{ borderBottom: `1px solid ${t.divider}` }} />
-                <th rowSpan={2} style={{ borderBottom: `1px solid ${t.divider}` }}>Status</th>
                 <SortableTh label="Created At" rowSpan={2} active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} style={{ borderBottom: `1px solid ${t.divider}` }} />
               </tr>
               <tr style={{ background: t.tableHeaderBg }}>
@@ -290,13 +269,13 @@ const BuildingListPage: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={15} style={{ textAlign: 'center', padding: 48 }}>
+                  <td colSpan={14} style={{ textAlign: 'center', padding: 48 }}>
                     Loading...
                   </td>
                 </tr>
               ) : pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={15} style={{ textAlign: 'center', padding: 48 }}>
+                  <td colSpan={14} style={{ textAlign: 'center', padding: 48 }}>
                     {search ? 'No buildings match your search.' : 'No buildings found.'}
                   </td>
                 </tr>
@@ -354,7 +333,6 @@ const BuildingListPage: React.FC = () => {
                       <td style={{ textAlign: 'center', color: '#16a34a', fontWeight: 600 }}>{b.enabled_shops ?? 0}</td>
                       <td style={{ textAlign: 'center', color: disabledShops > 0 ? '#dc2626' : undefined, fontWeight: disabledShops > 0 ? 600 : undefined }}>{disabledShops}</td>
                       <td>{b.has_parking ? (b.parking_count ?? 0) : '—'}</td>
-                      <td>{statusBadge(b.is_active)}</td>
                       <td>{formatDate(b.created_at)}</td>
                     </tr>
                   );

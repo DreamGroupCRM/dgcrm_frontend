@@ -97,14 +97,21 @@
   position: relative;
 }
 
+/* width:auto (not 100%) — every column takes only the width its own
+   content needs instead of the table being stretched to fill the card and
+   forcing that extra space out across the columns. .master-table-scroll's
+   overflow-x:auto still kicks in if the naturally-sized table is wider
+   than the card. */
 .master-table {
-  width: 100%;
+  width: auto;
   border-collapse: collapse;
 }
 
 /* Header/body text color: black in light theme, unchanged (theme white) in
    dark theme. camelCase headers: no more uppercase transform/letter-
-   spacing, just the label text itself in normal case — item 7. */
+   spacing, just the label text itself in normal case — item 7. Light grid
+   border on all 4 sides of every cell (border-collapse merges adjacent
+   cells' borders into single lines) so rows and columns read clearly. */
 .master-table th {
   padding: 12px 16px;
   text-align: left;
@@ -112,6 +119,7 @@
   font-weight: 700;
   white-space: nowrap;
   color: #000000;
+  border: 1px solid #e2e8f0;
 }
 
 .master-table td {
@@ -119,11 +127,13 @@
   font-size: 13.5px;
   white-space: nowrap;
   color: #000000;
+  border: 1px solid #e2e8f0;
 }
 
 html.dark .master-table th,
 html.dark .master-table td {
   color: #ffffff;
+  border-color: #2f2f2f;
 }
 
 /* Sticky Actions column — same boxed-shadow-divider look every master
@@ -131,12 +141,17 @@ html.dark .master-table td {
    per-page from icon count) since CSS can't see that constant. Padding is
    tightened well below the table's normal 12px/16px cell padding — with
    3 icon buttons this column doesn't need nearly as much breathing room,
-   and the old padding left a lot of visibly empty space around them. */
+   and the old padding left a lot of visibly empty space around them.
+   text-align:center is !important because .master-table-actions-th alone
+   (one class) loses the cascade to the more-specific `.master-table th`
+   rule above (one class + one element beats one class) — without it the
+   header's "Actions" label fell back to left-aligned while the body cells
+   (no competing td rule) stayed centered. */
 .master-table-actions-th,
 .master-table-actions-td {
   position: sticky;
   left: 0;
-  text-align: center;
+  text-align: center !important;
   white-space: nowrap;
   padding: 8px 6px !important;
 }

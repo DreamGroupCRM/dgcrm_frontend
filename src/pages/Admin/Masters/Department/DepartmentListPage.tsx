@@ -199,15 +199,14 @@ const DepartmentListPage: React.FC = () => {
                 <SortableTh label="Total Designations" active={sortKey === 'total'} dir={sortDir} onClick={() => toggleSort('total')} />
                 <SortableTh label="Enabled Designations" active={sortKey === 'enabled'} dir={sortDir} onClick={() => toggleSort('enabled')} />
                 <SortableTh label="Disabled Designations" active={sortKey === 'disabled'} dir={sortDir} onClick={() => toggleSort('disabled')} />
-                <th>Status</th>
                 <SortableTh label="Created On" active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} />
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center' }}>Loading departments...</td></tr>
+                <tr><td colSpan={7} style={{ padding: 28, textAlign: 'center' }}>Loading departments...</td></tr>
               ) : pageRows.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center' }}>No departments found.</td></tr>
+                <tr><td colSpan={7} style={{ padding: 28, textAlign: 'center' }}>No departments found.</td></tr>
               ) : (
                 pageRows.map((d) => {
                   const c = departmentCounts(d);
@@ -240,15 +239,6 @@ const DepartmentListPage: React.FC = () => {
                       <td>{c.total}</td>
                       <td style={{ color: '#16a34a', fontWeight: 600 }}>{c.enabled}</td>
                       <td style={{ color: c.disabled > 0 ? '#dc2626' : undefined, fontWeight: c.disabled > 0 ? 600 : undefined }}>{c.disabled}</td>
-                      <td>
-                        <span
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-                          style={{ background: d.is_active ? '#dcfce7' : '#f1f5f9', color: d.is_active ? '#16a34a' : '#64748b' }}
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                          {d.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
                       <td style={{ whiteSpace: 'nowrap' }}>{formatDate(d.created_at)}</td>
                     </tr>
                   );
