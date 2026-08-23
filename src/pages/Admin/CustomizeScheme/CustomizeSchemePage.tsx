@@ -7,15 +7,18 @@
 // (Section A/B totals) and the full month-by-month EMI Schedule. Nothing
 // here is persisted to the backend; it's a what-if tool for a sales rep to
 // interactively balance a payment plan against a flat's total cost before
-// quoting it to a customer.
+// quoting it to a customer. Every field starts at 0 (dates start at today)
+// so the page opens blank rather than pre-filled with a worked example.
 //
-// One field is NOT in the reference Payment Details form (the one already
-// used on the Customer Details page): "EMIs Before Possession". It's
-// required to split the "Total EMI Tenure" between the before-possession
-// and after-possession phases — without it the split is mathematically
-// undetermined whenever the before/after monthly EMI amounts are equal
-// (any split balances the totals). It's just another slider-driven field,
-// consistent with the "adjust everything via sliders" spirit of this page.
+// The Before/After Possession EMI split (how many of the Total EMI Tenure
+// months fall in each phase) is no longer its own input field — it's
+// derived from the other fields: given the amount still to be financed
+// after Booking/Remaining Booking/Possession are subtracted from Total
+// Cost, and the two monthly EMI rates, there's exactly one split of the
+// tenure into (before, after) months that makes the numbers add up —
+// UNLESS the two rates are equal, in which case any split balances the
+// same way and there's no way to recover a specific one from amounts
+// alone; that case defaults to splitting the tenure as evenly as possible.
 import React, { useMemo, useState } from 'react';
 import { MdCalculate, MdPayments, MdListAlt } from 'react-icons/md';
 
@@ -52,7 +55,17 @@ const addMonths = (d: Date, n: number): Date => {
 const formatDMY = (d: Date | null): string =>
   d ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` : '—';
 
-const openPicker = (e: React.MouseEvent<HTMLInputElement>) => e.currentTarget.showPicker?.();
+const todayISO = (): string => new Date().toISOString().slice(0, 10);
+
+// Fires showPicker() on both click AND focus — a plain onClick alone opens
+// the calendar when the browser-drawn icon is clicked, but clicking into
+// the day/month/year text segments only moves focus between them without
+// reopening it. Focus fires for that case too, so pairing the two covers
+// "click anywhere in the field." Wrapped in try/catch — showPicker() throws
+// if called without an active user gesture or while already open.
+const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
+  try { e.currentTarget.showPicker?.(); } catch { /* already open / no gesture — ignore */ }
+};
 
 // ── module-scope form field helpers — same "outside the component" rule
 //    the Employee CRUD page documents: an inline component here would get a
@@ -76,35 +89,62 @@ const FieldWrap: React.FC<{ t: Theme; label: string; className?: string; childre
 
 // Amount / count field with a synced range slider underneath — the core
 // "use range slider for changing the amount values" requirement. Typing in
-// the text box and dragging the slider both update the same state.
+// the text box and dragging the slider both update the same state. While
+// the slider itself is being dragged (mouse or touch), a small value
+// bubble tracks the thumb so the number is visible without looking away
+// at the text box above.
 const SliderField: React.FC<{
   t: Theme; label: string; value: number; onChange: (v: number) => void;
   min?: number; max: number; step?: number; prefix?: string; suffix?: string;
-}> = ({ t, label, value, onChange, min = 0, max, step = 1, prefix, suffix }) => (
-  <FieldWrap t={t} label={label}>
-    <div className="flex items-center gap-2" style={{ ...getFieldStyle(t), padding: '0 12px' }}>
-      {prefix && <span style={{ color: t.textSecondary, flexShrink: 0 }}>{prefix}</span>}
-      <input
-        type="text" inputMode="decimal" value={value === 0 ? '0' : String(value)}
-        onChange={(e) => {
-          const n = Number(e.target.value.replace(/[^\d.]/g, ''));
-          onChange(Number.isFinite(n) ? n : 0);
-        }}
-        style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }}
-      />
-      {suffix && <span style={{ color: t.textSecondary, flexShrink: 0, whiteSpace: 'nowrap' }}>{suffix}</span>}
-    </div>
-    <input
-      type="range" min={min} max={Math.max(max, min + 1)} step={step} value={Math.min(Math.max(value, min), max)}
-      onChange={(e) => onChange(Number(e.target.value))}
-      style={{ width: '100%', marginTop: 8, accentColor: '#4338ca', cursor: 'pointer' }}
-    />
-  </FieldWrap>
-);
+}> = ({ t, label, value, onChange, min = 0, max, step = 1, prefix, suffix }) => {
+  const [dragging, setDragging] = useState(false);
+  const sliderMax = Math.max(max, min + step);
+  const clamped = Math.min(Math.max(value, min), sliderMax);
+  const percent = sliderMax > min ? ((clamped - min) / (sliderMax - min)) * 100 : 0;
+  const bubbleText = prefix ? formatINR(value) : suffix ? `${value} ${suffix}` : String(value);
+
+  return (
+    <FieldWrap t={t} label={label}>
+      <div className="flex items-center gap-2" style={{ ...getFieldStyle(t), padding: '0 12px' }}>
+        {prefix && <span style={{ color: t.textSecondary, flexShrink: 0 }}>{prefix}</span>}
+        <input
+          type="text" inputMode="decimal" value={value === 0 ? '0' : String(value)}
+          onChange={(e) => {
+            const n = Number(e.target.value.replace(/[^\d.]/g, ''));
+            onChange(Number.isFinite(n) ? n : 0);
+          }}
+          style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }}
+        />
+        {suffix && <span style={{ color: t.textSecondary, flexShrink: 0, whiteSpace: 'nowrap' }}>{suffix}</span>}
+      </div>
+      <div style={{ position: 'relative', marginTop: dragging ? 22 : 8 }}>
+        {dragging && (
+          <div
+            style={{
+              position: 'absolute', top: -20, left: `${percent}%`, transform: 'translateX(-50%)',
+              background: '#4338ca', color: '#fff', fontSize: 11, fontWeight: 700, lineHeight: 1,
+              padding: '3px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none',
+            }}
+          >
+            {bubbleText}
+          </div>
+        )}
+        <input
+          type="range" min={min} max={sliderMax} step={step} value={clamped}
+          onChange={(e) => onChange(Number(e.target.value))}
+          onMouseDown={() => setDragging(true)} onMouseUp={() => setDragging(false)}
+          onTouchStart={() => setDragging(true)} onTouchEnd={() => setDragging(false)}
+          onBlur={() => setDragging(false)}
+          style={{ width: '100%', display: 'block', accentColor: '#4338ca', cursor: 'pointer' }}
+        />
+      </div>
+    </FieldWrap>
+  );
+};
 
 const DateField: React.FC<{ t: Theme; label: string; value: string; onChange: (v: string) => void }> = ({ t, label, value, onChange }) => (
   <FieldWrap t={t} label={label}>
-    <input type="date" value={value} onClick={openPicker} onChange={(e) => onChange(e.target.value)} style={getFieldStyle(t)} />
+    <input type="date" value={value} onClick={openPicker} onFocus={openPicker} onChange={(e) => onChange(e.target.value)} style={getFieldStyle(t)} />
   </FieldWrap>
 );
 
@@ -114,6 +154,22 @@ const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; 
       {icon}
     </span>
     <h2 style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, margin: 0 }}>{title}</h2>
+  </div>
+);
+
+// A colored, full-bleed header bar for the two OUTPUT panels (EMI Scheme /
+// EMI Schedule) — visually distinguishes "results" from the plain white
+// Payment Details input panel above them, and carries the panel's headline
+// figure (total cost / schedule length) right in the header band.
+const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradient: string; subtitle: string }> = ({ icon, title, gradient, subtitle }) => (
+  <div className="flex flex-wrap items-center justify-between gap-2 px-5 sm:px-6 py-4" style={{ background: gradient }}>
+    <div className="flex items-center gap-2.5">
+      <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.2)' }}>
+        {icon}
+      </span>
+      <h2 style={{ fontSize: 16.5, fontWeight: 800, color: '#fff', margin: 0 }}>{title}</h2>
+    </div>
+    <div style={{ fontSize: 13.5, fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>{subtitle}</div>
   </div>
 );
 
@@ -190,22 +246,20 @@ const CustomizeSchemePage: React.FC = () => {
   const t = getTheme(isDark);
 
   const [flatType, setFlatType] = useState('1 BHK');
-  const [totalCost, setTotalCost] = useState(1500000);
+  const [totalCost, setTotalCost] = useState(0);
 
-  const [bookingDate, setBookingDate] = useState('2026-07-19');
-  const [bookingAmount, setBookingAmount] = useState(180000);
+  const [bookingDate, setBookingDate] = useState(todayISO());
+  const [bookingAmount, setBookingAmount] = useState(0);
 
   const [remainingBookingAmount, setRemainingBookingAmount] = useState(0);
-  const [remainingBookingDate, setRemainingBookingDate] = useState('2026-08-03');
+  const [remainingBookingDate, setRemainingBookingDate] = useState(todayISO());
 
   const [possessionAmount, setPossessionAmount] = useState(0);
-  const [installmentDate, setInstallmentDate] = useState('2026-08-05');
+  const [installmentDate, setInstallmentDate] = useState(todayISO());
 
-  const [monthlyEmiBeforePossession, setMonthlyEmiBeforePossession] = useState(30000);
-  const [monthlyEmiAfterPossession, setMonthlyEmiAfterPossession] = useState(30000);
-
-  const [totalEmiTenure, setTotalEmiTenure] = useState(44);
-  const [emisBeforePossession, setEmisBeforePossession] = useState(30);
+  const [totalEmiTenure, setTotalEmiTenure] = useState(0);
+  const [monthlyEmiBeforePossession, setMonthlyEmiBeforePossession] = useState(0);
+  const [monthlyEmiAfterPossession, setMonthlyEmiAfterPossession] = useState(0);
 
   const [boosterAmountBeforePossession, setBoosterAmountBeforePossession] = useState(0);
   const [boosterIntervalBeforePossession, setBoosterIntervalBeforePossession] = useState(0);
@@ -213,9 +267,23 @@ const CustomizeSchemePage: React.FC = () => {
   const [boosterIntervalAfterPossession, setBoosterIntervalAfterPossession] = useState(0);
 
   // ── the whole EMI Scheme + EMI Schedule, recomputed live on every field
-  //    change (including every slider drag) — see the file-header note. ──
+  //    change (including every slider drag) — see the file-header note on
+  //    how the before/after possession EMI split is derived. ─────────────
   const computed = useMemo(() => {
-    const beforeCount = Math.max(0, Math.min(emisBeforePossession, totalEmiTenure));
+    const remainingToFinance = Math.max(0, totalCost - bookingAmount - remainingBookingAmount - possessionAmount);
+
+    let beforeCount = 0;
+    if (totalEmiTenure > 0) {
+      if (monthlyEmiBeforePossession === monthlyEmiAfterPossession) {
+        // Rates equal — every split balances the totals identically, so
+        // there's no amount-based signal to recover one; split evenly.
+        beforeCount = Math.round(totalEmiTenure / 2);
+      } else {
+        const raw = (remainingToFinance - totalEmiTenure * monthlyEmiAfterPossession) / (monthlyEmiBeforePossession - monthlyEmiAfterPossession);
+        beforeCount = Math.round(raw);
+      }
+      beforeCount = Math.min(totalEmiTenure, Math.max(0, beforeCount));
+    }
     const afterCount = Math.max(0, totalEmiTenure - beforeCount);
 
     const boosterOccBefore = boosterIntervalBeforePossession > 0 ? Math.floor(beforeCount / boosterIntervalBeforePossession) : 0;
@@ -281,13 +349,13 @@ const CustomizeSchemePage: React.FC = () => {
 
     return { beforeCount, afterCount, summaryA, summaryB, totalA, totalB, grandTotal, beforeRows, afterRows };
   }, [
-    flatType, totalCost, bookingDate, bookingAmount, remainingBookingAmount, remainingBookingDate,
+    totalCost, bookingDate, bookingAmount, remainingBookingAmount, remainingBookingDate,
     possessionAmount, installmentDate, monthlyEmiBeforePossession, monthlyEmiAfterPossession,
-    totalEmiTenure, emisBeforePossession, boosterAmountBeforePossession, boosterIntervalBeforePossession,
+    totalEmiTenure, boosterAmountBeforePossession, boosterIntervalBeforePossession,
     boosterAmountAfterPossession, boosterIntervalAfterPossession,
   ]);
 
-  const costMismatch = Math.round(computed.grandTotal) !== Math.round(totalCost);
+  const costMismatch = totalCost > 0 && Math.round(computed.grandTotal) !== Math.round(totalCost);
 
   return (
     <div style={{ fontFamily: t.fontFamily }}>
@@ -304,7 +372,7 @@ const CustomizeSchemePage: React.FC = () => {
       </div>
 
       {/* ── Payment Details form ────────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
         <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" color="#059669" />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -313,7 +381,7 @@ const CustomizeSchemePage: React.FC = () => {
               {FLAT_TYPES.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
           </FieldWrap>
-          <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={50000000} step={5000} prefix="₹" />
+          <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={50000000} step={1000} prefix="₹" />
           <DateField t={t} label="Booking Date" value={bookingDate} onChange={setBookingDate} />
           <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={1000} prefix="₹" />
         </div>
@@ -325,20 +393,16 @@ const CustomizeSchemePage: React.FC = () => {
           <DateField t={t} label="Installment Date (1st EMI)" value={installmentDate} onChange={setInstallmentDate} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={500} prefix="₹" />
-          <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={500} prefix="₹" />
-          <SliderField t={t} label="Total EMI Tenure (Months)" value={totalEmiTenure} onChange={(v) => setTotalEmiTenure(v)} max={120} step={1} suffix="months" />
-          <SliderField
-            t={t} label="EMIs Before Possession" value={Math.min(emisBeforePossession, totalEmiTenure)}
-            onChange={setEmisBeforePossession} max={totalEmiTenure} step={1} suffix="months"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          <SliderField t={t} label="Total EMI Tenure (Months)" value={totalEmiTenure} onChange={setTotalEmiTenure} max={120} step={1} suffix="months" />
+          <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={1000} prefix="₹" />
+          <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={1000} prefix="₹" />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={500} prefix="₹" />
+          <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={1000} prefix="₹" />
           <SliderField t={t} label="Booster Interval Before Possession (Months)" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" />
-          <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={500} prefix="₹" />
+          <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={1000} prefix="₹" />
           <SliderField t={t} label="Booster Interval After Possession (Months)" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" />
         </div>
 
@@ -350,30 +414,36 @@ const CustomizeSchemePage: React.FC = () => {
       </div>
 
       {/* ── EMI Scheme summary ──────────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdCalculate size={16} />} title="EMI Scheme" color="#4338ca" />
-        <div style={{ fontSize: 15, fontWeight: 700, color: t.textPrimary, marginBottom: 16 }}>
-          Total Cost of Flat for {flatType}: {formatINR(totalCost)}
-        </div>
-        <SummaryTable t={t} heading="A) Mode of Payment (Before Possession)" rows={computed.summaryA} total={computed.totalA} totalLabel="Total (A) (Before Possession)" />
-        <SummaryTable t={t} heading="B) After Possession" rows={computed.summaryB} total={computed.totalB} totalLabel="Total (B) (After Possession)" />
-        <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
-          <span style={{ fontSize: 15, fontWeight: 800, color: '#4338ca' }}>{formatINR(computed.grandTotal)}</span>
+      <div className="rounded-2xl mb-5 overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <ResultPanelHeader
+          icon={<MdCalculate size={17} color="#fff" />} title="EMI Scheme"
+          gradient="linear-gradient(135deg,#4338ca,#6366f1)"
+          subtitle={`Total Cost of Flat for ${flatType}: ${formatINR(totalCost)}`}
+        />
+        <div className="p-5 sm:p-6">
+          <SummaryTable t={t} heading="A) Mode of Payment (Before Possession)" rows={computed.summaryA} total={computed.totalA} totalLabel="Total (A) (Before Possession)" />
+          <SummaryTable t={t} heading="B) After Possession" rows={computed.summaryB} total={computed.totalB} totalLabel="Total (B) (After Possession)" />
+          <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: '#4338ca' }}>{formatINR(computed.grandTotal)}</span>
+          </div>
         </div>
       </div>
 
       {/* ── EMI Schedule — full month-by-month breakdown ────────────── */}
-      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdListAlt size={16} />} title="EMI Schedule" color="#059669" />
-        <div style={{ fontSize: 15, fontWeight: 700, color: t.textPrimary, marginBottom: 16 }}>
-          Schedule {formatINR(totalCost)} for {flatType} - {totalEmiTenure} months
-        </div>
-        <ScheduleTable t={t} section="A" rows={computed.beforeRows} total={computed.totalA} totalLabel="(A) Total Before Possession" />
-        <ScheduleTable t={t} section="B" rows={computed.afterRows} total={computed.totalB} totalLabel="(B) Total After Possession" />
-        <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
-          <span style={{ fontSize: 15, fontWeight: 800, color: '#4338ca' }}>{formatINR(computed.grandTotal)}</span>
+      <div className="rounded-2xl mb-5 overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <ResultPanelHeader
+          icon={<MdListAlt size={17} color="#fff" />} title="EMI Schedule"
+          gradient="linear-gradient(135deg,#059669,#10b981)"
+          subtitle={`Schedule ${formatINR(totalCost)} for ${flatType} - ${totalEmiTenure} months`}
+        />
+        <div className="p-5 sm:p-6">
+          <ScheduleTable t={t} section="A" rows={computed.beforeRows} total={computed.totalA} totalLabel="(A) Total Before Possession" />
+          <ScheduleTable t={t} section="B" rows={computed.afterRows} total={computed.totalB} totalLabel="(B) Total After Possession" />
+          <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: '#4338ca' }}>{formatINR(computed.grandTotal)}</span>
+          </div>
         </div>
       </div>
     </div>
