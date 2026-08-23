@@ -81,6 +81,14 @@ export interface Employee {
   designation_names                                : string[];
   designation_ids                                  : number[];
   module_keys                                       : string[];
+  // Single primary department/designation name, straight from the list
+  // query's JOIN (department_id/designation_id) — always present on list
+  // rows, unlike department_names/designation_names above (the full
+  // multi-membership set), which the list query doesn't fetch at all to
+  // avoid an N+1 query per row. The card falls back to these when the
+  // multi-membership arrays are empty.
+  department?                                      : string | null;
+  designation?                                      : string | null;
 
   status                                             : EmployeeStatus;
   is_active                                           : boolean;
@@ -112,8 +120,11 @@ const normalizeEmployee = (raw: Record<string, unknown>): Employee => ({
   appointment_letter_url: (raw.offer_letter_url as string | null) ?? null,
   // <input type="date"> requires exactly "YYYY-MM-DD" — the backend
   // returns a full ISO timestamp ("1994-03-12T00:00:00.000Z"), which the
-  // date input silently rejects and renders blank instead.
+  // date input silently rejects and renders blank instead. Same issue (and
+  // fix) for joining_date, which was resetting on every View/Edit for the
+  // same reason.
   date_of_birth: raw.date_of_birth ? String(raw.date_of_birth).slice(0, 10) : '',
+  joining_date: raw.joining_date ? String(raw.joining_date).slice(0, 10) : '',
 });
 
 export interface EmployeeListResponse {
@@ -197,10 +208,8 @@ export interface EmployeeFileValues {
   pan_card?           : File | null;
   resume?             : File | null;
   appointment_letter? : File | null;
-  // No backend field for a "passbook" document as of V_13.0 (no matching
-  // multer field / column) — kept on the form for UI continuity, but
-  // deliberately NOT translated/sent to the backend. See
-  // EMPLOYEE_FILE_FIELD_MAP below.
+  // V_15.0 — real backend column (passbook_photo_url) and multer field
+  // (passbook_photo) now exist; see EMPLOYEE_FILE_FIELD_MAP below.
   passbook_photo?     : File | null;
 }
 
@@ -251,19 +260,19 @@ const EMPLOYEE_TEXT_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
 // this list is EXHAUSTIVE and must be used as an allowlist (see
 // toBackendEmployeeFormData below) rather than an additive rename: multer's
 // upload.fields(DOCUMENT_FIELDS) only accepts photo/aadhaar_card_img/
-// pan_card_img/offer_letter/resume/salary_slip as file field names and
-// rejects the WHOLE request (LIMIT_UNEXPECTED_FILE) if a file arrives under
-// any other fieldname — so a file field with no entry here (passbook_photo)
+// pan_card_img/offer_letter/resume/salary_slip/passbook_photo as file field
+// names and rejects the WHOLE request (LIMIT_UNEXPECTED_FILE) if a file
+// arrives under any other fieldname — so a file field with no entry here
 // must never be forwarded at all, and one that already matches the backend
-// name (`resume`) still needs an identity entry so it doesn't get dropped.
-// `passbook_photo` has no backend equivalent (no such multer field/column)
-// as of V_13.0 — deliberately left unmapped rather than guessed at.
+// name (`resume`, `passbook_photo`) still needs an identity entry so it
+// doesn't get dropped.
 const EMPLOYEE_FILE_FIELD_MAP: ReadonlyArray<readonly [string, string]> = [
   ['profile_photo', 'photo'],
   ['aadhar_card', 'aadhaar_card_img'],
   ['pan_card', 'pan_card_img'],
   ['resume', 'resume'],
   ['appointment_letter', 'offer_letter'],
+  ['passbook_photo', 'passbook_photo'],
 ];
 
 // Builds the FormData actually sent to the backend: every TEXT entry

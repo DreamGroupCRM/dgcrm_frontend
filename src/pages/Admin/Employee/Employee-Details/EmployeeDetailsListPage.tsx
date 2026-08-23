@@ -17,17 +17,20 @@ import { FetchEmployeeDetails, DeleteEmployee, Employee, EmployeeStatus } from '
 import { formatDate, showAlert } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
 
-// Age in whole years from a 'YYYY-MM-DD' date_of_birth — same "derive from
-// existing data, no schema change" approach as cityStateFromAddress below.
-const ageFromDob = (dob: string): number | null => {
+// Age in years + months from a 'YYYY-MM-DD' date_of_birth — same "derive
+// from existing data, no schema change" approach as cityStateFromAddress
+// below. e.g. DOB 22-03-1994 today -> "32 yrs 5 months", not just "32 yrs".
+const ageFromDob = (dob: string): string | null => {
   if (!dob) return null;
   const birth = new Date(dob);
   if (Number.isNaN(birth.getTime())) return null;
   const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const monthDiff = today.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
-  return age;
+  let years = today.getFullYear() - birth.getFullYear();
+  let months = today.getMonth() - birth.getMonth();
+  if (today.getDate() < birth.getDate()) months--;
+  if (months < 0) { years--; months += 12; }
+  if (years < 0) return null;
+  return months > 0 ? `${years} yrs ${months} months` : `${years} yrs`;
 };
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
@@ -125,15 +128,16 @@ const EmployeeDetailsListPage: React.FC = () => {
     return { total, active, onLeave, inactive, activePct: pct(active), onLeavePct: pct(onLeave), inactivePct: pct(inactive) };
   }, [allEmployees]);
 
-  // ── search (employee name only — per spec, matching the single-field
-  //    search pattern every other master's list page already uses) +
-  //    filters + sort ────────────────────────────────────────────────
+  // ── search (employee name OR employee ID) + filters + sort ─────────────
   useEffect(() => {
     const q = search.trim().toLowerCase();
     let rows = [...allEmployees];
 
     if (q) {
-      rows = rows.filter((e) => `${e.first_name} ${e.last_name}`.toLowerCase().includes(q));
+      rows = rows.filter((e) =>
+        `${e.first_name} ${e.last_name}`.toLowerCase().includes(q) ||
+        e.employee_code?.toLowerCase().includes(q)
+      );
     }
     if (departmentFilter !== 'All Departments') rows = rows.filter((e) => e.department_names?.includes(departmentFilter));
     if (designationFilter !== 'All Designations') rows = rows.filter((e) => e.designation_names?.includes(designationFilter));
@@ -212,18 +216,33 @@ const EmployeeDetailsListPage: React.FC = () => {
       <div className="rounded-2xl p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3 min-w-0">
-            {emp.profile_photo_url ? (
-              <img src={emp.profile_photo_url} alt="" className="rounded-full flex-shrink-0" style={{ width: 48, height: 48, objectFit: 'cover' }} />
-            ) : (
-              <div
-                className="flex items-center justify-center rounded-full flex-shrink-0 text-white font-bold"
-                style={{ width: 48, height: 48, background: 'linear-gradient(135deg,#4338ca,#4f46e5)', fontSize: 15 }}
+            {/* Status badge lives under the photo (small, out of the name's
+                way) rather than beside the name — at card width, a badge
+                next to the name was eating enough space to truncate names
+                like "Sohel" down to "Soh…". */}
+            <div className="flex flex-col items-center flex-shrink-0" style={{ gap: 4 }}>
+              {emp.profile_photo_url ? (
+                <img src={emp.profile_photo_url} alt="" className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
+              ) : (
+                <div
+                  className="flex items-center justify-center rounded-full text-white font-bold"
+                  style={{ width: 48, height: 48, background: 'linear-gradient(135deg,#4338ca,#4f46e5)', fontSize: 15 }}
+                >
+                  {initials(emp.first_name, emp.last_name)}
+                </div>
+              )}
+              <span
+                className="inline-flex items-center gap-1 px-1.5 rounded-full font-semibold"
+                style={{ background: status.bg, color: status.color, fontSize: 9, lineHeight: '14px', whiteSpace: 'nowrap' }}
               >
-                {initials(emp.first_name, emp.last_name)}
-              </div>
-            )}
+                <span className="w-1 h-1 rounded-full bg-current" /> {status.label}
+              </span>
+            </div>
             <div className="min-w-0">
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {/* Wraps onto a 2nd line instead of truncating with "…" — at
+                  card width, a single-line ellipsis was cutting "Sohel" down
+                  to "Soh…"; wrapping keeps the full name readable. */}
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, lineHeight: 1.25, wordBreak: 'break-word' }}>
                 {emp.first_name} {emp.last_name}
               </div>
               <button
@@ -237,12 +256,6 @@ const EmployeeDetailsListPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
-              style={{ background: status.bg, color: status.color }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-current" /> {status.label}
-            </span>
             {/* 3-dot menu — the card itself is not clickable; only this button
                 exposes View/Edit/Delete, as a vertical dropdown beneath the
                 button (matching the reference design). Positioned within the
@@ -283,36 +296,48 @@ const EmployeeDetailsListPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 13, color: t.textSecondary, marginBottom: 8 }}>
-          <span>{(emp.designation_names || [])[0] || '—'}</span>
-          {ageFromDob(emp.date_of_birth) != null && (
+        {(() => {
+          // department_names/designation_names (the full multi-membership
+          // set) come back empty on list rows — the list query doesn't fetch
+          // them to avoid an N+1 per row (see employees.repository.ts). Fall
+          // back to the single primary department/designation the list
+          // query DOES join in, so the card isn't just blank dashes.
+          const designationDisplay = (emp.designation_names || [])[0] || emp.designation;
+          const departmentDisplay = (emp.department_names || [])[0] || emp.department;
+          const age = ageFromDob(emp.date_of_birth);
+          return (
             <>
-              <span style={{ color: t.divider }}>•</span>
-              <span>{ageFromDob(emp.date_of_birth)} yrs</span>
-            </>
-          )}
-        </div>
+              <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 13, color: t.textSecondary, marginBottom: 8 }}>
+                <span>{designationDisplay || '—'}</span>
+                {age != null && (
+                  <>
+                    <span style={{ color: t.divider }}>•</span>
+                    <span>{age}</span>
+                  </>
+                )}
+              </div>
 
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {(emp.department_names || []).slice(0, 1).map((d) => (
-            <span
-              key={`dept-${d}`}
-              className="px-2 py-0.5 rounded-full text-xs font-semibold"
-              style={{ background: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff', color: '#2563eb' }}
-            >
-              {d}
-            </span>
-          ))}
-          {(emp.designation_names || []).slice(0, 1).map((d) => (
-            <span
-              key={`desig-${d}`}
-              className="px-2 py-0.5 rounded-full text-xs font-semibold"
-              style={{ background: isDark ? 'rgba(124,58,237,0.15)' : '#f5f3ff', color: '#7c3aed' }}
-            >
-              {d}
-            </span>
-          ))}
-        </div>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {departmentDisplay && (
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                    style={{ background: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff', color: '#2563eb' }}
+                  >
+                    {departmentDisplay}
+                  </span>
+                )}
+                {designationDisplay && (
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                    style={{ background: isDark ? 'rgba(124,58,237,0.15)' : '#f5f3ff', color: '#7c3aed' }}
+                  >
+                    {designationDisplay}
+                  </span>
+                )}
+              </div>
+            </>
+          );
+        })()}
 
         <div className="space-y-1.5" style={{ fontSize: 12.5, color: t.textSecondary }}>
           <div className="flex items-center gap-1.5 min-w-0">
@@ -366,7 +391,7 @@ const EmployeeDetailsListPage: React.FC = () => {
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input
             type="text"
-            placeholder="Search Employee Name"
+            placeholder="Search by Employee Name or ID"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="master-search-input"
