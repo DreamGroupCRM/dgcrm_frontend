@@ -85,23 +85,24 @@ const getFieldStyle = (t: Theme): React.CSSProperties => ({
   padding: '9px 12px', fontSize: 13.5, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
 });
 
+// Fixed 2-line-tall label slot, text bottom-aligned within it — the actual
+// fix for the "fields don't line up" problem. Labels vary from 1 line
+// ("Booking Date") to 2 ("Remaining Booking Amount (₹)"); with a plain
+// `display:block` label, a 1-line neighbour's input sits higher than a
+// 2-line neighbour's input in the same grid row, so nothing looked
+// aligned. Reserving the same height for every label regardless of its
+// own line count means every input in a row starts at the same Y.
 const getLabelStyle = (t: Theme): React.CSSProperties => ({
-  display: 'block', fontSize: 13, fontWeight: 600, color: t.textPrimary, marginBottom: 6,
+  display: 'flex', alignItems: 'flex-end', minHeight: 34, fontSize: 13, lineHeight: 1.25,
+  fontWeight: 600, color: t.textPrimary, marginBottom: 6,
 });
 
-// Fixed, content-appropriate width instead of stretching to fill a grid
-// column — the earlier 4-per-row CSS grid made every field (even "₹ 0")
-// as wide as the widest column, which looked oversized and sparse. 232px
-// comfortably fits an amount/date value and lets the longer labels
-// (e.g. "Booster Interval After Possession (Months)") wrap onto 2 lines
-// without the field itself needing to be any wider. A handful of fields
-// (Total Cost / Booking / Remaining Booking / Possession Amount, the 3
-// date fields, Total EMI Tenure) use the narrower NARROW_WIDTH instead.
-const FIELD_WIDTH = 232;
-const NARROW_WIDTH = 176;
-
-const FieldWrap: React.FC<{ t: Theme; label: string; width?: number; className?: string; children: React.ReactNode }> = ({ t, label, width = FIELD_WIDTH, className, children }) => (
-  <div className={className} style={{ width, flex: `0 0 ${width}px` }}>
+// Every field lives in ONE CSS grid (not several manually-sized flex-wrap
+// rows) — grid columns are equal width by construction and the browser
+// decides how many fit per row, so there's no per-field width bookkeeping
+// and no ragged trailing gap on the last row of each group.
+const FieldWrap: React.FC<{ t: Theme; label: string; className?: string; children: React.ReactNode }> = ({ t, label, className, children }) => (
+  <div className={className}>
     <label style={getLabelStyle(t)}>{label}</label>
     {children}
   </div>
@@ -115,8 +116,8 @@ const FieldWrap: React.FC<{ t: Theme; label: string; width?: number; className?:
 // at the text box above.
 const SliderField: React.FC<{
   t: Theme; label: string; value: number; onChange: (v: number) => void;
-  min?: number; max: number; step?: number; prefix?: string; suffix?: string; width?: number;
-}> = ({ t, label, value, onChange, min = 0, max, step = 1, prefix, suffix, width }) => {
+  min?: number; max: number; step?: number; prefix?: string; suffix?: string;
+}> = ({ t, label, value, onChange, min = 0, max, step = 1, prefix, suffix }) => {
   const [dragging, setDragging] = useState(false);
   const sliderMax = Math.max(max, min + step);
   const clamped = Math.min(Math.max(value, min), sliderMax);
@@ -128,7 +129,7 @@ const SliderField: React.FC<{
   const compact = prefix ? compactINR(value) : '';
 
   return (
-    <FieldWrap t={t} label={label} width={width}>
+    <FieldWrap t={t} label={label}>
       <div className="flex items-center gap-1.5" style={{ ...getFieldStyle(t), padding: '0 10px' }}>
         {prefix && <span style={{ color: t.textSecondary, flexShrink: 0 }}>{prefix}</span>}
         <input
@@ -171,8 +172,8 @@ const SliderField: React.FC<{
   );
 };
 
-const DateField: React.FC<{ t: Theme; label: string; value: string; onChange: (v: string) => void; width?: number }> = ({ t, label, value, onChange, width }) => (
-  <FieldWrap t={t} label={label} width={width}>
+const DateField: React.FC<{ t: Theme; label: string; value: string; onChange: (v: string) => void }> = ({ t, label, value, onChange }) => (
+  <FieldWrap t={t} label={label}>
     <input type="date" value={value} onClick={openPicker} onFocus={openPicker} onChange={(e) => onChange(e.target.value)} style={getFieldStyle(t)} />
   </FieldWrap>
 );
@@ -403,26 +404,20 @@ const CustomizeSchemePage: React.FC = () => {
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
         <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" color="#059669" />
 
-        {/* 3 explicit rows (not one continuous flex-wrap flow) so the
-            layout is reliably 3 rows on a normal desktop width, not
-            whatever count the browser happens to wrap at. */}
-        <div className="flex flex-wrap gap-4 mb-4">
-          <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" width={NARROW_WIDTH} />
-          <DateField t={t} label="Booking Date" value={bookingDate} onChange={setBookingDate} width={NARROW_WIDTH} />
-          <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" width={NARROW_WIDTH} />
-          <SliderField t={t} label="Remaining Booking Amount (₹)" value={remainingBookingAmount} onChange={setRemainingBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" width={NARROW_WIDTH} />
-          <DateField t={t} label="Remaining Booking Date" value={remainingBookingDate} onChange={setRemainingBookingDate} width={NARROW_WIDTH} />
-        </div>
-
-        <div className="flex flex-wrap gap-4 mb-4">
-          <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" width={NARROW_WIDTH} />
-          <DateField t={t} label="Installment Date (1st EMI)" value={installmentDate} onChange={setInstallmentDate} width={NARROW_WIDTH} />
-          <SliderField t={t} label="Total EMI Tenure (Months)" value={totalEmiTenure} onChange={setTotalEmiTenure} max={120} step={1} suffix="months" width={NARROW_WIDTH} />
+        {/* One grid for every field — equal-width columns, however many
+            fit the container per row, each row's inputs starting at the
+            same Y (see getLabelStyle's fixed label height above). */}
+        <div className="grid gap-x-5 gap-y-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+          <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" />
+          <DateField t={t} label="Booking Date" value={bookingDate} onChange={setBookingDate} />
+          <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
+          <SliderField t={t} label="Remaining Booking Amount (₹)" value={remainingBookingAmount} onChange={setRemainingBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
+          <DateField t={t} label="Remaining Booking Date" value={remainingBookingDate} onChange={setRemainingBookingDate} />
+          <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
+          <DateField t={t} label="Installment Date (1st EMI)" value={installmentDate} onChange={setInstallmentDate} />
+          <SliderField t={t} label="Total EMI Tenure (Months)" value={totalEmiTenure} onChange={setTotalEmiTenure} max={120} step={1} suffix="months" />
           <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" />
           <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" />
-        </div>
-
-        <div className="flex flex-wrap gap-4">
           <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" />
           <SliderField t={t} label="Booster Interval Before Possession (Months)" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" />
           <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" />
