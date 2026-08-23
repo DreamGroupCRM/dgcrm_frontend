@@ -29,6 +29,13 @@
 
 import axiosInstance from './axiosConfig';
 
+// Sent as a custom request header on every call below, and echoed back by
+// the backend as a response header (see employees.controller.ts) — same
+// convention as the Master module's X-Api-Name header (companyService.ts
+// etc.) so the named API operation being called is visible in the
+// browser's Network tab on both the request and the response.
+const API_NAME_HEADER = 'X-Api-Name';
+
 export type EmployeeStatus = 'active' | 'inactive' | 'on_leave';
 
 export interface Employee {
@@ -261,14 +268,17 @@ const toBackendEmployeeFormData = (formData: FormData): FormData => {
 
 // ── Fetch list of all employees ─────────────────────────────────────────────
 /** GET /api/employees?page=1&limit=10&search=... */
-export const fetchEmployeeList = async (
+export const FetchEmployeeDetails = async (
   page: number,
   limit: number,
   search?: string
 ): Promise<EmployeeListResponse> => {
   const params: Record<string, string | number> = { page, limit };
   if (search && search.trim()) params.search = search.trim();
-  const res = await axiosInstance.get('/employees', { params });
+  const res = await axiosInstance.get('/employees', {
+    params,
+    headers: { [API_NAME_HEADER]: 'FetchEmployeeDetails' },
+  });
   return {
     success: res.data.success,
     message: res.data.message,
@@ -281,8 +291,10 @@ export const fetchEmployeeList = async (
 
 // ── Fetch single employee by ID ─────────────────────────────────────────────
 /** GET /api/employees/:id */
-export const fetchEmployeeById = async (id: string): Promise<EmployeeSingleResponse> => {
-  const res = await axiosInstance.get(`/employees/${id}`);
+export const ViewEmployee = async (id: string): Promise<EmployeeSingleResponse> => {
+  const res = await axiosInstance.get(`/employees/${id}`, {
+    headers: { [API_NAME_HEADER]: 'ViewEmployee' },
+  });
   return { success: res.data.success, message: res.data.message, data: res.data.data as Employee };
 };
 
@@ -311,21 +323,23 @@ export const createEmployee = async (
 
 // ── Update existing employee ────────────────────────────────────────────────
 /** PUT /api/employees/:id (multipart/form-data) */
-export const updateEmployee = async (
+export const EditEmployee = async (
   id: string,
   values: EmployeeFormValues,
   files: EmployeeFileValues
 ): Promise<EmployeeSingleResponse> => {
   const res = await axiosInstance.put(`/employees/${id}`, toBackendEmployeeFormData(buildEmployeeFormData(values, files)), {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': 'multipart/form-data', [API_NAME_HEADER]: 'EditEmployee' },
   });
   return { success: res.data.success, message: res.data.message, data: res.data.data as Employee };
 };
 
 // ── Delete employee ──────────────────────────────────────────────────────────
 /** DELETE /api/employees/:id */
-export const deleteEmployee = async (id: string): Promise<EmployeeDeleteResponse> => {
-  const res = await axiosInstance.delete(`/employees/${id}`);
+export const DeleteEmployee = async (id: string): Promise<EmployeeDeleteResponse> => {
+  const res = await axiosInstance.delete(`/employees/${id}`, {
+    headers: { [API_NAME_HEADER]: 'DeleteEmployee' },
+  });
   return res.data;
 };
 
@@ -362,11 +376,11 @@ export const fetchEmployeePermissions = async (employeeId: string): Promise<Empl
 
 // Grouped export — same convenience pattern as buildingService / departmentService
 export const employeeDetailsService = {
-  getAll      : fetchEmployeeList,
-  getById     : fetchEmployeeById,
+  getAll      : FetchEmployeeDetails,
+  getById     : ViewEmployee,
   nextCode    : fetchNextEmployeeCode,
   create      : createEmployee,
-  update      : updateEmployee,
-  remove      : deleteEmployee,
+  update      : EditEmployee,
+  remove      : DeleteEmployee,
   permissions : fetchEmployeePermissions,
 };

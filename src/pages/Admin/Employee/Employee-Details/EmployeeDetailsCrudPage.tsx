@@ -12,7 +12,7 @@ import {
 import { useAppSelector } from '../../../../hooks';
 import { getTheme } from '../../../../styles/theme';
 import {
-  fetchEmployeeById, fetchNextEmployeeCode, createEmployee, updateEmployee,
+  ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
   fetchEmployeePermissions,
   EmployeeFormValues, EmployeeFileValues, EmployeeStatus,
 } from '../../../../services/employeeDetailsService';
@@ -33,6 +33,11 @@ const STATUS_OPTIONS: { value: EmployeeStatus; label: string }[] = [
   { value: 'inactive', label: 'Inactive' },
   { value: 'on_leave', label: 'On Leave' },
 ];
+
+// Sticky crud-footer height, matching every other Master CRUD page's
+// convention — page wrapper reserves this much bottom padding so the
+// fixed footer never overlaps form content.
+const FOOTER_HEIGHT = 76;
 
 // A checklist option with a real backend id (department/designation/
 // module-action id) driving selection, and a display label.
@@ -331,7 +336,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     (async () => {
       setFetching(true);
       try {
-        const res = await fetchEmployeeById(id);
+        const res = await ViewEmployee(id);
         if (res.success && res.data) {
           const e = res.data;
           setEmployeeCode(e.employee_code);
@@ -438,11 +443,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     setSaving(true);
     try {
       if (mode === 'edit' && id) {
-        await updateEmployee(id, form, files);
-        toast.success('Employee Updated Successfully');
+        await EditEmployee(id, form, files);
+        toast.success('Employee updated successfully.');
       } else {
         await createEmployee(form, files);
-        toast.success('Employee Created Successfully');
+        toast.success('Employee created successfully.');
       }
       navigate('/admin/employee/employee-details');
     } catch {
@@ -464,7 +469,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
@@ -706,8 +711,8 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
       </div>
 
-      {/* ── Action Buttons — Cancel + Save Employee, bottom-right ──────── */}
-      <div className="flex items-center justify-end gap-3 mt-6">
+      {/* ── Sticky footer — Go Back (always) + Create/Update (add/edit only), centered ──────── */}
+      <div className="master-crud-footer flex items-center justify-center gap-3" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
         <button
           type="button"
           onClick={() => navigate('/admin/employee/employee-details')}
@@ -715,7 +720,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           className="px-6 py-2.5 rounded-xl text-sm font-semibold"
           style={{ background: t.surfaceBg, color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}
         >
-          Cancel
+          Go Back
         </button>
         {!isView && (
           <button
@@ -728,7 +733,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.8 : 1,
             }}
           >
-            {saving ? 'Saving...' : 'Save Employee'}
+            {saving ? 'Saving...' : mode === 'edit' ? 'Update' : 'Create'}
           </button>
         )}
       </div>

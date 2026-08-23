@@ -20,7 +20,7 @@ import {
   collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, PAYMENT_FOR_OPTIONS, paymentForLabel,
 } from '../../../../services/paymentService';
 import { FetchBuildingList } from '../../../../services/buildingService';
-import { fetchEmployeeList } from '../../../../services/employeeDetailsService';
+import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
   Customer, Building, CustomerPaymentRecord, CustomerScheme,
   PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload,
@@ -201,7 +201,7 @@ const CustomerDetailsListPage: React.FC = () => {
     })();
     (async () => {
       try {
-        const res = await fetchEmployeeList(1, 1000);
+        const res = await FetchEmployeeDetails(1, 1000);
         if (res.success) {
           setEmployees((res.rows ?? []).map((e) => ({ id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})` })));
         }
