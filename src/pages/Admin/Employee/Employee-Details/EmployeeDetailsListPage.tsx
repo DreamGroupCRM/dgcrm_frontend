@@ -244,13 +244,11 @@ const EmployeeDetailsListPage: React.FC = () => {
               <span className="w-1.5 h-1.5 rounded-full bg-current" /> {status.label}
             </span>
             {/* 3-dot menu — the card itself is not clickable; only this button
-                exposes View/Edit/Delete. Flyout opens to the LEFT of the
-                button as a horizontal row (icons side by side, not a
-                vertically stacked list) with vertical divider lines between
-                each option, so it stays beside the button rather than
-                dropping below it. Positioned within the button's own
-                relative wrapper (not the whole card) so it can't get clipped
-                by the card's edge in the grid's leftmost/rightmost columns. */}
+                exposes View/Edit/Delete, as a vertical dropdown beneath the
+                button (matching the reference design). Positioned within the
+                button's own relative wrapper (not the whole card) so it
+                can't get clipped by the card's edge in the grid's
+                rightmost columns. */}
             <div style={{ position: 'relative' }} ref={openMenuId === emp.id ? menuRef : undefined}>
               <button
                 type="button"
@@ -261,25 +259,22 @@ const EmployeeDetailsListPage: React.FC = () => {
               </button>
               {openMenuId === emp.id && (
                 <div
-                  className="flex items-stretch"
                   style={{
-                    position: 'absolute', top: 0, right: '100%', marginRight: 6, zIndex: 20,
+                    position: 'absolute', top: '110%', right: 0, zIndex: 20, minWidth: 140,
                     background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.14)', overflow: 'hidden', whiteSpace: 'nowrap',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.14)', padding: '6px 0',
                   }}
                 >
                   <button type="button" title="View" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/view/${emp.id}`); }}
-                    className="flex items-center gap-1.5 px-3 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
                     <MdVisibility size={16} color="#2563eb" /> View
                   </button>
-                  <span style={{ width: 1, background: t.divider, flexShrink: 0 }} />
                   <button type="button" title="Edit" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/edit/${emp.id}`); }}
-                    className="flex items-center gap-1.5 px-3 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
                     <MdEdit size={15} color="#7c3aed" /> Edit
                   </button>
-                  <span style={{ width: 1, background: t.divider, flexShrink: 0 }} />
                   <button type="button" title="Delete" onClick={() => handleDelete(emp)}
-                    className="flex items-center gap-1.5 px-3 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
                     <MdDelete size={16} /> Delete
                   </button>
                 </div>
