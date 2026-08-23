@@ -13,7 +13,8 @@ import { useAppSelector } from '../../../../hooks';
 import { getTheme } from '../../../../styles/theme';
 import {
   ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
-  fetchEmployeePermissions,
+  fetchEmployeePermissions, FetchEmployeeDetails,
+  FetchVisibleEmployees, AssignVisibleEmployees,
   EmployeeFormValues, EmployeeFileValues, EmployeeStatus,
 } from '../../../../services/employeeDetailsService';
 import { FetchDepartmentList } from '../../../../services/departmentService';
@@ -191,6 +192,76 @@ const CheckboxGroup: React.FC<{
   </div>
 );
 
+// Unified shape both the Add-mode source (fetchMappingMatrix — flat
+// modules/actions/mappings, nothing pre-checked) and the Edit/View-mode
+// source (fetchEmployeePermissions — already grouped by module, with an
+// `assigned` flag per action) get normalized into, so ONE grid component
+// and ONE piece of loading code serves every mode. `cells` only has an
+// entry where that module actually supports that action — a module/action
+// combination with no mapping renders as a blank "—" cell, not an
+// unchecked checkbox, since checking it would have nothing to save.
+interface ModuleActionGridData {
+  modules: { id: number; name: string }[];
+  actionColumns: { code: string; label: string }[];
+  cells: Record<string, number>; // `${moduleId}:${actionCode}` -> module_actions.id
+}
+const emptyModuleGrid: ModuleActionGridData = { modules: [], actionColumns: [], cells: {} };
+
+// ── Assign Actions & Modules — module-rows x action-columns grid, checkbox
+//    at each cell the module actually supports (see ModuleActionGridData
+//    above). Replaces the old flat "Module – Action" checkbox list so it's
+//    clear at a glance which actions apply to which module.
+const ModuleActionGrid: React.FC<{
+  t: Theme; isView: boolean; grid: ModuleActionGridData;
+  selected: number[]; onToggle: (moduleActionId: number) => void; loading?: boolean;
+}> = ({ t, isView, grid, selected, onToggle, loading }) => {
+  if (loading) return <p style={{ fontSize: 12.5, color: t.textSecondary, margin: 0 }}>Loading...</p>;
+  if (grid.modules.length === 0) return <p style={{ fontSize: 12.5, color: t.textSecondary, margin: 0 }}>No modules available.</p>;
+  return (
+    <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
+        <thead>
+          <tr>
+            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, background: t.insetBg, borderBottom: `1px solid ${t.surfaceBorder}` }}>
+              Module
+            </th>
+            {grid.actionColumns.map((a) => (
+              <th key={a.code} style={{ textAlign: 'center', padding: '8px 10px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, background: t.insetBg, borderBottom: `1px solid ${t.surfaceBorder}`, whiteSpace: 'nowrap' }}>
+                {a.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {grid.modules.map((m) => (
+            <tr key={m.id}>
+              <td style={{ padding: '8px 12px', fontSize: 13, fontWeight: 600, color: t.textPrimary, borderBottom: `1px solid ${t.surfaceBorder}`, whiteSpace: 'nowrap' }}>
+                {m.name}
+              </td>
+              {grid.actionColumns.map((a) => {
+                const moduleActionId = grid.cells[`${m.id}:${a.code}`];
+                return (
+                  <td key={a.code} style={{ textAlign: 'center', padding: '8px 10px', borderBottom: `1px solid ${t.surfaceBorder}` }}>
+                    {moduleActionId != null ? (
+                      <input
+                        type="checkbox" checked={selected.includes(moduleActionId)} disabled={isView}
+                        style={{ cursor: isView ? 'default' : 'pointer' }}
+                        onChange={() => onToggle(moduleActionId)}
+                      />
+                    ) : (
+                      <span style={{ color: t.divider }}>—</span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 // ── Profile Photo upload — square, camera-icon placeholder ────────────────
 const ProfilePhotoUpload: React.FC<{
   t: Theme; isDark: boolean; disabled?: boolean;
@@ -264,10 +335,18 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // this used to be a fixed static list with no real ids at all).
   const [departmentOptions, setDepartmentOptions] = useState<IdOption[]>([]);
   const [designationOptions, setDesignationOptions] = useState<IdOption[]>([]);
-  const [moduleOptions, setModuleOptions] = useState<IdOption[]>([]);
+  const [moduleGrid, setModuleGrid] = useState<ModuleActionGridData>(emptyModuleGrid);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [loadingDesignations, setLoadingDesignations] = useState(true);
   const [loadingModules, setLoadingModules] = useState(true);
+
+  // Assign Visible Employees — which other employees this one can view/
+  // manage (see AssignVisibleEmployees in employeeDetailsService.ts: reuses
+  // the reporting-line mechanism, so this is a genuine checklist like
+  // Department/Designation above, not a numeric cap).
+  const [visibleEmployeeOptions, setVisibleEmployeeOptions] = useState<IdOption[]>([]);
+  const [visibleEmployeeIds, setVisibleEmployeeIds] = useState<number[]>([]);
+  const [loadingVisibleEmployees, setLoadingVisibleEmployees] = useState(true);
 
   const set = <K extends keyof EmployeeFormValues>(key: K, value: EmployeeFormValues[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -309,31 +388,35 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     })();
   }, []);
 
-  // ── Assign Actions & Modules checklist options — Add mode only. There's
-  //    no employeeId yet, so /employee-permissions/:id can't be used; build
-  //    the checklist from the full Module x Action mapping matrix instead,
-  //    all unchecked initially. (Edit/View mode builds this same checklist,
-  //    pre-checked, from fetchEmployeePermissions in the load effect below.)
+  // ── Assign Actions & Modules grid — Add mode only. There's no employeeId
+  //    yet, so /employee-permissions/:id can't be used; build the grid from
+  //    the full Module x Action mapping matrix instead, all unchecked
+  //    initially. (Edit/View mode builds the same grid shape, pre-checked,
+  //    from fetchEmployeePermissions in the load effect below.)
   useEffect(() => {
     if (mode !== 'add') return;
     (async () => {
       try {
         const res = await fetchMappingMatrix();
         if (res.success) {
-          // Map keys normalized to Number — the matrix endpoint returns
+          // Keys normalized to Number — the matrix endpoint returns
           // modules[].id/actions[].id as numbers but mappings[].module_id/
           // action_master_id as numeric strings (raw Postgres bigint), so a
-          // strict Map.get() on the raw values always missed, silently
-          // falling back to the literal "Module – Action" placeholder text
-          // for every single checklist row.
+          // strict Map.get() on the raw values always missed.
           const modulesById = new Map(res.data.modules.map((m) => [Number(m.id), m]));
           const actionsById = new Map(res.data.actions.map((a) => [Number(a.id), a]));
-          const opts: IdOption[] = res.data.mappings.map((mp) => {
+          const modules = res.data.modules.map((m) => ({ id: Number(m.id), name: m.name }));
+          const actionLabelByCode = new Map<string, string>();
+          const cells: Record<string, number> = {};
+          res.data.mappings.forEach((mp) => {
             const mod = modulesById.get(Number(mp.module_id));
             const act = actionsById.get(Number(mp.action_master_id));
-            return { value: Number(mp.id), label: `${mod?.name ?? 'Module'} – ${act?.name || act?.code || 'Action'}` };
+            if (!mod || !act) return;
+            actionLabelByCode.set(act.code, act.name || act.code);
+            cells[`${Number(mp.module_id)}:${act.code}`] = Number(mp.id);
           });
-          setModuleOptions(opts);
+          const actionColumns = Array.from(actionLabelByCode, ([code, label]) => ({ code, label })).sort((a, b) => a.code.localeCompare(b.code));
+          setModuleGrid({ modules, actionColumns, cells });
         }
       } catch {
         toast.error('Failed to load module/action list.');
@@ -342,6 +425,27 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       }
     })();
   }, [mode]);
+
+  // ── Assign Visible Employees checklist options — every other employee in
+  //    the company, needed in every mode; the currently-assigned set is
+  //    loaded below alongside Edit/View's other per-employee data. ────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await FetchEmployeeDetails(1, 1000);
+        if (res.success) {
+          const opts = (res.rows || [])
+            .filter((e) => !(mode !== 'add' && id && String(e.id) === id))
+            .map((e) => ({ value: Number(e.id), label: `${e.first_name} ${e.last_name || ''}`.trim() + (e.employee_code ? ` (${e.employee_code})` : '') }));
+          setVisibleEmployeeOptions(opts);
+        }
+      } catch {
+        toast.error('Failed to load employee list.');
+      } finally {
+        if (mode === 'add') setLoadingVisibleEmployees(false);
+      }
+    })();
+  }, [mode, id]);
 
   // ── load for edit/view ───────────────────────────────────────────────
   useEffect(() => {
@@ -387,27 +491,43 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         setFetching(false);
       }
 
-      // Assign Actions & Modules checklist, pre-checked — one call gives
-      // both the full assignable list AND which ones are currently
-      // assigned, for this existing employee.
+      // Assign Actions & Modules grid, pre-checked — one call gives both the
+      // full assignable list AND which ones are currently assigned, already
+      // grouped by module, for this existing employee.
       try {
         const permRes = await fetchEmployeePermissions(id);
         if (permRes.success) {
-          const opts: IdOption[] = [];
+          const modules = (permRes.data || []).map((mod) => ({ id: mod.module_id, name: mod.module_name }));
+          const actionLabelByCode = new Map<string, string>();
+          const cells: Record<string, number> = {};
           const assignedIds: number[] = [];
           (permRes.data || []).forEach((mod) => {
             mod.actions.forEach((a) => {
-              opts.push({ value: a.module_action_id, label: `${mod.module_name} – ${a.label || a.action}` });
+              actionLabelByCode.set(a.action, a.label || a.action);
+              cells[`${mod.module_id}:${a.action}`] = a.module_action_id;
               if (a.assigned) assignedIds.push(a.module_action_id);
             });
           });
-          setModuleOptions(opts);
+          const actionColumns = Array.from(actionLabelByCode, ([code, label]) => ({ code, label })).sort((a, b) => a.code.localeCompare(b.code));
+          setModuleGrid({ modules, actionColumns, cells });
           setForm((prev) => ({ ...prev, module_action_ids: assignedIds }));
         }
       } catch {
         toast.error('Failed to load module/action permissions.');
       } finally {
         setLoadingModules(false);
+      }
+
+      // Assign Visible Employees checklist, pre-checked from this
+      // employee's current reporting-line assignments (see
+      // AssignVisibleEmployees / getVisibleEmployees).
+      try {
+        const visRes = await FetchVisibleEmployees(id);
+        if (visRes.success) setVisibleEmployeeIds((visRes.data || []).map((e) => Number(e.id)));
+      } catch {
+        toast.error('Failed to load visible-employees assignment.');
+      } finally {
+        setLoadingVisibleEmployees(false);
       }
     })();
   }, [mode, id]);
@@ -417,6 +537,13 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       const arr = prev[key];
       return { ...prev, [key]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value] };
     });
+  };
+
+  // Assign Visible Employees lives outside `form` — it saves through a
+  // separate endpoint (AssignVisibleEmployees), not the main employee
+  // payload, so it isn't part of EmployeeFormValues.
+  const toggleVisibleEmployee = (value: number) => {
+    setVisibleEmployeeIds((prev) => prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]);
   };
 
   // ── validation ────────────────────────────────────────────────────────
@@ -455,12 +582,25 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     }
     setSaving(true);
     try {
+      let targetId = id;
       if (mode === 'edit' && id) {
         await EditEmployee(id, form, files);
         toast.success('Employee updated successfully.');
       } else {
-        await createEmployee(form, files);
+        const created = await createEmployee(form, files);
+        targetId = created.data?.id != null ? String(created.data.id) : undefined;
         toast.success('Employee created successfully.');
+      }
+      // Visible-employees assignment saves through its own endpoint (it's
+      // not part of the Employee payload) — always sent, including an empty
+      // selection, so unchecking everyone on Edit actually clears it rather
+      // than leaving the previous assignment in place.
+      if (targetId) {
+        try {
+          await AssignVisibleEmployees(targetId, visibleEmployeeIds);
+        } catch {
+          toast.error('Employee saved, but failed to update the Visible Employees assignment.');
+        }
       }
       navigate('/admin/employee/employee-details');
     } catch (err: any) {
@@ -708,12 +848,22 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           onToggle={(v) => toggleIdInArray('designation_ids', v)}
           loading={loadingDesignations} emptyHint="No designations available."
         />
+        <div className="mb-5">
+          <label style={getLabelStyle(t)}>Assign Actions & Modules<span style={{ color: '#ef4444' }}> *</span></label>
+          <ModuleActionGrid
+            t={t} isView={isView} grid={moduleGrid}
+            selected={form.module_action_ids}
+            onToggle={(v) => toggleIdInArray('module_action_ids', v)}
+            loading={loadingModules}
+          />
+        </div>
+
         <CheckboxGroup
           t={t} isView={isView}
-          label="Assign Actions & Modules" required
-          options={moduleOptions} selected={form.module_action_ids}
-          onToggle={(v) => toggleIdInArray('module_action_ids', v)}
-          loading={loadingModules} emptyHint="No modules available."
+          label="Assign Visible Employees"
+          options={visibleEmployeeOptions} selected={visibleEmployeeIds}
+          onToggle={toggleVisibleEmployee}
+          loading={loadingVisibleEmployees} emptyHint="No other employees available."
         />
 
         <div
@@ -721,7 +871,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           style={{ background: isDark ? 'rgba(99,102,241,0.1)' : '#eef2ff', color: '#4338ca', fontSize: 12.5 }}
         >
           <MdInfoOutline size={16} style={{ flexShrink: 0 }} />
-          You can assign multiple departments, designations and modules to this employee.
+          You can assign multiple departments and designations, pick exactly which actions apply per module, and choose which employees this employee can view.
         </div>
       </div>
 
