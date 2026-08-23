@@ -88,6 +88,34 @@ export interface Employee {
   updated_at?                                           : string;
 }
 
+// The backend's actual column names for several Employee fields differ from
+// the names this form/type use (residential_address vs address,
+// aadhaar_card_number vs aadhar_number, bank_ifsc vs ifsc_code, etc — see
+// EMPLOYEE_TEXT_FIELD_RENAMES below, which handles the OUTGOING direction
+// for Create/Update). Nothing translated the INCOMING GET response back,
+// so `(raw as Employee).address` / `.aadhar_number` / `.pan_number` /
+// `.ifsc_code` / `.profile_photo_url` / `.aadhar_card_url` / `.pan_card_url`
+// / `.appointment_letter_url` were always undefined — View/Edit's form
+// fields for these silently rendered blank even though the data existed in
+// the database, and the List page's location column (derived from address)
+// was blank for every employee. Every GET response (list rows and single)
+// is normalized through this before being handed back to callers.
+const normalizeEmployee = (raw: Record<string, unknown>): Employee => ({
+  ...(raw as unknown as Employee),
+  address: (raw.residential_address as string) ?? '',
+  aadhar_number: (raw.aadhaar_card_number as string) ?? '',
+  pan_number: (raw.pan_card_number as string) ?? '',
+  ifsc_code: (raw.bank_ifsc as string) ?? '',
+  profile_photo_url: (raw.photo_url as string | null) ?? null,
+  aadhar_card_url: (raw.aadhaar_card_img as string | null) ?? null,
+  pan_card_url: (raw.pan_card_img as string | null) ?? null,
+  appointment_letter_url: (raw.offer_letter_url as string | null) ?? null,
+  // <input type="date"> requires exactly "YYYY-MM-DD" — the backend
+  // returns a full ISO timestamp ("1994-03-12T00:00:00.000Z"), which the
+  // date input silently rejects and renders blank instead.
+  date_of_birth: raw.date_of_birth ? String(raw.date_of_birth).slice(0, 10) : '',
+});
+
 export interface EmployeeListResponse {
   success : boolean;
   message?: string;
@@ -282,7 +310,7 @@ export const FetchEmployeeDetails = async (
   return {
     success: res.data.success,
     message: res.data.message,
-    rows: res.data.rows as Employee[],
+    rows: (res.data.rows as Record<string, unknown>[]).map(normalizeEmployee),
     total: res.data.total,
     page: res.data.page,
     limit: res.data.limit,
@@ -295,7 +323,7 @@ export const ViewEmployee = async (id: string): Promise<EmployeeSingleResponse> 
   const res = await axiosInstance.get(`/employees/${id}`, {
     headers: { [API_NAME_HEADER]: 'ViewEmployee' },
   });
-  return { success: res.data.success, message: res.data.message, data: res.data.data as Employee };
+  return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
 };
 
 // ── Preview the next auto-generated employee code (optional) ───────────────
@@ -318,7 +346,7 @@ export const createEmployee = async (
   const res = await axiosInstance.post('/employees', toBackendEmployeeFormData(buildEmployeeFormData(values, files)), {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return { success: res.data.success, message: res.data.message, data: res.data.data as Employee };
+  return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
 };
 
 // ── Update existing employee ────────────────────────────────────────────────
@@ -331,7 +359,7 @@ export const EditEmployee = async (
   const res = await axiosInstance.put(`/employees/${id}`, toBackendEmployeeFormData(buildEmployeeFormData(values, files)), {
     headers: { 'Content-Type': 'multipart/form-data', [API_NAME_HEADER]: 'EditEmployee' },
   });
-  return { success: res.data.success, message: res.data.message, data: res.data.data as Employee };
+  return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
 };
 
 // ── Delete employee ──────────────────────────────────────────────────────────
