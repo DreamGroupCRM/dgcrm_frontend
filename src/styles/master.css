@@ -97,13 +97,17 @@
   position: relative;
 }
 
-/* width:auto (not 100%) — every column takes only the width its own
-   content needs instead of the table being stretched to fill the card and
-   forcing that extra space out across the columns. .master-table-scroll's
-   overflow-x:auto still kicks in if the naturally-sized table is wider
-   than the card. */
+/* width:100% so the table always fills the card's full width — width:auto
+   was tried here but left a dead empty strip on the right of the card
+   whenever a master had few/narrow columns (e.g. Department). table-layout
+   stays the browser default (auto, not fixed), so columns are still only
+   as wide as their own content needs relative to each other — width:100%
+   just means that content-proportional sizing fills the available width
+   instead of stopping short of it. .master-table-scroll's overflow-x:auto
+   still covers the case where content genuinely needs more than the card's
+   width (e.g. Building's many columns). */
 .master-table {
-  width: auto;
+  width: 100%;
   border-collapse: collapse;
 }
 
