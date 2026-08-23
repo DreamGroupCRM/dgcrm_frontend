@@ -1,7 +1,7 @@
 // ==========================================
 // DREAM GROUP CRM - EMPLOYEE CRUD PAGE
 // ==========================================
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -50,6 +50,12 @@ const openPicker = (e: React.MouseEvent<HTMLInputElement>) => e.currentTarget.sh
 // A checklist option with a real backend id (department/designation/
 // module-action id) driving selection, and a display label.
 interface IdOption { value: number; label: string; }
+
+// Designation options carry which Department they belong to (Designation
+// Master's own department_id — nullable for a "global" designation not tied
+// to any one department), so the Assign Designations checklist can be
+// filtered down to only the departments currently checked above it.
+interface DesignationOption extends IdOption { departmentId: number | null; }
 
 const emptyForm: EmployeeFormValues = {
   first_name: '', middle_name: '', last_name: '', date_of_birth: '', email: '',
@@ -207,6 +213,14 @@ interface ModuleActionGridData {
 }
 const emptyModuleGrid: ModuleActionGridData = { modules: [], actionColumns: [], cells: {} };
 
+// Fixed column order for the grid — "Convert" deliberately excluded (only
+// Customers uses it, and it's not part of the standard action set this
+// grid is meant to show); everything else appears in this exact order
+// regardless of the action_master.code alphabetical order the API returns.
+const ACTION_COLUMN_ORDER = ['assign', 'create', 'view', 'edit', 'delete', 'export', 'manage'];
+const orderActionColumns = (labelByCode: Map<string, string>): { code: string; label: string }[] =>
+  ACTION_COLUMN_ORDER.filter((code) => labelByCode.has(code)).map((code) => ({ code, label: labelByCode.get(code)! }));
+
 // ── Assign Actions & Modules — module-rows x action-columns grid, checkbox
 //    at each cell the module actually supports (see ModuleActionGridData
 //    above). Replaces the old flat "Module – Action" checkbox list so it's
@@ -334,7 +348,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // Module/Action masters (see file header note in employeeDetailsService.ts;
   // this used to be a fixed static list with no real ids at all).
   const [departmentOptions, setDepartmentOptions] = useState<IdOption[]>([]);
-  const [designationOptions, setDesignationOptions] = useState<IdOption[]>([]);
+  const [designationOptions, setDesignationOptions] = useState<DesignationOption[]>([]);
   const [moduleGrid, setModuleGrid] = useState<ModuleActionGridData>(emptyModuleGrid);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [loadingDesignations, setLoadingDesignations] = useState(true);
@@ -379,7 +393,12 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     (async () => {
       try {
         const res = await fetchDesignationList(1, 1000);
-        if (res.success) setDesignationOptions((res.rows || []).map((d) => ({ value: Number(d.id), label: d.name })));
+        if (res.success) {
+          setDesignationOptions((res.rows || []).map((d) => ({
+            value: Number(d.id), label: d.name,
+            departmentId: d.department_id != null && d.department_id !== '' ? Number(d.department_id) : null,
+          })));
+        }
       } catch {
         toast.error('Failed to load designations.');
       } finally {
@@ -415,7 +434,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             actionLabelByCode.set(act.code, act.name || act.code);
             cells[`${Number(mp.module_id)}:${act.code}`] = Number(mp.id);
           });
-          const actionColumns = Array.from(actionLabelByCode, ([code, label]) => ({ code, label })).sort((a, b) => a.code.localeCompare(b.code));
+          const actionColumns = orderActionColumns(actionLabelByCode);
           setModuleGrid({ modules, actionColumns, cells });
         }
       } catch {
@@ -508,7 +527,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               if (a.assigned) assignedIds.push(a.module_action_id);
             });
           });
-          const actionColumns = Array.from(actionLabelByCode, ([code, label]) => ({ code, label })).sort((a, b) => a.code.localeCompare(b.code));
+          const actionColumns = orderActionColumns(actionLabelByCode);
           setModuleGrid({ modules, actionColumns, cells });
           setForm((prev) => ({ ...prev, module_action_ids: assignedIds }));
         }
@@ -536,6 +555,35 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     setForm((prev) => {
       const arr = prev[key];
       return { ...prev, [key]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value] };
+    });
+  };
+
+  // Assign Designations is scoped to whichever Departments are checked above
+  // it — e.g. checking "Sales" only reveals Sales's designations; unchecking
+  // it hides them again. A designation with no department_id of its own
+  // (Designation Master allows leaving it unset) is treated as global and
+  // always stays visible, since there's no department to scope it to.
+  const visibleDesignationOptions = useMemo(
+    () => designationOptions.filter((d) => d.departmentId == null || form.department_ids.includes(d.departmentId)),
+    [designationOptions, form.department_ids]
+  );
+
+  // Toggling a Department off also drops any currently-selected designation
+  // that belongs ONLY to that department — otherwise it would keep counting
+  // as "assigned" while no longer being visible/editable in the checklist.
+  const toggleDepartment = (deptId: number) => {
+    setForm((prev) => {
+      const isChecked = prev.department_ids.includes(deptId);
+      const department_ids = isChecked
+        ? prev.department_ids.filter((v) => v !== deptId)
+        : [...prev.department_ids, deptId];
+      const designation_ids = isChecked
+        ? prev.designation_ids.filter((desigId) => {
+            const opt = designationOptions.find((d) => d.value === desigId);
+            return !opt || opt.departmentId == null || department_ids.includes(opt.departmentId);
+          })
+        : prev.designation_ids;
+      return { ...prev, department_ids, designation_ids };
     });
   };
 
@@ -838,15 +886,16 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           t={t} isView={isView}
           label="Assign Departments" required
           options={departmentOptions} selected={form.department_ids}
-          onToggle={(v) => toggleIdInArray('department_ids', v)}
+          onToggle={toggleDepartment}
           loading={loadingDepartments} emptyHint="No departments available."
         />
         <CheckboxGroup
           t={t} isView={isView}
           label="Assign Designations" required
-          options={designationOptions} selected={form.designation_ids}
+          options={visibleDesignationOptions} selected={form.designation_ids}
           onToggle={(v) => toggleIdInArray('designation_ids', v)}
-          loading={loadingDesignations} emptyHint="No designations available."
+          loading={loadingDesignations}
+          emptyHint={form.department_ids.length === 0 ? 'Select a department above to see its designations.' : 'No designations available for the selected department(s).'}
         />
         <div className="mb-5">
           <label style={getLabelStyle(t)}>Assign Actions & Modules<span style={{ color: '#ef4444' }}> *</span></label>
