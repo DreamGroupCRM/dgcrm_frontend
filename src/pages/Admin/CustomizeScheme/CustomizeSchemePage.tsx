@@ -27,10 +27,19 @@ import { getTheme } from '../../../styles/theme';
 
 type Theme = ReturnType<typeof getTheme>;
 
-const FLAT_TYPES = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Studio', 'Other'];
-
 // ── formatting helpers ─────────────────────────────────────────────────────
 const formatINR = (n: number): string => `₹ ${Math.max(0, Math.round(n || 0)).toLocaleString('en-IN')}`;
+
+// Indian-numbering shorthand shown at the end of every amount field —
+// "1500000" alone doesn't read at a glance; "15.00 L" does. Cr only shows
+// up in practice right at the 1-Crore slider ceiling.
+const compactINR = (n: number): string => {
+  const v = Math.max(0, Math.round(n || 0));
+  if (v >= 10000000) return `${(v / 10000000).toFixed(2)} Cr`;
+  if (v >= 100000) return `${(v / 100000).toFixed(2)} L`;
+  if (v >= 1000) return `${Math.round(v / 1000)} K`;
+  return '';
+};
 
 const ordinal = (n: number): string => {
   const j = n % 10, k = n % 100;
@@ -85,11 +94,14 @@ const getLabelStyle = (t: Theme): React.CSSProperties => ({
 // as wide as the widest column, which looked oversized and sparse. 232px
 // comfortably fits an amount/date value and lets the longer labels
 // (e.g. "Booster Interval After Possession (Months)") wrap onto 2 lines
-// without the field itself needing to be any wider.
+// without the field itself needing to be any wider. A handful of fields
+// (Total Cost / Booking / Remaining Booking / Possession Amount, the 3
+// date fields, Total EMI Tenure) use the narrower NARROW_WIDTH instead.
 const FIELD_WIDTH = 232;
+const NARROW_WIDTH = 176;
 
-const FieldWrap: React.FC<{ t: Theme; label: string; className?: string; children: React.ReactNode }> = ({ t, label, className, children }) => (
-  <div className={className} style={{ width: FIELD_WIDTH, flex: `0 0 ${FIELD_WIDTH}px` }}>
+const FieldWrap: React.FC<{ t: Theme; label: string; width?: number; className?: string; children: React.ReactNode }> = ({ t, label, width = FIELD_WIDTH, className, children }) => (
+  <div className={className} style={{ width, flex: `0 0 ${width}px` }}>
     <label style={getLabelStyle(t)}>{label}</label>
     {children}
   </div>
@@ -103,17 +115,21 @@ const FieldWrap: React.FC<{ t: Theme; label: string; className?: string; childre
 // at the text box above.
 const SliderField: React.FC<{
   t: Theme; label: string; value: number; onChange: (v: number) => void;
-  min?: number; max: number; step?: number; prefix?: string; suffix?: string;
-}> = ({ t, label, value, onChange, min = 0, max, step = 1, prefix, suffix }) => {
+  min?: number; max: number; step?: number; prefix?: string; suffix?: string; width?: number;
+}> = ({ t, label, value, onChange, min = 0, max, step = 1, prefix, suffix, width }) => {
   const [dragging, setDragging] = useState(false);
   const sliderMax = Math.max(max, min + step);
   const clamped = Math.min(Math.max(value, min), sliderMax);
   const percent = sliderMax > min ? ((clamped - min) / (sliderMax - min)) * 100 : 0;
   const bubbleText = prefix ? formatINR(value) : suffix ? `${value} ${suffix}` : String(value);
+  // Amount fields (prefix="₹") get the Lakh/K shorthand at the end of the
+  // row automatically — every ₹ field shows it, not just the ones a caller
+  // opts into, so callers never need a separate flag for it.
+  const compact = prefix ? compactINR(value) : '';
 
   return (
-    <FieldWrap t={t} label={label}>
-      <div className="flex items-center gap-2" style={{ ...getFieldStyle(t), padding: '0 12px' }}>
+    <FieldWrap t={t} label={label} width={width}>
+      <div className="flex items-center gap-1.5" style={{ ...getFieldStyle(t), padding: '0 10px' }}>
         {prefix && <span style={{ color: t.textSecondary, flexShrink: 0 }}>{prefix}</span>}
         <input
           type="text" inputMode="decimal" value={value === 0 ? '0' : String(value)}
@@ -121,8 +137,9 @@ const SliderField: React.FC<{
             const n = Number(e.target.value.replace(/[^\d.]/g, ''));
             onChange(Number.isFinite(n) ? n : 0);
           }}
-          style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }}
+          style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }}
         />
+        {compact && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 11, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
         {suffix && <span style={{ color: t.textSecondary, flexShrink: 0, whiteSpace: 'nowrap' }}>{suffix}</span>}
       </div>
       {/* marginTop/the bubble's slot are always reserved at a fixed size —
@@ -154,8 +171,8 @@ const SliderField: React.FC<{
   );
 };
 
-const DateField: React.FC<{ t: Theme; label: string; value: string; onChange: (v: string) => void }> = ({ t, label, value, onChange }) => (
-  <FieldWrap t={t} label={label}>
+const DateField: React.FC<{ t: Theme; label: string; value: string; onChange: (v: string) => void; width?: number }> = ({ t, label, value, onChange, width }) => (
+  <FieldWrap t={t} label={label} width={width}>
     <input type="date" value={value} onClick={openPicker} onFocus={openPicker} onChange={(e) => onChange(e.target.value)} style={getFieldStyle(t)} />
   </FieldWrap>
 );
@@ -257,7 +274,6 @@ const CustomizeSchemePage: React.FC = () => {
   const isDark = themeMode === 'dark';
   const t = getTheme(isDark);
 
-  const [flatType, setFlatType] = useState('1 BHK');
   const [totalCost, setTotalCost] = useState(0);
 
   const [bookingDate, setBookingDate] = useState(todayISO());
@@ -387,26 +403,21 @@ const CustomizeSchemePage: React.FC = () => {
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
         <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" color="#059669" />
 
+        {/* 3 explicit rows (not one continuous flex-wrap flow) so the
+            layout is reliably 3 rows on a normal desktop width, not
+            whatever count the browser happens to wrap at. */}
         <div className="flex flex-wrap gap-4 mb-4">
-          <FieldWrap t={t} label="Flat Type">
-            <select value={flatType} onChange={(e) => setFlatType(e.target.value)} style={{ ...getFieldStyle(t), cursor: 'pointer' }}>
-              {FLAT_TYPES.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
-          </FieldWrap>
-          <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={50000000} step={10000} prefix="₹" />
-          <DateField t={t} label="Booking Date" value={bookingDate} onChange={setBookingDate} />
-          <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
+          <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" width={NARROW_WIDTH} />
+          <DateField t={t} label="Booking Date" value={bookingDate} onChange={setBookingDate} width={NARROW_WIDTH} />
+          <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" width={NARROW_WIDTH} />
+          <SliderField t={t} label="Remaining Booking Amount (₹)" value={remainingBookingAmount} onChange={setRemainingBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" width={NARROW_WIDTH} />
+          <DateField t={t} label="Remaining Booking Date" value={remainingBookingDate} onChange={setRemainingBookingDate} width={NARROW_WIDTH} />
         </div>
 
         <div className="flex flex-wrap gap-4 mb-4">
-          <SliderField t={t} label="Remaining Booking Amount (₹)" value={remainingBookingAmount} onChange={setRemainingBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
-          <DateField t={t} label="Remaining Booking Date" value={remainingBookingDate} onChange={setRemainingBookingDate} />
-          <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
-          <DateField t={t} label="Installment Date (1st EMI)" value={installmentDate} onChange={setInstallmentDate} />
-        </div>
-
-        <div className="flex flex-wrap gap-4 mb-4">
-          <SliderField t={t} label="Total EMI Tenure (Months)" value={totalEmiTenure} onChange={setTotalEmiTenure} max={120} step={1} suffix="months" />
+          <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" width={NARROW_WIDTH} />
+          <DateField t={t} label="Installment Date (1st EMI)" value={installmentDate} onChange={setInstallmentDate} width={NARROW_WIDTH} />
+          <SliderField t={t} label="Total EMI Tenure (Months)" value={totalEmiTenure} onChange={setTotalEmiTenure} max={120} step={1} suffix="months" width={NARROW_WIDTH} />
           <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" />
           <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" />
         </div>
@@ -430,7 +441,7 @@ const CustomizeSchemePage: React.FC = () => {
         <ResultPanelHeader
           icon={<MdCalculate size={17} color="#fff" />} title="EMI Scheme"
           gradient="linear-gradient(135deg,#4338ca,#6366f1)"
-          subtitle={`Total Cost of Flat for ${flatType}: ${formatINR(totalCost)}`}
+          subtitle={`Total Cost of Flat: ${formatINR(totalCost)}`}
         />
         <div className="p-5 sm:p-6">
           <SummaryTable t={t} heading="A) Mode of Payment (Before Possession)" rows={computed.summaryA} total={computed.totalA} totalLabel="Total (A) (Before Possession)" />
@@ -447,7 +458,7 @@ const CustomizeSchemePage: React.FC = () => {
         <ResultPanelHeader
           icon={<MdListAlt size={17} color="#fff" />} title="EMI Schedule"
           gradient="linear-gradient(135deg,#059669,#10b981)"
-          subtitle={`Schedule ${formatINR(totalCost)} for ${flatType} - ${totalEmiTenure} months`}
+          subtitle={`Schedule ${formatINR(totalCost)} - ${totalEmiTenure} months`}
         />
         <div className="p-5 sm:p-6">
           <ScheduleTable t={t} section="A" rows={computed.beforeRows} total={computed.totalA} totalLabel="(A) Total Before Possession" />
