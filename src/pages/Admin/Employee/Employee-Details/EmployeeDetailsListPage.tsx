@@ -341,9 +341,9 @@ const EmployeeDetailsListPage: React.FC = () => {
     <div className="master-page" style={{ fontFamily: t.fontFamily }}>
 
       {/* ── Summary cards — same compact sizing/spacing as Building master's
-          boxes; label font-size bumped to 18px per spec (StatCard's
-          labelFontSize prop — every other caller leaves it unset and keeps
-          the CSS class's default label size). ──────────────────────────── */}
+          boxes; label font-size fixed at 16px (StatCard's labelFontSize
+          prop — every other caller leaves it unset and keeps the CSS
+          class's default label size). ──────────────────────────── */}
       <div className="master-stat-grid">
         {[
           { label: 'Total Employees', value: summary.total, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
@@ -351,7 +351,7 @@ const EmployeeDetailsListPage: React.FC = () => {
           { label: 'On Leave', value: summary.onLeave, icon: MdEventBusy, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff' },
           { label: 'Inactive Employees', value: summary.inactive, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
         ].map((card) => (
-          <StatCard key={card.label} {...card} loading={loading} compact labelFontSize={18}
+          <StatCard key={card.label} {...card} loading={loading} compact labelFontSize={16}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
       </div>

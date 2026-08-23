@@ -463,8 +463,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         toast.success('Employee created successfully.');
       }
       navigate('/admin/employee/employee-details');
-    } catch {
-      toast.error(mode === 'edit' ? 'Failed to update employee.' : 'Failed to create employee.');
+    } catch (err: any) {
+      const fallback = mode === 'edit' ? 'Failed to update employee.' : 'Failed to create employee.';
+      toast.error(err?.response?.data?.message || fallback);
     } finally {
       setSaving(false);
     }
