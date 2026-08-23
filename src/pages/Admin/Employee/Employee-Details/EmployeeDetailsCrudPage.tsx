@@ -39,6 +39,13 @@ const STATUS_OPTIONS: { value: EmployeeStatus; label: string }[] = [
 // fixed footer never overlaps form content.
 const FOOTER_HEIGHT = 76;
 
+// Native date/time inputs only open their picker when the calendar/clock
+// icon itself is clicked — clicking anywhere else in the field just moves
+// the text caret. showPicker() opens it from a click anywhere in the field;
+// it's a no-op (via optional chaining) in browsers that don't support it,
+// where the icon-only click still works as before.
+const openPicker = (e: React.MouseEvent<HTMLInputElement>) => e.currentTarget.showPicker?.();
+
 // A checklist option with a real backend id (department/designation/
 // module-action id) driving selection, and a display label.
 interface IdOption { value: number; label: string; }
@@ -313,12 +320,18 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       try {
         const res = await fetchMappingMatrix();
         if (res.success) {
-          const modulesById = new Map(res.data.modules.map((m) => [m.id, m]));
-          const actionsById = new Map(res.data.actions.map((a) => [a.id, a]));
+          // Map keys normalized to Number — the matrix endpoint returns
+          // modules[].id/actions[].id as numbers but mappings[].module_id/
+          // action_master_id as numeric strings (raw Postgres bigint), so a
+          // strict Map.get() on the raw values always missed, silently
+          // falling back to the literal "Module – Action" placeholder text
+          // for every single checklist row.
+          const modulesById = new Map(res.data.modules.map((m) => [Number(m.id), m]));
+          const actionsById = new Map(res.data.actions.map((a) => [Number(a.id), a]));
           const opts: IdOption[] = res.data.mappings.map((mp) => {
-            const mod = modulesById.get(mp.module_id);
-            const act = actionsById.get(mp.action_master_id);
-            return { value: mp.id, label: `${mod?.name ?? 'Module'} – ${act?.name || act?.code || 'Action'}` };
+            const mod = modulesById.get(Number(mp.module_id));
+            const act = actionsById.get(Number(mp.action_master_id));
+            return { value: Number(mp.id), label: `${mod?.name ?? 'Module'} – ${act?.name || act?.code || 'Action'}` };
           });
           setModuleOptions(opts);
         }
@@ -532,7 +545,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field t={t} label="Date of Birth" required>
               <input type="date" value={form.date_of_birth} readOnly={isView} disabled={isView}
-                onChange={(e) => set('date_of_birth', e.target.value)} style={fieldStyle} />
+                onChange={(e) => set('date_of_birth', e.target.value)} onClick={openPicker} style={fieldStyle} />
             </Field>
             <Field t={t} label="Email" required>
               <input type="email" placeholder="Enter email address" value={form.email} readOnly={isView} disabled={isView}
@@ -587,7 +600,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Field t={t} label="Employee Joining Date" required>
             <input type="date" value={form.joining_date} readOnly={isView} disabled={isView}
-              onChange={(e) => set('joining_date', e.target.value)} style={fieldStyle} />
+              onChange={(e) => set('joining_date', e.target.value)} onClick={openPicker} style={fieldStyle} />
           </Field>
           <Field t={t} label="Working Hours" required>
             <select value={form.working_hours} disabled={isView} onChange={(e) => set('working_hours', e.target.value)} style={{ ...fieldStyle, cursor: isView ? 'default' : 'pointer' }}>
@@ -597,11 +610,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Check In" required>
             <input type="time" value={form.check_in_time} readOnly={isView} disabled={isView}
-              onChange={(e) => set('check_in_time', e.target.value)} style={fieldStyle} />
+              onChange={(e) => set('check_in_time', e.target.value)} onClick={openPicker} style={fieldStyle} />
           </Field>
           <Field t={t} label="Check Out" required>
             <input type="time" value={form.check_out_time} readOnly={isView} disabled={isView}
-              onChange={(e) => set('check_out_time', e.target.value)} style={fieldStyle} />
+              onChange={(e) => set('check_out_time', e.target.value)} onClick={openPicker} style={fieldStyle} />
           </Field>
         </div>
 
