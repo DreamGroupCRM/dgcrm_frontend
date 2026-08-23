@@ -19,7 +19,7 @@ import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fet
 import {
   collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, PAYMENT_FOR_OPTIONS, paymentForLabel,
 } from '../../../../services/paymentService';
-import { FetchBuildingList } from '../../../../services/buildingService';
+import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
   Customer, Building, CustomerPaymentRecord, CustomerScheme,
@@ -41,7 +41,13 @@ const SearchableSelect: React.FC<{
   value: string;
   onChange: (v: string) => void;
   disabled?: boolean;
-}> = ({ t, placeholder, options, value, onChange, disabled }) => {
+  // Overrides only the DISPLAYED text of each dropdown option — filtering,
+  // the stored value, and what lands in the input box on selection all
+  // still work off the plain option string. Used by the Flat No filter to
+  // show "A-101 · 2 BHK · 850 Sqft" per option while still filtering
+  // customers by the bare flat number underneath.
+  labelFor?: (opt: string) => string;
+}> = ({ t, placeholder, options, value, onChange, disabled, labelFor }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
@@ -100,7 +106,7 @@ const SearchableSelect: React.FC<{
               className="w-full text-left px-3.5 py-2 text-sm"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}
             >
-              {opt}
+              {labelFor ? labelFor(opt) : opt}
             </button>
           ))}
         </div>
@@ -113,6 +119,15 @@ const dateFieldStyle = (t: Theme): React.CSSProperties => ({
   width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10,
   padding: '8px 12px', fontSize: 13, color: t.inputText, fontFamily: t.fontFamily, cursor: 'pointer',
 });
+
+// Fires showPicker() on both click AND focus — a plain onClick alone opens
+// the calendar when the browser-drawn icon is clicked, but clicking into
+// the day/month/year text segments only moves focus between them without
+// reopening it. Wrapped in try/catch — showPicker() throws if called
+// without an active user gesture or while already open.
+const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
+  try { e.currentTarget.showPicker?.(); } catch { /* already open / no gesture — ignore */ }
+};
 
 const CustomerDetailsListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -133,6 +148,7 @@ const CustomerDetailsListPage: React.FC = () => {
   const [customerNameFilter, setCustomerNameFilter] = useState('');
   const [buildingFilter, setBuildingFilter] = useState('');
   const [wingFilter, setWingFilter] = useState('');
+  const [floorFilter, setFloorFilter] = useState('');
   const [flatNoFilter, setFlatNoFilter] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -217,25 +233,56 @@ const CustomerDetailsListPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── cascading Building -> Wing -> Flat option lists, sourced live from
-  //    the existing Building module (not duplicated/hardcoded here) ─────
+  // ── cascading Building -> Wing -> Floor -> Flat option lists ────────────
+  // FetchBuildingList (used for the Building Name options below) is a LIST
+  // endpoint — its wings/floors/flats are placeholder entries sized to match
+  // aggregate counts only (empty name/label/flat_no on every one of them;
+  // see buildingService.ts's fromListRow), never real names. Real wing/
+  // floor/flat names only come from the per-building detail endpoint
+  // (ViewBuilding), so once a specific building is selected here its real
+  // detail is fetched and THAT backs the Wing/Floor/Flat option lists below
+  // — not the list row's placeholders. Floor itself isn't a customer field
+  // (customers only carry flat_no), so it's purely a narrowing step for the
+  // Flat No list, not a filter criterion applied to customers directly. ────
   const buildingNameOptions = useMemo(() => Array.from(new Set(buildings.map((b) => b.building_name))), [buildings]);
   const selectedBuilding = useMemo(() => buildings.find((b) => b.building_name === buildingFilter), [buildings, buildingFilter]);
-  const wingNameOptions = useMemo(() => {
-    const source = selectedBuilding ? [selectedBuilding] : buildings;
-    return Array.from(new Set(source.flatMap((b) => b.wings.map((w) => w.name))));
-  }, [buildings, selectedBuilding]);
-  const selectedWing = useMemo(() => selectedBuilding?.wings.find((w) => w.name === wingFilter), [selectedBuilding, wingFilter]);
-  const flatNoOptions = useMemo(() => {
-    const wingsSource = selectedWing ? [selectedWing] : selectedBuilding ? selectedBuilding.wings : buildings.flatMap((b) => b.wings);
-    return Array.from(new Set(wingsSource.flatMap((w) => w.floors.flatMap((f) => f.flats.map((fl) => fl.flat_no)))));
-  }, [buildings, selectedBuilding, selectedWing]);
+
+  const [buildingDetail, setBuildingDetail] = useState<Building | null>(null);
+  const [loadingBuildingDetail, setLoadingBuildingDetail] = useState(false);
+  useEffect(() => {
+    if (!selectedBuilding) { setBuildingDetail(null); return; }
+    let cancelled = false;
+    setLoadingBuildingDetail(true);
+    (async () => {
+      try {
+        const res = await ViewBuilding(selectedBuilding.id);
+        if (!cancelled && res.success) setBuildingDetail(res.data);
+      } catch { /* Wing/Floor/Flat just stay empty if this fails */ }
+      finally { if (!cancelled) setLoadingBuildingDetail(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedBuilding?.id]);
+
+  const wingNameOptions = useMemo(() => (buildingDetail ? Array.from(new Set(buildingDetail.wings.map((w) => w.name))) : []), [buildingDetail]);
+  const selectedWing = useMemo(() => buildingDetail?.wings.find((w) => w.name === wingFilter), [buildingDetail, wingFilter]);
+  const floorLabelOptions = useMemo(() => (selectedWing ? Array.from(new Set(selectedWing.floors.map((f) => f.label))) : []), [selectedWing]);
+  const selectedFloor = useMemo(() => selectedWing?.floors.find((f) => f.label === floorFilter), [selectedWing, floorFilter]);
+  const flatsInScope = useMemo(() => selectedFloor?.flats ?? [], [selectedFloor]);
+  const flatNoOptions = useMemo(() => Array.from(new Set(flatsInScope.map((fl) => fl.flat_no))), [flatsInScope]);
+  // "A-101" -> "A-101 · 2 BHK · 850 Sqft" for the Flat No dropdown's option
+  // text — filtering/selection still work off the bare flat_no.
+  const flatLabelFor = (flatNo: string): string => {
+    const fl = flatsInScope.find((f) => f.flat_no === flatNo);
+    if (!fl) return flatNo;
+    const parts = [flatNo, fl.flat_type, fl.area_sqft != null ? `${fl.area_sqft} Sqft` : null].filter(Boolean);
+    return parts.join(' · ');
+  };
 
   const customerNameOptions = useMemo(() => Array.from(new Set(allCustomers.map((c) => c.customer_name))), [allCustomers]);
   const employeeOptions = useMemo(() => employees.map((e) => e.label), [employees]);
 
   const clearAllFilters = () => {
-    setCustomerNameFilter(''); setBuildingFilter(''); setWingFilter(''); setFlatNoFilter('');
+    setCustomerNameFilter(''); setBuildingFilter(''); setWingFilter(''); setFloorFilter(''); setFlatNoFilter('');
     setFromDate(''); setToDate('');
   };
 
@@ -486,7 +533,7 @@ const CustomerDetailsListPage: React.FC = () => {
 
       {/* ── Filters row ───────────────────────────────────────────────── */}
       <div className="rounded-2xl p-5 mb-5" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Search Customer Name</label>
             <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={setCustomerNameFilter} />
@@ -494,25 +541,31 @@ const CustomerDetailsListPage: React.FC = () => {
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Search Building Name</label>
             <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter}
-              onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFlatNoFilter(''); }} />
+              onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFloorFilter(''); setFlatNoFilter(''); }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Select Wing</label>
-            <SearchableSelect t={t} placeholder="Select wing" options={wingNameOptions} value={wingFilter}
-              onChange={(v) => { setWingFilter(v); setFlatNoFilter(''); }} />
+            <SearchableSelect t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingFilter}
+              disabled={!selectedBuilding || loadingBuildingDetail}
+              onChange={(v) => { setWingFilter(v); setFloorFilter(''); setFlatNoFilter(''); }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Select Floor</label>
+            <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter} disabled={!selectedWing}
+              onChange={(v) => { setFloorFilter(v); setFlatNoFilter(''); }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Select Flat No</label>
-            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} onChange={setFlatNoFilter} />
+            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} disabled={!selectedFloor} onChange={setFlatNoFilter} labelFor={flatLabelFor} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>From Date</label>
-            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={dateFieldStyle(t)} />
+            <input type="date" value={fromDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setFromDate(e.target.value)} style={dateFieldStyle(t)} />
           </div>
           <div className="flex items-end gap-2">
             <div className="flex-1">
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>To Date</label>
-              <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={dateFieldStyle(t)} />
+              <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} style={dateFieldStyle(t)} />
             </div>
             <button
               type="button" onClick={clearAllFilters}
@@ -853,7 +906,7 @@ const CustomerDetailsListPage: React.FC = () => {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Installment Date</label>
-                <input type="date" value={cpInstDate} onChange={(e) => setCpInstDate(e.target.value)} style={dateFieldStyle(t)} />
+                <input type="date" value={cpInstDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpInstDate(e.target.value)} style={dateFieldStyle(t)} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Mode of Payment</label>
@@ -867,7 +920,7 @@ const CustomerDetailsListPage: React.FC = () => {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Clearance Date</label>
-                <input type="date" value={cpClearanceDate} onChange={(e) => setCpClearanceDate(e.target.value)} style={dateFieldStyle(t)} />
+                <input type="date" value={cpClearanceDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpClearanceDate(e.target.value)} style={dateFieldStyle(t)} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Company</label>
@@ -885,11 +938,11 @@ const CustomerDetailsListPage: React.FC = () => {
                   silently forced to "now" instead (see paymentService.ts). */}
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Date <span style={{ fontWeight: 400 }}>(Admin only)</span></label>
-                <input type="date" value={cpDate} onChange={(e) => setCpDate(e.target.value)} style={dateFieldStyle(t)} />
+                <input type="date" value={cpDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpDate(e.target.value)} style={dateFieldStyle(t)} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Payment Date <span style={{ fontWeight: 400 }}>(Admin only)</span></label>
-                <input type="date" value={cpPaymentDate} onChange={(e) => setCpPaymentDate(e.target.value)} style={dateFieldStyle(t)} />
+                <input type="date" value={cpPaymentDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpPaymentDate(e.target.value)} style={dateFieldStyle(t)} />
               </div>
               {cpPaymentFor === 'EMIAmount' && (
                 <div className="sm:col-span-2 flex items-center gap-2">

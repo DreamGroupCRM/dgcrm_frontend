@@ -18,7 +18,7 @@ import {
   createCustomerWithDetails,
   updateCustomerWithDetails,
 } from '../../../../services/customerDetailsService';
-import { FetchBuildingList } from '../../../../services/buildingService';
+import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { Building, ParkingChoice } from '../../../../types/index';
 
 type Mode = 'add' | 'edit' | 'view';
@@ -43,6 +43,15 @@ const getFieldStyle = (t: Theme, isView: boolean): React.CSSProperties => ({
 const getLabelStyle = (t: Theme): React.CSSProperties => ({
   display: 'block', fontSize: 13, fontWeight: 600, color: t.textPrimary, marginBottom: 6,
 });
+
+// Fires showPicker() on both click AND focus — a plain onClick alone opens
+// the calendar when the browser-drawn icon is clicked, but clicking into
+// the day/month/year text segments only moves focus between them without
+// reopening it. Wrapped in try/catch — showPicker() throws if called
+// without an active user gesture or while already open.
+const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
+  try { e.currentTarget.showPicker?.(); } catch { /* already open / no gesture — ignore */ }
+};
 
 const fileDisplayName = (v: FileValue): string => {
   if (v instanceof File) return v.name;
@@ -97,7 +106,12 @@ const SearchableSelect: React.FC<{
   t: Theme; isView?: boolean;
   placeholder: string; options: string[]; value: string;
   onChange: (v: string) => void; disabled?: boolean;
-}> = ({ t, placeholder, options, value, onChange, disabled }) => {
+  // Overrides only the DISPLAYED text of each dropdown option — filtering,
+  // the stored value, and what lands in the input box on selection all
+  // still work off the plain option string. Used by the Flat No select to
+  // show "A-101 · 2 BHK · 850 Sqft" per option.
+  labelFor?: (opt: string) => string;
+}> = ({ t, placeholder, options, value, onChange, disabled, labelFor }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
@@ -141,7 +155,7 @@ const SearchableSelect: React.FC<{
           {filtered.map((opt) => (
             <button key={opt} type="button" onClick={() => { onChange(opt); setQuery(opt); setOpen(false); }}
               className="w-full text-left px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-              {opt}
+              {labelFor ? labelFor(opt) : opt}
             </button>
           ))}
         </div>
@@ -437,8 +451,17 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     })();
   }, [mode, id]);
 
-  // ── cascading Project -> Building -> Wing -> Floor -> Flat, sourced live
-  // from the Building module (FetchBuildingList) ─────────────────────────
+  // ── cascading Project -> Building -> Wing -> Floor -> Flat ──────────────
+  // FetchBuildingList (used for Project/Building Name options below) is a
+  // LIST endpoint — its wings/floors/flats are placeholder entries sized to
+  // match aggregate counts only (empty name/label/flat_no AND non-numeric
+  // placeholder ids like "wing_1" on every one of them; see
+  // buildingService.ts's fromListRow), never real data. Submitting those
+  // placeholder ids as wing_id/floor_id/flat_id would silently save a
+  // booking with no real link to any actual wing/floor/flat row. Once a
+  // specific building is selected, its real detail is fetched (ViewBuilding)
+  // and THAT backs the Wing/Floor/Flat option lists and the ids actually
+  // submitted below — not the list row's placeholders.
   const projectNameOptions = useMemo(() => Array.from(new Set(buildings.map((b) => b.project_name))), [buildings]);
   const buildingsForProject = useMemo(
     () => (projectName ? buildings.filter((b) => b.project_name === projectName) : buildings),
@@ -446,8 +469,25 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   );
   const buildingNameOptions = useMemo(() => Array.from(new Set(buildingsForProject.map((b) => b.building_name))), [buildingsForProject]);
   const selectedBuilding = useMemo(() => buildingsForProject.find((b) => b.building_name === buildingName), [buildingsForProject, buildingName]);
-  const wingNameOptions = useMemo(() => (selectedBuilding ? selectedBuilding.wings.map((w) => w.name) : []), [selectedBuilding]);
-  const selectedWing = useMemo(() => selectedBuilding?.wings.find((w) => w.name === wingName), [selectedBuilding, wingName]);
+
+  const [buildingDetail, setBuildingDetail] = useState<Building | null>(null);
+  const [loadingBuildingDetail, setLoadingBuildingDetail] = useState(false);
+  useEffect(() => {
+    if (!selectedBuilding) { setBuildingDetail(null); return; }
+    let cancelled = false;
+    setLoadingBuildingDetail(true);
+    (async () => {
+      try {
+        const res = await ViewBuilding(selectedBuilding.id);
+        if (!cancelled && res.success) setBuildingDetail(res.data);
+      } catch { /* Wing/Floor/Flat just stay empty if this fails */ }
+      finally { if (!cancelled) setLoadingBuildingDetail(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedBuilding?.id]);
+
+  const wingNameOptions = useMemo(() => (buildingDetail ? buildingDetail.wings.map((w) => w.name) : []), [buildingDetail]);
+  const selectedWing = useMemo(() => buildingDetail?.wings.find((w) => w.name === wingName), [buildingDetail, wingName]);
   const floorLabelOptions = useMemo(() => (selectedWing ? selectedWing.floors.map((f) => f.label) : []), [selectedWing]);
   const selectedFloor = useMemo(() => selectedWing?.floors.find((f) => f.label === floorLabel), [selectedWing, floorLabel]);
   const flatNoOptions = useMemo(() => (selectedFloor ? selectedFloor.flats.map((fl) => fl.flat_no) : []), [selectedFloor]);
@@ -654,7 +694,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Date of Birth" required>
             <div className="flex items-center gap-3">
               <input type="date" value={dateOfBirth} readOnly={isView} disabled={isView}
-                onChange={(e) => setDateOfBirth(e.target.value)} style={fieldStyle} />
+                onClick={openPicker} onFocus={openPicker} onChange={(e) => setDateOfBirth(e.target.value)} style={fieldStyle} />
               {age && (
                 <div className="rounded-xl px-3 py-2 flex-shrink-0" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
                   <p style={{ fontSize: 10.5, color: t.textSecondary, margin: 0, fontWeight: 600 }}>Age</p>
@@ -701,7 +741,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
           <Field t={t} label="Wing">
-            <SearchableSelect t={t} placeholder="Select wing" options={wingNameOptions} value={wingName} disabled={isView || !selectedBuilding}
+            <SearchableSelect
+              t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingName}
+              disabled={isView || !selectedBuilding || loadingBuildingDetail}
               onChange={(v) => { setWingName(v); setFloorLabel(''); setFlatNo(''); }} />
           </Field>
           <Field t={t} label="Floor">
@@ -709,8 +751,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(v) => { setFloorLabel(v); setFlatNo(''); }} />
           </Field>
           <Field t={t} label="Flat No">
-            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNo} disabled={isView || !selectedFloor}
-              onChange={setFlatNo} />
+            <SearchableSelect
+              t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNo} disabled={isView || !selectedFloor}
+              onChange={setFlatNo}
+              labelFor={(no) => {
+                const fl = selectedFloor?.flats.find((f) => f.flat_no === no);
+                if (!fl) return no;
+                return [no, fl.flat_type, fl.area_sqft != null ? `${fl.area_sqft} Sqft` : null].filter(Boolean).join(' · ');
+              }}
+            />
           </Field>
           <Field t={t} label="Flat Type">
             <input type="text" readOnly value={selectedFlat?.flat_type || '—'} style={{ ...fieldStyle, background: t.insetBg }} />
@@ -746,7 +795,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Booking Date" required>
             <input type="date" value={bookingDate} readOnly={isView} disabled={isView}
-              onChange={(e) => setBookingDate(e.target.value)} style={fieldStyle} />
+              onClick={openPicker} onFocus={openPicker} onChange={(e) => setBookingDate(e.target.value)} style={fieldStyle} />
           </Field>
           <Field t={t} label="Booking Amount (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter booking amount" value={bookingAmount} onChange={setBookingAmount} />
@@ -755,7 +804,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <div className="flex items-center gap-2">
               <AmountField t={t} isView={isView} placeholder="Amount" value={remainingBookingAmount} onChange={setRemainingBookingAmount} />
               <input type="date" value={remainingBookingDate} readOnly={isView} disabled={isView}
-                onChange={(e) => setRemainingBookingDate(e.target.value)} style={fieldStyle} />
+                onClick={openPicker} onFocus={openPicker} onChange={(e) => setRemainingBookingDate(e.target.value)} style={fieldStyle} />
             </div>
           </Field>
         </div>
@@ -766,7 +815,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Installment Date" required>
             <input type="date" value={installmentDate} readOnly={isView} disabled={isView}
-              onChange={(e) => setInstallmentDate(e.target.value)} style={fieldStyle} />
+              onClick={openPicker} onFocus={openPicker} onChange={(e) => setInstallmentDate(e.target.value)} style={fieldStyle} />
           </Field>
           <Field t={t} label="Monthly EMI Amount Before Possession (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} />

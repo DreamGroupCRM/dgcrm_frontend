@@ -78,6 +78,10 @@ interface BackendCustomer {
   wing: BackendWing | null;
   flat_id: number | string | null;
   flat: BackendFlat | null;
+  assigned_employee_id: number | string | null;
+  assigned_employee_code: string | null;
+  assigned_employee_name: string | null;
+  assigned_employee_photo_url: string | null;
   customer_image: string | null;
   aadhar_card_no: string;
   pan_card_no: string | null;
@@ -117,10 +121,11 @@ interface BackendAmountTransaction {
 }
 
 // Backend Customer (+ building/wing/flat relations) -> the flat `Customer`
-// shape the List page already renders. Fields the backend doesn't track at
-// all (assigned employee — customer.repository.ts's list/detail queries
-// don't join the customer-assignment module yet) are left undefined; the
-// List page already renders those as "—" when absent.
+// shape the List page already renders. assigned_employee_* now comes from
+// a real backend join (customer.repository.ts's findCustomerList) — the
+// "Assign to Employee" button was always saving the assignment correctly,
+// it just never came back on the list response for the Employee Name
+// column to show; this fixes the read side, not the write side.
 const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   id: String(bc.id),
   customer_name: [bc.name, bc.middle_name, bc.last_name].filter(Boolean).join(' '),
@@ -136,10 +141,10 @@ const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   area_sqft: bc.flat?.area_sqft != null ? Number(bc.flat.area_sqft) : null,
   booking_date: bc.booking_date ?? '',
   monthly_emi: bc.installment_amount,
-  assigned_employee_id: undefined,
-  assigned_employee_code: undefined,
-  assigned_employee_name: undefined,
-  assigned_employee_photo_url: undefined,
+  assigned_employee_id: bc.assigned_employee_id != null ? String(bc.assigned_employee_id) : undefined,
+  assigned_employee_code: bc.assigned_employee_code ?? undefined,
+  assigned_employee_name: bc.assigned_employee_name ?? undefined,
+  assigned_employee_photo_url: bc.assigned_employee_photo_url,
   status: bc.is_active ? 'active' : 'inactive',
   is_active: bc.is_active,
   created_at: bc.created_at,
