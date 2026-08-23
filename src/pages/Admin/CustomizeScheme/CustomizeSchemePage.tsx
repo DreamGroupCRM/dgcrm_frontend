@@ -101,8 +101,8 @@ const getLabelStyle = (t: Theme): React.CSSProperties => ({
 // rows) — grid columns are equal width by construction and the browser
 // decides how many fit per row, so there's no per-field width bookkeeping
 // and no ragged trailing gap on the last row of each group.
-const FieldWrap: React.FC<{ t: Theme; label: string; className?: string; children: React.ReactNode }> = ({ t, label, className, children }) => (
-  <div className={className}>
+const FieldWrap: React.FC<{ t: Theme; label: string; span?: number; className?: string; children: React.ReactNode }> = ({ t, label, span, className, children }) => (
+  <div className={className} style={span ? { gridColumn: `span ${span}` } : undefined}>
     <label style={getLabelStyle(t)}>{label}</label>
     {children}
   </div>
@@ -117,7 +117,14 @@ const FieldWrap: React.FC<{ t: Theme; label: string; className?: string; childre
 const SliderField: React.FC<{
   t: Theme; label: string; value: number; onChange: (v: number) => void;
   min?: number; max: number; step?: number; prefix?: string; suffix?: string;
-}> = ({ t, label, value, onChange, min = 0, max, step = 1, prefix, suffix }) => {
+  // Renders a second control (e.g. a paired date input) beside the amount
+  // box, under this field's one shared label — see "Remaining Booking
+  // Amount & Date" below, which folds two previously-separate fields into
+  // one, matching the reference Payment Details form. `span` widens the
+  // grid cell itself (2 columns' worth) so both controls have room to
+  // breathe instead of being squeezed into one column's width.
+  extra?: React.ReactNode; span?: number;
+}> = ({ t, label, value, onChange, min = 0, max, step = 1, prefix, suffix, extra, span }) => {
   const [dragging, setDragging] = useState(false);
   const sliderMax = Math.max(max, min + step);
   const clamped = Math.min(Math.max(value, min), sliderMax);
@@ -129,19 +136,22 @@ const SliderField: React.FC<{
   const compact = prefix ? compactINR(value) : '';
 
   return (
-    <FieldWrap t={t} label={label}>
-      <div className="flex items-center gap-1.5" style={{ ...getFieldStyle(t), padding: '0 10px' }}>
-        {prefix && <span style={{ color: t.textSecondary, flexShrink: 0 }}>{prefix}</span>}
-        <input
-          type="text" inputMode="decimal" value={value === 0 ? '0' : String(value)}
-          onChange={(e) => {
-            const n = Number(e.target.value.replace(/[^\d.]/g, ''));
-            onChange(Number.isFinite(n) ? n : 0);
-          }}
-          style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }}
-        />
-        {compact && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 11, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
-        {suffix && <span style={{ color: t.textSecondary, flexShrink: 0, whiteSpace: 'nowrap' }}>{suffix}</span>}
+    <FieldWrap t={t} label={label} span={span}>
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5" style={{ ...getFieldStyle(t), padding: '0 10px', flex: 1, minWidth: 0 }}>
+          {prefix && <span style={{ color: t.textSecondary, flexShrink: 0 }}>{prefix}</span>}
+          <input
+            type="text" inputMode="decimal" value={value === 0 ? '0' : String(value)}
+            onChange={(e) => {
+              const n = Number(e.target.value.replace(/[^\d.]/g, ''));
+              onChange(Number.isFinite(n) ? n : 0);
+            }}
+            style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }}
+          />
+          {compact && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 11, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
+          {suffix && <span style={{ color: t.textSecondary, flexShrink: 0, whiteSpace: 'nowrap' }}>{suffix}</span>}
+        </div>
+        {extra}
       </div>
       {/* marginTop/the bubble's slot are always reserved at a fixed size —
           toggling them only on `dragging` (as before) shifted the range
@@ -411,8 +421,16 @@ const CustomizeSchemePage: React.FC = () => {
           <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" />
           <DateField t={t} label="Booking Date" value={bookingDate} onChange={setBookingDate} />
           <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
-          <SliderField t={t} label="Remaining Booking Amount (₹)" value={remainingBookingAmount} onChange={setRemainingBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
-          <DateField t={t} label="Remaining Booking Date" value={remainingBookingDate} onChange={setRemainingBookingDate} />
+          <SliderField
+            t={t} label="Remaining Booking Amount & Date" value={remainingBookingAmount} onChange={setRemainingBookingAmount}
+            max={Math.max(totalCost, 100000)} step={10000} prefix="₹" span={2}
+            extra={
+              <input
+                type="date" value={remainingBookingDate} onClick={openPicker} onFocus={openPicker}
+                onChange={(e) => setRemainingBookingDate(e.target.value)} style={{ ...getFieldStyle(t), flex: 1, minWidth: 0 }}
+              />
+            }
+          />
           <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
           <DateField t={t} label="Installment Date (1st EMI)" value={installmentDate} onChange={setInstallmentDate} />
           <SliderField t={t} label="Total EMI Tenure (Months)" value={totalEmiTenure} onChange={setTotalEmiTenure} max={120} step={1} suffix="months" />
