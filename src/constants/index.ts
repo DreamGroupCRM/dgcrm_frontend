@@ -47,7 +47,7 @@ export const ROUTES = {
 
     // Standalone
     AUDIT_HISTORY: '/admin/audit-history',
-    INTEREST_CALCULATOR: '/admin/interest-free-calculator',
+    CUSTOMIZE_SCHEME: '/admin/customize-scheme',
     BACKUP_DATABASE: '/admin/backup-database',
   },
 

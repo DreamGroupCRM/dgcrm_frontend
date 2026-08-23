@@ -36,6 +36,10 @@ import ModuleMappingPage from '../pages/Admin/Masters/ModuleMapping/ModuleMappin
 // its former PlaceholderPage now that GET /api/payments/due-report exists.
 import DueReportPage from '../pages/Admin/CRM/DueReport/DueReportPage';
 
+// Customize Scheme — replaces the former "Interest Free Calculator"
+// placeholder with a real EMI Scheme & Schedule builder.
+import CustomizeSchemePage from '../pages/Admin/CustomizeScheme/CustomizeSchemePage';
+
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
 const PlaceholderPage = lazy(() => import('../components/common/PlaceholderPage'));
@@ -99,7 +103,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="crm/leads" element={<PlaceholderPage title="Leads" />} />
 
       <Route path="audit-history" element={<PlaceholderPage title="Audit History" />} />
-      <Route path="interest-free-calculator" element={<PlaceholderPage title="Interest Free Calculator" />} />
+      <Route path="customize-scheme" element={<CustomizeSchemePage />} />
       <Route path="backup-database" element={<PlaceholderPage title="Backup Database" />} />
     </Route>
   </Routes>
