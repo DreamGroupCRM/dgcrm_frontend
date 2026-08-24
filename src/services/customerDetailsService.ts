@@ -25,12 +25,16 @@
 // extra backend-shaped fields appended alongside the existing ones (so
 // nothing already being sent is removed), and incoming responses are
 // mapped from the backend's real shape into the Customer/CustomerFullDetail
-// shape this app's pages already expect. Fields with no confident backend
-// equivalent (booster amounts/intervals, remaining_booking_amount/date,
-// company_name/project_name/floor_id/floor_label as customer-level fields,
-// and the "scheme" concept generally) are deliberately left exactly as
-// they were — untouched, still unmapped — per explicit product decision
-// not to guess at those.
+// shape this app's pages already expect.
+//
+// V_16.0: booster amounts/intervals and remaining_booking_amount/date now
+// map onto real backend columns — annual_amount/annual_amount1/
+// annual_amount_every_months/annual_amount2_every_months (booster) and
+// pay_after_booking/pay_after_booking_date (remaining booking) already
+// existed or were added specifically for this; see
+// database/2026-08-24-customer-pay-after-booking-date.sql. Only
+// company_name/project_name/floor_id/floor_label as customer-level fields
+// remain deliberately unmapped — no backend counterpart exists for those.
 
 import axiosInstance from './axiosConfig';
 import {
@@ -45,7 +49,7 @@ import {
   AssignCustomersResponse,
   CustomerPaymentHistoryResponse,
   CustomerPaymentRecord,
-  CustomerSchemeResponse,
+  CustomerSchemeDetailResponse,
   CustomerFullDetail,
   CustomerFullDetailResponse,
 } from '../types/index';
@@ -96,8 +100,14 @@ interface BackendCustomer {
   installment_amount1: number;
   installment_tenure: number;
   booking_amount: number | null;
+  pay_after_booking: number | null;
+  pay_after_booking_date: string | null;
   possession_amount: number | null;
   booking_date: string | null;
+  annual_amount: number | null;
+  annual_amount1: number | null;
+  annual_amount_every_months: number;
+  annual_amount2_every_months: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -195,17 +205,17 @@ const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
   total_cost: bc.flat_amount,
   booking_date: bc.booking_date ?? '',
   booking_amount: bc.booking_amount,
-  remaining_booking_amount: null, // no backend equivalent — see file header
-  remaining_booking_date: '',
+  remaining_booking_amount: bc.pay_after_booking,
+  remaining_booking_date: bc.pay_after_booking_date ?? '',
   possession_amount: bc.possession_amount,
   installment_date: bc.installment_date ?? '',
   monthly_emi_before_possession: bc.installment_amount,
   monthly_emi_after_possession: bc.installment_amount1,
   total_emi_tenure_months: bc.installment_tenure,
-  booster_amount_before_possession: null, // no confident backend equivalent — see file header
-  booster_amount_after_possession: null,
-  booster_interval_before_possession_months: null,
-  booster_interval_after_possession_months: null,
+  booster_amount_before_possession: bc.annual_amount,
+  booster_amount_after_possession: bc.annual_amount1,
+  booster_interval_before_possession_months: bc.annual_amount_every_months,
+  booster_interval_after_possession_months: bc.annual_amount2_every_months,
 
   application_form_url: bc.application_form,
   declaration_form_url: bc.declaration_form,
@@ -248,6 +258,14 @@ const CUSTOMER_TEXT_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
   ['monthly_emi_before_possession', 'installment_amount'],
   ['monthly_emi_after_possession', 'installment_amount1'],
   ['total_emi_tenure_months', 'installment_tenure'],
+  // V_16.0 — these were always collected by the form but silently dropped
+  // on save (see the file header note above).
+  ['remaining_booking_amount', 'pay_after_booking'],
+  ['remaining_booking_date', 'pay_after_booking_date'],
+  ['booster_amount_before_possession', 'annual_amount'],
+  ['booster_amount_after_possession', 'annual_amount1'],
+  ['booster_interval_before_possession_months', 'annual_amount_every_months'],
+  ['booster_interval_after_possession_months', 'annual_amount2_every_months'],
 ];
 
 const CUSTOMER_FILE_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
@@ -407,14 +425,13 @@ export const fetchCustomerPaymentHistory = async (customerId: string): Promise<C
   return { success: res.data.success, message: res.data.message, rows: ((res.data.rows ?? []) as BackendAmountTransaction[]).map(mapTransactionToPaymentRecord) };
 };
 
-// ── Scheme ────────────────────────────────────────────────────────────────
-// NOTE: left exactly as originally written. There is no "scheme" concept
-// anywhere in the backend (no Scheme entity, no scheme-shaped fields on
-// Customer/AmountTransaction) as of V_13.0 — this call still 404s. Kept
-// as-is rather than removed, per explicit product decision, until the
-// backend actually models this.
+// ── Scheme (V_16.0) ─────────────────────────────────────────────────────
+// Now a real, working endpoint (backend customer.controller.ts's
+// getCustomerScheme) — customer info + EMI Scheme summary + EMI Schedule,
+// computed from this customer's own saved Payment Details. Powers the
+// Customer Scheme view page.
 /** GET /api/customers/:id/scheme */
-export const fetchCustomerScheme = async (customerId: string): Promise<CustomerSchemeResponse> => {
+export const fetchCustomerScheme = async (customerId: string): Promise<CustomerSchemeDetailResponse> => {
   const res = await axiosInstance.get(`/customers/${customerId}/scheme`);
   return { success: res.data.success, message: res.data.message, data: res.data.data ?? null };
 };

@@ -15,14 +15,14 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
-import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory, fetchCustomerScheme } from '../../../../services/customerDetailsService';
+import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory } from '../../../../services/customerDetailsService';
 import {
   collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, PAYMENT_FOR_OPTIONS, paymentForLabel,
 } from '../../../../services/paymentService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
-  Customer, Building, CustomerPaymentRecord, CustomerScheme,
+  Customer, Building, CustomerPaymentRecord,
   PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload,
 } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
@@ -162,8 +162,8 @@ const CustomerDetailsListPage: React.FC = () => {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [infoModal, setInfoModal] = useState<{
-    type: 'payment' | 'scheme'; customer: Customer; loading: boolean;
-    payments?: CustomerPaymentRecord[]; scheme?: CustomerScheme | null;
+    type: 'payment'; customer: Customer; loading: boolean;
+    payments?: CustomerPaymentRecord[];
     // Customer Due view — fetched alongside payment history, additive to
     // the existing Payment History modal (see openPaymentHistory below).
     due?: CustomerDueSummary; remaining?: CustomerRemainingAmounts;
@@ -400,17 +400,6 @@ const CustomerDetailsListPage: React.FC = () => {
       });
     } catch {
       toast.error('Failed to load payment history.');
-      setInfoModal(null);
-    }
-  };
-
-  const openScheme = async (c: Customer) => {
-    setInfoModal({ type: 'scheme', customer: c, loading: true });
-    try {
-      const res = await fetchCustomerScheme(c.id);
-      setInfoModal({ type: 'scheme', customer: c, loading: false, scheme: res.data });
-    } catch {
-      toast.error('Failed to load scheme.');
       setInfoModal(null);
     }
   };
@@ -680,7 +669,7 @@ const CustomerDetailsListPage: React.FC = () => {
                         <button type="button" title="Show Payment History" className="master-icon-btn" onClick={() => openPaymentHistory(c)}>
                           <MdReceiptLong size={15} />
                         </button>
-                        <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => openScheme(c)}>
+                        <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => navigate(`/admin/crm/customer-details/scheme/${c.id}`)}>
                           <MdLoyalty size={15} />
                         </button>
                         <button type="button" title="Collect Payment" className="master-icon-btn" onClick={() => openCollectPayment(c)}>
@@ -769,7 +758,7 @@ const CustomerDetailsListPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Payment History / Scheme modal ───────────────────────────── */}
+      {/* ── Payment History modal ────────────────────────────────────── */}
       {infoModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -784,7 +773,7 @@ const CustomerDetailsListPage: React.FC = () => {
             <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
               <div>
                 <div style={{ fontSize: 15.5, fontWeight: 700, color: t.textPrimary }}>
-                  {infoModal.type === 'payment' ? 'Payment History' : 'Scheme'}
+                  Payment History
                 </div>
                 <div style={{ fontSize: 12.5, color: t.textSecondary }}>{infoModal.customer.customer_name}</div>
               </div>
@@ -795,7 +784,7 @@ const CustomerDetailsListPage: React.FC = () => {
             <div className="p-5">
               {infoModal.loading ? (
                 <p style={{ color: t.textSecondary, fontSize: 13.5 }}>Loading...</p>
-              ) : infoModal.type === 'payment' ? (
+              ) : (
                 <>
                   {/* ── Customer Due panel — total_due/remaining_amount +
                       per-type remaining breakdown, additive above the
@@ -853,19 +842,6 @@ const CustomerDetailsListPage: React.FC = () => {
                     </div>
                   )}
                 </>
-              ) : !infoModal.scheme ? (
-                <p style={{ color: t.textSecondary, fontSize: 13.5 }}>No scheme applied for this customer.</p>
-              ) : (
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: t.textPrimary, marginBottom: 4 }}>{infoModal.scheme.scheme_name}</div>
-                  {infoModal.scheme.description && <p style={{ fontSize: 13, color: t.textSecondary, marginBottom: 8 }}>{infoModal.scheme.description}</p>}
-                  {infoModal.scheme.discount_percent != null && (
-                    <div style={{ fontSize: 13.5, color: t.textPrimary }}>Discount: <strong>{infoModal.scheme.discount_percent}%</strong></div>
-                  )}
-                  {infoModal.scheme.valid_till && (
-                    <div style={{ fontSize: 13.5, color: t.textPrimary }}>Valid till: <strong>{formatDate(infoModal.scheme.valid_till)}</strong></div>
-                  )}
-                </div>
               )}
             </div>
           </div>
