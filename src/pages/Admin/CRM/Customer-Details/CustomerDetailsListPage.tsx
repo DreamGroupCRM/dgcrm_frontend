@@ -2,6 +2,7 @@
 // DREAM GROUP CRM - CUSTOMER DETAILS LIST PAGE
 // ==========================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -129,6 +130,43 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
   try { e.currentTarget.showPicker?.(); } catch { /* already open / no gesture — ignore */ }
 };
 
+// The View/Edit/Delete row menu used to render `position:absolute` inside
+// the table's own `overflow-x:auto` wrapper — setting only overflow-x
+// (with overflow-y left as the default) makes the browser clip BOTH axes
+// per the CSS spec, so the dropdown was getting cut off (sometimes down to
+// a sliver of the "View" row) any time it opened near the bottom of the
+// table. Rendering it into a portal at document.body, positioned with
+// `fixed` from the trigger button's own bounding rect, escapes that
+// clipped container entirely — the dropdown always shows all three
+// options in full, wherever the row sits on screen.
+const RowActionMenu: React.FC<{
+  t: Theme; pos: { top: number; left: number };
+  onView: () => void; onEdit: () => void; onDelete: () => void;
+}> = ({ t, pos, onView, onEdit, onDelete }) => createPortal(
+  <div
+    data-customer-row-menu
+    style={{
+      position: 'fixed', top: pos.top, left: pos.left, zIndex: 100, minWidth: 130,
+      background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
+      boxShadow: '0 8px 24px rgba(0,0,0,0.16)', padding: '6px 0',
+    }}
+  >
+    <button type="button" onClick={onView}
+      className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+      <MdVisibility size={16} color="#2563eb" /> View
+    </button>
+    <button type="button" onClick={onEdit}
+      className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+      <MdEdit size={15} color="#7c3aed" /> Edit
+    </button>
+    <button type="button" onClick={onDelete}
+      className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
+      <MdDelete size={16} /> Delete
+    </button>
+  </div>,
+  document.body
+);
+
 const CustomerDetailsListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -160,6 +198,7 @@ const CustomerDetailsListPage: React.FC = () => {
 
   // ── row action menu + modals ────────────────────────────────────────
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [infoModal, setInfoModal] = useState<{
     type: 'payment'; customer: Customer; loading: boolean;
@@ -227,7 +266,13 @@ const CustomerDetailsListPage: React.FC = () => {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenuId(null);
+      const target = e.target as HTMLElement;
+      // The dropdown itself now lives in a document.body portal (see
+      // RowActionMenu), so it's no longer inside menuRef — it's tagged
+      // with data-customer-row-menu instead, and both are checked here.
+      if (menuRef.current?.contains(target)) return;
+      if (target.closest?.('[data-customer-row-menu]')) return;
+      setOpenMenuId(null);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -641,29 +686,24 @@ const CustomerDetailsListPage: React.FC = () => {
                     <td style={{ padding: '12px 14px' }}>
                       <div className="flex items-center gap-1.5" ref={openMenuId === c.id ? menuRef : undefined}>
                         <div style={{ position: 'relative' }}>
-                          <button type="button" onClick={() => setOpenMenuId((v) => (v === c.id ? null : c.id))}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              if (openMenuId === c.id) { setOpenMenuId(null); setMenuPos(null); return; }
+                              const r = e.currentTarget.getBoundingClientRect();
+                              setMenuPos({ top: r.bottom + 4, left: r.left });
+                              setOpenMenuId(c.id);
+                            }}
                             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 4 }}>
                             <MdMoreVert size={18} />
                           </button>
-                          {openMenuId === c.id && (
-                            <div style={{
-                              position: 'absolute', top: '110%', left: 0, zIndex: 20, minWidth: 130,
-                              background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
-                              boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '6px 0',
-                            }}>
-                              <button type="button" onClick={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/view/${c.id}`); }}
-                                className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-                                <MdVisibility size={16} color="#2563eb" /> View
-                              </button>
-                              <button type="button" onClick={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/edit/${c.id}`); }}
-                                className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-                                <MdEdit size={15} color="#7c3aed" /> Edit
-                              </button>
-                              <button type="button" onClick={() => handleDelete(c)}
-                                className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
-                                <MdDelete size={16} /> Delete
-                              </button>
-                            </div>
+                          {openMenuId === c.id && menuPos && (
+                            <RowActionMenu
+                              t={t} pos={menuPos}
+                              onView={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/view/${c.id}`); }}
+                              onEdit={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/edit/${c.id}`); }}
+                              onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
+                            />
                           )}
                         </div>
                         <button type="button" title="Show Payment History" className="master-icon-btn" onClick={() => openPaymentHistory(c)}>

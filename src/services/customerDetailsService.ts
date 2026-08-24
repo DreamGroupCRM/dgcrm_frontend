@@ -32,9 +32,16 @@
 // annual_amount_every_months/annual_amount2_every_months (booster) and
 // pay_after_booking/pay_after_booking_date (remaining booking) already
 // existed or were added specifically for this; see
-// database/2026-08-24-customer-pay-after-booking-date.sql. Only
-// company_name/project_name/floor_id/floor_label as customer-level fields
-// remain deliberately unmapped — no backend counterpart exists for those.
+// database/2026-08-24-customer-pay-after-booking-date.sql. company_name
+// now has a real column too (database/2026-08-24-customer-company-name.sql)
+// — it was always collected by the Create/Edit form but silently dropped
+// on save, coming back blank on every Edit. floor_id/floor_label are
+// recovered via the flat's own floor relation (Customer has no floor_id
+// column of its own — see findCustomerById on the backend) rather than a
+// new column, since Floor is already fully determined by which Flat is
+// selected. Only project_name has no backend counterpart of its own — it's
+// derived instead from the selected Building's own project_name, which
+// already round-trips correctly.
 
 import axiosInstance from './axiosConfig';
 import {
@@ -54,13 +61,28 @@ import {
   CustomerFullDetailResponse,
 } from '../types/index';
 
+// booking_date/installment_date/pay_after_booking_date are `timestamp`
+// columns on the backend (not `date`), so they come back as full ISO
+// strings like "2026-08-15T00:00:00.000Z" — an HTML <input type="date">
+// requires exactly "yyyy-mm-dd" and silently renders BLANK for anything
+// else, which is why Edit Customer's Booking Date / Installment Date /
+// Remaining Booking Date fields all came back empty despite having been
+// saved correctly. date_of_birth doesn't need this — it's a `date` column
+// and already comes back as a plain "yyyy-mm-dd" string.
+const toDateOnly = (iso: string | null): string => (iso ? iso.slice(0, 10) : '');
+
 // ── Backend response shapes (V_13.0) — only the fields this file reads ──
 // See Customer.entity.ts / Building.entity.ts / Wing.entity.ts /
 // Flat.entity.ts / AmountTransaction.entity.ts in dgcrm_backend for the
 // authoritative field list.
 interface BackendBuilding { id: number | string; name: string; project_name: string | null; location: string | null; }
 interface BackendWing { id: number | string; name: string; }
-interface BackendFlat { id: number | string; flat_number: string; flat_type: string | null; area_sqft: number | string | null; }
+// floor is nested under flat (not a direct customers.floor_id column — see
+// customer.repository.ts's findCustomerById on the backend), since Floor
+// sits between Wing and Flat in the Building hierarchy and this is the
+// only place to recover which floor a customer's flat is on.
+interface BackendFloor { id: number | string; name: string; }
+interface BackendFlat { id: number | string; flat_number: string; flat_type: string | null; area_sqft: number | string | null; floor: BackendFloor | null; }
 interface BackendCustomer {
   id: number | string;
   customer_code: string;
@@ -74,6 +96,7 @@ interface BackendCustomer {
   date_of_birth: string | null;
   alternate_contact_name: string | null;
   alternate_contact_mobile: string | null;
+  company_name: string | null;
   has_parking: boolean;
   parking_no: string | null;
   building_id: number | string | null;
@@ -186,15 +209,17 @@ const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
   alternate_person_name: bc.alternate_contact_name ?? '',
   alternate_person_mobile: bc.alternate_contact_mobile ?? '',
 
-  company_name: '', // no backend column — see file header
+  company_name: bc.company_name ?? '',
   project_name: bc.building?.project_name ?? '',
   location: bc.building?.location ?? '',
   building_id: bc.building_id != null ? String(bc.building_id) : '',
   building_name: bc.building?.name ?? '',
   wing_id: bc.wing_id != null ? String(bc.wing_id) : '',
   wing_name: bc.wing?.name ?? '',
-  floor_id: '', // Customer has no floor_id column on the backend
-  floor_label: '',
+  // Customer has no floor_id column of its own — recovered via the flat's
+  // own floor relation instead (see BackendFloor/BackendFlat above).
+  floor_id: bc.flat?.floor?.id != null ? String(bc.flat.floor.id) : '',
+  floor_label: bc.flat?.floor?.name ?? '',
   flat_id: bc.flat_id != null ? String(bc.flat_id) : '',
   flat_no: bc.flat?.flat_number ?? '',
   flat_type: bc.flat?.flat_type ?? '',
@@ -203,12 +228,12 @@ const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
   parking_no: bc.parking_no ?? '',
 
   total_cost: bc.flat_amount,
-  booking_date: bc.booking_date ?? '',
+  booking_date: toDateOnly(bc.booking_date),
   booking_amount: bc.booking_amount,
   remaining_booking_amount: bc.pay_after_booking,
-  remaining_booking_date: bc.pay_after_booking_date ?? '',
+  remaining_booking_date: toDateOnly(bc.pay_after_booking_date),
   possession_amount: bc.possession_amount,
-  installment_date: bc.installment_date ?? '',
+  installment_date: toDateOnly(bc.installment_date),
   monthly_emi_before_possession: bc.installment_amount,
   monthly_emi_after_possession: bc.installment_amount1,
   total_emi_tenure_months: bc.installment_tenure,
@@ -278,9 +303,25 @@ const CUSTOMER_FILE_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
 // already put in `formData` is carried over unchanged (nothing is
 // removed), plus the backend-named duplicates it needs to actually be
 // understood by CreateCustomerSchema/UpdateCustomerSchema.
+//
+// File fields are the one exception to "carried over unchanged": Multer's
+// upload.fields([...]) on the backend rejects ANY file field name that
+// isn't in its declared list with a hard 500 ("Unexpected field") — for
+// the whole request, not just that one field — so forwarding customer_photo/
+// aadhar_photo/pancard_photo under their ORIGINAL names as well as their
+// renamed ones (customer_image/aadhar_card/pan_card) broke every single
+// Create/Update Customer submission that included a photo, which is all of
+// them (Customer Photo, Aadhar Photo and Pancard Photo are mandatory).
+// Text fields don't have this problem — multer puts unrecognized text
+// fields straight into req.body with no rejection — so only file fields
+// need to be excluded from the unchanged copy-through.
+const CUSTOMER_FILE_FIELD_RENAME_FROM_KEYS = new Set(CUSTOMER_FILE_FIELD_RENAMES.map(([from]) => from));
 const toBackendCustomerFormData = (formData: FormData): FormData => {
   const out = new FormData();
-  formData.forEach((value, key) => out.append(key, value as string | Blob));
+  formData.forEach((value, key) => {
+    if (CUSTOMER_FILE_FIELD_RENAME_FROM_KEYS.has(key)) return; // re-appended under its backend name below
+    out.append(key, value as string | Blob);
+  });
 
   for (const [from, to] of CUSTOMER_TEXT_FIELD_RENAMES) {
     const v = formData.get(from);
