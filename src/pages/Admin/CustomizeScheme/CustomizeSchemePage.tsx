@@ -3,22 +3,27 @@
 // ==========================================
 // Replaces the old "Interest Free Calculator" placeholder. Purely a
 // client-side calculator — every field below feeds a live useMemo, so
-// dragging any slider instantly recomputes both the EMI Scheme summary
+// changing any value instantly recomputes both the EMI Scheme summary
 // (Section A/B totals) and the full month-by-month EMI Schedule. Nothing
 // here is persisted to the backend; it's a what-if tool for a sales rep to
 // interactively balance a payment plan against a flat's total cost before
 // quoting it to a customer. Every field starts at 0 (dates start at today)
 // so the page opens blank rather than pre-filled with a worked example.
 //
-// The Before/After Possession EMI split (how many of the Total EMI Tenure
-// months fall in each phase) is no longer its own input field — it's
-// derived from the other fields: given the amount still to be financed
-// after Booking/Remaining Booking/Possession are subtracted from Total
-// Cost, and the two monthly EMI rates, there's exactly one split of the
-// tenure into (before, after) months that makes the numbers add up —
-// UNLESS the two rates are equal, in which case any split balances the
-// same way and there's no way to recover a specific one from amounts
-// alone; that case defaults to splitting the tenure as evenly as possible.
+// V_16.0 rewrite: Total EMI Tenure and both Monthly EMI fields are now
+// treated as direct inputs (what the customer actually commits to paying),
+// not solved-for from a total-cost algebra as before — that approach could
+// silently produce a 0-month split when the numbers didn't reconcile
+// exactly, which read as "broken." Section A (Before Possession) is now a
+// straight sum of Booking + Remaining Booking + (tenure × EMI-before) +
+// booster-before + Possession. Section B (After Possession) then greedily
+// consumes whatever's left of Total Cost of Flat in EMI-after-sized
+// chunks (+ booster-after every Nth one), same as the real customer
+// Scheme page's backend scheduleGenerator.ts, with the final chunk
+// recorded as a partial "wrap-up" installment if less than a full EMI is
+// left — so the schedule's own total always exactly reconciles to Total
+// Cost of Flat (never more, never less) whenever Monthly EMI After
+// Possession has been entered.
 import React, { useMemo, useState } from 'react';
 import { MdCalculate, MdPayments, MdListAlt } from 'react-icons/md';
 
@@ -30,14 +35,28 @@ type Theme = ReturnType<typeof getTheme>;
 // ── formatting helpers ─────────────────────────────────────────────────────
 const formatINR = (n: number): string => `₹ ${Math.max(0, Math.round(n || 0)).toLocaleString('en-IN')}`;
 
+// Comma-formatted number for the amount input BOXES themselves (typed
+// value) — "400000" reads as "4,00,000" while typing, not just in the
+// result tables.
+const formatAmountInput = (v: number): string => (v === 0 ? '0' : Math.round(v).toLocaleString('en-IN'));
+const parseAmountInput = (raw: string): number => {
+  const n = Number(raw.replace(/[^\d.]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+};
+
+// Trims a trailing ".00" (or any trailing zeros after the decimal point) —
+// "5.00 L" reads as clutter next to a clean "5 L"; "5.50 L" still needs
+// its ".5", so only the trailing zeros themselves are stripped.
+const trimDecimal = (x: number): string => x.toFixed(2).replace(/\.?0+$/, '');
+
 // Indian-numbering shorthand shown at the end of every amount field —
-// "1500000" alone doesn't read at a glance; "15.00 L" does. Cr only shows
-// up in practice right at the 1-Crore slider ceiling.
+// "1500000" alone doesn't read at a glance; "15 L" does. Cr only shows up
+// in practice right at the 1-Crore slider ceiling.
 const compactINR = (n: number): string => {
   const v = Math.max(0, Math.round(n || 0));
-  if (v >= 10000000) return `${(v / 10000000).toFixed(2)} Cr`;
-  if (v >= 100000) return `${(v / 100000).toFixed(2)} L`;
-  if (v >= 1000) return `${Math.round(v / 1000)} K`;
+  if (v >= 10000000) return `${trimDecimal(v / 10000000)} Cr`;
+  if (v >= 100000) return `${trimDecimal(v / 100000)} L`;
+  if (v >= 1000) return `${trimDecimal(v / 1000)} K`;
   return '';
 };
 
@@ -78,8 +97,8 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 
 // ── module-scope form field helpers — same "outside the component" rule
 //    the Employee CRUD page documents: an inline component here would get a
-//    new identity every render (every slider drag re-renders the page),
-//    which would remount the input and drop focus/drag mid-gesture. ───────
+//    new identity every render (every field change re-renders the page),
+//    which would remount the input and drop focus mid-edit. ─────────────
 const getFieldStyle = (t: Theme): React.CSSProperties => ({
   width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10,
   padding: '9px 12px', fontSize: 13.5, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
@@ -108,23 +127,19 @@ const FieldWrap: React.FC<{ t: Theme; label: string; span?: number; className?: 
   </div>
 );
 
-// Amount / count field with a synced range slider underneath — the core
-// "use range slider for changing the amount values" requirement. Typing in
-// the text box and dragging the slider both update the same state. While
-// the slider itself is being dragged (mouse or touch), a small value
-// bubble tracks the thumb so the number is visible without looking away
-// at the text box above.
+// Amount / count field, optionally with a synced range slider underneath.
+// Typing in the text box and dragging the slider (when present) both
+// update the same state. While the slider is being dragged (mouse or
+// touch), a small value bubble tracks the thumb so the number is visible
+// without looking away at the text box above. Month-count fields
+// (Total EMI Tenure, Booster Intervals) pass noSlider — a slider adds
+// nothing once the count is a small, precisely-typed number, and it was
+// easy to fat-finger the interval fields while dragging.
 const SliderField: React.FC<{
   t: Theme; label: string; value: number; onChange: (v: number) => void;
   min?: number; max: number; step?: number; prefix?: string; suffix?: string;
-  // Renders a second control (e.g. a paired date input) beside the amount
-  // box, under this field's one shared label — see "Remaining Booking
-  // Amount & Date" below, which folds two previously-separate fields into
-  // one, matching the reference Payment Details form. `span` widens the
-  // grid cell itself (2 columns' worth) so both controls have room to
-  // breathe instead of being squeezed into one column's width.
-  extra?: React.ReactNode; span?: number;
-}> = ({ t, label, value, onChange, min = 0, max, step = 1, prefix, suffix, extra, span }) => {
+  extra?: React.ReactNode; span?: number; noSlider?: boolean;
+}> = ({ t, label, value, onChange, min = 0, max, step = 1, prefix, suffix, extra, span, noSlider }) => {
   const [dragging, setDragging] = useState(false);
   const sliderMax = Math.max(max, min + step);
   const clamped = Math.min(Math.max(value, min), sliderMax);
@@ -134,6 +149,7 @@ const SliderField: React.FC<{
   // row automatically — every ₹ field shows it, not just the ones a caller
   // opts into, so callers never need a separate flag for it.
   const compact = prefix ? compactINR(value) : '';
+  const displayValue = prefix ? formatAmountInput(value) : (value === 0 ? '0' : String(value));
 
   return (
     <FieldWrap t={t} label={label} span={span}>
@@ -141,11 +157,8 @@ const SliderField: React.FC<{
         <div className="flex items-center gap-1.5" style={{ ...getFieldStyle(t), padding: '0 10px', flex: 1, minWidth: 0 }}>
           {prefix && <span style={{ color: t.textSecondary, flexShrink: 0 }}>{prefix}</span>}
           <input
-            type="text" inputMode="decimal" value={value === 0 ? '0' : String(value)}
-            onChange={(e) => {
-              const n = Number(e.target.value.replace(/[^\d.]/g, ''));
-              onChange(Number.isFinite(n) ? n : 0);
-            }}
+            type="text" inputMode="decimal" value={displayValue}
+            onChange={(e) => onChange(parseAmountInput(e.target.value))}
             style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }}
           />
           {compact && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 11, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
@@ -158,29 +171,58 @@ const SliderField: React.FC<{
           input itself (and everything below it) up/down by ~14px the
           instant a drag started or ended. Visibility toggles instead, so
           the layout height never changes. */}
-      <div style={{ position: 'relative', marginTop: 22 }}>
-        <div
-          style={{
-            position: 'absolute', top: -20, left: `${percent}%`, transform: 'translateX(-50%)',
-            background: '#4338ca', color: '#fff', fontSize: 11, fontWeight: 700, lineHeight: 1,
-            padding: '3px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none',
-            visibility: dragging ? 'visible' : 'hidden',
-          }}
-        >
-          {bubbleText}
+      {!noSlider && (
+        <div style={{ position: 'relative', marginTop: 22 }}>
+          <div
+            style={{
+              position: 'absolute', top: -20, left: `${percent}%`, transform: 'translateX(-50%)',
+              background: '#4338ca', color: '#fff', fontSize: 11, fontWeight: 700, lineHeight: 1,
+              padding: '3px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none',
+              visibility: dragging ? 'visible' : 'hidden',
+            }}
+          >
+            {bubbleText}
+          </div>
+          <input
+            type="range" min={min} max={sliderMax} step={step} value={clamped}
+            onChange={(e) => onChange(Number(e.target.value))}
+            onMouseDown={() => setDragging(true)} onMouseUp={() => setDragging(false)}
+            onTouchStart={() => setDragging(true)} onTouchEnd={() => setDragging(false)}
+            onBlur={() => setDragging(false)}
+            style={{ width: '100%', display: 'block', accentColor: '#4338ca', cursor: 'pointer' }}
+          />
         </div>
-        <input
-          type="range" min={min} max={sliderMax} step={step} value={clamped}
-          onChange={(e) => onChange(Number(e.target.value))}
-          onMouseDown={() => setDragging(true)} onMouseUp={() => setDragging(false)}
-          onTouchStart={() => setDragging(true)} onTouchEnd={() => setDragging(false)}
-          onBlur={() => setDragging(false)}
-          style={{ width: '100%', display: 'block', accentColor: '#4338ca', cursor: 'pointer' }}
-        />
-      </div>
+      )}
     </FieldWrap>
   );
 };
+
+// "Remaining Booking Amount & Date" — a narrower amount box (not the full
+// grid-cell width every other amount field gets) paired with a date input,
+// under one shared label. No slider here either — this pairs with a date,
+// so it behaves like a one-off entry rather than something to be dragged.
+const NarrowAmountDateField: React.FC<{
+  t: Theme; label: string; amount: number; onAmountChange: (v: number) => void;
+  date: string; onDateChange: (v: string) => void;
+}> = ({ t, label, amount, onAmountChange, date, onDateChange }) => (
+  <FieldWrap t={t} label={label} span={2}>
+    <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5" style={{ ...getFieldStyle(t), padding: '0 10px', width: 160, flexShrink: 0 }}>
+        <span style={{ color: t.textSecondary, flexShrink: 0 }}>₹</span>
+        <input
+          type="text" inputMode="decimal" value={formatAmountInput(amount)}
+          onChange={(e) => onAmountChange(parseAmountInput(e.target.value))}
+          style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }}
+        />
+      </div>
+      <input
+        type="date" value={date} onClick={openPicker} onFocus={openPicker}
+        onChange={(e) => onDateChange(e.target.value)} style={{ ...getFieldStyle(t), flex: 1, minWidth: 0 }}
+      />
+      {amount > 0 && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 11, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(amount)}</span>}
+    </div>
+  </FieldWrap>
+);
 
 const DateField: React.FC<{ t: Theme; label: string; value: string; onChange: (v: string) => void }> = ({ t, label, value, onChange }) => (
   <FieldWrap t={t} label={label}>
@@ -210,6 +252,35 @@ const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradie
       <h2 style={{ fontSize: 16.5, fontWeight: 800, color: '#fff', margin: 0 }}>{title}</h2>
     </div>
     <div style={{ fontSize: 13.5, fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>{subtitle}</div>
+  </div>
+);
+
+// A prominent, HDFC-EMI-calculator-style headline strip — shows the two
+// monthly EMI figures the customer will actually pay in big bold type,
+// right below the page header, updating live as the Payment Details
+// fields change (see https://www.hdfc.bank.in/personal-loan/emi-calculator
+// for the reference "Your EMI will be ₹X" pattern this mirrors).
+const MonthlyEmiBanner: React.FC<{
+  isDark: boolean; emiBefore: number; tenureBefore: number; emiAfter: number; afterMonths: number; lastAfterAmount: number;
+}> = ({ isDark, emiBefore, tenureBefore, emiAfter, afterMonths, lastAfterAmount }) => (
+  <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: isDark ? 'linear-gradient(135deg,#111827,#1f2937)' : 'linear-gradient(135deg,#111827,#312e81)' }}>
+    <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
+      <div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Your Monthly EMI — Before Possession</div>
+        <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', marginTop: 4 }}>{formatINR(emiBefore)}</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>for {tenureBefore} month{tenureBefore === 1 ? '' : 's'}</div>
+      </div>
+      <div className="hidden sm:block" style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.15)' }} />
+      <div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Your Monthly EMI — After Possession</div>
+        <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', marginTop: 4 }}>{formatINR(emiAfter)}</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
+          {afterMonths > 0 ? (
+            <>for {afterMonths} month{afterMonths === 1 ? '' : 's'}{lastAfterAmount > 0 && Math.round(lastAfterAmount) !== Math.round(emiAfter) ? ` (last: ${formatINR(lastAfterAmount)})` : ''}</>
+          ) : 'enter Total Cost of Flat & other fields above'}
+        </div>
+      </div>
+    </div>
   </div>
 );
 
@@ -294,10 +365,10 @@ const CustomizeSchemePage: React.FC = () => {
   const [remainingBookingDate, setRemainingBookingDate] = useState(todayISO());
 
   const [possessionAmount, setPossessionAmount] = useState(0);
-  const [installmentDate, setInstallmentDate] = useState(todayISO());
 
-  const [totalEmiTenure, setTotalEmiTenure] = useState(0);
   const [monthlyEmiBeforePossession, setMonthlyEmiBeforePossession] = useState(0);
+  const [installmentDate, setInstallmentDate] = useState(todayISO());
+  const [totalEmiTenure, setTotalEmiTenure] = useState(0);
   const [monthlyEmiAfterPossession, setMonthlyEmiAfterPossession] = useState(0);
 
   const [boosterAmountBeforePossession, setBoosterAmountBeforePossession] = useState(0);
@@ -306,87 +377,94 @@ const CustomizeSchemePage: React.FC = () => {
   const [boosterIntervalAfterPossession, setBoosterIntervalAfterPossession] = useState(0);
 
   // ── the whole EMI Scheme + EMI Schedule, recomputed live on every field
-  //    change (including every slider drag) — see the file-header note on
-  //    how the before/after possession EMI split is derived. ─────────────
+  //    change — see the file-header note on the direct-input + greedy-
+  //    consumption model this now uses (mirrors the real Customer Scheme
+  //    page's backend scheduleGenerator.ts). ──────────────────────────────
   const computed = useMemo(() => {
-    const remainingToFinance = Math.max(0, totalCost - bookingAmount - remainingBookingAmount - possessionAmount);
-
-    let beforeCount = 0;
-    if (totalEmiTenure > 0) {
-      if (monthlyEmiBeforePossession === monthlyEmiAfterPossession) {
-        // Rates equal — every split balances the totals identically, so
-        // there's no amount-based signal to recover one; split evenly.
-        beforeCount = Math.round(totalEmiTenure / 2);
-      } else {
-        const raw = (remainingToFinance - totalEmiTenure * monthlyEmiAfterPossession) / (monthlyEmiBeforePossession - monthlyEmiAfterPossession);
-        beforeCount = Math.round(raw);
-      }
-      beforeCount = Math.min(totalEmiTenure, Math.max(0, beforeCount));
-    }
-    const afterCount = Math.max(0, totalEmiTenure - beforeCount);
-
-    const boosterOccBefore = boosterIntervalBeforePossession > 0 ? Math.floor(beforeCount / boosterIntervalBeforePossession) : 0;
-    const boosterTotalBefore = boosterOccBefore * boosterAmountBeforePossession;
-    const boosterOccAfter = boosterIntervalAfterPossession > 0 ? Math.floor(afterCount / boosterIntervalAfterPossession) : 0;
-    const boosterTotalAfter = boosterOccAfter * boosterAmountAfterPossession;
-
-    const emiBeforeTotal = beforeCount * monthlyEmiBeforePossession;
-    const emiAfterTotal = afterCount * monthlyEmiAfterPossession;
-
-    const totalA = bookingAmount + remainingBookingAmount + emiBeforeTotal + boosterTotalBefore + possessionAmount;
-    const totalB = emiAfterTotal + boosterTotalAfter;
-    const grandTotal = totalA + totalB;
-
+    const tenure = Math.max(0, Math.round(totalEmiTenure));
     const bookingD = parseDate(bookingDate);
     const remainingD = parseDate(remainingBookingDate);
     const firstEmiD = parseDate(installmentDate);
     const daysDiff = bookingD && remainingD ? Math.round((remainingD.getTime() - bookingD.getTime()) / 86400000) : null;
     const remainingLabel = daysDiff != null && daysDiff > 0 ? `Within ${daysDiff} days from booking` : 'Remaining Booking Amount';
 
-    // Section A — summary rows
-    const summaryA: SummaryRow[] = [
-      { label: 'Booking Amount', amount: bookingAmount },
-      { label: remainingLabel, amount: remainingBookingAmount },
-      { label: `${ordinal(1)} EMI's (${formatINR(monthlyEmiBeforePossession)} x ${beforeCount})`, amount: emiBeforeTotal },
-      { label: `After every ${boosterIntervalBeforePossession} EMI's, additional Rs. ${formatINR(boosterAmountBeforePossession)} (x ${boosterOccBefore})`, amount: boosterTotalBefore },
-      { label: 'At the time of possession (one-time payment)', amount: possessionAmount },
-    ];
-    // Section B — summary rows
-    const summaryB: SummaryRow[] = [
-      { label: `${ordinal(2)} EMI's (${formatINR(monthlyEmiAfterPossession)} x ${afterCount} months)`, amount: emiAfterTotal },
-      { label: `After every ${boosterIntervalAfterPossession} EMI's, additional Rs. ${formatINR(boosterAmountAfterPossession)} (x ${boosterOccAfter})`, amount: boosterTotalAfter },
-    ];
-
-    // Section A — detailed schedule rows
+    // ── Section A (Before Possession) — Booking + Remaining Booking, then
+    //    exactly `tenure` EMIs of `monthlyEmiBeforePossession` starting ON
+    //    the Installment Date itself (not the month after it), each with a
+    //    booster payment folded in every Nth EMI, then Possession Amount. ──
     const beforeRows: ScheduleRow[] = [];
     let sr = 1;
-    beforeRows.push({ sr: sr++, date: bookingD, label: 'Booking', amount: bookingAmount });
+    beforeRows.push({ sr: sr++, date: bookingD, label: 'Booking Amount', amount: bookingAmount });
     beforeRows.push({ sr: sr++, date: remainingD, label: remainingLabel, amount: remainingBookingAmount });
     let lastBeforeDate: Date | null = firstEmiD;
-    for (let i = 1; i <= beforeCount; i++) {
+    let boosterOccBefore = 0;
+    for (let i = 1; i <= tenure; i++) {
       const d = firstEmiD ? addMonths(firstEmiD, i - 1) : null;
       beforeRows.push({ sr: sr++, date: d, label: `${ordinal(i)} EMI`, amount: monthlyEmiBeforePossession });
       if (d) lastBeforeDate = d;
       if (boosterIntervalBeforePossession > 0 && boosterAmountBeforePossession > 0 && i % boosterIntervalBeforePossession === 0) {
         beforeRows.push({ sr: sr++, date: d, label: `Booster (after ${ordinal(i)} EMI)`, amount: boosterAmountBeforePossession });
+        boosterOccBefore++;
       }
     }
     beforeRows.push({ sr: sr++, date: lastBeforeDate, label: 'Possession Amount', amount: possessionAmount });
 
-    // Section B — detailed schedule rows, continuing month-by-month right
-    // after the last before-possession installment date.
-    const afterStartDate = lastBeforeDate ? addMonths(lastBeforeDate, 1) : (firstEmiD ? addMonths(firstEmiD, beforeCount) : null);
+    const totalA = beforeRows.reduce((s, r) => s + r.amount, 0);
+
+    // ── Section B (After Possession) — greedily consumes whatever's left
+    //    of Total Cost of Flat in Monthly-EMI-After-sized chunks (+
+    //    booster every Nth one), so booking a bigger booking/booster
+    //    amount up front — or a bigger EMI-after — always shortens this
+    //    phase, and a smaller one always lengthens it. The last chunk is
+    //    recorded as the exact leftover if it's less than one full EMI,
+    //    so the running total NEVER over- or under-shoots Total Cost of
+    //    Flat. ────────────────────────────────────────────────────────────
+    const remainingFlatAmount = Math.max(0, totalCost - totalA);
+    const afterStartDate = lastBeforeDate ? addMonths(lastBeforeDate, 1) : null;
     const afterRows: ScheduleRow[] = [];
-    sr = 1;
-    for (let i = 1; i <= afterCount; i++) {
-      const d = afterStartDate ? addMonths(afterStartDate, i - 1) : null;
-      afterRows.push({ sr: sr++, date: d, label: `${ordinal(i)} EMI`, amount: monthlyEmiAfterPossession });
-      if (boosterIntervalAfterPossession > 0 && boosterAmountAfterPossession > 0 && i % boosterIntervalAfterPossession === 0) {
-        afterRows.push({ sr: sr++, date: d, label: `Booster (after ${ordinal(i)} EMI)`, amount: boosterAmountAfterPossession });
+    let amountLeft = remainingFlatAmount;
+    let srB = 1;
+    while (amountLeft > 0 && monthlyEmiAfterPossession > 0 && srB <= 2000) {
+      const isBoosterMonth = boosterIntervalAfterPossession > 0 && boosterAmountAfterPossession > 0 && srB % boosterIntervalAfterPossession === 0;
+      const fullAmount = monthlyEmiAfterPossession + (isBoosterMonth ? boosterAmountAfterPossession : 0);
+      const d = afterStartDate ? addMonths(afterStartDate, srB - 1) : null;
+      if (amountLeft >= fullAmount) {
+        afterRows.push({ sr: srB, date: d, label: `${ordinal(srB)} EMI${isBoosterMonth ? ' + Booster' : ''}`, amount: fullAmount });
+        amountLeft -= fullAmount;
+      } else {
+        afterRows.push({ sr: srB, date: d, label: `${ordinal(srB)} EMI (Final)`, amount: amountLeft });
+        amountLeft = 0;
       }
+      srB++;
     }
 
-    return { beforeCount, afterCount, summaryA, summaryB, totalA, totalB, grandTotal, beforeRows, afterRows };
+    const totalB = afterRows.reduce((s, r) => s + r.amount, 0);
+    const afterCount = afterRows.length;
+    // Same simplification the backend scheduleGenerator.ts uses for its
+    // summary split — the plain-EMI portion is whatever's left of totalB
+    // after subtracting the booster occurrences' share, so the two summary
+    // rows always add up to exactly totalB (including any partial final
+    // installment) rather than an approximation that could drift from it.
+    const boosterOccAfter = boosterIntervalAfterPossession > 0 ? Math.floor(afterCount / boosterIntervalAfterPossession) : 0;
+    const boosterTotalAfter = boosterAmountAfterPossession * boosterOccAfter;
+    const emiOnlyTotalAfter = totalB - boosterTotalAfter;
+
+    // ── Summary (EMI Scheme) rows ──────────────────────────────────────
+    const summaryA: SummaryRow[] = [
+      { label: 'Booking Amount', amount: bookingAmount },
+      { label: remainingLabel, amount: remainingBookingAmount },
+      { label: `${ordinal(1)} EMI's (${formatINR(monthlyEmiBeforePossession)} x ${tenure})`, amount: monthlyEmiBeforePossession * tenure },
+      { label: `After every ${boosterIntervalBeforePossession} EMI's, additional Rs. ${formatINR(boosterAmountBeforePossession)} (x ${boosterOccBefore})`, amount: boosterAmountBeforePossession * boosterOccBefore },
+      { label: 'At the time of possession (one-time payment)', amount: possessionAmount },
+    ];
+    const summaryB: SummaryRow[] = [
+      { label: `${ordinal(2)} EMI's (${formatINR(monthlyEmiAfterPossession)} x ${afterCount} months)`, amount: emiOnlyTotalAfter },
+      { label: `After every ${boosterIntervalAfterPossession} EMI's, additional Rs. ${formatINR(boosterAmountAfterPossession)} (x ${boosterOccAfter})`, amount: boosterTotalAfter },
+    ];
+
+    const grandTotal = totalA + totalB;
+
+    return { tenure, afterCount, summaryA, summaryB, totalA, totalB, grandTotal, beforeRows, afterRows };
   }, [
     totalCost, bookingDate, bookingAmount, remainingBookingAmount, remainingBookingDate,
     possessionAmount, installmentDate, monthlyEmiBeforePossession, monthlyEmiAfterPossession,
@@ -395,6 +473,7 @@ const CustomizeSchemePage: React.FC = () => {
   ]);
 
   const costMismatch = totalCost > 0 && Math.round(computed.grandTotal) !== Math.round(totalCost);
+  const lastAfterAmount = computed.afterRows.length > 0 ? computed.afterRows[computed.afterRows.length - 1].amount : 0;
 
   return (
     <div style={{ fontFamily: t.fontFamily }}>
@@ -406,9 +485,15 @@ const CustomizeSchemePage: React.FC = () => {
         </div>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Customize Scheme</h1>
-          <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Build an EMI Scheme &amp; Schedule — drag any slider to see it recalculate live</p>
+          <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Build an EMI Scheme &amp; Schedule — every field recalculates it live</p>
         </div>
       </div>
+
+      {/* ── "Your Monthly EMI" headline — HDFC-EMI-calculator style ─── */}
+      <MonthlyEmiBanner
+        isDark={isDark} emiBefore={monthlyEmiBeforePossession} tenureBefore={computed.tenure}
+        emiAfter={monthlyEmiAfterPossession} afterMonths={computed.afterCount} lastAfterAmount={lastAfterAmount}
+      />
 
       {/* ── Payment Details form ────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
@@ -421,30 +506,25 @@ const CustomizeSchemePage: React.FC = () => {
           <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" />
           <DateField t={t} label="Booking Date" value={bookingDate} onChange={setBookingDate} />
           <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
-          <SliderField
-            t={t} label="Remaining Booking Amount & Date" value={remainingBookingAmount} onChange={setRemainingBookingAmount}
-            max={Math.max(totalCost, 100000)} step={10000} prefix="₹" span={2}
-            extra={
-              <input
-                type="date" value={remainingBookingDate} onClick={openPicker} onFocus={openPicker}
-                onChange={(e) => setRemainingBookingDate(e.target.value)} style={{ ...getFieldStyle(t), flex: 1, minWidth: 0 }}
-              />
-            }
+          <NarrowAmountDateField
+            t={t} label="Remaining Booking Amount & Date" amount={remainingBookingAmount} onAmountChange={setRemainingBookingAmount}
+            date={remainingBookingDate} onDateChange={setRemainingBookingDate}
           />
           <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
-          <DateField t={t} label="Installment Date (1st EMI)" value={installmentDate} onChange={setInstallmentDate} />
-          <SliderField t={t} label="Total EMI Tenure (Months)" value={totalEmiTenure} onChange={setTotalEmiTenure} max={120} step={1} suffix="months" />
           <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" />
+          <DateField t={t} label="Installment Date (1st EMI)" value={installmentDate} onChange={setInstallmentDate} />
+          <SliderField t={t} label="Total EMI Tenure Before Possession (Months)" value={totalEmiTenure} onChange={setTotalEmiTenure} max={120} step={1} suffix="months" noSlider />
           <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" />
           <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" />
-          <SliderField t={t} label="Booster Interval Before Possession (Months)" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" />
+          <SliderField t={t} label="Booster Interval Before Possession (Months)" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" noSlider />
           <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" />
-          <SliderField t={t} label="Booster Interval After Possession (Months)" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" />
+          <SliderField t={t} label="Booster Interval After Possession (Months)" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" noSlider />
         </div>
 
         {costMismatch && (
           <div className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 mt-5" style={{ background: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed', color: '#c2410c', fontSize: 12.5 }}>
-            The scheme below totals {formatINR(computed.grandTotal)}, which doesn't match the Total Cost of Flat ({formatINR(totalCost)}) — adjust the sliders above until they match.
+            The scheme below totals {formatINR(computed.grandTotal)}, which doesn't match the Total Cost of Flat ({formatINR(totalCost)}) — adjust the values above until they match
+            {monthlyEmiAfterPossession === 0 && computed.totalA < totalCost ? ' (Monthly EMI After Possession is still 0, so the after-possession balance has nowhere to go yet).' : '.'}
           </div>
         )}
       </div>
@@ -471,7 +551,7 @@ const CustomizeSchemePage: React.FC = () => {
         <ResultPanelHeader
           icon={<MdListAlt size={17} color="#fff" />} title="EMI Schedule"
           gradient="linear-gradient(135deg,#059669,#10b981)"
-          subtitle={`Schedule ${formatINR(totalCost)} - ${totalEmiTenure} months`}
+          subtitle={`Schedule ${formatINR(totalCost)} · ${computed.tenure} + ${computed.afterCount} months`}
         />
         <div className="p-5 sm:p-6">
           <ScheduleTable t={t} section="A" rows={computed.beforeRows} total={computed.totalA} totalLabel="(A) Total Before Possession" />
