@@ -595,13 +595,7 @@ const DepartmentListPage: React.FC = () => {
 >>>>>>> V_14.0
                         <div className="flex items-center gap-2">
                           <MdGroups size={16} className="master-row-icon" />
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/admin/masters/department/view/${d.id}`)}
-                            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', fontWeight: 700, fontSize: 'inherit', fontFamily: t.fontFamily }}
-                          >
-                            {d.name}
-                          </button>
+                          <span style={{ fontWeight: 700 }}>{d.name}</span>
                         </div>
 >>>>>>> V_13.0
                       </td>

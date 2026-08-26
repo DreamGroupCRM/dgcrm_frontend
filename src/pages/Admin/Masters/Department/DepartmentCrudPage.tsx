@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  MdApartment, MdArrowBack, MdSave, MdAdd, MdDelete,
+  MdApartment, MdArrowBack, MdSave, MdAdd, MdDelete, MdEdit, MdCheck, MdClose,
 } from 'react-icons/md';
 
 import { useAppSelector } from '../../../../hooks';
@@ -85,6 +85,10 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [newDesignationName, setNewDesignationName] = useState('');
 
+  // ── editing an existing designation's name in place ─────────────────────
+  const [editingDesignationId, setEditingDesignationId] = useState<string | null>(null);
+  const [editingDesignationName, setEditingDesignationName] = useState('');
+
   // ── load for edit/view ───────────────────────────────────────────────────
   useEffect(() => {
     if (mode === 'add' || !id) return;
@@ -135,6 +139,32 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
   // on Save, same as removing a not-yet-saved row in a Building floor.
   const removeDesignation = (designationId: string | undefined) => {
     setDesignations((prev) => prev.filter((d) => d.id !== designationId));
+    if (designationId === editingDesignationId) setEditingDesignationId(null);
+  };
+
+  // Rename an existing designation — same "local until Save" model as
+  // add/toggle/delete above. Enter/checkmark commits, X/Escape cancels.
+  const startEditDesignation = (d: Designation) => {
+    setEditingDesignationId(d.id ?? null);
+    setEditingDesignationName(d.name);
+  };
+  const cancelEditDesignation = () => {
+    setEditingDesignationId(null);
+    setEditingDesignationName('');
+  };
+  const saveEditDesignation = () => {
+    const name = editingDesignationName.trim();
+    if (!name) {
+      toast.error('Designation name cannot be empty.');
+      return;
+    }
+    if (designations.some((d) => d.id !== editingDesignationId && d.name.toLowerCase() === name.toLowerCase())) {
+      toast.error('That designation already exists for this department.');
+      return;
+    }
+    setDesignations((prev) => prev.map((d) => (d.id === editingDesignationId ? { ...d, name } : d)));
+    setEditingDesignationId(null);
+    setEditingDesignationName('');
   };
 
   // ── validation ────────────────────────────────────────────────────────
@@ -337,32 +367,98 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                         }}
                       >
                         <td style={{ padding: '10px 16px', fontSize: 13.5, color: t.textSecondary, width: 48 }}>{idx + 1}</td>
-                        <td style={{ padding: '10px 16px', fontSize: 14, fontWeight: 600, color: d.is_active ? t.textPrimary : t.textSecondary }}>{d.name}</td>
+                        <td style={{ padding: '10px 16px', fontSize: 14, fontWeight: 600, color: d.is_active ? t.textPrimary : t.textSecondary }}>
+                          {editingDesignationId === d.id ? (
+                            <input
+                              type="text" autoFocus value={editingDesignationName}
+                              onChange={(e) => setEditingDesignationName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') { e.preventDefault(); saveEditDesignation(); }
+                                if (e.key === 'Escape') { e.preventDefault(); cancelEditDesignation(); }
+                              }}
+                              style={{
+                                width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 8,
+                                padding: '6px 10px', fontSize: 14, fontWeight: 600, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
+                              }}
+                            />
+                          ) : d.name}
+                        </td>
                         <td style={{ padding: '10px 16px' }}>
                           <StatusPill active={d.is_active} />
                         </td>
                         <td style={{ padding: '10px 16px' }}>
                           <div className="flex items-center justify-end gap-3">
-                            <StatusToggle
-                              checked={d.is_active}
-                              disabled={isView}
-                              onChange={(v) => toggleDesignation(d.id, v)}
-                            />
-                            {!isView && (
-                              <button
-                                type="button"
-                                onClick={() => removeDesignation(d.id)}
-                                title="Delete designation"
-                                style={{
-                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                  width: 32, height: 32, borderRadius: 8,
-                                  background: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2',
-                                  border: `1px solid ${isDark ? 'rgba(239,68,68,0.3)' : '#fecaca'}`,
-                                  color: '#dc2626', cursor: 'pointer',
-                                }}
-                              >
-                                <MdDelete size={17} />
-                              </button>
+                            {editingDesignationId === d.id ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={saveEditDesignation}
+                                  title="Save designation name"
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    width: 32, height: 32, borderRadius: 8,
+                                    background: isDark ? 'rgba(34,197,94,0.12)' : '#f0fdf4',
+                                    border: `1px solid ${isDark ? 'rgba(34,197,94,0.3)' : '#bbf7d0'}`,
+                                    color: '#16a34a', cursor: 'pointer',
+                                  }}
+                                >
+                                  <MdCheck size={17} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelEditDesignation}
+                                  title="Cancel"
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    width: 32, height: 32, borderRadius: 8,
+                                    background: t.insetBg, border: `1px solid ${t.surfaceBorder}`,
+                                    color: t.textSecondary, cursor: 'pointer',
+                                  }}
+                                >
+                                  <MdClose size={17} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                {/* Sequence: Edit, Delete, then Enable/Disable toggle last. */}
+                                {!isView && (
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditDesignation(d)}
+                                    title="Edit designation name"
+                                    style={{
+                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                      width: 32, height: 32, borderRadius: 8,
+                                      background: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff',
+                                      border: `1px solid ${isDark ? 'rgba(124,58,237,0.3)' : '#ddd6fe'}`,
+                                      color: '#7c3aed', cursor: 'pointer',
+                                    }}
+                                  >
+                                    <MdEdit size={16} />
+                                  </button>
+                                )}
+                                {!isView && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeDesignation(d.id)}
+                                    title="Delete designation"
+                                    style={{
+                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                      width: 32, height: 32, borderRadius: 8,
+                                      background: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2',
+                                      border: `1px solid ${isDark ? 'rgba(239,68,68,0.3)' : '#fecaca'}`,
+                                      color: '#dc2626', cursor: 'pointer',
+                                    }}
+                                  >
+                                    <MdDelete size={17} />
+                                  </button>
+                                )}
+                                <StatusToggle
+                                  checked={d.is_active}
+                                  disabled={isView}
+                                  onChange={(v) => toggleDesignation(d.id, v)}
+                                />
+                              </>
                             )}
                           </div>
                         </td>

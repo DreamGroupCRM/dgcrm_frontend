@@ -328,7 +328,7 @@ const CompanyListPage: React.FC = () => {
                   }}>{h}</th>
 =======
                 <SortableTh label="ID" active={sortKey === 'id'} dir={sortDir} onClick={() => toggleSort('id')} style={{ borderBottom: `1px solid ${t.divider}` }} />
-                <SortableTh label="Company" active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Company Name" active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Email" active={sortKey === 'email'} dir={sortDir} onClick={() => toggleSort('email')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Phone" active={sortKey === 'phone'} dir={sortDir} onClick={() => toggleSort('phone')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="City" active={sortKey === 'city'} dir={sortDir} onClick={() => toggleSort('city')} style={{ borderBottom: `1px solid ${t.divider}` }} />

@@ -7,6 +7,7 @@
 // variant) — only the body swaps a single value for a 3-up row.
 import React from 'react';
 import { IconType } from 'react-icons';
+import { getStatGradient } from './statGradients';
 
 interface MultiStatCardProps {
   label: string;
@@ -27,30 +28,30 @@ interface MultiStatCardProps {
 }
 
 const MultiStatCard: React.FC<MultiStatCardProps> = ({
-  label, icon: Icon, color, bg, total, enabled, disabled,
-  surfaceBg, surfaceBorder, textPrimary, textSecondary, loading, labelFontSize,
+  label, icon: Icon, color, total, enabled, disabled,
+  surfaceBorder, loading, labelFontSize,
 }) => (
   <div
-    className="master-stat-card master-stat-card-compact master-stat-card-multi"
-    style={{ background: surfaceBg, border: `1px solid ${surfaceBorder}` }}
+    className="master-stat-card master-stat-card-compact master-stat-card-multi master-stat-card-gradient"
+    style={{ background: getStatGradient(color), border: `1px solid ${surfaceBorder}` }}
   >
-    <div className="master-stat-icon" style={{ background: bg }}>
-      <Icon size={15} style={{ color }} />
+    <div className="master-stat-icon" style={{ background: 'rgba(255,255,255,0.22)' }}>
+      <Icon size={15} style={{ color: '#fff' }} />
     </div>
     <div className="master-stat-body-multi">
-      <div className="master-stat-label" style={{ color: textSecondary, ...(labelFontSize ? { fontSize: labelFontSize } : {}) }}>{label}</div>
+      <div className="master-stat-label master-stat-label-gradient" style={labelFontSize ? { fontSize: labelFontSize } : undefined}>{label}</div>
       <div className="master-stat-multi-row">
         <div className="master-stat-multi-item">
-          <span className="master-stat-multi-value" style={{ color: textPrimary }}>{loading ? '—' : total}</span>
-          <span className="master-stat-multi-sublabel" style={{ color: textSecondary }}>Total</span>
+          <span className="master-stat-multi-value master-stat-value-gradient">{loading ? '—' : total}</span>
+          <span className="master-stat-multi-sublabel master-stat-label-gradient">Total</span>
         </div>
         <div className="master-stat-multi-item">
-          <span className="master-stat-multi-value" style={{ color: '#16a34a' }}>{loading ? '—' : enabled}</span>
-          <span className="master-stat-multi-sublabel" style={{ color: textSecondary }}>Enabled</span>
+          <span className="master-stat-multi-value" style={{ color: '#86efac' }}>{loading ? '—' : enabled}</span>
+          <span className="master-stat-multi-sublabel master-stat-label-gradient">Enabled</span>
         </div>
         <div className="master-stat-multi-item">
-          <span className="master-stat-multi-value" style={{ color: '#dc2626' }}>{loading ? '—' : disabled}</span>
-          <span className="master-stat-multi-sublabel" style={{ color: textSecondary }}>Disabled</span>
+          <span className="master-stat-multi-value" style={{ color: '#fca5a5' }}>{loading ? '—' : disabled}</span>
+          <span className="master-stat-multi-sublabel master-stat-label-gradient">Disabled</span>
         </div>
       </div>
     </div>
