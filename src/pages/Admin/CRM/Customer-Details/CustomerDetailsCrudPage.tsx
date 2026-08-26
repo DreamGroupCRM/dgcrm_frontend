@@ -71,14 +71,27 @@ const calcAge = (dob: string): { years: number; months: number } | null => {
   return { years, months };
 };
 
-const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; color: string; badge?: string }> = ({ t, icon, title, color, badge }) => (
-  <div className="flex items-center gap-2.5 mb-5">
-    <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: `${color}1a`, color }}>
+// Full-bleed gradient header bar for each CRUD section (Customer Details /
+// Property Booking Details / Payment Details / Document Upload) — same
+// visual language as the ResultPanelHeader used on the Scheme pages. The
+// negative margins exactly cancel the parent card's own `p-5 sm:p-6`
+// padding so this bar reaches the card's edges and top corners without
+// needing `overflow-hidden` on the parent (which would risk clipping any
+// dropdown — e.g. Select Building/Wing/Floor in Property Booking Details —
+// that opens near a section's bottom edge). `rounded-t-2xl` matches the
+// parent's own top corner radius instead, and `mb-5` restores the original
+// spacing before the fields grid below.
+const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; gradient: string; badge?: string }> = ({ icon, title, gradient, badge }) => (
+  <div
+    className="flex items-center gap-2.5 -mt-5 -mx-5 sm:-mt-6 sm:-mx-6 mb-5 px-5 sm:px-6 py-3.5 rounded-t-2xl"
+    style={{ background: gradient }}
+  >
+    <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.22)' }}>
       {icon}
     </span>
     <h2 className="cust-section-title">{title}</h2>
     {badge && (
-      <span className="rounded-lg" style={{ fontSize: 10.5, fontWeight: 700, color: '#4338ca', background: '#4338ca1a', padding: '3px 10px' }}>
+      <span className="rounded-lg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: 'rgba(255,255,255,0.22)', padding: '3px 10px' }}>
         {badge}
       </span>
     )}
@@ -642,7 +655,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Customer Details (Personal Details) ──────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdPerson size={16} />} title="Customer Details" color="#4338ca" badge={customerCode || undefined} />
+        <SectionHeader t={t} icon={<MdPerson size={16} />} title="Customer Details" gradient="linear-gradient(135deg,#4338ca,#6366f1)" badge={customerCode || undefined} />
         <SubHeading t={t} title="Personal Details" />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -729,7 +742,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Property Booking Details ─────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdApartment size={16} />} title="Property Booking Details" color="#0891b2" />
+        <SectionHeader t={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="linear-gradient(135deg,#0e7490,#22d3ee)" />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Field t={t} label="Company Name" required>
@@ -797,7 +810,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Payment Details ──────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" color="#059669" />
+        <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" gradient="linear-gradient(135deg,#059669,#10b981)" />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Field t={t} label="Total Cost of Flat (₹)" required>
@@ -864,7 +877,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Document Upload ──────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdDescription size={16} />} title="Document Upload" color="#c026d3" />
+        <SectionHeader t={t} icon={<MdDescription size={16} />} title="Document Upload" gradient="linear-gradient(135deg,#a21caf,#e879f9)" />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field t={t} label="Application Form" required>

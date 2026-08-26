@@ -339,12 +339,6 @@ const EmployeeDetailsListPage: React.FC = () => {
   return (
     <div className="master-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
 
-      {/* ── Page header ───────────────────────────────────────────────── */}
-      <div className="mb-6">
-        <h1 className="emp-page-title">Employee List</h1>
-        <p className="emp-page-subtitle">Dashboard / Employee List</p>
-      </div>
-
       {/* ── Summary cards — same compact sizing/spacing as Building master's
           boxes; label font-size fixed at 16px (StatCard's labelFontSize
           prop — every other caller leaves it unset and keeps the CSS
