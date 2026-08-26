@@ -509,18 +509,36 @@ const CustomizeSchemePage: React.FC = () => {
 
       {/* ── Payment Details form ────────────────────────────────────────
           Gradient header band (same card pattern as the EMI Scheme/
-          Schedule result panels below), but in a distinct emerald/teal
-          gradient — keeps this INPUT panel visually set apart from the
-          indigo OUTPUT panels while matching their modern styling
-          language, per Task 8. Every field/handler below is untouched —
-          only the outer header/card chrome changed, no payment logic. */}
-      <div className="rounded-2xl mb-5 overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 4px 16px rgba(5,150,105,0.08)' }}>
+          Schedule result panels below) PLUS a soft emerald/teal wash
+          behind the fields themselves (fading to plain surfaceBg toward
+          the bottom) — makes this INPUT panel clearly distinguishable at
+          a glance from the plain-white-bodied EMI Scheme/Schedule OUTPUT
+          panels below it, not just by its header. The tinted emerald
+          border replaces the neutral one for the same reason. Every
+          field/handler is untouched — each input keeps its own solid
+          t.inputBg background (see getFieldStyle), so label/value/icon
+          contrast against the wash is unaffected either theme. */}
+      <div
+        className="rounded-2xl mb-5 overflow-hidden"
+        style={{
+          background: t.surfaceBg,
+          border: `1px solid ${isDark ? 'rgba(16,185,129,0.28)' : '#a7f3d0'}`,
+          boxShadow: isDark ? '0 4px 20px rgba(5,150,105,0.18)' : '0 10px 28px rgba(5,150,105,0.14)',
+        }}
+      >
         <ResultPanelHeader
           icon={<MdPayments size={17} color="#fff" />} title="Payment Details"
           gradient="linear-gradient(135deg,#059669,#10b981,#0d9488)"
           subtitle={totalCost > 0 ? `Total Cost of Flat: ${formatINR(totalCost)}` : 'Enter the scheme inputs below'}
         />
-        <div className="p-5 sm:p-6">
+        <div
+          className="p-5 sm:p-6"
+          style={{
+            background: isDark
+              ? 'linear-gradient(180deg, rgba(5,150,105,0.12) 0%, rgba(13,148,136,0.05) 45%, transparent 100%)'
+              : 'linear-gradient(180deg, #ecfdf5 0%, #f0fdfa 45%, #ffffff 100%)',
+          }}
+        >
           {/* One grid for every field — equal-width columns, however many
               fit the container per row, each row's inputs starting at the
               same Y (see getLabelStyle's fixed label height above). */}

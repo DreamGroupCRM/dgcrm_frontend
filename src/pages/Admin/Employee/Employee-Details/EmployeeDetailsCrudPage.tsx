@@ -89,9 +89,21 @@ const fieldClassName = (isView: boolean) => (isView ? 'emp-field emp-field-view'
 // stable identity across renders, so React just updates props/DOM in
 // place and focus is never lost. ────────────────────────────────────────
 
-const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; color: string }> = ({ t, icon, title, color }) => (
-  <div className="flex items-center gap-2.5 mb-5">
-    <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: `${color}1a`, color }}>
+// Full-bleed gradient header bar for each CRUD section (Personal Details /
+// Office Use Only / Bank Details / Assign Action & Module) — same visual
+// language as the ResultPanelHeader used on the Scheme pages. The negative
+// margins exactly cancel the parent card's own `p-5 sm:p-6` padding so this
+// bar reaches the card's edges and top corners without needing
+// `overflow-hidden` on the parent (which would risk clipping any dropdown
+// that opens near a section's bottom edge) — `rounded-t-2xl` here matches
+// the parent's own top corner radius instead. `mb-5` restores the original
+// spacing before the fields grid below.
+const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; gradient: string }> = ({ icon, title, gradient }) => (
+  <div
+    className="flex items-center gap-2.5 -mt-5 -mx-5 sm:-mt-6 sm:-mx-6 mb-5 px-5 sm:px-6 py-3.5 rounded-t-2xl"
+    style={{ background: gradient }}
+  >
+    <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.22)' }}>
       {icon}
     </span>
     <h2 className="emp-section-title">{title}</h2>
@@ -715,7 +727,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Personal Details ─────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" color="#4338ca" />
+        <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <Field t={t} label="First Name" required>
@@ -786,7 +798,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Office Use Only ──────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" color="#ea580c" />
+        <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="linear-gradient(135deg,#c2410c,#fb923c)" />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Field t={t} label="Employee Joining Date" required>
@@ -840,7 +852,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Bank Details ─────────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" color="#16a34a" />
+        <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="linear-gradient(135deg,#059669,#22c55e)" />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <Field t={t} label="Account Holder Name" required>
@@ -882,7 +894,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Assign Action & Module for this Employee ────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module for this Employee" color="#4338ca" />
+        <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module for this Employee" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
 
         <CheckboxGroup
           t={t} isView={isView}

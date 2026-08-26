@@ -56,14 +56,15 @@
   color: #ef4444;
 }
 
-/* ── Section header title / sub-heading (Crud page). Icon badge stays
-   inline — its background/color come from a per-section accent color
-   prop, not the theme. ────────────────────────────────────────────────── */
+/* ── Section header title / sub-heading (Crud page). The title sits on the
+   section's own gradient bar (see SectionHeader in CustomerDetailsCrudPage.
+   tsx), so it's always white regardless of theme, not the usual
+   theme-driven text color. ─────────────────────────────────────────────── */
 .cust-section-title {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 14.5px;
+  font-weight: 800;
   margin: 0;
-  color: var(--cust-text-primary);
+  color: #fff;
 }
 
 .cust-subheading {

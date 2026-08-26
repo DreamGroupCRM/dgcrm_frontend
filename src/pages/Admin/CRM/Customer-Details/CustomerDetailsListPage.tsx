@@ -10,7 +10,7 @@ import {
   MdGroups, MdCheckCircle, MdPersonAddAlt1, MdPersonOff, MdClose,
   MdKeyboardArrowDown, MdMoreVert, MdReceiptLong, MdLoyalty, MdPhone, MdEmail,
   MdChevronLeft, MdChevronRight, MdKeyboardDoubleArrowLeft, MdKeyboardDoubleArrowRight,
-  MdPayments, MdPrint, MdAccountBalanceWallet, MdDescription,
+  MdPayments, MdPrint, MdAccountBalanceWallet, MdDescription, MdFilterList,
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
@@ -578,6 +578,10 @@ const CustomerDetailsListPage: React.FC = () => {
 
       {/* ── Filters row ───────────────────────────────────────────────── */}
       <div className="rounded-2xl p-5 mb-5" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="flex items-center gap-2 mb-4">
+          <MdFilterList size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Search &amp; Filter Customers</h3>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="cust-filter-label">Search Customer Name</label>
