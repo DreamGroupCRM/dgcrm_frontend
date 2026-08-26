@@ -502,17 +502,6 @@ const CustomizeSchemePage: React.FC = () => {
   return (
     <div style={{ fontFamily: t.fontFamily }}>
 
-      {/* ── Page header ─────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
-          <MdCalculate size={22} style={{ color: '#4f46e5' }} />
-        </div>
-        <div>
-          <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Customize Scheme</h1>
-          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Build an EMI Scheme &amp; Schedule — every field recalculates it live</p>
-        </div>
-      </div>
-
       {/* ── Top summary row — 5 gradient KPI boxes in a single row ──── */}
       <SchemeSummaryRow
         totalCost={totalCost} bookingAmount={bookingAmount} remainingBookingAmount={remainingBookingAmount}
