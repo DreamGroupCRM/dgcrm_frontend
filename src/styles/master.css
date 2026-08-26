@@ -311,6 +311,23 @@ html.dark .master-row-icon {
   line-height: 1.15;
 }
 
+/* Colored/gradient KPI card variant — Customer Details List, Employee
+   Details List, and Building List's summary boxes only (see
+   components/masters/statGradients.ts). Plain masters (Company/
+   Department/Bank/Roles) keep the flat surfaceBg card above, untouched. */
+.master-stat-card-gradient {
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+}
+
+.master-stat-label-gradient {
+  color: rgba(255,255,255,0.88);
+  font-weight: 700;
+}
+
+.master-stat-value-gradient {
+  color: #fff;
+}
+
 /* Building master's 7-card summary row — the default .master-stat-grid
    caps at 4 columns (right for Department/Employee's 4 cards), but
    Building has 7 and needs its own wider step so they can all sit on one
