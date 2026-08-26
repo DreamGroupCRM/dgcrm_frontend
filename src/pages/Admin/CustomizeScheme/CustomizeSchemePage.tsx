@@ -103,8 +103,20 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 //    the Employee CRUD page documents: an inline component here would get a
 //    new identity every render (every field change re-renders the page),
 //    which would remount the input and drop focus mid-edit. ─────────────
+// backgroundColor (the theme's normal input surface) + a separate, very
+// low-opacity emerald backgroundImage gradient layered on top of it — every
+// Payment Details field box (amount inputs, date pickers, the Remaining
+// Booking Amount pair) gets a light gradient tint this way, in both themes,
+// without needing an isDark branch: on the near-white light input surface
+// it reads as a soft mint wash, on the near-black dark one as a subtle
+// emerald glow. Text stays high-contrast either way since the base
+// t.inputBg color (and t.inputText) are untouched — only a translucent
+// tint sits on top of it.
 const getFieldStyle = (t: Theme): React.CSSProperties => ({
-  width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10,
+  width: '100%',
+  backgroundColor: t.inputBg,
+  backgroundImage: 'linear-gradient(135deg, rgba(16,185,129,0.14), rgba(45,212,191,0.06))',
+  border: `1px solid ${t.inputBorder}`, borderRadius: 10,
   padding: '9px 12px', fontSize: 12, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
 });
 

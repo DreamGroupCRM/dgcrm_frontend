@@ -16,7 +16,7 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
-import { getStatGradient } from '../../../../components/masters/statGradients';
+import StatCard from '../../../../components/masters/StatCard';
 import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory } from '../../../../services/customerDetailsService';
 import {
   collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, PAYMENT_FOR_OPTIONS, paymentForLabel,
@@ -553,9 +553,10 @@ const CustomerDetailsListPage: React.FC = () => {
         <p className="cust-list-subtitle">Dashboard / Customer List</p>
       </div>
 
-      {/* ── KPI cards — colored gradient variant, same palette as
-          StatCard/MultiStatCard (Employee/Building lists) via
-          statGradients.ts, kept scoped to just these 3 pages. ─────────── */}
+      {/* ── KPI cards — now the same shared StatCard component Employee
+          Details List uses (compact + labelFontSize=16), so the two pages'
+          summary boxes are pixel-identical instead of two independently
+          hand-tuned card markups drifting apart. ──────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Total Customers', value: summary.total, icon: MdGroups, color: '#7c3aed' },
@@ -563,24 +564,20 @@ const CustomerDetailsListPage: React.FC = () => {
           { label: 'New Customers This Month', value: summary.newThisMonth, icon: MdPersonAddAlt1, color: '#ea580c' },
           { label: 'Inactive Customers', value: summary.inactive, icon: MdPersonOff, color: '#dc2626' },
         ].map((card) => (
-          <div key={card.label} className="flex items-center justify-center gap-3 rounded-2xl p-4"
-            style={{ background: getStatGradient(card.color), border: `1px solid ${t.surfaceBorder}`, boxShadow: '0 4px 14px rgba(0,0,0,0.12)', minHeight: 80 }}>
-            <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.22)' }}>
-              <card.icon size={22} style={{ color: '#fff' }} />
-            </div>
-            <div className="min-w-0" style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.88)' }}>{card.label}</div>
-              <div style={{ fontSize: 19.5, fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{loading ? '—' : card.value}</div>
-            </div>
-          </div>
+          <StatCard key={card.label} {...card} bg="" loading={loading} compact labelFontSize={16}
+            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
       </div>
 
       {/* ── Filters row ───────────────────────────────────────────────── */}
-      <div className="rounded-2xl p-5 mb-5" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex items-center gap-2 mb-4">
-          <MdFilterList size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Search &amp; Filter Customers</h3>
+      <div className="rounded-2xl mb-5 p-5" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        {/* Negative margin (not `overflow-hidden` on the card) pulls the
+            gradient bar out to the card's own edges — the Select Flat No
+            dropdown sits in this grid's last row and opens downward past
+            the card's bottom edge, which `overflow-hidden` here would clip. */}
+        <div className="flex items-center gap-2.5 -m-5 mb-4 px-5 py-3.5 rounded-t-2xl" style={{ background: 'linear-gradient(135deg,#4338ca,#6366f1)' }}>
+          <MdFilterList size={18} style={{ color: '#fff', flexShrink: 0 }} />
+          <h3 style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>Search &amp; Filter Customers</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
