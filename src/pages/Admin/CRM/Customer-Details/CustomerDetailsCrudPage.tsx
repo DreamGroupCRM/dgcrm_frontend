@@ -888,9 +888,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
       </div>
 
-      {/* ── Footer — fixed to the viewport bottom, always visible, not
-          just once you scroll all the way down. ───────────────────────── */}
-      <div className="cust-crud-footer flex items-center justify-end gap-3">
+      {/* ── Footer — same shared `master-crud-footer` class every other
+          CRUD page (Building/Employee/Company/...) uses: a floating card
+          inset 16px from the edges, offset past the sidebar's own width
+          via --sidebar-w (set by DashboardLayout), instead of the old
+          `cust-crud-footer` which was flush to `left:0` — spanning
+          underneath the sidebar itself. Center-aligned buttons, matching
+          Building/Employee CRUD's footer layout. ─────────────────────── */}
+      <div className="master-crud-footer flex items-center justify-center gap-3 z-10"
+        style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
         <button type="button" onClick={() => navigate('/admin/crm/customer-details')} disabled={saving}
           className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
           <MdClose size={16} /> Cancel
