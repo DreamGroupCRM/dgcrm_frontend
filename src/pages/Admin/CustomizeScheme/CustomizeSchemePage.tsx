@@ -25,10 +25,14 @@
 // Cost of Flat (never more, never less) whenever Monthly EMI After
 // Possession has been entered.
 import React, { useMemo, useState } from 'react';
-import { MdCalculate, MdPayments, MdListAlt } from 'react-icons/md';
+import {
+  MdCalculate, MdPayments, MdListAlt,
+  MdHome, MdAccountBalanceWallet, MdSchedule, MdTrendingDown, MdTrendingUp,
+} from 'react-icons/md';
 
 import { useAppSelector } from '../../../hooks';
 import { getTheme } from '../../../styles/theme';
+import { getStatGradient } from '../../../components/masters/statGradients';
 
 type Theme = ReturnType<typeof getTheme>;
 
@@ -246,34 +250,52 @@ const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradie
   </div>
 );
 
-// A prominent, HDFC-EMI-calculator-style headline strip — shows the two
-// monthly EMI figures the customer will actually pay in big bold type,
-// right below the page header, updating live as the Payment Details
-// fields change (see https://www.hdfc.bank.in/personal-loan/emi-calculator
-// for the reference "Your EMI will be ₹X" pattern this mirrors).
-const MonthlyEmiBanner: React.FC<{
-  isDark: boolean; emiBefore: number; tenureBefore: number; emiAfter: number; afterMonths: number; lastAfterAmount: number;
-}> = ({ isDark, emiBefore, tenureBefore, emiAfter, afterMonths, lastAfterAmount }) => (
-  <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: isDark ? 'linear-gradient(135deg,#111827,#1f2937)' : 'linear-gradient(135deg,#111827,#312e81)' }}>
-    <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
-      <div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Your Monthly EMI — Before Possession</div>
-        <div style={{ fontSize: 26.5, fontWeight: 800, color: '#fff', marginTop: 4 }}>{formatINR(emiBefore)}</div>
-        <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>for {tenureBefore} month{tenureBefore === 1 ? '' : 's'}</div>
-      </div>
-      <div className="hidden sm:block" style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.15)' }} />
-      <div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Your Monthly EMI — After Possession</div>
-        <div style={{ fontSize: 26.5, fontWeight: 800, color: '#fff', marginTop: 4 }}>{formatINR(emiAfter)}</div>
-        <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
-          {afterMonths > 0 ? (
-            <>for {afterMonths} month{afterMonths === 1 ? '' : 's'}{lastAfterAmount > 0 && Math.round(lastAfterAmount) !== Math.round(emiAfter) ? ` (last: ${formatINR(lastAfterAmount)})` : ''}</>
-          ) : 'enter Total Cost of Flat & other fields above'}
+// ── top summary row — 5 gradient KPI boxes in a single row ─────────────
+// Replaces the old 2-figure "Monthly EMI" banner with the 5 numbers a sales
+// rep needs at a glance while building a scheme: Total Flat Cost, the two
+// pre-possession lump sums combined, the before-possession tenure, and both
+// monthly EMI figures. Same gradient-card language (getStatGradient) as the
+// Employee/Customer/Building list pages' top stat boxes, so this page's
+// summary strip matches the rest of the app instead of inventing its own
+// look — icon + label + value, centered both ways, one fixed-height row.
+interface SchemeSummaryCard { label: string; value: string; icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>; color: string; }
+
+const SchemeSummaryRow: React.FC<{
+  totalCost: number; bookingAmount: number; remainingBookingAmount: number;
+  tenureBefore: number; emiBefore: number; emiAfter: number;
+}> = ({ totalCost, bookingAmount, remainingBookingAmount, tenureBefore, emiBefore, emiAfter }) => {
+  const cards: SchemeSummaryCard[] = [
+    { label: 'Total Flat Cost', value: formatINR(totalCost), icon: MdHome, color: '#7c3aed' },
+    { label: 'Booking + Remaining', value: formatINR(bookingAmount + remainingBookingAmount), icon: MdAccountBalanceWallet, color: '#2563eb' },
+    { label: 'EMI Tenure (Before)', value: `${tenureBefore} month${tenureBefore === 1 ? '' : 's'}`, icon: MdSchedule, color: '#0891b2' },
+    { label: 'Monthly EMI (Before)', value: formatINR(emiBefore), icon: MdTrendingDown, color: '#ea580c' },
+    { label: 'Monthly EMI (After)', value: formatINR(emiAfter), icon: MdTrendingUp, color: '#16a34a' },
+  ];
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
+      {cards.map((card) => (
+        <div
+          key={card.label}
+          className="flex items-center justify-center gap-2.5 rounded-2xl px-3 py-4"
+          style={{ background: getStatGradient(card.color), boxShadow: '0 4px 14px rgba(0,0,0,0.12)', minHeight: 80 }}
+        >
+          <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 38, height: 38, background: 'rgba(255,255,255,0.22)' }}>
+            <card.icon size={19} style={{ color: '#fff' }} />
+          </div>
+          <div className="min-w-0" style={{ textAlign: 'center' }}>
+            {/* No forced nowrap — on a narrow 2-column mobile card the
+                longer labels ("Booking + Remaining") need to wrap onto a
+                second line instead of being clipped by the card's rounded
+                corner; the card's own minHeight is a floor, not a cap, so
+                it grows to fit. */}
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.88)' }}>{card.label}</div>
+            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{card.value}</div>
+          </div>
         </div>
-      </div>
+      ))}
     </div>
-  </div>
-);
+  );
+};
 
 // ── summary + schedule table primitives ─────────────────────────────────
 interface SummaryRow { label: string; amount: number; }
@@ -377,7 +399,7 @@ const CustomizeSchemePage: React.FC = () => {
     const remainingD = parseDate(remainingBookingDate);
     const firstEmiD = parseDate(installmentDate);
     const daysDiff = bookingD && remainingD ? Math.round((remainingD.getTime() - bookingD.getTime()) / 86400000) : null;
-    const remainingLabel = daysDiff != null && daysDiff > 0 ? `Within ${daysDiff} days from booking` : 'Remaining Booking Amount';
+    const remainingLabel = daysDiff != null && daysDiff > 0 ? `After ${daysDiff} days from booking` : 'Remaining Booking Amount';
 
     // ── Section A (Before Possession) — Booking + Remaining Booking, then
     //    exactly `tenure` EMIs of `monthlyEmiBeforePossession` starting ON
@@ -464,7 +486,6 @@ const CustomizeSchemePage: React.FC = () => {
   ]);
 
   const costMismatch = totalCost > 0 && Math.round(computed.grandTotal) !== Math.round(totalCost);
-  const lastAfterAmount = computed.afterRows.length > 0 ? computed.afterRows[computed.afterRows.length - 1].amount : 0;
 
   return (
     <div style={{ fontFamily: t.fontFamily }}>
@@ -480,10 +501,10 @@ const CustomizeSchemePage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── "Your Monthly EMI" headline — HDFC-EMI-calculator style ─── */}
-      <MonthlyEmiBanner
-        isDark={isDark} emiBefore={monthlyEmiBeforePossession} tenureBefore={computed.tenure}
-        emiAfter={monthlyEmiAfterPossession} afterMonths={computed.afterCount} lastAfterAmount={lastAfterAmount}
+      {/* ── Top summary row — 5 gradient KPI boxes in a single row ──── */}
+      <SchemeSummaryRow
+        totalCost={totalCost} bookingAmount={bookingAmount} remainingBookingAmount={remainingBookingAmount}
+        tenureBefore={computed.tenure} emiBefore={monthlyEmiBeforePossession} emiAfter={monthlyEmiAfterPossession}
       />
 
       {/* ── Payment Details form ────────────────────────────────────────
