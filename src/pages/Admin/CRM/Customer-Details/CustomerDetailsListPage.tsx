@@ -547,12 +547,6 @@ const CustomerDetailsListPage: React.FC = () => {
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
 
-      {/* ── Page header ───────────────────────────────────────────────── */}
-      <div className="mb-6">
-        <h1 className="cust-list-title">Customer List</h1>
-        <p className="cust-list-subtitle">Dashboard / Customer List</p>
-      </div>
-
       {/* ── KPI cards — colored gradient variant, same palette as
           StatCard/MultiStatCard (Employee/Building lists) via
           statGradients.ts, kept scoped to just these 3 pages. ─────────── */}
