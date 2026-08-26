@@ -399,7 +399,7 @@ const CustomizeSchemePage: React.FC = () => {
     const remainingD = parseDate(remainingBookingDate);
     const firstEmiD = parseDate(installmentDate);
     const daysDiff = bookingD && remainingD ? Math.round((remainingD.getTime() - bookingD.getTime()) / 86400000) : null;
-    const remainingLabel = daysDiff != null && daysDiff > 0 ? `Within ${daysDiff} days from booking` : 'Remaining Booking Amount';
+    const remainingLabel = daysDiff != null && daysDiff > 0 ? `After ${daysDiff} days from booking` : 'Remaining Booking Amount';
 
     // ── Section A (Before Possession) — Booking + Remaining Booking, then
     //    exactly `tenure` EMIs of `monthlyEmiBeforePossession` starting ON
