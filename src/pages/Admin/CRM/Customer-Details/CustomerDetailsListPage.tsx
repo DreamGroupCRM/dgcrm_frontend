@@ -558,7 +558,7 @@ const CustomerDetailsListPage: React.FC = () => {
           { label: 'New Customers This Month', value: summary.newThisMonth, icon: MdPersonAddAlt1, color: '#ea580c' },
           { label: 'Inactive Customers', value: summary.inactive, icon: MdPersonOff, color: '#dc2626' },
         ].map((card) => (
-          <StatCard key={card.label} {...card} bg="" loading={loading} compact labelFontSize={16}
+          <StatCard key={card.label} {...card} bg="" loading={loading} compact labelFontSize={14}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
       </div>
