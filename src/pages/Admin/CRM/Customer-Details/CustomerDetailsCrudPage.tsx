@@ -20,6 +20,7 @@ import {
 } from '../../../../services/customerDetailsService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { Building, ParkingChoice } from '../../../../types/index';
+import './CustomerDetails.css';
 
 type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
@@ -35,14 +36,10 @@ const FOOTER_HEIGHT = 76;
 
 // ── module-scope helpers only — nothing defined inside the page component,
 // so typing in any field never remounts inputs and never loses focus. ────
-const getFieldStyle = (t: Theme, isView: boolean): React.CSSProperties => ({
-  width: '100%', background: isView ? t.insetBg : t.inputBg,
-  border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '9px 12px',
-  fontSize: 13.5, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
-});
-const getLabelStyle = (t: Theme): React.CSSProperties => ({
-  display: 'block', fontSize: 13, fontWeight: 600, color: t.textPrimary, marginBottom: 6,
-});
+// Field/label styling now lives in CustomerDetails.css as .cust-field /
+// .cust-label (+ .cust-field-view for the isView background swap) — colors
+// come in via the --cust-* CSS vars set on the page's outer wrapper below.
+const fieldClassName = (isView: boolean) => (isView ? 'cust-field cust-field-view' : 'cust-field');
 
 // Fires showPicker() on both click AND focus — a plain onClick alone opens
 // the calendar when the browser-drawn icon is clicked, but clicking into
@@ -79,9 +76,9 @@ const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; 
     <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: `${color}1a`, color }}>
       {icon}
     </span>
-    <h2 style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, margin: 0 }}>{title}</h2>
+    <h2 className="cust-section-title">{title}</h2>
     {badge && (
-      <span className="rounded-lg" style={{ fontSize: 12, fontWeight: 700, color: '#4338ca', background: '#4338ca1a', padding: '3px 10px' }}>
+      <span className="rounded-lg" style={{ fontSize: 10.5, fontWeight: 700, color: '#4338ca', background: '#4338ca1a', padding: '3px 10px' }}>
         {badge}
       </span>
     )}
@@ -89,12 +86,16 @@ const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; 
 );
 
 const SubHeading: React.FC<{ t: Theme; title: string }> = ({ t, title }) => (
+<<<<<<< HEAD
   <p style={{ fontSize: 12.5, fontWeight: 700, color: t.textSecondary, margin: '0 0 12px', textTransform: 'camelcase', letterSpacing: 0.4 }}>{title}</p>
+=======
+  <p className="cust-subheading">{title}</p>
+>>>>>>> V_16.0
 );
 
 const Field: React.FC<{ t: Theme; label: string; required?: boolean; children: React.ReactNode; className?: string }> = ({ t, label, required, children, className }) => (
   <div className={className}>
-    <label style={getLabelStyle(t)}>{label}{required && <span style={{ color: '#ef4444' }}> *</span>}</label>
+    <label className="cust-label">{label}{required && <span className="cust-required"> *</span>}</label>
     {children}
   </div>
 );
@@ -136,7 +137,7 @@ const SearchableSelect: React.FC<{
           type="text" placeholder={placeholder} value={query} disabled={disabled}
           onFocus={() => setOpen(true)}
           onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
-          style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 13.5, width: '100%' }}
+          style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%' }}
         />
         {value && !disabled && (
           <button type="button" onClick={(e) => { e.stopPropagation(); onChange(''); setQuery(''); }}
@@ -171,16 +172,16 @@ const PhoneField: React.FC<{
   code: string; onCodeChange: (v: string) => void;
   number: string; onNumberChange: (v: string) => void;
 }> = ({ t, isView, icon, code, onCodeChange, number, onNumberChange }) => (
-  <div className="flex items-center gap-2" style={{ ...getFieldStyle(t, !!isView), padding: '0 8px 0 12px' }}>
+  <div className={`flex items-center gap-2 ${fieldClassName(!!isView)}`} style={{ padding: '0 8px 0 12px' }}>
     {icon}
     <select value={code} disabled={isView} onChange={(e) => onCodeChange(e.target.value)}
-      style={{ border: 'none', outline: 'none', background: 'transparent', color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily, padding: '9px 2px' }}>
+      style={{ border: 'none', outline: 'none', background: 'transparent', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily, padding: '9px 2px' }}>
       {COUNTRY_CODES.map((c) => <option key={c} value={c}>{c}</option>)}
     </select>
     <span style={{ width: 1, height: 18, background: t.inputBorder, flexShrink: 0 }} />
     <input type="tel" placeholder="Enter number" value={number} readOnly={isView} disabled={isView}
       onChange={(e) => onNumberChange(e.target.value.replace(/[^\d]/g, ''))}
-      style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }} />
+      style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
   </div>
 );
 
@@ -233,7 +234,7 @@ const CompactFileUpload: React.FC<{ t: Theme; isView?: boolean; accept?: string;
       {displayName ? (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
           <MdInsertDriveFile size={16} style={{ color: '#4338ca', flexShrink: 0 }} />
-          <span className="truncate" style={{ fontSize: 13, color: t.textPrimary, flex: 1 }}>{displayName}</span>
+          <span className="truncate" style={{ fontSize: 11.5, color: t.textPrimary, flex: 1 }}>{displayName}</span>
           {!isView && (
             <button type="button" onClick={() => onChange(null)}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0, display: 'flex', flexShrink: 0 }}>
@@ -244,7 +245,7 @@ const CompactFileUpload: React.FC<{ t: Theme; isView?: boolean; accept?: string;
       ) : (
         <button type="button" disabled={isView} onClick={() => inputRef.current?.click()}
           className="flex items-center gap-2 px-3 py-2 rounded-xl w-full"
-          style={{ background: t.inputBg, border: `1px dashed ${t.inputBorder}`, cursor: isView ? 'not-allowed' : 'pointer', color: t.textSecondary, fontSize: 13, fontFamily: t.fontFamily }}>
+          style={{ background: t.inputBg, border: `1px dashed ${t.inputBorder}`, cursor: isView ? 'not-allowed' : 'pointer', color: t.textSecondary, fontSize: 11.5, fontFamily: t.fontFamily }}>
           <MdInsertDriveFile size={16} /> Choose file
         </button>
       )}
@@ -264,7 +265,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
       <MdCloudUpload size={26} style={{ color: '#4338ca', margin: '0 auto 6px' }} />
       {displayName ? (
         <div className="flex items-center justify-center gap-2">
-          <span className="truncate" style={{ fontSize: 12.5, color: t.textPrimary, maxWidth: 150 }}>{displayName}</span>
+          <span className="truncate" style={{ fontSize: 11, color: t.textPrimary, maxWidth: 150 }}>{displayName}</span>
           {!isView && (
             <button type="button" onClick={() => onChange(null)}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0, display: 'flex' }}>
@@ -274,11 +275,11 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
         </div>
       ) : (
         <button type="button" disabled={isView} onClick={() => inputRef.current?.click()}
-          style={{ background: 'transparent', border: 'none', cursor: isView ? 'not-allowed' : 'pointer', color: '#4338ca', fontSize: 12.5, fontWeight: 700, fontFamily: t.fontFamily }}>
+          style={{ background: 'transparent', border: 'none', cursor: isView ? 'not-allowed' : 'pointer', color: '#4338ca', fontSize: 11, fontWeight: 700, fontFamily: t.fontFamily }}>
           Upload {label}
         </button>
       )}
-      <p style={{ fontSize: 10.5, color: t.textSecondary, margin: '4px 0 0' }}>PDF, JPG, PNG (Max 2MB)</p>
+      <p style={{ fontSize: 10, color: t.textSecondary, margin: '4px 0 0' }}>PDF, JPG, PNG (Max 2MB)</p>
     </div>
   );
 };
@@ -287,24 +288,24 @@ const RadioOption: React.FC<{ t: Theme; label: string; selected: boolean; onSele
   <button type="button" disabled={disabled} onClick={onSelect}
     className="flex items-center gap-2" style={{ background: 'transparent', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', padding: 0 }}>
     {selected ? <MdRadioButtonChecked size={18} style={{ color: '#4338ca' }} /> : <MdRadioButtonUnchecked size={18} style={{ color: t.textSecondary }} />}
-    <span style={{ fontSize: 13.5, color: t.textPrimary, fontWeight: 600 }}>{label}</span>
+    <span style={{ fontSize: 12, color: t.textPrimary, fontWeight: 600 }}>{label}</span>
   </button>
 );
 
 // A ₹-amount input — shared by every currency field in Payment Details.
 const AmountField: React.FC<{ t: Theme; isView?: boolean; disabled?: boolean; placeholder: string; value: string; onChange: (v: string) => void }> = ({ t, isView, disabled, placeholder, value, onChange }) => (
-  <div className="flex items-center gap-2" style={{ ...getFieldStyle(t, !!isView || !!disabled), padding: '0 12px' }}>
+  <div className={`flex items-center gap-2 ${fieldClassName(!!isView || !!disabled)}`} style={{ padding: '0 12px' }}>
     <span style={{ color: t.textSecondary }}>₹</span>
     <input type="text" inputMode="decimal" placeholder={placeholder} value={value} readOnly={isView || disabled} disabled={isView || disabled}
       onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ''))}
-      style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }} />
+      style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
   </div>
 );
 
 // A plain-number input — months / tenure fields.
 const NumberField: React.FC<{ t: Theme; isView?: boolean; placeholder: string; value: string; onChange: (v: string) => void }> = ({ t, isView, placeholder, value, onChange }) => (
   <input type="text" inputMode="numeric" placeholder={placeholder} value={value} readOnly={isView} disabled={isView}
-    onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ''))} style={getFieldStyle(t, !!isView)} />
+    onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ''))} className={fieldClassName(!!isView)} />
 );
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -601,7 +602,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     }
   };
 
-  const fieldStyle = getFieldStyle(t, isView);
+  const fieldClass = fieldClassName(isView);
 
   if (fetching) {
     return (
@@ -611,8 +612,17 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     );
   }
 
+  // ── CSS custom properties for CustomerDetails.css — set once here from
+  // this page's own getTheme(isDark) values, consumed by the cust-* classes
+  // used throughout this page's form fields/labels/footer below. ────────
+  const cssVars = {
+    '--cust-field-bg': t.inputBg, '--cust-field-border': t.inputBorder, '--cust-field-text': t.inputText,
+    '--cust-inset-bg': t.insetBg, '--cust-text-primary': t.textPrimary, '--cust-text-secondary': t.textSecondary,
+    '--cust-surface-bg': t.surfaceBg, '--cust-surface-border': t.surfaceBorder,
+  } as React.CSSProperties;
+
   return (
-    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16 }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16, ...cssVars }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 mb-6">
@@ -621,10 +631,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <MdArrowBack size={20} />
         </button>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 800, color: t.textPrimary, margin: 0 }}>
+          <h1 className="cust-crud-title">
             {mode === 'add' ? 'Create Customer' : mode === 'edit' ? 'Edit Customer' : 'View Customer'}
           </h1>
-          <p style={{ fontSize: 12.5, color: t.textSecondary, margin: '2px 0 0' }}>
+          <p className="cust-crud-subtitle">
             {mode === 'add' ? 'Add new customer details' : 'Customer details'}
           </p>
         </div>
@@ -639,15 +649,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field t={t} label="First Name" required>
               <input type="text" placeholder="Enter first name" value={firstName} readOnly={isView} disabled={isView}
-                onChange={(e) => setFirstName(e.target.value)} style={fieldStyle} />
+                onChange={(e) => setFirstName(e.target.value)} className={fieldClass} />
             </Field>
             <Field t={t} label="Middle Name" required>
               <input type="text" placeholder="Enter middle name" value={middleName} readOnly={isView} disabled={isView}
-                onChange={(e) => setMiddleName(e.target.value)} style={fieldStyle} />
+                onChange={(e) => setMiddleName(e.target.value)} className={fieldClass} />
             </Field>
             <Field t={t} label="Last Name" required>
               <input type="text" placeholder="Enter last name" value={lastName} readOnly={isView} disabled={isView}
-                onChange={(e) => setLastName(e.target.value)} style={fieldStyle} />
+                onChange={(e) => setLastName(e.target.value)} className={fieldClass} />
             </Field>
           </div>
           <Field t={t} label="Customer Photo" required className="flex flex-col items-center justify-start">
@@ -658,7 +668,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <Field t={t} label="Email ID" required>
             <input type="email" placeholder="Enter email address" value={email} readOnly={isView} disabled={isView}
-              onChange={(e) => setEmail(e.target.value)} style={fieldStyle} />
+              onChange={(e) => setEmail(e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Mobile Number" required>
             <PhoneField t={t} isView={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber} />
@@ -672,14 +682,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Field t={t} label="Aadhar Number">
             <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView}
-              onChange={(e) => setAadharNumber(e.target.value.replace(/[^\d]/g, ''))} style={fieldStyle} />
+              onChange={(e) => setAadharNumber(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
           <Field t={t} label="Upload Aadhar Card Photo" required>
             <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={setAadharPhoto} />
           </Field>
           <Field t={t} label="Pancard Number">
             <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView}
-              onChange={(e) => setPancardNumber(e.target.value.toUpperCase())} style={fieldStyle} />
+              onChange={(e) => setPancardNumber(e.target.value.toUpperCase())} className={fieldClass} />
           </Field>
           <Field t={t} label="Upload Pancard Photo" required>
             <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={setPancardPhoto} />
@@ -689,16 +699,16 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <Field t={t} label="Address" required>
             <textarea placeholder="Enter address" value={address} readOnly={isView} disabled={isView} rows={3}
-              onChange={(e) => setAddress(e.target.value)} style={{ ...fieldStyle, resize: 'vertical' }} />
+              onChange={(e) => setAddress(e.target.value)} className={fieldClass} style={{ resize: 'vertical' }} />
           </Field>
           <Field t={t} label="Date of Birth" required>
             <div className="flex items-center gap-3">
               <input type="date" value={dateOfBirth} readOnly={isView} disabled={isView}
-                onClick={openPicker} onFocus={openPicker} onChange={(e) => setDateOfBirth(e.target.value)} style={fieldStyle} />
+                onClick={openPicker} onFocus={openPicker} onChange={(e) => setDateOfBirth(e.target.value)} className={fieldClass} />
               {age && (
                 <div className="rounded-xl px-3 py-2 flex-shrink-0" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
-                  <p style={{ fontSize: 10.5, color: t.textSecondary, margin: 0, fontWeight: 600 }}>Age</p>
-                  <p style={{ fontSize: 13, color: '#4338ca', margin: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>{age.years} Years&nbsp;&nbsp;{age.months} Months</p>
+                  <p style={{ fontSize: 10, color: t.textSecondary, margin: 0, fontWeight: 600 }}>Age</p>
+                  <p style={{ fontSize: 11.5, color: '#4338ca', margin: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>{age.years} Years&nbsp;&nbsp;{age.months} Months</p>
                 </div>
               )}
             </div>
@@ -708,11 +718,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field t={t} label="Alternate Person to Contact (Full Name)">
             <input type="text" placeholder="Enter full name" value={alternatePersonName} readOnly={isView} disabled={isView}
-              onChange={(e) => setAlternatePersonName(e.target.value)} style={fieldStyle} />
+              onChange={(e) => setAlternatePersonName(e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Alternate Person Mobile Number">
             <input type="tel" placeholder="Enter mobile number" value={alternatePersonMobile} readOnly={isView} disabled={isView}
-              onChange={(e) => setAlternatePersonMobile(e.target.value.replace(/[^\d]/g, ''))} style={fieldStyle} />
+              onChange={(e) => setAlternatePersonMobile(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
         </div>
       </div>
@@ -724,14 +734,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Field t={t} label="Company Name" required>
             <input type="text" placeholder="Enter company name" value={companyName} readOnly={isView} disabled={isView}
-              onChange={(e) => setCompanyName(e.target.value)} style={fieldStyle} />
+              onChange={(e) => setCompanyName(e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Project Name" required>
             <SearchableSelect t={t} placeholder="Select project" options={projectNameOptions} value={projectName} disabled={isView}
               onChange={(v) => { setProjectName(v); setBuildingName(''); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
           </Field>
           <Field t={t} label="Location">
-            <input type="text" readOnly value={location || '—'} style={{ ...fieldStyle, background: t.insetBg }} />
+            <input type="text" readOnly value={location || '—'} className="cust-field cust-field-view" />
           </Field>
           <Field t={t} label="Building Name">
             <SearchableSelect t={t} placeholder="Select building" options={buildingNameOptions} value={buildingName} disabled={isView}
@@ -762,10 +772,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
           <Field t={t} label="Flat Type">
-            <input type="text" readOnly value={selectedFlat?.flat_type || '—'} style={{ ...fieldStyle, background: t.insetBg }} />
+            <input type="text" readOnly value={selectedFlat?.flat_type || '—'} className="cust-field cust-field-view" />
           </Field>
           <Field t={t} label="Flat Area">
-            <input type="text" readOnly value={selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : '—'} style={{ ...fieldStyle, background: t.insetBg }} />
+            <input type="text" readOnly value={selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : '—'} className="cust-field cust-field-view" />
           </Field>
         </div>
 
@@ -779,7 +789,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           {wantsParking === 'yes' && (
             <Field t={t} label="Which is the Parking No?" required>
               <input type="text" placeholder="Enter parking number" value={parkingNo} readOnly={isView} disabled={isView}
-                onChange={(e) => setParkingNo(e.target.value)} style={fieldStyle} />
+                onChange={(e) => setParkingNo(e.target.value)} className={fieldClass} />
             </Field>
           )}
         </div>
@@ -795,7 +805,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Booking Date" required>
             <input type="date" value={bookingDate} readOnly={isView} disabled={isView}
-              onClick={openPicker} onFocus={openPicker} onChange={(e) => setBookingDate(e.target.value)} style={fieldStyle} />
+              onClick={openPicker} onFocus={openPicker} onChange={(e) => setBookingDate(e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Booking Amount (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter booking amount" value={bookingAmount} onChange={setBookingAmount} />
@@ -804,7 +814,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <div className="flex items-center gap-2">
               <AmountField t={t} isView={isView} placeholder="Amount" value={remainingBookingAmount} onChange={setRemainingBookingAmount} />
               <input type="date" value={remainingBookingDate} readOnly={isView} disabled={isView}
-                onClick={openPicker} onFocus={openPicker} onChange={(e) => setRemainingBookingDate(e.target.value)} style={fieldStyle} />
+                onClick={openPicker} onFocus={openPicker} onChange={(e) => setRemainingBookingDate(e.target.value)} className={fieldClass} />
             </div>
           </Field>
         </div>
@@ -815,7 +825,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Installment Date" required>
             <input type="date" value={installmentDate} readOnly={isView} disabled={isView}
-              onClick={openPicker} onFocus={openPicker} onChange={(e) => setInstallmentDate(e.target.value)} style={fieldStyle} />
+              onClick={openPicker} onFocus={openPicker} onChange={(e) => setInstallmentDate(e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Monthly EMI Amount Before Possession (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} />
@@ -871,26 +881,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Footer — fixed to the viewport bottom, always visible, not
           just once you scroll all the way down. ───────────────────────── */}
-      <div
-        className="flex items-center justify-end gap-3"
-        style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0, height: FOOTER_HEIGHT, zIndex: 40,
-          padding: '0 24px', background: t.surfaceBg, borderTop: `1px solid ${t.surfaceBorder}`,
-          boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
-        }}
-      >
+      <div className="cust-crud-footer flex items-center justify-end gap-3">
         <button type="button" onClick={() => navigate('/admin/crm/customer-details')} disabled={saving}
-          className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold"
-          style={{ background: t.surfaceBg, color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}>
+          className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
           <MdClose size={16} /> Cancel
         </button>
         {!isView && (
           <button type="button" onClick={handleSubmit} disabled={!isFormValid || saving}
-            className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
-            style={{
-              background: !isFormValid || saving ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)',
-              border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.8 : 1,
-            }}>
+            className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white cust-btn-primary"
+            style={{ opacity: saving ? 0.8 : 1 }}>
             <MdSave size={17} /> {saving ? 'Saving...' : mode === 'edit' ? 'Update Customer' : 'Create Customer'}
           </button>
         )}

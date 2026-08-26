@@ -1,0 +1,156 @@
+/* ==========================================================================
+   DREAM GROUP CRM — EMPLOYEE DETAILS STYLESHEET
+   ==========================================================================
+   Shared structural CSS for EmployeeDetailsListPage + EmployeeDetailsCrudPage
+   — previously each page (mostly the Crud page's getFieldStyle/getLabelStyle
+   helpers plus a handful of repeated inline objects) carried this styling as
+   inline `style={{...}}` objects computed on every render.
+
+   Colors that vary with light/dark theme (backgrounds, borders, text) can't
+   live in a static stylesheet, so they're passed in as CSS custom properties
+   set ONCE per page on that page's outermost wrapper, from the same
+   getTheme(isDark) values each page already computes — see the `--emp-*`
+   vars set in EmployeeDetailsListPage.tsx / EmployeeDetailsCrudPage.tsx.
+   Every other property here (padding, radius, font-size, layout) is static
+   and identical to what the inline style used to produce.
+
+   Class names + custom properties are prefixed `emp-` so they never collide
+   with CustomerDetails.css's `cust-` prefix or any other page's classes —
+   this stylesheet is not a CSS module, so nothing else scopes it.
+   ========================================================================== */
+
+/* ── Form field (input/select/textarea) — from the Crud page's
+   getFieldStyle(t, isView) helper. `.emp-field-view` swaps just the
+   background, matching the old isView ? insetBg : inputBg ternary. ────── */
+.emp-field {
+  width: 100%;
+  border: 1px solid var(--emp-field-border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 12px;
+  outline: none;
+  font-family: inherit;
+  background: var(--emp-field-bg);
+  color: var(--emp-field-text);
+}
+
+.emp-field-view {
+  background: var(--emp-inset-bg);
+}
+
+/* ── Field label — from getLabelStyle(t). ─────────────────────────────── */
+.emp-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--emp-text-primary);
+}
+
+/* Required-field asterisk — same static red on every Field/CheckboxGroup
+   label across the Crud page. */
+.emp-required {
+  color: #ef4444;
+}
+
+/* Small grey helper/placeholder text — CheckboxGroup and ModuleActionGrid's
+   "Loading...", "No modules available." etc. */
+.emp-hint-text {
+  font-size: 11px;
+  margin: 0;
+  color: var(--emp-text-secondary);
+}
+
+/* ── Section header title (icon badge stays inline — its background/color
+   come from a per-section accent color passed as a prop, not the theme). ── */
+.emp-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--emp-text-primary);
+}
+
+/* ── Row action dropdown items (View/Edit/Delete) on the Employee card. ── */
+.emp-menu-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--emp-text-primary);
+}
+
+.emp-menu-btn-danger {
+  color: #dc2626;
+}
+
+/* ── Page headers ──────────────────────────────────────────────────────── */
+.emp-page-title {
+  font-size: 19.5px;
+  font-weight: 800;
+  margin: 0;
+  color: var(--emp-text-primary);
+}
+
+.emp-page-subtitle {
+  font-size: 11.5px;
+  margin: 2px 0 0;
+  color: var(--emp-text-secondary);
+}
+
+.emp-crud-title {
+  font-size: 17.5px;
+  font-weight: 800;
+  margin: 0;
+  color: var(--emp-text-primary);
+}
+
+.emp-crud-subtitle {
+  font-size: 11px;
+  margin: 2px 0 0;
+  color: var(--emp-text-secondary);
+}
+
+/* ── Loading/empty states — List page's card panel. ───────────────────── */
+.emp-empty-state {
+  text-align: center;
+  padding: 32px;
+  color: var(--emp-text-secondary);
+}
+
+/* ── Assign Actions & Modules grid (ModuleActionGrid) — module rows x
+   action columns. ─────────────────────────────────────────────────────── */
+.emp-grid-th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--emp-inset-bg);
+  border-bottom: 1px solid var(--emp-surface-border);
+  color: var(--emp-text-primary);
+}
+
+.emp-grid-th-center {
+  text-align: center;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--emp-inset-bg);
+  border-bottom: 1px solid var(--emp-surface-border);
+  color: var(--emp-text-primary);
+}
+
+.emp-grid-td {
+  padding: 8px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--emp-surface-border);
+  color: var(--emp-text-primary);
+}
+
+.emp-grid-td-center {
+  text-align: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--emp-surface-border);
+}

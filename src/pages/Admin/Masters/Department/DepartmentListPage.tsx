@@ -654,19 +654,31 @@ const DepartmentListPage: React.FC = () => {
           <div className="flex items-center gap-2" style={{ fontSize: 14, color: t.textPrimary }}>
 =======
         <div className="master-pagination" style={{ borderTop: `1px solid ${t.divider}` }}>
+<<<<<<< HEAD
           <div className="flex items-center gap-2" style={{ fontSize: 13, color: t.textSecondary }}>
 >>>>>>> V_14.0
+=======
+          <div className="flex items-center gap-2" style={{ fontSize: 11.5, color: t.textSecondary }}>
+>>>>>>> V_16.0
             <span>Rows per page:</span>
             <select
               value={limit}
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+<<<<<<< HEAD
               style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 8, padding: '4px 8px', color: t.inputText, fontSize: 14 }}
+=======
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 8, padding: '4px 8px', color: t.inputText, fontSize: 11.5 }}
+>>>>>>> V_16.0
             >
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
 
+<<<<<<< HEAD
           <div style={{ fontSize: 14, color: t.textPrimary }}>
+=======
+          <div style={{ fontSize: 11.5, color: t.textSecondary }}>
+>>>>>>> V_16.0
             Showing {totalFiltered === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, totalFiltered)} of {totalFiltered}
           </div>
 

@@ -20,14 +20,14 @@ interface FieldProps {
 const Field: React.FC<FieldProps> = ({ label, required, error, t, children }) => (
   <div>
     <label style={{
-      display: 'block', fontWeight: 700, fontSize: 14,
+      display: 'block', fontWeight: 700, fontSize: 12.5,
       marginBottom: 6, color: t.textPrimary, fontFamily: t.fontFamily,
     }}>
       {label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
     </label>
     {children}
     {error && (
-      <p style={{ color: '#ef4444', fontSize: 13, marginTop: 4, fontFamily: t.fontFamily }}>
+      <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4, fontFamily: t.fontFamily }}>
         {error}
       </p>
     )}

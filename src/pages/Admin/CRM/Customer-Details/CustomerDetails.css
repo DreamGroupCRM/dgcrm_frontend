@@ -1,0 +1,234 @@
+/* ==========================================================================
+   DREAM GROUP CRM — CUSTOMER DETAILS STYLESHEET
+   ==========================================================================
+   Shared structural CSS for CustomerDetailsListPage + CustomerDetailsCrudPage
+   — previously each page (getFieldStyle/getLabelStyle/dateFieldStyle
+   helpers plus a large number of repeated inline objects, especially across
+   the List page's filters and its 3 modals) carried this styling as inline
+   `style={{...}}` objects computed on every render.
+
+   Colors that vary with light/dark theme (backgrounds, borders, text) can't
+   live in a static stylesheet, so they're passed in as CSS custom properties
+   set ONCE per page on that page's outermost wrapper, from the same
+   getTheme(isDark) values each page already computes — see the `--cust-*`
+   vars set in CustomerDetailsListPage.tsx / CustomerDetailsCrudPage.tsx.
+   Every other property here (padding, radius, font-size, layout) is static
+   and identical to what the inline style used to produce.
+
+   Class names + custom properties are prefixed `cust-` so they never
+   collide with EmployeeDetails.css's `emp-` prefix or any other page's
+   classes — this stylesheet is not a CSS module, so nothing else scopes it.
+   ========================================================================== */
+
+/* ── Form field (input/select/textarea) — from the Crud page's
+   getFieldStyle(t, isView) helper. `.cust-field-view` swaps just the
+   background, matching the old isView ? insetBg : inputBg ternary (also
+   reused for the Crud page's read-only Location/Flat Type/Flat Area
+   fields, which hardcoded the same insetBg background). ────────────────── */
+.cust-field {
+  width: 100%;
+  border: 1px solid var(--cust-field-border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 12px;
+  outline: none;
+  font-family: inherit;
+  background: var(--cust-field-bg);
+  color: var(--cust-field-text);
+}
+
+.cust-field-view {
+  background: var(--cust-inset-bg);
+}
+
+/* ── Field label — from getLabelStyle(t). ─────────────────────────────── */
+.cust-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--cust-text-primary);
+}
+
+/* Required-field asterisk — same static red on every Field label (Crud
+   page) and required marker in the Collect Payment modal (List page). */
+.cust-required {
+  color: #ef4444;
+}
+
+/* ── Section header title / sub-heading (Crud page). Icon badge stays
+   inline — its background/color come from a per-section accent color
+   prop, not the theme. ────────────────────────────────────────────────── */
+.cust-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--cust-text-primary);
+}
+
+.cust-subheading {
+  font-size: 11px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--cust-text-secondary);
+}
+
+/* ── Page headers ──────────────────────────────────────────────────────── */
+.cust-list-title {
+  font-size: 19.5px;
+  font-weight: 800;
+  margin: 0;
+  color: var(--cust-text-primary);
+}
+
+.cust-list-subtitle {
+  font-size: 11.5px;
+  margin: 2px 0 0;
+  color: var(--cust-text-secondary);
+}
+
+.cust-crud-title {
+  font-size: 17.5px;
+  font-weight: 800;
+  margin: 0;
+  color: var(--cust-text-primary);
+}
+
+.cust-crud-subtitle {
+  font-size: 11px;
+  margin: 2px 0 0;
+  color: var(--cust-text-secondary);
+}
+
+/* ── Loading/empty states — List page's table body. ────────────────────── */
+.cust-empty-state {
+  text-align: center;
+  padding: 32px;
+  color: var(--cust-text-secondary);
+}
+
+/* ── List page filter labels — Search Customer/Building/Wing/Floor/Flat/
+   Employee, From/To Date (7 identical sites). ─────────────────────────── */
+.cust-filter-label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: var(--cust-text-secondary);
+}
+
+/* ── Collect Payment modal's field labels (List page) — same shape as
+   .cust-filter-label but at the modal's 11px size. ─────────────────────── */
+.cust-modal-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: var(--cust-text-secondary);
+}
+
+/* ── Date input — from the List page's dateFieldStyle(t) helper, reused by
+   its own From/To Date filters and by every date field inside the Collect
+   Payment modal. ──────────────────────────────────────────────────────── */
+.cust-date-field {
+  width: 100%;
+  border: 1px solid var(--cust-field-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 11.5px;
+  font-family: inherit;
+  cursor: pointer;
+  background: var(--cust-field-bg);
+  color: var(--cust-field-text);
+}
+
+/* ── Collect Payment modal's plain text/select fields (Payment For, Mode
+   of Payment, Cheque Number, Company, Maintenance) — same shape as
+   .cust-field but with no explicit `outline`, matching their original
+   inline style exactly (so the default browser focus outline is
+   unaffected, unlike .cust-field's outline:none). ─────────────────────── */
+.cust-modal-field {
+  width: 100%;
+  border: 1px solid var(--cust-field-border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-family: inherit;
+  background: var(--cust-field-bg);
+  color: var(--cust-field-text);
+}
+
+/* ── Divider utilities — the 1px theme-colored rule used above/below every
+   modal header/footer and the table/pagination rows on the List page. ──── */
+.cust-divider-top {
+  border-top: 1px solid var(--cust-divider);
+}
+
+.cust-divider-bottom {
+  border-bottom: 1px solid var(--cust-divider);
+}
+
+/* ── Modal chrome shared by the Payment History / Collect Payment / View
+   Receipt modals (List page). ─────────────────────────────────────────── */
+.cust-modal-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--cust-text-primary);
+}
+
+.cust-modal-subtitle {
+  font-size: 11px;
+  color: var(--cust-text-secondary);
+}
+
+.cust-modal-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--cust-text-secondary);
+}
+
+/* Secondary footer button (Cancel / Close). */
+.cust-btn-secondary {
+  cursor: pointer;
+  background: var(--cust-surface-bg);
+  color: var(--cust-text-primary);
+  border: 1px solid var(--cust-surface-border);
+}
+
+/* Primary gradient footer button (Collect Payment / Print) — both call
+   sites already pass the exact same condition to `disabled` as they used
+   to pass to the background/cursor ternary, so a real :disabled selector
+   reproduces the old look with no inline conditional needed. */
+.cust-btn-primary {
+  background: linear-gradient(135deg, #4338ca, #4f46e5);
+  border: none;
+  cursor: pointer;
+  color: #fff;
+}
+
+.cust-btn-primary:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* ── Crud page's own fixed footer. Deliberately its own class rather than
+   reusing master.css's shared `.master-crud-footer` — that class is a
+   floating rounded card inset from the screen edges (left/right/bottom:
+   16px, border-radius, all-round shadow), while this page's footer is a
+   full-width bar flush with the viewport edges with only a top border, so
+   reusing it would visibly change the footer's appearance. ─────────────── */
+.cust-crud-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 76px;
+  z-index: 40;
+  padding: 0 24px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  background: var(--cust-surface-bg);
+  border-top: 1px solid var(--cust-surface-border);
+}

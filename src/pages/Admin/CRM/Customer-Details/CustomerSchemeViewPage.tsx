@@ -56,9 +56,9 @@ const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradie
       <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.2)' }}>
         {icon}
       </span>
-      <h2 style={{ fontSize: 16.5, fontWeight: 800, color: '#fff', margin: 0 }}>{title}</h2>
+      <h2 style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>{title}</h2>
     </div>
-    <div style={{ fontSize: 13.5, fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>{subtitle}</div>
+    <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>{subtitle}</div>
   </div>
 );
 
@@ -68,35 +68,35 @@ const InfoField: React.FC<{ t: Theme; icon: React.ReactNode; label: string; valu
       {icon}
     </span>
     <div style={{ minWidth: 0 }}>
-      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3 }}>{label}</div>
-      <div style={{ fontSize: 13.5, color: '#fff', fontWeight: 600, wordBreak: 'break-word' }}>{value || '—'}</div>
+      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3 }}>{label}</div>
+      <div style={{ fontSize: 12, color: '#fff', fontWeight: 600, wordBreak: 'break-word' }}>{value || '—'}</div>
     </div>
   </div>
 );
 
 const SummaryTable: React.FC<{ t: Theme; heading: string; rows: CustomerSchemeSummaryRow[]; total: number; totalLabel: string }> = ({ t, heading, rows, total, totalLabel }) => (
   <div className="mb-5">
-    <div style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>{heading}</div>
+    <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>{heading}</div>
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
         <thead>
           <tr style={{ background: t.insetBg }}>
-            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 40 }}>#</th>
-            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Payment Details</th>
-            <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Amount (Rs.)</th>
+            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 40 }}>#</th>
+            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Payment Details</th>
+            <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Amount (Rs.)</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={i} style={{ borderTop: i === 0 ? 'none' : `1px solid ${t.divider}` }}>
-              <td style={{ padding: '8px 12px', fontSize: 13, color: t.textSecondary }}>{i + 1}</td>
-              <td style={{ padding: '8px 12px', fontSize: 13.5, color: t.textPrimary }}>{r.label}</td>
-              <td style={{ padding: '8px 12px', fontSize: 13.5, color: t.textPrimary, textAlign: 'right', fontWeight: 600 }}>{formatINR(r.amount)}</td>
+              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textSecondary }}>{i + 1}</td>
+              <td style={{ padding: '8px 12px', fontSize: 12, color: t.textPrimary }}>{r.label}</td>
+              <td style={{ padding: '8px 12px', fontSize: 12, color: t.textPrimary, textAlign: 'right', fontWeight: 600 }}>{formatINR(r.amount)}</td>
             </tr>
           ))}
           <tr style={{ borderTop: `1px solid ${t.surfaceBorder}`, background: t.insetBg }}>
-            <td colSpan={2} style={{ padding: '9px 12px', fontSize: 13.5, fontWeight: 700, color: t.textPrimary }}>{totalLabel}</td>
-            <td style={{ padding: '9px 12px', fontSize: 13.5, fontWeight: 800, color: '#4338ca', textAlign: 'right' }}>{formatINR(total)}</td>
+            <td colSpan={2} style={{ padding: '9px 12px', fontSize: 12, fontWeight: 700, color: t.textPrimary }}>{totalLabel}</td>
+            <td style={{ padding: '9px 12px', fontSize: 12, fontWeight: 800, color: '#4338ca', textAlign: 'right' }}>{formatINR(total)}</td>
           </tr>
         </tbody>
       </table>
@@ -110,27 +110,27 @@ const ScheduleTable: React.FC<{ t: Theme; section: 'A' | 'B'; rows: CustomerSche
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
         <thead>
           <tr style={{ background: t.insetBg }}>
-            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 56 }}>Sr No</th>
-            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 110 }}>Inst Date</th>
-            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>({section}) Mode Of Payment</th>
-            <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Amount</th>
+            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 56 }}>Sr No</th>
+            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 110 }}>Inst Date</th>
+            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>({section}) Mode Of Payment</th>
+            <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Amount</th>
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr><td colSpan={4} style={{ padding: 20, textAlign: 'center', fontSize: 13, color: t.textSecondary }}>No installments in this phase.</td></tr>
+            <tr><td colSpan={4} style={{ padding: 20, textAlign: 'center', fontSize: 11.5, color: t.textSecondary }}>No installments in this phase.</td></tr>
           ) : rows.map((r) => (
             <tr key={r.sr} style={{ borderTop: `1px solid ${t.divider}` }}>
-              <td style={{ padding: '7px 12px', fontSize: 13, color: t.textSecondary }}>{r.sr}</td>
-              <td style={{ padding: '7px 12px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDMY(r.date)}</td>
-              <td style={{ padding: '7px 12px', fontSize: 13, color: t.textPrimary }}>{r.label}</td>
-              <td style={{ padding: '7px 12px', fontSize: 13, color: t.textPrimary, textAlign: 'right', fontWeight: 600 }}>{formatINR(r.amount)}</td>
+              <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textSecondary }}>{r.sr}</td>
+              <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDMY(r.date)}</td>
+              <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary }}>{r.label}</td>
+              <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, textAlign: 'right', fontWeight: 600 }}>{formatINR(r.amount)}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
-    <div style={{ fontSize: 13.5, fontWeight: 700, color: t.textPrimary, marginTop: 8 }}>
+    <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginTop: 8 }}>
       {totalLabel} : <span style={{ color: '#4338ca' }}>{formatINR(total)}</span>
     </div>
   </div>
@@ -176,7 +176,7 @@ const CustomerSchemeViewPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center" style={{ minHeight: '50vh', fontFamily: t.fontFamily, color: t.textSecondary, fontSize: 14 }}>
+      <div className="flex items-center justify-center" style={{ minHeight: '50vh', fontFamily: t.fontFamily, color: t.textSecondary, fontSize: 12.5 }}>
         Loading customer scheme...
       </div>
     );
@@ -185,7 +185,7 @@ const CustomerSchemeViewPage: React.FC = () => {
   if (error || !data) {
     return (
       <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16 }}>
-        <div className="rounded-2xl p-6 text-center" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textSecondary, fontSize: 13.5 }}>
+        <div className="rounded-2xl p-6 text-center" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textSecondary, fontSize: 12 }}>
           {error || 'Customer not found.'}
         </div>
         <div
@@ -218,8 +218,8 @@ const CustomerSchemeViewPage: React.FC = () => {
           <MdCalculate size={22} style={{ color: '#4f46e5' }} />
         </div>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Customer Scheme</h1>
-          <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>EMI Scheme &amp; Schedule computed from this customer's saved Payment Details</p>
+          <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Customer Scheme</h1>
+          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>EMI Scheme &amp; Schedule computed from this customer's saved Payment Details</p>
         </div>
       </div>
 
@@ -230,13 +230,13 @@ const CustomerSchemeViewPage: React.FC = () => {
             {c.customer_image ? (
               <img src={c.customer_image} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover', border: '2px solid rgba(255,255,255,0.5)' }} />
             ) : (
-              <div className="flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 56, height: 56, background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: 20, fontWeight: 800 }}>
+              <div className="flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 56, height: 56, background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: 17.5, fontWeight: 800 }}>
                 {fullName(c).charAt(0).toUpperCase()}
               </div>
             )}
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>{fullName(c)}</div>
-              <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>{c.customer_code}{flatLine ? ` · ${flatLine}` : ''}</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{fullName(c)}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>{c.customer_code}{flatLine ? ` · ${flatLine}` : ''}</div>
             </div>
           </div>
           <div className="grid gap-x-5 gap-y-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
@@ -263,8 +263,8 @@ const CustomerSchemeViewPage: React.FC = () => {
           <SummaryTable t={t} heading="A) Mode of Payment (Before Possession)" rows={data.summaryA} total={data.totalA} totalLabel="Total (A) (Before Possession)" />
           <SummaryTable t={t} heading="B) After Possession" rows={data.summaryB} total={data.totalB} totalLabel="Total (B) (After Possession)" />
           <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
-            <span style={{ fontSize: 15, fontWeight: 800, color: '#4338ca' }}>{formatINR(data.grandTotal)}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#4338ca' }}>{formatINR(data.grandTotal)}</span>
           </div>
         </div>
       </SectionCard>
@@ -280,8 +280,8 @@ const CustomerSchemeViewPage: React.FC = () => {
           <ScheduleTable t={t} section="A" rows={data.scheduleA} total={data.totalA} totalLabel="(A) Total Before Possession" />
           <ScheduleTable t={t} section="B" rows={data.scheduleB} total={data.totalB} totalLabel="(B) Total After Possession" />
           <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
-            <span style={{ fontSize: 15, fontWeight: 800, color: '#4338ca' }}>{formatINR(data.grandTotal)}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#4338ca' }}>{formatINR(data.grandTotal)}</span>
           </div>
         </div>
       </SectionCard>

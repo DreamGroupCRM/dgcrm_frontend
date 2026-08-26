@@ -28,6 +28,7 @@ import {
   PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload,
 } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
+import './CustomerDetails.css';
 
 type Theme = ReturnType<typeof getTheme>;
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
@@ -80,7 +81,7 @@ const SearchableSelect: React.FC<{
           disabled={disabled}
           onFocus={() => setOpen(true)}
           onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
-          style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 13, width: '100%' }}
+          style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 11.5, width: '100%' }}
         />
         {value && !disabled && (
           <button
@@ -117,10 +118,8 @@ const SearchableSelect: React.FC<{
   );
 };
 
-const dateFieldStyle = (t: Theme): React.CSSProperties => ({
-  width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10,
-  padding: '8px 12px', fontSize: 13, color: t.inputText, fontFamily: t.fontFamily, cursor: 'pointer',
-});
+// Date-field styling now lives in CustomerDetails.css as .cust-date-field —
+// colors come in via the --cust-* CSS vars set on the page's outer wrapper.
 
 // Fires showPicker() on both click AND focus — a plain onClick alone opens
 // the calendar when the browser-drawn icon is clicked, but clicking into
@@ -535,14 +534,23 @@ const CustomerDetailsListPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  // ── CSS custom properties for CustomerDetails.css — set once here from
+  // this page's own getTheme(isDark) values, consumed by the cust-* classes
+  // used throughout this page's filters/table/modals below. ─────────────
+  const cssVars = {
+    '--cust-field-bg': t.inputBg, '--cust-field-border': t.inputBorder, '--cust-field-text': t.inputText,
+    '--cust-inset-bg': t.insetBg, '--cust-text-primary': t.textPrimary, '--cust-text-secondary': t.textSecondary,
+    '--cust-surface-bg': t.surfaceBg, '--cust-surface-border': t.surfaceBorder, '--cust-divider': t.divider,
+  } as React.CSSProperties;
+
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="mb-6">
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Customer List</h1>
-        <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Dashboard / Customer List</p>
+        <h1 className="cust-list-title">Customer List</h1>
+        <p className="cust-list-subtitle">Dashboard / Customer List</p>
       </div>
 
       {/* ── KPI cards — colored gradient variant, same palette as
@@ -555,14 +563,14 @@ const CustomerDetailsListPage: React.FC = () => {
           { label: 'New Customers This Month', value: summary.newThisMonth, icon: MdPersonAddAlt1, color: '#ea580c' },
           { label: 'Inactive Customers', value: summary.inactive, icon: MdPersonOff, color: '#dc2626' },
         ].map((card) => (
-          <div key={card.label} className="flex items-center gap-3 rounded-2xl p-4"
-            style={{ background: getStatGradient(card.color), border: `1px solid ${t.surfaceBorder}`, boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
+          <div key={card.label} className="flex items-center justify-center gap-3 rounded-2xl p-4"
+            style={{ background: getStatGradient(card.color), border: `1px solid ${t.surfaceBorder}`, boxShadow: '0 4px 14px rgba(0,0,0,0.12)', minHeight: 80 }}>
             <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.22)' }}>
               <card.icon size={22} style={{ color: '#fff' }} />
             </div>
-            <div className="min-w-0">
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(255,255,255,0.88)' }}>{card.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{loading ? '—' : card.value}</div>
+            <div className="min-w-0" style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.88)' }}>{card.label}</div>
+              <div style={{ fontSize: 19.5, fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{loading ? '—' : card.value}</div>
             </div>
           </div>
         ))}
@@ -572,37 +580,37 @@ const CustomerDetailsListPage: React.FC = () => {
       <div className="rounded-2xl p-5 mb-5" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Search Customer Name</label>
+            <label className="cust-filter-label">Search Customer Name</label>
             <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={setCustomerNameFilter} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Search Building Name</label>
+            <label className="cust-filter-label">Search Building Name</label>
             <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter}
               onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFloorFilter(''); setFlatNoFilter(''); }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Select Wing</label>
+            <label className="cust-filter-label">Select Wing</label>
             <SearchableSelect t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingFilter}
               disabled={!selectedBuilding || loadingBuildingDetail}
               onChange={(v) => { setWingFilter(v); setFloorFilter(''); setFlatNoFilter(''); }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Select Floor</label>
+            <label className="cust-filter-label">Select Floor</label>
             <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter} disabled={!selectedWing}
               onChange={(v) => { setFloorFilter(v); setFlatNoFilter(''); }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Select Flat No</label>
+            <label className="cust-filter-label">Select Flat No</label>
             <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} disabled={!selectedFloor} onChange={setFlatNoFilter} labelFor={flatLabelFor} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>From Date</label>
-            <input type="date" value={fromDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setFromDate(e.target.value)} style={dateFieldStyle(t)} />
+            <label className="cust-filter-label">From Date</label>
+            <input type="date" value={fromDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setFromDate(e.target.value)} className="cust-date-field" />
           </div>
           <div className="flex items-end gap-2">
             <div className="flex-1">
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>To Date</label>
-              <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} style={dateFieldStyle(t)} />
+              <label className="cust-filter-label">To Date</label>
+              <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} className="cust-date-field" />
             </div>
             <button
               type="button" onClick={clearAllFilters}
@@ -618,7 +626,7 @@ const CustomerDetailsListPage: React.FC = () => {
       <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
         <div className="flex items-end gap-3">
           <div style={{ minWidth: 240 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Search Employee</label>
+            <label className="cust-filter-label">Search Employee</label>
             <SearchableSelect t={t} placeholder="Select employee" options={employeeOptions} value={employeeSearch} onChange={setEmployeeSearch} disabled={!assignmentEnabled} />
           </div>
           <button
@@ -656,7 +664,7 @@ const CustomerDetailsListPage: React.FC = () => {
         </div>
       </div>
       {!assignmentEnabled && (
-        <p style={{ fontSize: 12, color: t.textSecondary, margin: '0 0 12px' }}>ⓘ Select one or more customers to enable</p>
+        <p style={{ fontSize: 10.5, color: t.textSecondary, margin: '0 0 12px' }}>ⓘ Select one or more customers to enable</p>
       )}
 
       {/* ── Table ─────────────────────────────────────────────────────── */}
@@ -670,10 +678,14 @@ const CustomerDetailsListPage: React.FC = () => {
                 </th>
                 {['Action', 'Employee Code', 'Employee Name', 'Customer Name', 'Contact Details', 'Project / Flat Details', 'Flat Booking Date', 'Monthly EMI Amount'].map((h) => (
 <<<<<<< HEAD
+<<<<<<< HEAD
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, textTransform: 'camelcase', letterSpacing: '0.03em', color: t.textSecondary, whiteSpace: 'nowrap' }}>
 =======
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12.5, fontWeight: 700, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
 >>>>>>> V_14.0
+=======
+                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+>>>>>>> V_16.0
                     {h}
                   </th>
                 ))}
@@ -681,12 +693,12 @@ const CustomerDetailsListPage: React.FC = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ padding: 32, textAlign: 'center', color: t.textSecondary }}>Loading customers...</td></tr>
+                <tr><td colSpan={9} className="cust-empty-state">Loading customers...</td></tr>
               ) : pageRows.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: 32, textAlign: 'center', color: t.textSecondary }}>No customers found.</td></tr>
+                <tr><td colSpan={9} className="cust-empty-state">No customers found.</td></tr>
               ) : (
                 pageRows.map((c) => (
-                  <tr key={c.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                  <tr key={c.id} className="cust-divider-top">
                     <td style={{ padding: '12px 14px' }}>
                       <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)} />
                     </td>
@@ -733,26 +745,26 @@ const CustomerDetailsListPage: React.FC = () => {
                             {(c.assigned_employee_name || '—').slice(0, 1).toUpperCase()}
                           </div>
                         )}
-                        <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? '#ffffff' : '#000000' }}>{c.assigned_employee_code || '—'}</span>
+                        <span style={{ fontSize: 11.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000' }}>{c.assigned_employee_code || '—'}</span>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 13.5, color: isDark ? '#ffffff' : '#000000' }}>{c.assigned_employee_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 12, color: isDark ? '#ffffff' : '#000000' }}>{c.assigned_employee_name || '—'}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       <div className="flex items-center gap-1.5">
                         <MdGroups size={15} className="master-row-icon" />
                         {c.customer_name}
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: isDark ? '#ffffff' : '#000000' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
                       <div className="flex items-center gap-1.5"><MdPhone size={13} /> {c.mobile_number}</div>
                       <div className="flex items-center gap-1.5 mt-0.5"><MdEmail size={13} /> {c.email}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: isDark ? '#ffffff' : '#000000' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
                       <div style={{ fontWeight: 700 }}>{c.building_name}</div>
                       <div>{c.wing_name} Wing, {c.flat_no} ({c.flat_type}{c.area_sqft ? ` - ${c.area_sqft} Sqft` : ''})</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 13, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{formatDate(c.booking_date)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{formatDate(c.booking_date)}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       {c.monthly_emi != null ? `₹ ${c.monthly_emi.toLocaleString('en-IN')}` : '—'}
                     </td>
                   </tr>
@@ -763,15 +775,15 @@ const CustomerDetailsListPage: React.FC = () => {
         </div>
 
         {/* pagination — bottom-center, First/Prev/[numbers]/Next/Last */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4" style={{ borderTop: `1px solid ${t.divider}` }}>
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 cust-divider-top">
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 12.5, color: t.textSecondary }}>Rows per page:</span>
+            <span style={{ fontSize: 11, color: t.textSecondary }}>Rows per page:</span>
             <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 12.5, cursor: 'pointer', outline: 'none' }}>
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer', outline: 'none' }}>
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
-          <div style={{ fontSize: 12.5, color: t.textSecondary }}>
+          <div style={{ fontSize: 11, color: t.textSecondary }}>
             Showing {filtered.length === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, filtered.length)} of {filtered.length}
           </div>
           <div className="flex-1 flex items-center justify-center gap-1.5">
@@ -817,20 +829,20 @@ const CustomerDetailsListPage: React.FC = () => {
             style={{ maxWidth: 480, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '80vh', overflowY: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
+            <div className="flex items-center justify-between p-5 cust-divider-bottom">
               <div>
-                <div style={{ fontSize: 15.5, fontWeight: 700, color: t.textPrimary }}>
+                <div className="cust-modal-title">
                   Payment History
                 </div>
-                <div style={{ fontSize: 12.5, color: t.textSecondary }}>{infoModal.customer.customer_name}</div>
+                <div className="cust-modal-subtitle">{infoModal.customer.customer_name}</div>
               </div>
-              <button type="button" onClick={() => setInfoModal(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary }}>
+              <button type="button" onClick={() => setInfoModal(null)} className="cust-modal-close">
                 <MdClose size={20} />
               </button>
             </div>
             <div className="p-5">
               {infoModal.loading ? (
-                <p style={{ color: t.textSecondary, fontSize: 13.5 }}>Loading...</p>
+                <p style={{ color: t.textSecondary, fontSize: 12 }}>Loading...</p>
               ) : (
                 <>
                   {/* ── Customer Due panel — total_due/remaining_amount +
@@ -840,24 +852,24 @@ const CustomerDetailsListPage: React.FC = () => {
                     <div className="rounded-xl p-3.5 mb-4" style={{ background: isDark ? 'rgba(220,38,38,0.08)' : '#fef2f2', border: `1px solid ${isDark ? 'rgba(220,38,38,0.25)' : '#fecaca'}` }}>
                       <div className="flex items-center gap-1.5 mb-2">
                         <MdAccountBalanceWallet size={15} style={{ color: '#dc2626' }} />
-                        <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Customer Due</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>Customer Due</span>
                       </div>
                       {infoModal.due && (
                         <div className="grid grid-cols-2 gap-2 mb-2">
                           <div>
-                            <div style={{ fontSize: 11, color: t.textSecondary }}>Total Due</div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>₹ {infoModal.due.total_due.toLocaleString('en-IN')}</div>
+                            <div style={{ fontSize: 10, color: t.textSecondary }}>Total Due</div>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>₹ {infoModal.due.total_due.toLocaleString('en-IN')}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: 11, color: t.textSecondary }}>Remaining</div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: '#dc2626' }}>₹ {infoModal.due.remaining_amount.toLocaleString('en-IN')}</div>
+                            <div style={{ fontSize: 10, color: t.textSecondary }}>Remaining</div>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#dc2626' }}>₹ {infoModal.due.remaining_amount.toLocaleString('en-IN')}</div>
                           </div>
                         </div>
                       )}
                       {infoModal.remaining && (
                         <div className="flex flex-wrap gap-x-4 gap-y-1" style={{ borderTop: `1px solid ${isDark ? 'rgba(220,38,38,0.2)' : '#fecaca'}`, paddingTop: 6 }}>
                           {PAYMENT_FOR_OPTIONS.map((o) => (
-                            <div key={o.value} style={{ fontSize: 11.5, color: t.textSecondary }}>
+                            <div key={o.value} style={{ fontSize: 10, color: t.textSecondary }}>
                               {o.label}: <strong style={{ color: t.textPrimary }}>₹ {(infoModal.remaining![o.value] ?? 0).toLocaleString('en-IN')}</strong>
                             </div>
                           ))}
@@ -867,17 +879,17 @@ const CustomerDetailsListPage: React.FC = () => {
                   )}
 
                   {(infoModal.payments || []).length === 0 ? (
-                    <p style={{ color: t.textSecondary, fontSize: 13.5 }}>No payment history found.</p>
+                    <p style={{ color: t.textSecondary, fontSize: 12 }}>No payment history found.</p>
                   ) : (
                     <div className="space-y-3">
                       {infoModal.payments!.map((p) => (
                         <div key={p.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: t.insetBg }}>
                           <div>
-                            <div style={{ fontSize: 13.5, fontWeight: 600, color: t.textPrimary }}>₹ {p.amount.toLocaleString('en-IN')}</div>
-                            <div style={{ fontSize: 12, color: t.textSecondary }}>{formatDate(p.paid_on)}{p.mode ? ` · ${p.mode}` : ''}</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: t.textPrimary }}>₹ {p.amount.toLocaleString('en-IN')}</div>
+                            <div style={{ fontSize: 10.5, color: t.textSecondary }}>{formatDate(p.paid_on)}{p.mode ? ` · ${p.mode}` : ''}</div>
                           </div>
                           <div className="flex items-center gap-2">
-                            {p.reference_no && <div style={{ fontSize: 11.5, color: t.textSecondary }}>Ref: {p.reference_no}</div>}
+                            {p.reference_no && <div style={{ fontSize: 10, color: t.textSecondary }}>Ref: {p.reference_no}</div>}
                             <button type="button" title="View Receipt" onClick={() => openReceipt(p.id)}
                               className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold"
                               style={{ background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff', border: 'none', color: '#2563eb', cursor: 'pointer' }}>
@@ -901,90 +913,88 @@ const CustomerDetailsListPage: React.FC = () => {
           onClick={() => !collecting && setCollectPaymentModal(null)}>
           <div className="rounded-2xl w-full" style={{ maxWidth: 560, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '88vh', overflowY: 'auto' }}
             onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
+            <div className="flex items-center justify-between p-5 cust-divider-bottom">
               <div>
-                <div style={{ fontSize: 15.5, fontWeight: 700, color: t.textPrimary }}>Collect Payment</div>
-                <div style={{ fontSize: 12.5, color: t.textSecondary }}>{collectPaymentModal.customer.customer_name}</div>
+                <div className="cust-modal-title">Collect Payment</div>
+                <div className="cust-modal-subtitle">{collectPaymentModal.customer.customer_name}</div>
               </div>
-              <button type="button" onClick={() => setCollectPaymentModal(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary }}>
+              <button type="button" onClick={() => setCollectPaymentModal(null)} className="cust-modal-close">
                 <MdClose size={20} />
               </button>
             </div>
             <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Payment For <span style={{ color: '#ef4444' }}>*</span></label>
+                <label className="cust-modal-label">Payment For <span className="cust-required">*</span></label>
                 <select value={cpPaymentFor} onChange={(e) => setCpPaymentFor(e.target.value as PaymentFor)}
-                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: t.inputText, fontFamily: t.fontFamily }}>
+                  className="cust-modal-field">
                   {PAYMENT_FOR_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Amount (₹) <span style={{ color: '#ef4444' }}>*</span></label>
+                <label className="cust-modal-label">Amount (₹) <span className="cust-required">*</span></label>
                 <div className="flex items-center gap-2" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '0 12px' }}>
                   <span style={{ color: t.textSecondary }}>₹</span>
                   <input type="text" inputMode="decimal" placeholder="Enter amount" value={cpAmount}
                     onChange={(e) => setCpAmount(e.target.value.replace(/[^\d.]/g, ''))}
-                    style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }} />
+                    style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
                 </div>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Installment Date</label>
-                <input type="date" value={cpInstDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpInstDate(e.target.value)} style={dateFieldStyle(t)} />
+                <label className="cust-modal-label">Installment Date</label>
+                <input type="date" value={cpInstDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpInstDate(e.target.value)} className="cust-date-field" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Mode of Payment</label>
+                <label className="cust-modal-label">Mode of Payment</label>
                 <input type="text" placeholder="e.g. Cash, Cheque, NEFT" value={cpModeOfPayment} onChange={(e) => setCpModeOfPayment(e.target.value)}
-                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: t.inputText, fontFamily: t.fontFamily }} />
+                  className="cust-modal-field" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Cheque Number</label>
+                <label className="cust-modal-label">Cheque Number</label>
                 <input type="text" placeholder="Optional" value={cpChequeNumber} onChange={(e) => setCpChequeNumber(e.target.value)}
-                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: t.inputText, fontFamily: t.fontFamily }} />
+                  className="cust-modal-field" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Clearance Date</label>
-                <input type="date" value={cpClearanceDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpClearanceDate(e.target.value)} style={dateFieldStyle(t)} />
+                <label className="cust-modal-label">Clearance Date</label>
+                <input type="date" value={cpClearanceDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpClearanceDate(e.target.value)} className="cust-date-field" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Company</label>
+                <label className="cust-modal-label">Company</label>
                 <input type="text" placeholder="Optional" value={cpCompany} onChange={(e) => setCpCompany(e.target.value)}
-                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: t.inputText, fontFamily: t.fontFamily }} />
+                  className="cust-modal-field" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Maintenance (₹)</label>
+                <label className="cust-modal-label">Maintenance (₹)</label>
                 <input type="text" inputMode="numeric" placeholder="Optional" value={cpMaintenance}
                   onChange={(e) => setCpMaintenance(e.target.value.replace(/[^\d]/g, ''))}
-                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: t.inputText, fontFamily: t.fontFamily }} />
+                  className="cust-modal-field" />
               </div>
               {/* date/payment_date — only Admin/SuperAdmin callers actually get
                   these applied server-side; a non-admin caller's submission is
                   silently forced to "now" instead (see paymentService.ts). */}
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Date <span style={{ fontWeight: 400 }}>(Admin only)</span></label>
-                <input type="date" value={cpDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpDate(e.target.value)} style={dateFieldStyle(t)} />
+                <label className="cust-modal-label">Date <span style={{ fontWeight: 400 }}>(Admin only)</span></label>
+                <input type="date" value={cpDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpDate(e.target.value)} className="cust-date-field" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.textSecondary, marginBottom: 5 }}>Payment Date <span style={{ fontWeight: 400 }}>(Admin only)</span></label>
-                <input type="date" value={cpPaymentDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpPaymentDate(e.target.value)} style={dateFieldStyle(t)} />
+                <label className="cust-modal-label">Payment Date <span style={{ fontWeight: 400 }}>(Admin only)</span></label>
+                <input type="date" value={cpPaymentDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpPaymentDate(e.target.value)} className="cust-date-field" />
               </div>
               {cpPaymentFor === 'EMIAmount' && (
                 <div className="sm:col-span-2 flex items-center gap-2">
                   <input id="cp-advance-pay" type="checkbox" checked={cpIsAdvancePay} onChange={(e) => setCpIsAdvancePay(e.target.checked)} />
-                  <label htmlFor="cp-advance-pay" style={{ fontSize: 13, color: t.textPrimary, cursor: 'pointer' }}>
+                  <label htmlFor="cp-advance-pay" style={{ fontSize: 11.5, color: t.textPrimary, cursor: 'pointer' }}>
                     Advance Pay <span style={{ color: t.textSecondary }}>(pay ahead into future EMIs)</span>
                   </label>
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-end gap-3 p-5" style={{ borderTop: `1px solid ${t.divider}` }}>
+            <div className="flex items-center justify-end gap-3 p-5 cust-divider-top">
               <button type="button" onClick={() => setCollectPaymentModal(null)} disabled={collecting}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: t.surfaceBg, color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}>
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
                 Cancel
               </button>
               <button type="button" onClick={handleCollectPayment} disabled={collecting}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-                style={{ background: collecting ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)', border: 'none', cursor: collecting ? 'not-allowed' : 'pointer' }}>
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white cust-btn-primary">
                 {collecting ? 'Collecting...' : 'Collect Payment'}
               </button>
             </div>
@@ -1010,37 +1020,37 @@ const CustomerDetailsListPage: React.FC = () => {
           `}</style>
           <div className="rounded-2xl w-full receipt-print-area" style={{ maxWidth: 480, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '88vh', overflowY: 'auto' }}
             onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 receipt-no-print" style={{ borderBottom: `1px solid ${t.divider}` }}>
-              <div style={{ fontSize: 15.5, fontWeight: 700, color: t.textPrimary }}>Payment Receipt</div>
-              <button type="button" onClick={() => setReceiptModal(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary }}>
+            <div className="flex items-center justify-between p-5 receipt-no-print cust-divider-bottom">
+              <div className="cust-modal-title">Payment Receipt</div>
+              <button type="button" onClick={() => setReceiptModal(null)} className="cust-modal-close">
                 <MdClose size={20} />
               </button>
             </div>
             <div className="p-5">
               {receiptModal.loading || !receiptModal.data ? (
-                <p style={{ color: t.textSecondary, fontSize: 13.5 }}>{receiptModal.loading ? 'Loading receipt...' : 'Receipt not found.'}</p>
+                <p style={{ color: t.textSecondary, fontSize: 12 }}>{receiptModal.loading ? 'Loading receipt...' : 'Receipt not found.'}</p>
               ) : (
                 <>
                   <div className="text-center mb-4">
-                    <div style={{ fontSize: 17, fontWeight: 800, color: t.textPrimary }}>Dream Group CRM</div>
-                    <div style={{ fontSize: 12, color: t.textSecondary }}>Payment Receipt</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: t.textPrimary }}>Dream Group CRM</div>
+                    <div style={{ fontSize: 10.5, color: t.textSecondary }}>Payment Receipt</div>
                   </div>
                   <div className="rounded-xl p-4 mb-4" style={{ background: t.insetBg }}>
-                    <div className="flex justify-between mb-1.5"><span style={{ fontSize: 12.5, color: t.textSecondary }}>Receipt No.</span><strong style={{ fontSize: 13, color: t.textPrimary }}>{receiptModal.data.transaction.receipt_number}</strong></div>
-                    <div className="flex justify-between mb-1.5"><span style={{ fontSize: 12.5, color: t.textSecondary }}>Date</span><strong style={{ fontSize: 13, color: t.textPrimary }}>{formatDate(receiptModal.data.transaction.date || receiptModal.data.transaction.created_at)}</strong></div>
-                    <div className="flex justify-between"><span style={{ fontSize: 12.5, color: t.textSecondary }}>Received By</span><strong style={{ fontSize: 13, color: t.textPrimary }}>{receiptModal.data.transaction.received_by || '—'}</strong></div>
+                    <div className="flex justify-between mb-1.5"><span style={{ fontSize: 11, color: t.textSecondary }}>Receipt No.</span><strong style={{ fontSize: 11.5, color: t.textPrimary }}>{receiptModal.data.transaction.receipt_number}</strong></div>
+                    <div className="flex justify-between mb-1.5"><span style={{ fontSize: 11, color: t.textSecondary }}>Date</span><strong style={{ fontSize: 11.5, color: t.textPrimary }}>{formatDate(receiptModal.data.transaction.date || receiptModal.data.transaction.created_at)}</strong></div>
+                    <div className="flex justify-between"><span style={{ fontSize: 11, color: t.textSecondary }}>Received By</span><strong style={{ fontSize: 11.5, color: t.textPrimary }}>{receiptModal.data.transaction.received_by || '—'}</strong></div>
                   </div>
 
                   <div className="mb-4">
-                    <div style={{ fontSize: 11.5, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Customer</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>{receiptModal.data.customer.customer_name || '—'}</div>
-                    <div style={{ fontSize: 12.5, color: t.textSecondary }}>{receiptModal.data.customer.customer_code}{receiptModal.data.customer.mobile_number ? ` · ${receiptModal.data.customer.mobile_number}` : ''}</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Customer</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>{receiptModal.data.customer.customer_name || '—'}</div>
+                    <div style={{ fontSize: 11, color: t.textSecondary }}>{receiptModal.data.customer.customer_code}{receiptModal.data.customer.mobile_number ? ` · ${receiptModal.data.customer.mobile_number}` : ''}</div>
                     {/* Prefers real building/wing/flat names (the backend now
                         loads those relations — see paymentService.ts); falls
                         back to the raw id only if a relation didn't resolve
                         (e.g. a deleted building). */}
                     {(receiptModal.data.customer.building_id || receiptModal.data.customer.wing_id || receiptModal.data.customer.flat_id) && (
-                      <div style={{ fontSize: 11.5, color: t.textSecondary }}>
+                      <div style={{ fontSize: 10, color: t.textSecondary }}>
                         {receiptModal.data.customer.building_id ? `${receiptModal.data.customer.building_name || `Building #${receiptModal.data.customer.building_id}`} ` : ''}
                         {receiptModal.data.customer.wing_id ? `· ${receiptModal.data.customer.wing_name ? `Wing ${receiptModal.data.customer.wing_name}` : `Wing #${receiptModal.data.customer.wing_id}`} ` : ''}
                         {receiptModal.data.customer.flat_id ? `· ${receiptModal.data.customer.flat_no ? `Flat ${receiptModal.data.customer.flat_no}` : `Flat #${receiptModal.data.customer.flat_id}`}` : ''}
@@ -1049,10 +1059,10 @@ const CustomerDetailsListPage: React.FC = () => {
                   </div>
 
                   <div className="rounded-xl p-4 mb-4" style={{ background: isDark ? 'rgba(22,163,74,0.1)' : '#f0fdf4', border: `1px solid ${isDark ? 'rgba(22,163,74,0.25)' : '#bbf7d0'}` }}>
-                    <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 2 }}>{paymentForLabel(receiptModal.data.transaction.payment_type)}</div>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: '#16a34a' }}>₹ {receiptModal.data.transaction.amount.toLocaleString('en-IN')}</div>
+                    <div style={{ fontSize: 10.5, color: t.textSecondary, marginBottom: 2 }}>{paymentForLabel(receiptModal.data.transaction.payment_type)}</div>
+                    <div style={{ fontSize: 21, fontWeight: 800, color: '#16a34a' }}>₹ {receiptModal.data.transaction.amount.toLocaleString('en-IN')}</div>
                     {receiptModal.data.transaction.payment_type === 'EMIAmount' && receiptModal.data.emi_number > 0 && (
-                      <div style={{ fontSize: 12, color: t.textSecondary, marginTop: 4 }}>
+                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 4 }}>
                         EMI #{receiptModal.data.emi_number} of {receiptModal.data.total_emis} total ({receiptModal.data.paid_emis} paid, {receiptModal.data.future_emis} future)
                       </div>
                     )}
@@ -1060,33 +1070,31 @@ const CustomerDetailsListPage: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-y-1.5 gap-x-4 mb-2">
                     {receiptModal.data.transaction.mode_of_payment && (
-                      <div><span style={{ fontSize: 11.5, color: t.textSecondary }}>Mode of Payment</span><div style={{ fontSize: 13, color: t.textPrimary, fontWeight: 600 }}>{receiptModal.data.transaction.mode_of_payment}</div></div>
+                      <div><span style={{ fontSize: 10, color: t.textSecondary }}>Mode of Payment</span><div style={{ fontSize: 11.5, color: t.textPrimary, fontWeight: 600 }}>{receiptModal.data.transaction.mode_of_payment}</div></div>
                     )}
                     {receiptModal.data.transaction.cheque_number && (
-                      <div><span style={{ fontSize: 11.5, color: t.textSecondary }}>Cheque Number</span><div style={{ fontSize: 13, color: t.textPrimary, fontWeight: 600 }}>{receiptModal.data.transaction.cheque_number}</div></div>
+                      <div><span style={{ fontSize: 10, color: t.textSecondary }}>Cheque Number</span><div style={{ fontSize: 11.5, color: t.textPrimary, fontWeight: 600 }}>{receiptModal.data.transaction.cheque_number}</div></div>
                     )}
                     {receiptModal.data.transaction.clearance_date && (
-                      <div><span style={{ fontSize: 11.5, color: t.textSecondary }}>Clearance Date</span><div style={{ fontSize: 13, color: t.textPrimary, fontWeight: 600 }}>{formatDate(receiptModal.data.transaction.clearance_date)}</div></div>
+                      <div><span style={{ fontSize: 10, color: t.textSecondary }}>Clearance Date</span><div style={{ fontSize: 11.5, color: t.textPrimary, fontWeight: 600 }}>{formatDate(receiptModal.data.transaction.clearance_date)}</div></div>
                     )}
                     {receiptModal.data.transaction.company && (
-                      <div><span style={{ fontSize: 11.5, color: t.textSecondary }}>Company</span><div style={{ fontSize: 13, color: t.textPrimary, fontWeight: 600 }}>{receiptModal.data.transaction.company}</div></div>
+                      <div><span style={{ fontSize: 10, color: t.textSecondary }}>Company</span><div style={{ fontSize: 11.5, color: t.textPrimary, fontWeight: 600 }}>{receiptModal.data.transaction.company}</div></div>
                     )}
                     {receiptModal.data.transaction.payment_tag && (
-                      <div><span style={{ fontSize: 11.5, color: t.textSecondary }}>Tag</span><div style={{ fontSize: 13, color: '#ea580c', fontWeight: 700 }}>{receiptModal.data.transaction.payment_tag}</div></div>
+                      <div><span style={{ fontSize: 10, color: t.textSecondary }}>Tag</span><div style={{ fontSize: 11.5, color: '#ea580c', fontWeight: 700 }}>{receiptModal.data.transaction.payment_tag}</div></div>
                     )}
                   </div>
                 </>
               )}
             </div>
-            <div className="flex items-center justify-end gap-3 p-5 receipt-no-print" style={{ borderTop: `1px solid ${t.divider}` }}>
+            <div className="flex items-center justify-end gap-3 p-5 receipt-no-print cust-divider-top">
               <button type="button" onClick={() => setReceiptModal(null)}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: t.surfaceBg, color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}>
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
                 Close
               </button>
               <button type="button" onClick={() => window.print()} disabled={!receiptModal.data}
-                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-                style={{ background: !receiptModal.data ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)', border: 'none', cursor: !receiptModal.data ? 'not-allowed' : 'pointer' }}>
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold text-white cust-btn-primary">
                 <MdPrint size={16} /> Print
               </button>
             </div>

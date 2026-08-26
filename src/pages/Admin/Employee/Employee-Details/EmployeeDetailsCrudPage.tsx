@@ -20,6 +20,7 @@ import {
 import { FetchDepartmentList } from '../../../../services/departmentService';
 import { fetchDesignationList } from '../../../../services/designationService';
 import { fetchMappingMatrix } from '../../../../services/moduleActionService';
+import './EmployeeDetails.css';
 
 type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
@@ -72,17 +73,10 @@ const emptyForm: EmployeeFormValues = {
   is_active: true,
 };
 
-// ── shared style helpers — plain functions, not components, so calling
-//    them from inside JSX never creates a new component identity ─────────
-const getFieldStyle = (t: Theme, isView: boolean): React.CSSProperties => ({
-  width: '100%', background: isView ? t.insetBg : t.inputBg,
-  border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '9px 12px',
-  fontSize: 13.5, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
-});
-
-const getLabelStyle = (t: Theme): React.CSSProperties => ({
-  display: 'block', fontSize: 13, fontWeight: 600, color: t.textPrimary, marginBottom: 6,
-});
+// Field/label styling now lives in EmployeeDetails.css as .emp-field /
+// .emp-label (+ .emp-field-view for the isView background swap) — colors
+// come in via the --emp-* CSS vars set on the page's outer wrapper below.
+const fieldClassName = (isView: boolean) => (isView ? 'emp-field emp-field-view' : 'emp-field');
 
 // ── Helper components — ALL defined at module scope (outside the page
 // component) rather than inside it. This is the fix for the "cursor
@@ -100,13 +94,13 @@ const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; 
     <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: `${color}1a`, color }}>
       {icon}
     </span>
-    <h2 style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, margin: 0 }}>{title}</h2>
+    <h2 className="emp-section-title">{title}</h2>
   </div>
 );
 
 const Field: React.FC<{ t: Theme; label: string; required?: boolean; children: React.ReactNode; className?: string }> = ({ t, label, required, children, className }) => (
   <div className={className}>
-    <label style={getLabelStyle(t)}>{label}{required && <span style={{ color: '#ef4444' }}> *</span>}</label>
+    <label className="emp-label">{label}{required && <span className="emp-required"> *</span>}</label>
     {children}
   </div>
 );
@@ -119,13 +113,13 @@ const PhoneField: React.FC<{
 }> = ({ t, isView, label, required, code, number, onCode, onNumber }) => (
   <Field t={t} label={label} required={required}>
     <div className="flex gap-2">
-      <select value={code} disabled={isView} onChange={(e) => onCode(e.target.value)} style={{ ...getFieldStyle(t, isView), width: 80, cursor: isView ? 'default' : 'pointer' }}>
+      <select value={code} disabled={isView} onChange={(e) => onCode(e.target.value)} className={fieldClassName(isView)} style={{ width: 80, cursor: isView ? 'default' : 'pointer' }}>
         {COUNTRY_CODES.map((c) => <option key={c} value={c}>{c}</option>)}
       </select>
       <input
         type="tel" placeholder="Enter mobile number" value={number} readOnly={isView} disabled={isView}
         onChange={(e) => onNumber(e.target.value.replace(/[^\d]/g, ''))}
-        style={getFieldStyle(t, isView)}
+        className={fieldClassName(isView)}
       />
     </div>
   </Field>
@@ -153,10 +147,10 @@ const FileUploadBox: React.FC<{
       >
         <MdCloudUpload size={18} style={{ color: '#4338ca', flexShrink: 0 }} />
         <div className="min-w-0">
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#4338ca' }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: '#4338ca' }}>
             {displayName ? 'Change File' : label.startsWith('Upload') ? label : `Upload ${label}`}
           </div>
-          <div style={{ fontSize: 11, color: t.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 10, color: t.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {displayName || hint}
           </div>
         </div>
@@ -180,15 +174,15 @@ const CheckboxGroup: React.FC<{
   selected: number[]; onToggle: (v: number) => void; emptyHint?: string; loading?: boolean;
 }> = ({ t, isView, label, required, options, selected, onToggle, emptyHint, loading }) => (
   <div className="mb-5">
-    <label style={getLabelStyle(t)}>{label}{required && <span style={{ color: '#ef4444' }}> *</span>}</label>
+    <label className="emp-label">{label}{required && <span className="emp-required"> *</span>}</label>
     {loading ? (
-      <p style={{ fontSize: 12.5, color: t.textSecondary, margin: 0 }}>Loading...</p>
+      <p className="emp-hint-text">Loading...</p>
     ) : options.length === 0 ? (
-      <p style={{ fontSize: 12.5, color: t.textSecondary, margin: 0 }}>{emptyHint}</p>
+      <p className="emp-hint-text">{emptyHint}</p>
     ) : (
       <div className="flex flex-wrap gap-x-5 gap-y-2.5">
         {options.map((opt) => (
-          <label key={opt.value} className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+          <label key={opt.value} className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
             <input type="checkbox" checked={selected.includes(opt.value)} disabled={isView} onChange={() => onToggle(opt.value)} />
             {opt.label}
           </label>
@@ -229,18 +223,18 @@ const ModuleActionGrid: React.FC<{
   t: Theme; isView: boolean; grid: ModuleActionGridData;
   selected: number[]; onToggle: (moduleActionId: number) => void; loading?: boolean;
 }> = ({ t, isView, grid, selected, onToggle, loading }) => {
-  if (loading) return <p style={{ fontSize: 12.5, color: t.textSecondary, margin: 0 }}>Loading...</p>;
-  if (grid.modules.length === 0) return <p style={{ fontSize: 12.5, color: t.textSecondary, margin: 0 }}>No modules available.</p>;
+  if (loading) return <p className="emp-hint-text">Loading...</p>;
+  if (grid.modules.length === 0) return <p className="emp-hint-text">No modules available.</p>;
   return (
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
       <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
         <thead>
           <tr>
-            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, background: t.insetBg, borderBottom: `1px solid ${t.surfaceBorder}` }}>
+            <th className="emp-grid-th">
               Module
             </th>
             {grid.actionColumns.map((a) => (
-              <th key={a.code} style={{ textAlign: 'center', padding: '8px 10px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, background: t.insetBg, borderBottom: `1px solid ${t.surfaceBorder}`, whiteSpace: 'nowrap' }}>
+              <th key={a.code} className="emp-grid-th-center">
                 {a.label}
               </th>
             ))}
@@ -249,13 +243,13 @@ const ModuleActionGrid: React.FC<{
         <tbody>
           {grid.modules.map((m) => (
             <tr key={m.id}>
-              <td style={{ padding: '8px 12px', fontSize: 13, fontWeight: 600, color: t.textPrimary, borderBottom: `1px solid ${t.surfaceBorder}`, whiteSpace: 'nowrap' }}>
+              <td className="emp-grid-td">
                 {m.name}
               </td>
               {grid.actionColumns.map((a) => {
                 const moduleActionId = grid.cells[`${m.id}:${a.code}`];
                 return (
-                  <td key={a.code} style={{ textAlign: 'center', padding: '8px 10px', borderBottom: `1px solid ${t.surfaceBorder}` }}>
+                  <td key={a.code} className="emp-grid-td-center">
                     {moduleActionId != null ? (
                       <input
                         type="checkbox" checked={selected.includes(moduleActionId)} disabled={isView}
@@ -311,8 +305,8 @@ const ProfilePhotoUpload: React.FC<{
             <span className="flex items-center justify-center rounded-full" style={{ width: 40, height: 40, background: 'linear-gradient(135deg,#4338ca,#4f46e5)' }}>
               <MdCameraAlt size={19} color="#fff" />
             </span>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>Upload Photo</span>
-            <span style={{ fontSize: 10.5, color: t.textSecondary }}>JPG, PNG (Max 2MB)</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: t.textPrimary }}>Upload Photo</span>
+            <span style={{ fontSize: 10, color: t.textSecondary }}>JPG, PNG (Max 2MB)</span>
           </>
         )}
       </button>
@@ -659,8 +653,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     }
   };
 
-  const fieldStyle = getFieldStyle(t, isView);
-  const labelStyle = getLabelStyle(t);
+  const fieldClass = fieldClassName(isView);
 
   if (fetching) {
     return (
@@ -670,8 +663,17 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     );
   }
 
+  // ── CSS custom properties for EmployeeDetails.css — set once here from
+  // this page's own getTheme(isDark) values, consumed by the emp-* classes
+  // used throughout this page's form fields/labels/grid below. ──────────
+  const cssVars = {
+    '--emp-field-bg': t.inputBg, '--emp-field-border': t.inputBorder, '--emp-field-text': t.inputText,
+    '--emp-inset-bg': t.insetBg, '--emp-text-primary': t.textPrimary, '--emp-text-secondary': t.textSecondary,
+    '--emp-surface-border': t.surfaceBorder, '--emp-divider': t.divider,
+  } as React.CSSProperties;
+
   return (
-    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40, ...cssVars }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
@@ -684,10 +686,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <MdArrowBack size={20} />
           </button>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, color: t.textPrimary, margin: 0 }}>
+            <h1 className="emp-crud-title">
               {mode === 'add' ? 'Create Employee' : mode === 'edit' ? 'Edit Employee' : 'View Employee'}
             </h1>
-            <p style={{ fontSize: 12.5, color: t.textSecondary, margin: '2px 0 0' }}>
+            <p className="emp-crud-subtitle">
               {mode === 'add' ? 'Add new employee details' : 'Employee details'}
             </p>
           </div>
@@ -695,15 +697,15 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         <div className="flex items-center gap-2.5">
           <div className="text-right px-4 py-2 rounded-xl" style={{ border: `1px solid ${t.surfaceBorder}` }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: t.textSecondary }}>Employee ID</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#4338ca' }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: t.textSecondary }}>Employee ID</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#4338ca' }}>
               {employeeCode || 'Auto-generated'}
             </div>
           </div>
           {mode === 'add' && (
             <div
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
-              style={{ background: isDark ? 'rgba(99,102,241,0.12)' : '#eef2ff', color: '#4338ca', fontSize: 12, fontWeight: 600 }}
+              style={{ background: isDark ? 'rgba(99,102,241,0.12)' : '#eef2ff', color: '#4338ca', fontSize: 10.5, fontWeight: 600 }}
             >
               <MdInfoOutline size={15} /> ID will auto increment
             </div>
@@ -718,15 +720,15 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <Field t={t} label="First Name" required>
             <input type="text" placeholder="Enter first name" value={form.first_name} readOnly={isView} disabled={isView}
-              onChange={(e) => set('first_name', e.target.value)} style={fieldStyle} />
+              onChange={(e) => set('first_name', e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Middle Name">
             <input type="text" placeholder="Enter middle name" value={form.middle_name} readOnly={isView} disabled={isView}
-              onChange={(e) => set('middle_name', e.target.value)} style={fieldStyle} />
+              onChange={(e) => set('middle_name', e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Last Name" required>
             <input type="text" placeholder="Enter last name" value={form.last_name} readOnly={isView} disabled={isView}
-              onChange={(e) => set('last_name', e.target.value)} style={fieldStyle} />
+              onChange={(e) => set('last_name', e.target.value)} className={fieldClass} />
           </Field>
         </div>
 
@@ -734,11 +736,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field t={t} label="Date of Birth" required>
               <input type="date" value={form.date_of_birth} readOnly={isView} disabled={isView}
-                onChange={(e) => set('date_of_birth', e.target.value)} onClick={openPicker} style={fieldStyle} />
+                onChange={(e) => set('date_of_birth', e.target.value)} onClick={openPicker} className={fieldClass} />
             </Field>
             <Field t={t} label="Email" required>
               <input type="email" placeholder="Enter email address" value={form.email} readOnly={isView} disabled={isView}
-                onChange={(e) => set('email', e.target.value)} style={fieldStyle} />
+                onChange={(e) => set('email', e.target.value)} className={fieldClass} />
             </Field>
             <PhoneField t={t} isView={isView} label="Mobile Number" required code={form.mobile_country_code} number={form.mobile_number}
               onCode={(v) => set('mobile_country_code', v)} onNumber={(v) => set('mobile_number', v)} />
@@ -750,7 +752,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
           {/* Profile Photo */}
           <div>
-            <label style={labelStyle}>Profile Photo</label>
+            <label className="emp-label">Profile Photo</label>
             <ProfilePhotoUpload
               t={t} isDark={isDark} disabled={isView}
               file={files.profile_photo} existingUrl={existingUrls.profile_photo}
@@ -762,20 +764,20 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <Field t={t} label="Address" required className="mb-4">
           <textarea
             placeholder="Enter full address" value={form.address} readOnly={isView} disabled={isView} rows={2}
-            onChange={(e) => set('address', e.target.value)} style={{ ...fieldStyle, resize: 'vertical' }}
+            onChange={(e) => set('address', e.target.value)} className={fieldClass} style={{ resize: 'vertical' }}
           />
         </Field>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Field t={t} label="Aadhar Number">
             <input type="text" placeholder="Enter aadhar number" value={form.aadhar_number} readOnly={isView} disabled={isView}
-              onChange={(e) => set('aadhar_number', e.target.value.replace(/[^\d]/g, ''))} style={fieldStyle} />
+              onChange={(e) => set('aadhar_number', e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
           <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf"
             file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={setFile('aadhar_card')} />
           <Field t={t} label="PAN Number">
             <input type="text" placeholder="Enter PAN number" value={form.pan_number} readOnly={isView} disabled={isView}
-              onChange={(e) => set('pan_number', e.target.value.toUpperCase())} style={fieldStyle} />
+              onChange={(e) => set('pan_number', e.target.value.toUpperCase())} className={fieldClass} />
           </Field>
           <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf"
             file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={setFile('pan_card')} />
@@ -789,38 +791,38 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Field t={t} label="Employee Joining Date" required>
             <input type="date" value={form.joining_date} readOnly={isView} disabled={isView}
-              onChange={(e) => set('joining_date', e.target.value)} onClick={openPicker} style={fieldStyle} />
+              onChange={(e) => set('joining_date', e.target.value)} onClick={openPicker} className={fieldClass} />
           </Field>
           <Field t={t} label="Working Hours" required>
-            <select value={form.working_hours} disabled={isView} onChange={(e) => set('working_hours', e.target.value)} style={{ ...fieldStyle, cursor: isView ? 'default' : 'pointer' }}>
+            <select value={form.working_hours} disabled={isView} onChange={(e) => set('working_hours', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select hours (8, 9, 10)</option>
               {WORKING_HOURS_OPTIONS.map((h) => <option key={h} value={h}>{h} Hours</option>)}
             </select>
           </Field>
           <Field t={t} label="Check In" required>
             <input type="time" value={form.check_in_time} readOnly={isView} disabled={isView}
-              onChange={(e) => set('check_in_time', e.target.value)} onClick={openPicker} style={fieldStyle} />
+              onChange={(e) => set('check_in_time', e.target.value)} onClick={openPicker} className={fieldClass} />
           </Field>
           <Field t={t} label="Check Out" required>
             <input type="time" value={form.check_out_time} readOnly={isView} disabled={isView}
-              onChange={(e) => set('check_out_time', e.target.value)} onClick={openPicker} style={fieldStyle} />
+              onChange={(e) => set('check_out_time', e.target.value)} onClick={openPicker} className={fieldClass} />
           </Field>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Field t={t} label="Holidays" required>
-            <select value={form.holidays} disabled={isView} onChange={(e) => set('holidays', e.target.value)} style={{ ...fieldStyle, cursor: isView ? 'default' : 'pointer' }}>
+            <select value={form.holidays} disabled={isView} onChange={(e) => set('holidays', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select holidays</option>
               {HOLIDAYS_OPTIONS.map((h) => <option key={h} value={h}>{h}</option>)}
             </select>
           </Field>
           <Field t={t} label="Salary" required>
-            <div className="flex items-center gap-2" style={{ ...fieldStyle, padding: '0 12px' }}>
+            <div className={`flex items-center gap-2 ${fieldClass}`} style={{ padding: '0 12px' }}>
               <span style={{ color: t.textSecondary }}>₹</span>
               <input
                 type="number" placeholder="Enter salary" value={form.salary} readOnly={isView} disabled={isView}
                 onChange={(e) => set('salary', e.target.value.replace(/[^\d.]/g, ''))}
-                style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }}
+                style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }}
               />
             </div>
           </Field>
@@ -829,7 +831,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <FileUploadBox t={t} isView={isView} label="Appointment Letter" hint="PDF, DOC, DOCX (Max 5MB)" accept=".pdf,.doc,.docx"
             file={files.appointment_letter} existingUrl={existingUrls.appointment_letter} onChange={setFile('appointment_letter')} />
           <Field t={t} label="Employee Status" required>
-            <select value={form.status} disabled={isView} onChange={(e) => set('status', e.target.value as EmployeeStatus)} style={{ ...fieldStyle, cursor: isView ? 'default' : 'pointer' }}>
+            <select value={form.status} disabled={isView} onChange={(e) => set('status', e.target.value as EmployeeStatus)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </Field>
@@ -843,32 +845,32 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <Field t={t} label="Account Holder Name" required>
             <input type="text" placeholder="Enter account holder name" value={form.account_holder_name} readOnly={isView} disabled={isView}
-              onChange={(e) => set('account_holder_name', e.target.value)} style={fieldStyle} />
+              onChange={(e) => set('account_holder_name', e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Bank Name" required>
             <input type="text" placeholder="Enter bank name" value={form.bank_name} readOnly={isView} disabled={isView}
-              onChange={(e) => set('bank_name', e.target.value)} style={fieldStyle} />
+              onChange={(e) => set('bank_name', e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Bank Account Number" required>
             <input type="text" placeholder="Enter account number" value={form.bank_account_number} readOnly={isView} disabled={isView}
-              onChange={(e) => set('bank_account_number', e.target.value.replace(/[^\d]/g, ''))} style={fieldStyle} />
+              onChange={(e) => set('bank_account_number', e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Field t={t} label="Account Type" required>
-            <select value={form.account_type} disabled={isView} onChange={(e) => set('account_type', e.target.value)} style={{ ...fieldStyle, cursor: isView ? 'default' : 'pointer' }}>
+            <select value={form.account_type} disabled={isView} onChange={(e) => set('account_type', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select account type</option>
               {ACCOUNT_TYPE_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
           </Field>
           <Field t={t} label="IFSC Code" required>
             <input type="text" placeholder="Enter IFSC code" value={form.ifsc_code} readOnly={isView} disabled={isView}
-              onChange={(e) => set('ifsc_code', e.target.value.toUpperCase())} style={fieldStyle} />
+              onChange={(e) => set('ifsc_code', e.target.value.toUpperCase())} className={fieldClass} />
           </Field>
           <Field t={t} label="Branch" required>
             <input type="text" placeholder="Enter branch name" value={form.branch} readOnly={isView} disabled={isView}
-              onChange={(e) => set('branch', e.target.value)} style={fieldStyle} />
+              onChange={(e) => set('branch', e.target.value)} className={fieldClass} />
           </Field>
         </div>
 
@@ -898,7 +900,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           emptyHint={form.department_ids.length === 0 ? 'Select a department above to see its designations.' : 'No designations available for the selected department(s).'}
         />
         <div className="mb-5">
-          <label style={getLabelStyle(t)}>Assign Actions & Modules<span style={{ color: '#ef4444' }}> *</span></label>
+          <label className="emp-label">Assign Actions & Modules<span className="emp-required"> *</span></label>
           <ModuleActionGrid
             t={t} isView={isView} grid={moduleGrid}
             selected={form.module_action_ids}
@@ -917,7 +919,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         <div
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl mt-2"
-          style={{ background: isDark ? 'rgba(99,102,241,0.1)' : '#eef2ff', color: '#4338ca', fontSize: 12.5 }}
+          style={{ background: isDark ? 'rgba(99,102,241,0.1)' : '#eef2ff', color: '#4338ca', fontSize: 11 }}
         >
           <MdInfoOutline size={16} style={{ flexShrink: 0 }} />
           You can assign multiple departments and designations, pick exactly which actions apply per module, and choose which employees this employee can view.
