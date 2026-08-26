@@ -316,9 +316,19 @@ const AmountField: React.FC<{ t: Theme; isView?: boolean; disabled?: boolean; pl
 );
 
 // A plain-number input — months / tenure fields.
-const NumberField: React.FC<{ t: Theme; isView?: boolean; placeholder: string; value: string; onChange: (v: string) => void }> = ({ t, isView, placeholder, value, onChange }) => (
-  <input type="text" inputMode="numeric" placeholder={placeholder} value={value} readOnly={isView} disabled={isView}
-    onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ''))} className={fieldClassName(!!isView)} />
+// `max`/`maxLength` are both opt-in (undefined everywhere except Total EMI
+// Tenure, which needs a max-99/2-digit restriction) — Booster Interval's two
+// callers pass neither, so their behavior is unchanged.
+const NumberField: React.FC<{
+  t: Theme; isView?: boolean; placeholder: string; value: string; onChange: (v: string) => void;
+  max?: number; maxLength?: number;
+}> = ({ t, isView, placeholder, value, onChange, max, maxLength }) => (
+  <input type="text" inputMode="numeric" placeholder={placeholder} value={value} readOnly={isView} disabled={isView} maxLength={maxLength}
+    onChange={(e) => {
+      const digitsOnly = e.target.value.replace(/[^\d]/g, '');
+      const clamped = max !== undefined && digitsOnly !== '' ? String(Math.min(max, Number(digitsOnly))) : digitsOnly;
+      onChange(clamped);
+    }} className={fieldClassName(!!isView)} />
 );
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -850,7 +860,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4 items-end">
           <Field t={t} label="Total EMI Tenure (Months)" required>
-            <NumberField t={t} isView={isView} placeholder="e.g. 60" value={totalEmiTenure} onChange={setTotalEmiTenure} />
+            {/* Max 99 / 2-digit cap (Task 6) — maxLength blocks typing a 3rd
+                digit, and the max clamp inside NumberField covers paste
+                edge cases so the stored value can never exceed 99. */}
+            <NumberField t={t} isView={isView} placeholder="e.g. 60" value={totalEmiTenure} onChange={setTotalEmiTenure} max={99} maxLength={2} />
           </Field>
           <Field t={t} label="Booster Amount Before Possession (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} />
@@ -892,9 +905,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
       </div>
 
-      {/* ── Footer — fixed to the viewport bottom, always visible, not
-          just once you scroll all the way down. ───────────────────────── */}
-      <div className="cust-crud-footer flex items-center justify-end gap-3">
+      {/* ── Footer — same shared `master-crud-footer` class every other
+          CRUD page (Building/Employee/Company/...) uses: a floating card
+          inset 16px from the edges, offset past the sidebar's own width
+          via --sidebar-w (set by DashboardLayout), instead of the old
+          `cust-crud-footer` which was flush to `left:0` — spanning
+          underneath the sidebar itself. Center-aligned buttons, matching
+          Building/Employee CRUD's footer layout. ─────────────────────── */}
+      <div className="master-crud-footer flex items-center justify-center gap-3 z-10"
+        style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
         <button type="button" onClick={() => navigate('/admin/crm/customer-details')} disabled={saving}
           className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
           <MdClose size={16} /> Cancel

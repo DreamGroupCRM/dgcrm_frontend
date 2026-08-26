@@ -350,7 +350,7 @@ const EmployeeDetailsListPage: React.FC = () => {
           { label: 'Inactive Employees', value: summary.inactive, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
           { label: 'On Leave', value: summary.onLeave, icon: MdEventBusy, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff' },
         ].map((card) => (
-          <StatCard key={card.label} {...card} loading={loading} compact labelFontSize={16}
+          <StatCard key={card.label} {...card} loading={loading} compact labelFontSize={14}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
       </div>

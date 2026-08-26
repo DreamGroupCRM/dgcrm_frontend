@@ -214,22 +214,3 @@
   background: #9ca3af;
   cursor: not-allowed;
 }
-
-/* ── Crud page's own fixed footer. Deliberately its own class rather than
-   reusing master.css's shared `.master-crud-footer` — that class is a
-   floating rounded card inset from the screen edges (left/right/bottom:
-   16px, border-radius, all-round shadow), while this page's footer is a
-   full-width bar flush with the viewport edges with only a top border, so
-   reusing it would visibly change the footer's appearance. ─────────────── */
-.cust-crud-footer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 76px;
-  z-index: 40;
-  padding: 0 24px;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
-  background: var(--cust-surface-bg);
-  border-top: 1px solid var(--cust-surface-border);
-}

@@ -279,15 +279,16 @@ html.dark .master-row-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 12px;
+  gap: 9px;
+  padding: 10px;
   border-radius: 12px;
   /* Uniform floor height across every page that uses this card (Building,
-     Employee, and — via the same value hardcoded inline — Customer's own
-     markup), so Employee's cards (which have no taller MultiStatCard
-     sibling to stretch against in a CSS grid row, unlike Building's) don't
-     end up visibly shorter than the other two. */
-  min-height: 80px;
+     Employee, Customer, Customize Scheme), so no page's cards end up
+     visibly shorter/taller than another's. Slightly reduced from 80px per
+     the "more compact list-page summary boxes" pass — still a floor, not
+     a cap, so a taller sibling (Building's MultiStatCard) can still grow
+     a row past it. */
+  min-height: 72px;
 }
 
 .master-stat-icon {
@@ -354,31 +355,31 @@ html.dark .master-row-icon {
 @media (min-width: 1280px) { .master-stat-grid-7 { grid-template-columns: repeat(7, 1fr); } }
 
 .master-stat-card-compact {
-  padding: 8px 10px;
-  gap: 8px;
+  padding: 7px 9px;
+  gap: 7px;
 }
 
 .master-stat-card-compact .master-stat-icon {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 8px;
 }
 
 .master-stat-card-compact .master-stat-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 
 .master-stat-card-compact .master-stat-label {
   font-size: 10px;
 }
 
-/* Was 16px — visibly less prominent than the 19-22px count text on
-   Building's/Customer's own cards even at the same 800 font-weight. Bumped
-   closer to the non-compact size so the count reads with the same weight
-   everywhere. */
+/* Label/value both 2px smaller than the previous 16px — every KPI-box
+   page (Employee/Customer/Building/Customize Scheme List) passes
+   labelFontSize={14} now to match, so label and value stay the same size
+   as each other, just more compact. */
 .master-stat-card-compact .master-stat-value {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 /* ── CRUD page fixed footer — Company/Department/Bank/Building/Customer's
@@ -459,13 +460,13 @@ html.dark .master-row-icon {
 }
 
 .master-stat-multi-value {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1.15;
 }
 
 .master-stat-multi-sublabel {
-  font-size: 10px;
+  font-size: 8.5px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
