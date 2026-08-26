@@ -243,14 +243,14 @@ const BankAccountListPage: React.FC = () => {
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="master-pagination" style={{ borderTop: `1px solid ${t.divider}` }}>
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 13, color: t.textPrimary }}>Rows per page:</span>
+            <span style={{ fontSize: 11.5, color: t.textPrimary }}>Rows per page:</span>
             <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 11.5, cursor: 'pointer', outline: 'none' }}>
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
 
-          <span style={{ fontSize: 13, color: t.textPrimary }}>
+          <span style={{ fontSize: 11.5, color: t.textPrimary }}>
             Showing {showingFrom}–{showingTo} of {totalFiltered}
           </span>
 

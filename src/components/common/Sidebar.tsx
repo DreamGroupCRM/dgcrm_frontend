@@ -303,7 +303,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
         {!collapsed && (
           <button type="button" onClick={() => navigate(dashboardRoute)}
             style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', outline: 'none' }}>
-            <span style={{ fontFamily: t.fontFamily, fontSize: 28, fontWeight: 700, letterSpacing: '0.06em', color: t.textPrimary }}>
+            <span style={{ fontFamily: t.fontFamily, fontSize: 24.5, fontWeight: 700, letterSpacing: '0.06em', color: t.textPrimary }}>
               DGCRM
             </span>
           </button>
@@ -409,7 +409,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
               onClick={onMobileClose}
               aria-label="Close menu"
               className="absolute top-3 right-3 z-10"
-              style={{ color: t.sidebarTextMuted, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }}
+              style={{ color: t.sidebarTextMuted, background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}
             >
               ✕
             </button>

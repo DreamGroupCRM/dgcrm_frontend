@@ -13,6 +13,7 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
 import { AppTheme } from '../../../../styles/theme';
+import { showAlert } from '../../../../utils';
 import { companyService, CompanyPayload } from '../../../../services/companyService';
 import { Company } from '../../../../types';
 import { ROUTES, VALIDATION } from '../../../../constants';
@@ -31,14 +32,14 @@ interface FieldProps {
 const Field: React.FC<FieldProps> = ({ label, required, error, t, children }) => (
   <div>
     <label style={{
-      display: 'block', fontWeight: 700, fontSize: 14,
+      display: 'block', fontWeight: 700, fontSize: 12.5,
       marginBottom: 6, color: t.textPrimary, fontFamily: t.fontFamily,
     }}>
       {label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
     </label>
     {children}
     {error && (
-      <p style={{ color: '#ef4444', fontSize: 14, marginTop: 4, fontFamily: t.fontFamily }}>
+      <p style={{ color: '#ef4444', fontSize: 12.5, marginTop: 4, fontFamily: t.fontFamily }}>
         {error}
       </p>
     )}
@@ -231,8 +232,17 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
       } else {
         toast.error(res.message || 'Operation failed');
       }
-    } catch {
-      toast.error('Something went wrong. Please try again.');
+    } catch (e) {
+      // Backend duplicate-entry checks (company name/email/mobile/PAN/GST)
+      // throw a 409 with a specific message — surface it via SweetAlert as
+      // required, instead of the generic toast fallback below.
+      const status = (e as { response?: { status?: number; data?: { message?: string } } })?.response?.status;
+      const message = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (status === 409 && message) {
+        showAlert.error(message);
+      } else {
+        toast.error('Something went wrong. Please try again.');
+      }
     } finally {
       setSaving(false);
     }
@@ -244,7 +254,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
     border: `1px solid ${hasError ? '#ef4444' : t.inputBorder}`,
     borderRadius: 10,
     padding: '10px 14px',
-    fontSize: 14,
+    fontSize: 12.5,
     color: t.inputText,
     outline: 'none',
     boxSizing: 'border-box',
@@ -482,7 +492,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
                     border: `1px solid ${t.inputBorder}`,
                     borderRadius: 7,
                     padding: '5px 12px',
-                    fontSize: 13,
+                    fontSize: 11.5,
                     fontWeight: 500,
                     color: t.textSecondary,
                     cursor: 'pointer',
@@ -497,7 +507,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
                 {/* Filename text — fills remaining space */}
                 <span style={{
                   flex: 1,
-                  fontSize: 14,
+                  fontSize: 12.5,
                   color: logoFile ? t.textPrimary : t.textSecondary,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',

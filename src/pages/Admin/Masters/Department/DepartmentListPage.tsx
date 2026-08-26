@@ -244,18 +244,18 @@ const DepartmentListPage: React.FC = () => {
 
         {/* pagination */}
         <div className="master-pagination" style={{ borderTop: `1px solid ${t.divider}` }}>
-          <div className="flex items-center gap-2" style={{ fontSize: 13, color: t.textSecondary }}>
+          <div className="flex items-center gap-2" style={{ fontSize: 11.5, color: t.textSecondary }}>
             <span>Rows per page:</span>
             <select
               value={limit}
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 8, padding: '4px 8px', color: t.inputText, fontSize: 13 }}
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 8, padding: '4px 8px', color: t.inputText, fontSize: 11.5 }}
             >
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
 
-          <div style={{ fontSize: 13, color: t.textSecondary }}>
+          <div style={{ fontSize: 11.5, color: t.textSecondary }}>
             Showing {totalFiltered === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, totalFiltered)} of {totalFiltered}
           </div>
 

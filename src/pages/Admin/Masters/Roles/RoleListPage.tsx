@@ -127,7 +127,7 @@ const RoleListPage: React.FC = () => {
       alignItems: 'center',
       padding: '2px 10px',
       borderRadius: 20,
-      fontSize: 14,
+      fontSize: 12.5,
       fontWeight: 500,
       background: isActive
         ? isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7'
@@ -162,7 +162,7 @@ const RoleListPage: React.FC = () => {
             onChange={(e) => setSearch(e.target.value)}
             style={{
               background: 'transparent', border: 'none', outline: 'none',
-              color: t.inputText, fontSize: 14, width: '100%',
+              color: t.inputText, fontSize: 12.5, width: '100%',
             }}
           />
         </div>
@@ -223,7 +223,7 @@ const RoleListPage: React.FC = () => {
                 {['ID', 'Role Name', 'Status', 'Created At', 'Updated At'].map((h) => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
-                    fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
+                    fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase',
                     letterSpacing: '0.05em', color: t.textPrimary,
                     borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   }}>
@@ -232,7 +232,7 @@ const RoleListPage: React.FC = () => {
                 ))}
                 <th style={{
                   padding: '12px 16px', textAlign: 'center',
-                  fontSize: 14, fontWeight: 700, textTransform: 'uppercase',
+                  fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase',
                   letterSpacing: '0.05em', color: t.textPrimary,
                   borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   position: 'sticky', right: 0, zIndex: 2,
@@ -272,19 +272,19 @@ const RoleListPage: React.FC = () => {
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}
                     >
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 16px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         {role.id}
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 16px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         {role.name}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         {statusBadge(role.is_active)}
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 16px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         {formatDate(role.created_at)}
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 16px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         {formatDate(role.updated_at)}
                       </td>
                       <td style={{
@@ -320,21 +320,21 @@ const RoleListPage: React.FC = () => {
           style={{ borderTop: `1px solid ${t.divider}` }}
         >
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 14, color: t.textPrimary }}>Rows per page:</span>
+            <span style={{ fontSize: 12.5, color: t.textPrimary }}>Rows per page:</span>
             <select
               value={limit}
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
               style={{
                 background: t.inputBg, border: `1px solid ${t.inputBorder}`,
                 color: t.inputText, borderRadius: 8, padding: '4px 8px',
-                fontSize: 14, cursor: 'pointer', outline: 'none',
+                fontSize: 12.5, cursor: 'pointer', outline: 'none',
               }}
             >
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
 
-          <span style={{ fontSize: 14, color: t.textPrimary }}>
+          <span style={{ fontSize: 12.5, color: t.textPrimary }}>
             Showing {showingFrom}–{showingTo} of {totalFiltered}
           </span>
 
@@ -348,7 +348,7 @@ const RoleListPage: React.FC = () => {
                 background: t.btnSecondaryBg,
                 color: t.textPrimary,
                 cursor: safePage === 1 ? 'not-allowed' : 'pointer',
-                fontSize: 14,
+                fontSize: 12.5,
               }}
             >
               Prev
@@ -363,7 +363,7 @@ const RoleListPage: React.FC = () => {
                   border: `1px solid ${pg === safePage ? '#2563eb' : t.surfaceBorder}`,
                   background: pg === safePage ? '#2563eb' : t.btnSecondaryBg,
                   color: pg === safePage ? '#fff' : t.textPrimary,
-                  cursor: 'pointer', fontSize: 14,
+                  cursor: 'pointer', fontSize: 12.5,
                   fontWeight: pg === safePage ? 700 : 400,
                 }}
               >
@@ -380,7 +380,7 @@ const RoleListPage: React.FC = () => {
                 background: t.btnSecondaryBg,
                 color: t.textPrimary,
                 cursor: safePage >= totalPages ? 'not-allowed' : 'pointer',
-                fontSize: 14,
+                fontSize: 12.5,
               }}
             >
               Next

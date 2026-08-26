@@ -31,7 +31,7 @@ export const getAccordionHeaderStyle = (t: AppTheme, isOpen: boolean): React.CSS
 export const StatusBadge: React.FC<{ isActive: boolean; t: AppTheme; isDark: boolean }> = ({ isActive, t: _t, isDark }) => (
   <span style={{
     display: 'inline-flex', alignItems: 'center',
-    padding: '2px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+    padding: '2px 10px', borderRadius: 20, fontSize: 10.5, fontWeight: 500,
     background: isActive
       ? isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7'
       : isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2',

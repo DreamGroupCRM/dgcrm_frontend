@@ -38,7 +38,7 @@ const DuePill: React.FC<{ isDue: boolean }> = ({ isDue }) => (
 
 const AmountCell: React.FC<{ t: Theme; amount: number; isDue: boolean }> = ({ t, amount, isDue }) => (
   <div className="flex items-center gap-2">
-    <span style={{ fontSize: 13.5, color: t.textPrimary, fontWeight: 600 }}>{formatAmount(amount)}</span>
+    <span style={{ fontSize: 12, color: t.textPrimary, fontWeight: 600 }}>{formatAmount(amount)}</span>
     <DuePill isDue={isDue} />
   </div>
 );
@@ -112,8 +112,8 @@ const DueReportPage: React.FC = () => {
           <MdPayments size={22} style={{ color: '#4f46e5' }} />
         </div>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Due Report</h1>
-          <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Booking / Possession / Pay After Booking / Annual amounts due, across all customers</p>
+          <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Due Report</h1>
+          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Booking / Possession / Pay After Booking / Annual amounts due, across all customers</p>
         </div>
       </div>
 
@@ -131,8 +131,8 @@ const DueReportPage: React.FC = () => {
               <MdGroups size={21} style={{ color: card.color }} />
             </div>
             <div className="min-w-0">
-              <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, lineHeight: 1.1 }}>{loading ? '—' : card.value}</div>
-              <div style={{ fontSize: 12, color: t.textSecondary, whiteSpace: 'nowrap' }}>{card.label}</div>
+              <div style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, lineHeight: 1.1 }}>{loading ? '—' : card.value}</div>
+              <div style={{ fontSize: 10.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{card.label}</div>
             </div>
           </div>
         ))}
@@ -142,8 +142,8 @@ const DueReportPage: React.FC = () => {
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
           <div>
-            <div style={{ fontSize: 15.5, fontWeight: 700, color: t.textPrimary }}>All Customer Dues</div>
-            <div style={{ fontSize: 12.5, color: t.textSecondary }}>Search by customer name, or refresh for the latest status</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: t.textPrimary }}>All Customer Dues</div>
+            <div style={{ fontSize: 11, color: t.textSecondary }}>Search by customer name, or refresh for the latest status</div>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 240 }}>
@@ -151,7 +151,7 @@ const DueReportPage: React.FC = () => {
               <input
                 type="text" placeholder="Search by customer name..." value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 13.5, width: '100%' }}
+                style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%' }}
               />
             </div>
             <button type="button" onClick={fetchRows} title="Refresh"
@@ -167,7 +167,7 @@ const DueReportPage: React.FC = () => {
             <thead>
               <tr style={{ background: t.insetBg }}>
                 {['#', 'Customer Name', 'Booking Amount', 'Possession Amount', 'Pay After Booking', 'Annual Amount'].map((h) => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary, whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
                 ))}
@@ -181,8 +181,8 @@ const DueReportPage: React.FC = () => {
               ) : (
                 pageRows.map((r, idx) => (
                   <tr key={r.customer_id} style={{ borderTop: `1px solid ${t.divider}` }}>
-                    <td style={{ padding: '12px 16px', fontSize: 13.5, color: t.textSecondary }}>{(safePage - 1) * limit + idx + 1}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.customer_name || '—'}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: t.textSecondary }}>{(safePage - 1) * limit + idx + 1}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.customer_name || '—'}</td>
                     <td style={{ padding: '12px 16px' }}><AmountCell t={t} amount={r.booking_amount} isDue={r.is_booking_amount_due} /></td>
                     <td style={{ padding: '12px 16px' }}><AmountCell t={t} amount={r.possession_amount} isDue={r.is_possession_amount_due} /></td>
                     <td style={{ padding: '12px 16px' }}><AmountCell t={t} amount={r.pay_after_booking} isDue={r.is_pay_after_booking_due} /></td>
@@ -196,18 +196,18 @@ const DueReportPage: React.FC = () => {
 
         {/* pagination — same pattern as DepartmentListPage */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4" style={{ borderTop: `1px solid ${t.divider}` }}>
-          <div className="flex items-center gap-2" style={{ fontSize: 13, color: t.textSecondary }}>
+          <div className="flex items-center gap-2" style={{ fontSize: 11.5, color: t.textSecondary }}>
             <span>Rows per page:</span>
             <select
               value={limit}
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 8, padding: '4px 8px', color: t.inputText, fontSize: 13 }}
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 8, padding: '4px 8px', color: t.inputText, fontSize: 11.5 }}
             >
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
 
-          <div style={{ fontSize: 13, color: t.textSecondary }}>
+          <div style={{ fontSize: 11.5, color: t.textSecondary }}>
             Showing {totalFiltered === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, totalFiltered)} of {totalFiltered}
           </div>
 

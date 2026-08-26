@@ -96,7 +96,7 @@ const ModuleMappingPage: React.FC = () => {
         <div style={accordionHeader}>
           <div className="flex items-center gap-2" style={{ flex: '0 0 auto' }}>
             <MdGridOn size={22} style={{ color: '#0891b2' }} />
-            <span style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, fontFamily: t.fontFamily }}>Module ↔ Action Mapping</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, fontFamily: t.fontFamily }}>Module ↔ Action Mapping</span>
           </div>
           <div className="flex items-center gap-2" style={{ flex: '0 0 auto', marginLeft: 'auto' }}>
             <button onClick={fetchMatrix} title="Refresh" className="p-2 rounded-xl"
@@ -106,7 +106,7 @@ const ModuleMappingPage: React.FC = () => {
           </div>
         </div>
 
-        <p style={{ padding: '12px 16px 0', fontSize: 13, color: t.textSecondary }}>
+        <p style={{ padding: '12px 16px 0', fontSize: 11.5, color: t.textSecondary }}>
           Check a box to make that action available for a module on the employee/role permission page. Unchecking removes it everywhere.
         </p>
 
@@ -115,18 +115,18 @@ const ModuleMappingPage: React.FC = () => {
             <thead>
               <tr style={{ background: t.tableHeaderBg }}>
                 <th style={{
-                  padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+                  padding: '12px 16px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase',
                   letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   position: 'sticky', left: 0, zIndex: 2, background: t.tableHeaderBg,
                 }}>
                   Module
                 </th>
                 {matrix.actions.map((a) => (
-                  <th key={a.id} style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>
+                  <th key={a.id} style={{ padding: '12px 16px', textAlign: 'center', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>
                     {a.name}
                   </th>
                 ))}
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>
                   All
                 </th>
               </tr>
@@ -143,7 +143,7 @@ const ModuleMappingPage: React.FC = () => {
                 return (
                   <tr key={m.id} style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}` }}>
                     <td style={{
-                      padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500, whiteSpace: 'nowrap',
+                      padding: '12px 16px', fontSize: 12.5, color: t.textPrimary, fontWeight: 500, whiteSpace: 'nowrap',
                       position: 'sticky', left: 0, zIndex: 1, background: rowBg,
                     }}>
                       {m.name}

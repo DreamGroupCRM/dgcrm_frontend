@@ -101,7 +101,7 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 //    which would remount the input and drop focus mid-edit. ─────────────
 const getFieldStyle = (t: Theme): React.CSSProperties => ({
   width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10,
-  padding: '9px 12px', fontSize: 13.5, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
+  padding: '9px 12px', fontSize: 12, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
 });
 
 // Fixed 2-line-tall label slot, text bottom-aligned within it — the actual
@@ -112,7 +112,7 @@ const getFieldStyle = (t: Theme): React.CSSProperties => ({
 // aligned. Reserving the same height for every label regardless of its
 // own line count means every input in a row starts at the same Y.
 const getLabelStyle = (t: Theme): React.CSSProperties => ({
-  display: 'flex', alignItems: 'flex-end', minHeight: 34, fontSize: 13, lineHeight: 1.25,
+  display: 'flex', alignItems: 'flex-end', minHeight: 34, fontSize: 11.5, lineHeight: 1.25,
   fontWeight: 600, color: t.textPrimary, marginBottom: 6,
 });
 
@@ -159,9 +159,9 @@ const SliderField: React.FC<{
           <input
             type="text" inputMode="decimal" value={displayValue}
             onChange={(e) => onChange(parseAmountInput(e.target.value))}
-            style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }}
+            style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }}
           />
-          {compact && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 11, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
+          {compact && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
           {suffix && <span style={{ color: t.textSecondary, flexShrink: 0, whiteSpace: 'nowrap' }}>{suffix}</span>}
         </div>
         {extra}
@@ -176,7 +176,7 @@ const SliderField: React.FC<{
           <div
             style={{
               position: 'absolute', top: -20, left: `${percent}%`, transform: 'translateX(-50%)',
-              background: '#4338ca', color: '#fff', fontSize: 11, fontWeight: 700, lineHeight: 1,
+              background: '#4338ca', color: '#fff', fontSize: 10, fontWeight: 700, lineHeight: 1,
               padding: '3px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none',
               visibility: dragging ? 'visible' : 'hidden',
             }}
@@ -212,14 +212,14 @@ const NarrowAmountDateField: React.FC<{
         <input
           type="text" inputMode="decimal" value={formatAmountInput(amount)}
           onChange={(e) => onAmountChange(parseAmountInput(e.target.value))}
-          style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 13.5, fontFamily: t.fontFamily }}
+          style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }}
         />
       </div>
       <input
         type="date" value={date} onClick={openPicker} onFocus={openPicker}
         onChange={(e) => onDateChange(e.target.value)} style={{ ...getFieldStyle(t), flex: 1, minWidth: 0 }}
       />
-      {amount > 0 && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 11, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(amount)}</span>}
+      {amount > 0 && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(amount)}</span>}
     </div>
   </FieldWrap>
 );
@@ -228,15 +228,6 @@ const DateField: React.FC<{ t: Theme; label: string; value: string; onChange: (v
   <FieldWrap t={t} label={label}>
     <input type="date" value={value} onClick={openPicker} onFocus={openPicker} onChange={(e) => onChange(e.target.value)} style={getFieldStyle(t)} />
   </FieldWrap>
-);
-
-const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; color: string }> = ({ t, icon, title, color }) => (
-  <div className="flex items-center gap-2.5 mb-5">
-    <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: `${color}1a`, color }}>
-      {icon}
-    </span>
-    <h2 style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, margin: 0 }}>{title}</h2>
-  </div>
 );
 
 // A colored, full-bleed header bar for the two OUTPUT panels (EMI Scheme /
@@ -249,9 +240,9 @@ const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradie
       <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.2)' }}>
         {icon}
       </span>
-      <h2 style={{ fontSize: 16.5, fontWeight: 800, color: '#fff', margin: 0 }}>{title}</h2>
+      <h2 style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>{title}</h2>
     </div>
-    <div style={{ fontSize: 13.5, fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>{subtitle}</div>
+    <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>{subtitle}</div>
   </div>
 );
 
@@ -266,15 +257,15 @@ const MonthlyEmiBanner: React.FC<{
   <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: isDark ? 'linear-gradient(135deg,#111827,#1f2937)' : 'linear-gradient(135deg,#111827,#312e81)' }}>
     <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
       <div>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Your Monthly EMI — Before Possession</div>
-        <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', marginTop: 4 }}>{formatINR(emiBefore)}</div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>for {tenureBefore} month{tenureBefore === 1 ? '' : 's'}</div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Your Monthly EMI — Before Possession</div>
+        <div style={{ fontSize: 26.5, fontWeight: 800, color: '#fff', marginTop: 4 }}>{formatINR(emiBefore)}</div>
+        <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>for {tenureBefore} month{tenureBefore === 1 ? '' : 's'}</div>
       </div>
       <div className="hidden sm:block" style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.15)' }} />
       <div>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Your Monthly EMI — After Possession</div>
-        <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', marginTop: 4 }}>{formatINR(emiAfter)}</div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Your Monthly EMI — After Possession</div>
+        <div style={{ fontSize: 26.5, fontWeight: 800, color: '#fff', marginTop: 4 }}>{formatINR(emiAfter)}</div>
+        <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
           {afterMonths > 0 ? (
             <>for {afterMonths} month{afterMonths === 1 ? '' : 's'}{lastAfterAmount > 0 && Math.round(lastAfterAmount) !== Math.round(emiAfter) ? ` (last: ${formatINR(lastAfterAmount)})` : ''}</>
           ) : 'enter Total Cost of Flat & other fields above'}
@@ -290,27 +281,27 @@ interface ScheduleRow { sr: number; date: Date | null; label: string; amount: nu
 
 const SummaryTable: React.FC<{ t: Theme; heading: string; rows: SummaryRow[]; total: number; totalLabel: string }> = ({ t, heading, rows, total, totalLabel }) => (
   <div className="mb-5">
-    <div style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>{heading}</div>
+    <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>{heading}</div>
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
         <thead>
           <tr style={{ background: t.insetBg }}>
-            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 40 }}>#</th>
-            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Payment Details</th>
-            <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Amount (Rs.)</th>
+            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 40 }}>#</th>
+            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Payment Details</th>
+            <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Amount (Rs.)</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={i} style={{ borderTop: i === 0 ? 'none' : `1px solid ${t.divider}` }}>
-              <td style={{ padding: '8px 12px', fontSize: 13, color: t.textSecondary }}>{i + 1}</td>
-              <td style={{ padding: '8px 12px', fontSize: 13.5, color: t.textPrimary }}>{r.label}</td>
-              <td style={{ padding: '8px 12px', fontSize: 13.5, color: t.textPrimary, textAlign: 'right', fontWeight: 600 }}>{formatINR(r.amount)}</td>
+              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textSecondary }}>{i + 1}</td>
+              <td style={{ padding: '8px 12px', fontSize: 12, color: t.textPrimary }}>{r.label}</td>
+              <td style={{ padding: '8px 12px', fontSize: 12, color: t.textPrimary, textAlign: 'right', fontWeight: 600 }}>{formatINR(r.amount)}</td>
             </tr>
           ))}
           <tr style={{ borderTop: `1px solid ${t.surfaceBorder}`, background: t.insetBg }}>
-            <td colSpan={2} style={{ padding: '9px 12px', fontSize: 13.5, fontWeight: 700, color: t.textPrimary }}>{totalLabel}</td>
-            <td style={{ padding: '9px 12px', fontSize: 13.5, fontWeight: 800, color: '#4338ca', textAlign: 'right' }}>{formatINR(total)}</td>
+            <td colSpan={2} style={{ padding: '9px 12px', fontSize: 12, fontWeight: 700, color: t.textPrimary }}>{totalLabel}</td>
+            <td style={{ padding: '9px 12px', fontSize: 12, fontWeight: 800, color: '#4338ca', textAlign: 'right' }}>{formatINR(total)}</td>
           </tr>
         </tbody>
       </table>
@@ -324,27 +315,27 @@ const ScheduleTable: React.FC<{ t: Theme; section: 'A' | 'B'; rows: ScheduleRow[
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
         <thead>
           <tr style={{ background: t.insetBg }}>
-            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 56 }}>Sr No</th>
-            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 110 }}>Inst Date</th>
-            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>({section}) Mode Of Payment</th>
-            <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 12, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Amount</th>
+            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 56 }}>Sr No</th>
+            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 110 }}>Inst Date</th>
+            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>({section}) Mode Of Payment</th>
+            <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Amount</th>
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr><td colSpan={4} style={{ padding: 20, textAlign: 'center', fontSize: 13, color: t.textSecondary }}>No installments in this phase.</td></tr>
+            <tr><td colSpan={4} style={{ padding: 20, textAlign: 'center', fontSize: 11.5, color: t.textSecondary }}>No installments in this phase.</td></tr>
           ) : rows.map((r) => (
             <tr key={r.sr} style={{ borderTop: `1px solid ${t.divider}` }}>
-              <td style={{ padding: '7px 12px', fontSize: 13, color: t.textSecondary }}>{r.sr}</td>
-              <td style={{ padding: '7px 12px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDMY(r.date)}</td>
-              <td style={{ padding: '7px 12px', fontSize: 13, color: t.textPrimary }}>{r.label}</td>
-              <td style={{ padding: '7px 12px', fontSize: 13, color: t.textPrimary, textAlign: 'right', fontWeight: 600 }}>{formatINR(r.amount)}</td>
+              <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textSecondary }}>{r.sr}</td>
+              <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDMY(r.date)}</td>
+              <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary }}>{r.label}</td>
+              <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, textAlign: 'right', fontWeight: 600 }}>{formatINR(r.amount)}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
-    <div style={{ fontSize: 13.5, fontWeight: 700, color: t.textPrimary, marginTop: 8 }}>
+    <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginTop: 8 }}>
       {totalLabel} : <span style={{ color: '#4338ca' }}>{formatINR(total)}</span>
     </div>
   </div>
@@ -484,8 +475,8 @@ const CustomizeSchemePage: React.FC = () => {
           <MdCalculate size={22} style={{ color: '#4f46e5' }} />
         </div>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Customize Scheme</h1>
-          <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Build an EMI Scheme &amp; Schedule — every field recalculates it live</p>
+          <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Customize Scheme</h1>
+          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Build an EMI Scheme &amp; Schedule — every field recalculates it live</p>
         </div>
       </div>
 
@@ -495,38 +486,49 @@ const CustomizeSchemePage: React.FC = () => {
         emiAfter={monthlyEmiAfterPossession} afterMonths={computed.afterCount} lastAfterAmount={lastAfterAmount}
       />
 
-      {/* ── Payment Details form ────────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" color="#059669" />
-
-        {/* One grid for every field — equal-width columns, however many
-            fit the container per row, each row's inputs starting at the
-            same Y (see getLabelStyle's fixed label height above). */}
-        <div className="grid gap-x-5 gap-y-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-          <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" />
-          <DateField t={t} label="Booking Date" value={bookingDate} onChange={setBookingDate} />
-          <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
-          <NarrowAmountDateField
-            t={t} label="Remaining Booking Amount & Date" amount={remainingBookingAmount} onAmountChange={setRemainingBookingAmount}
-            date={remainingBookingDate} onDateChange={setRemainingBookingDate}
-          />
-          <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
-          <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" />
-          <DateField t={t} label="Installment Date (1st EMI)" value={installmentDate} onChange={setInstallmentDate} />
-          <SliderField t={t} label="Total EMI Tenure Before Possession (Months)" value={totalEmiTenure} onChange={setTotalEmiTenure} max={120} step={1} suffix="months" noSlider />
-          <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" />
-          <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" />
-          <SliderField t={t} label="Booster Interval Before Possession (Months)" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" noSlider />
-          <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" />
-          <SliderField t={t} label="Booster Interval After Possession (Months)" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" noSlider />
-        </div>
-
-        {costMismatch && (
-          <div className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 mt-5" style={{ background: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed', color: '#c2410c', fontSize: 12.5 }}>
-            The scheme below totals {formatINR(computed.grandTotal)}, which doesn't match the Total Cost of Flat ({formatINR(totalCost)}) — adjust the values above until they match
-            {monthlyEmiAfterPossession === 0 && computed.totalA < totalCost ? ' (Monthly EMI After Possession is still 0, so the after-possession balance has nowhere to go yet).' : '.'}
+      {/* ── Payment Details form ────────────────────────────────────────
+          Gradient header band (same card pattern as the EMI Scheme/
+          Schedule result panels below), but in a distinct emerald/teal
+          gradient — keeps this INPUT panel visually set apart from the
+          indigo OUTPUT panels while matching their modern styling
+          language, per Task 8. Every field/handler below is untouched —
+          only the outer header/card chrome changed, no payment logic. */}
+      <div className="rounded-2xl mb-5 overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 4px 16px rgba(5,150,105,0.08)' }}>
+        <ResultPanelHeader
+          icon={<MdPayments size={17} color="#fff" />} title="Payment Details"
+          gradient="linear-gradient(135deg,#059669,#10b981,#0d9488)"
+          subtitle={totalCost > 0 ? `Total Cost of Flat: ${formatINR(totalCost)}` : 'Enter the scheme inputs below'}
+        />
+        <div className="p-5 sm:p-6">
+          {/* One grid for every field — equal-width columns, however many
+              fit the container per row, each row's inputs starting at the
+              same Y (see getLabelStyle's fixed label height above). */}
+          <div className="grid gap-x-5 gap-y-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+            <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" />
+            <DateField t={t} label="Booking Date" value={bookingDate} onChange={setBookingDate} />
+            <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
+            <NarrowAmountDateField
+              t={t} label="Remaining Booking Amount & Date" amount={remainingBookingAmount} onAmountChange={setRemainingBookingAmount}
+              date={remainingBookingDate} onDateChange={setRemainingBookingDate}
+            />
+            <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
+            <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" />
+            <DateField t={t} label="Installment Date (1st EMI)" value={installmentDate} onChange={setInstallmentDate} />
+            <SliderField t={t} label="Total EMI Tenure Before Possession (Months)" value={totalEmiTenure} onChange={setTotalEmiTenure} max={120} step={1} suffix="months" noSlider />
+            <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" />
+            <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" />
+            <SliderField t={t} label="Booster Interval Before Possession (Months)" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" noSlider />
+            <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" />
+            <SliderField t={t} label="Booster Interval After Possession (Months)" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" noSlider />
           </div>
-        )}
+
+          {costMismatch && (
+            <div className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 mt-5" style={{ background: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed', color: '#c2410c', fontSize: 11 }}>
+              The scheme below totals {formatINR(computed.grandTotal)}, which doesn't match the Total Cost of Flat ({formatINR(totalCost)}) — adjust the values above until they match
+              {monthlyEmiAfterPossession === 0 && computed.totalA < totalCost ? ' (Monthly EMI After Possession is still 0, so the after-possession balance has nowhere to go yet).' : '.'}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── EMI Scheme summary ──────────────────────────────────────── */}
@@ -540,8 +542,8 @@ const CustomizeSchemePage: React.FC = () => {
           <SummaryTable t={t} heading="A) Mode of Payment (Before Possession)" rows={computed.summaryA} total={computed.totalA} totalLabel="Total (A) (Before Possession)" />
           <SummaryTable t={t} heading="B) After Possession" rows={computed.summaryB} total={computed.totalB} totalLabel="Total (B) (After Possession)" />
           <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
-            <span style={{ fontSize: 15, fontWeight: 800, color: '#4338ca' }}>{formatINR(computed.grandTotal)}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#4338ca' }}>{formatINR(computed.grandTotal)}</span>
           </div>
         </div>
       </div>
@@ -557,8 +559,8 @@ const CustomizeSchemePage: React.FC = () => {
           <ScheduleTable t={t} section="A" rows={computed.beforeRows} total={computed.totalA} totalLabel="(A) Total Before Possession" />
           <ScheduleTable t={t} section="B" rows={computed.afterRows} total={computed.totalB} totalLabel="(B) Total After Possession" />
           <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
-            <span style={{ fontSize: 15, fontWeight: 800, color: '#4338ca' }}>{formatINR(computed.grandTotal)}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#4338ca' }}>{formatINR(computed.grandTotal)}</span>
           </div>
         </div>
       </div>

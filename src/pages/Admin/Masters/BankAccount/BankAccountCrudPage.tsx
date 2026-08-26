@@ -7,6 +7,7 @@ import { MdArrowBack } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme, AppTheme } from '../../../../styles/theme';
+import { showAlert } from '../../../../utils';
 import {
   ViewBankAccount,
   CreateBankAccount,
@@ -28,14 +29,14 @@ interface FieldProps {
 const Field: React.FC<FieldProps> = ({ label, required, error, t, children }) => (
   <div>
     <label style={{
-      display: 'block', fontWeight: 700, fontSize: 14,
+      display: 'block', fontWeight: 700, fontSize: 12.5,
       marginBottom: 6, color: t.textPrimary, fontFamily: t.fontFamily,
     }}>
       {label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
     </label>
     {children}
     {error && (
-      <p style={{ color: '#ef4444', fontSize: 13, marginTop: 4, fontFamily: t.fontFamily }}>
+      <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4, fontFamily: t.fontFamily }}>
         {error}
       </p>
     )}
@@ -225,7 +226,16 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
         toast.error(res.message || 'Operation failed');
       }
     } catch (e) {
-      toast.error('Something went wrong. Please try again.');
+      // Backend duplicate-entry check (account number) throws a 409 with a
+      // specific message — surface it via SweetAlert as required, instead
+      // of the generic toast fallback below.
+      const status = (e as { response?: { status?: number; data?: { message?: string } } })?.response?.status;
+      const message = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (status === 409 && message) {
+        showAlert.error(message);
+      } else {
+        toast.error('Something went wrong. Please try again.');
+      }
     } finally {
       setSaving(false);
     }

@@ -310,7 +310,7 @@ const BuildingListPage: React.FC = () => {
                       <td>
                         <div style={{ fontWeight: 600 }}>{b.project_name}</div>
                         {b.location && (
-                          <div style={{ fontSize: 12, color: t.textSecondary, fontWeight: 400 }}>{b.location}</div>
+                          <div style={{ fontSize: 10.5, color: t.textSecondary, fontWeight: 400 }}>{b.location}</div>
                         )}
                       </td>
                       <td>
@@ -322,7 +322,7 @@ const BuildingListPage: React.FC = () => {
                       <td>
                         <div>{b.wings?.length ?? 0}</div>
                         {b.wing_names && (
-                          <div style={{ fontSize: 12, color: t.textSecondary }}>{b.wing_names}</div>
+                          <div style={{ fontSize: 10.5, color: t.textSecondary }}>{b.wing_names}</div>
                         )}
                       </td>
                       <td>{totalFloorsOf(b)}</td>
@@ -345,21 +345,21 @@ const BuildingListPage: React.FC = () => {
         {/* ── Footer: Rows per page | Showing | Prev/Pages/Next ────────── */}
         <div className="master-pagination" style={{ borderTop: `1px solid ${t.divider}` }}>
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 13, color: t.textPrimary }}>Rows per page:</span>
+            <span style={{ fontSize: 11.5, color: t.textPrimary }}>Rows per page:</span>
             <select
               value={limit}
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
               style={{
                 background: t.inputBg, border: `1px solid ${t.inputBorder}`,
                 color: t.inputText, borderRadius: 8, padding: '4px 8px',
-                fontSize: 13, cursor: 'pointer', outline: 'none',
+                fontSize: 11.5, cursor: 'pointer', outline: 'none',
               }}
             >
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
 
-          <span style={{ fontSize: 13, color: t.textPrimary }}>
+          <span style={{ fontSize: 11.5, color: t.textPrimary }}>
             Showing {showingFrom}–{showingTo} of {totalFiltered}
           </span>
 

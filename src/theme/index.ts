@@ -194,7 +194,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
             fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             backgroundColor: '#000000',
             color: '#ffffff',
-            fontSize: 12,
+            fontSize: 10.5,
           },
         },
       },

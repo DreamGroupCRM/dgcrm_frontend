@@ -13,6 +13,7 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme, AppTheme } from '../../../../styles/theme';
 import { useAccordion } from '../../../../hooks/useAccordion';
+import { showAlert } from '../../../../utils';
 import {
   ViewBuilding,
   CreateBuilding,
@@ -132,7 +133,7 @@ const StepBadge: React.FC<{ n: number }> = ({ n }) => (
     width: 28, height: 28, borderRadius: '50%',
     background: '#4338ca', color: '#fff',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 14, fontWeight: 700, flexShrink: 0,
+    fontSize: 12.5, fontWeight: 700, flexShrink: 0,
   }}>
     {n}
   </div>
@@ -177,7 +178,7 @@ const StatusToggle: React.FC<{
     </button>
     {showLabel && (
       <span style={{
-        fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap',
+        fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
         color: checked ? '#16a34a' : '#6b7280',
       }}>
         {checked ? onLabel : offLabel}
@@ -208,7 +209,7 @@ const FloorAccordionItem: React.FC<{
     width: '100%',
     background: disabled ? (isDark ? '#2a2a2a' : '#e5e7eb') : t.inputBg,
     border: `1px solid ${t.inputBorder}`,
-    borderRadius: 8, padding: '6px 10px', fontSize: 13.5,
+    borderRadius: 8, padding: '6px 10px', fontSize: 12,
     color: disabled ? t.textSecondary : t.inputText,
     outline: 'none', fontFamily: t.fontFamily,
     cursor: disabled ? 'not-allowed' : 'text',
@@ -226,9 +227,9 @@ const FloorAccordionItem: React.FC<{
           padding: '12px 16px', fontFamily: t.fontFamily,
         }}
       >
-        <span style={{ fontWeight: 700, fontSize: 14.5, color: t.textPrimary }}>{floor.label}</span>
+        <span style={{ fontWeight: 700, fontSize: 13, color: t.textPrimary }}>{floor.label}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: t.textSecondary }}>
-          <span style={{ fontSize: 13 }}>{floor.flats.length} flat{floor.flats.length === 1 ? '' : 's'}</span>
+          <span style={{ fontSize: 11.5 }}>{floor.flats.length} flat{floor.flats.length === 1 ? '' : 's'}</span>
           {isOpen ? <MdExpandMore size={20} /> : <MdChevronRight size={20} />}
         </span>
       </button>
@@ -241,7 +242,7 @@ const FloorAccordionItem: React.FC<{
         }}
       >
         {floor.flats.length === 0 ? (
-          <div style={{ padding: '4px 16px 16px', fontSize: 13, color: t.textSecondary }}>
+          <div style={{ padding: '4px 16px 16px', fontSize: 11.5, color: t.textSecondary }}>
             No flats yet — set a count above and click &quot;Generate Flats&quot;.
           </div>
         ) : (
@@ -251,7 +252,7 @@ const FloorAccordionItem: React.FC<{
                 <tr style={{ background: t.tableHeaderBg }}>
                   {['Flat No.', 'Flat Type', 'Area (Sq Ft)', 'Status'].map((h) => (
                     <th key={h} style={{
-                      padding: '8px 16px', textAlign: 'left', fontSize: 12.5, fontWeight: 700,
+                      padding: '8px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                       textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary,
                     }}>
                       {h}
@@ -346,19 +347,19 @@ const SeriesConfigCard: React.FC<{
 }> = ({ t, seriesNumber, draft, onChangeDraft, onApply, onCancel }) => {
   const fieldStyleLocal: React.CSSProperties = {
     width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`,
-    borderRadius: 8, padding: '7px 10px', fontSize: 13, color: t.inputText,
+    borderRadius: 8, padding: '7px 10px', fontSize: 11.5, color: t.inputText,
     outline: 'none', fontFamily: t.fontFamily,
   };
   return (
     <div
-      className="w-full sm:w-[220px]"
+      className="w-full"
       style={{ border: `1px solid ${t.surfaceBorder}`, borderRadius: 12, padding: 14, background: t.subtleBg }}
     >
-      <div style={{ fontWeight: 700, fontSize: 13.5, color: '#4338ca', marginBottom: 8 }}>
+      <div style={{ fontWeight: 700, fontSize: 12, color: '#4338ca', marginBottom: 8 }}>
         Series-{String(seriesNumber).padStart(2, '0')}
       </div>
 
-      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: t.textSecondary, marginBottom: 4 }}>
+      <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: t.textSecondary, marginBottom: 4 }}>
         Flat Type
       </label>
       <select
@@ -370,7 +371,7 @@ const SeriesConfigCard: React.FC<{
         {FLAT_TYPES.map((ft) => <option key={ft} value={ft}>{ft}</option>)}
       </select>
 
-      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: t.textSecondary, marginBottom: 4 }}>
+      <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: t.textSecondary, marginBottom: 4 }}>
         Flat Area (Sq Ft)
       </label>
       {/* Manually entered — no hardcoded preset list. */}
@@ -816,8 +817,17 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       } else {
         toast.error(res.message || 'Operation failed');
       }
-    } catch {
-      toast.error('Something went wrong. Please try again.');
+    } catch (e) {
+      // Backend duplicate-entry check (building name within this project)
+      // throws a 409 with a specific message — surface it via SweetAlert
+      // as required, instead of the generic toast fallback below.
+      const status = (e as { response?: { status?: number; data?: { message?: string } } })?.response?.status;
+      const message = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (status === 409 && message) {
+        showAlert.error(message);
+      } else {
+        toast.error('Something went wrong. Please try again.');
+      }
     } finally {
       setSaving(false);
     }
@@ -827,13 +837,13 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   const fieldStyle: React.CSSProperties = {
     width: '100%', background: isView ? t.insetBg : t.inputBg,
     border: `1px solid ${t.inputBorder}`, borderRadius: 10,
-    padding: '10px 14px', fontSize: 14, color: t.inputText,
+    padding: '10px 14px', fontSize: 12.5, color: t.inputText,
     outline: 'none', boxSizing: 'border-box', fontFamily: t.fontFamily,
     cursor: isView ? 'not-allowed' : 'text', opacity: isView ? 0.85 : 1,
   };
 
   const labelStyle: React.CSSProperties = {
-    display: 'block', fontWeight: 600, fontSize: 13.5,
+    display: 'block', fontWeight: 600, fontSize: 12,
     marginBottom: 6, color: t.textPrimary, fontFamily: t.fontFamily,
   };
 
@@ -853,7 +863,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="flex items-center gap-2.5 mb-1">
           <StepBadge n={1} />
           <div>
-            <h2 style={{ fontSize: 16.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Project Details</h2>
+            <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Project Details</h2>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -893,16 +903,16 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           <div className="flex items-center gap-2.5">
             <StepBadge n={2} />
             <div>
-              <h2 style={{ fontSize: 16.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Wings</h2>
-              <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Add or remove wings in this building</p>
+              <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Wings</h2>
+              <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Add or remove wings in this building</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 13, color: t.textSecondary }}>No. of Wings</span>
+            <span style={{ fontSize: 11.5, color: t.textSecondary }}>No. of Wings</span>
             <div style={{
               minWidth: 44, textAlign: 'center', padding: '8px 12px',
               borderRadius: 10, border: `1px solid ${t.surfaceBorder}`,
-              background: t.insetBg, color: t.textPrimary, fontWeight: 700, fontSize: 14,
+              background: t.insetBg, color: t.textPrimary, fontWeight: 700, fontSize: 12.5,
             }}>
               {wings.length}
             </div>
@@ -922,7 +932,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 onChange={(e) => updateWing(w.id, { name: e.target.value.toUpperCase() })}
                 style={{
                   border: 'none', outline: 'none', background: 'transparent',
-                  color: t.inputText, fontSize: 14, width: 130, fontFamily: t.fontFamily,
+                  color: t.inputText, fontSize: 12.5, width: 130, fontFamily: t.fontFamily,
                   textTransform: 'uppercase',
                 }}
               />
@@ -956,8 +966,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           <div className="flex items-center gap-2.5">
             <StepBadge n={3} />
             <div>
-              <h2 style={{ fontSize: 16.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Floors in Each Wing</h2>
-              <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Enter number of floors in each wing and choose counting type</p>
+              <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Floors in Each Wing</h2>
+              <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Enter number of floors in each wing and choose counting type</p>
             </div>
           </div>
           {!isView && (
@@ -983,7 +993,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             }}>
               <div className="flex items-center gap-2 mb-3">
                 <MdApartment size={17} style={{ color: WING_COLORS[idx % WING_COLORS.length] }} />
-                <span style={{ fontWeight: 700, fontSize: 14.5, color: t.textPrimary }}>
+                <span style={{ fontWeight: 700, fontSize: 13, color: t.textPrimary }}>
                   {w.name ? `${w.name} wing` : `Wing ${idx + 1}`}
                 </span>
               </div>
@@ -995,14 +1005,14 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 style={{ ...fieldStyle, marginBottom: 12 }}
               />
               <div className="flex flex-col gap-2">
-                <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+                <label className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
                   <input
                     type="radio" checked={w.with_ground_floor} disabled={isView}
                     onChange={() => updateWing(w.id, { with_ground_floor: true })}
                   />
                   With Ground Floor
                 </label>
-                <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+                <label className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
                   <input
                     type="radio" checked={!w.with_ground_floor} disabled={isView}
                     onChange={() => updateWing(w.id, { with_ground_floor: false })}
@@ -1013,7 +1023,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             </div>
           ))}
           {wings.length === 0 && (
-            <p style={{ color: t.textSecondary, fontSize: 13.5 }}>Add a wing in Step 2 first.</p>
+            <p style={{ color: t.textSecondary, fontSize: 12 }}>Add a wing in Step 2 first.</p>
           )}
         </div>
       </SectionCard>
@@ -1023,8 +1033,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="flex items-center gap-2.5 mb-4">
           <StepBadge n={4} />
           <div>
-            <h2 style={{ fontSize: 16.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Flats on Each Floor</h2>
-            <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Select a wing, enter flats count and manage flat details</p>
+            <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Flats on Each Floor</h2>
+            <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Select a wing, enter flats count and manage flat details</p>
           </div>
         </div>
 
@@ -1044,40 +1054,40 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                   cursor: 'pointer', minWidth: 140, flexShrink: 0,
                 }}
               >
-                <div style={{ fontWeight: 700, fontSize: 14, color: w.id === activeWingId ? '#4338ca' : t.textPrimary }}>
+                <div style={{ fontWeight: 700, fontSize: 12.5, color: w.id === activeWingId ? '#4338ca' : t.textPrimary }}>
                   {w.name ? `${w.name} wing` : `Wing ${idx + 1}`}
                 </div>
-                <div style={{ fontSize: 12.5, color: t.textSecondary, marginTop: 2 }}>
+                <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2 }}>
                   {floorsSummary(w.with_ground_floor, w.no_of_floors)}
                 </div>
               </button>
             ))}
             {wings.length === 0 && (
-              <p style={{ color: t.textSecondary, fontSize: 13.5 }}>No wings yet.</p>
+              <p style={{ color: t.textSecondary, fontSize: 12 }}>No wings yet.</p>
             )}
           </div>
 
           {/* Right: selected wing's floors & flats */}
           <div className="flex-1 min-w-0" style={{ border: `1px solid ${t.surfaceBorder}`, borderRadius: 12, overflow: 'hidden' }}>
             {!activeWing ? (
-              <div style={{ padding: 24, color: t.textSecondary, fontSize: 13.5 }}>
+              <div style={{ padding: 24, color: t.textSecondary, fontSize: 12 }}>
                 Select a wing to manage its flats.
               </div>
             ) : (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3" style={{ padding: '14px 16px', background: t.insetBg, borderBottom: `1px solid ${t.divider}` }}>
                   <div>
-                    <span style={{ fontWeight: 700, color: '#4338ca', fontSize: 14.5 }}>
+                    <span style={{ fontWeight: 700, color: '#4338ca', fontSize: 13 }}>
                       {activeWing.name ? `${activeWing.name} wing` : 'Wing'}
                     </span>
-                    <span style={{ fontSize: 12.5, color: t.textSecondary, marginLeft: 8 }}>
+                    <span style={{ fontSize: 11, color: t.textSecondary, marginLeft: 8 }}>
                       ({activeWing.with_ground_floor ? 'With Ground Floor' : 'Without Ground Floor'}
                       {' + '}{parseInt(activeWing.no_of_floors, 10) || 0} Floors = {(parseInt(activeWing.no_of_floors, 10) || 0) + (activeWing.with_ground_floor ? 1 : 0)} Levels)
                     </span>
                   </div>
                   {!isView && (
                     <div className="flex items-center gap-2">
-                      <span style={{ fontSize: 17, color: t.textSecondary, whiteSpace: 'nowrap' }}>Enter number of flats on each floor</span>
+                      <span style={{ fontSize: 15, color: t.textSecondary, whiteSpace: 'nowrap' }}>Enter number of flats on each floor</span>
                       <input
                         type="number" min={0} value={activeWing.flatsPerFloorInput}
                         onChange={(e) => updateWing(activeWing.id, { flatsPerFloorInput: e.target.value })}
@@ -1107,13 +1117,19 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                     as before, and is unaffected by this. */}
                 {!isView && activeSeriesCount > 0 && (
                   <div style={{ padding: '16px', background: t.insetBg, borderBottom: `1px solid ${t.divider}` }}>
-                    <div style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary, marginBottom: 2 }}>
+                    <div style={{ fontWeight: 700, fontSize: 12, color: t.textPrimary, marginBottom: 2 }}>
                       Bulk Configure by Series
                     </div>
-                    <p style={{ fontSize: 12.5, color: t.textSecondary, margin: '0 0 12px' }}>
+                    <p style={{ fontSize: 11, color: t.textSecondary, margin: '0 0 12px' }}>
                       Set Flat Type &amp; Area once per series to apply it to that flat position on every floor.
                     </p>
-                    <div className="flex flex-wrap gap-3">
+                    {/* Fixed-columns responsive grid (not flex-wrap on a
+                        fixed-px card width) so each row fills completely —
+                        4 cards per row on desktop, stepping down to 1 on
+                        mobile, instead of leaving empty trailing space
+                        whenever the row doesn't divide evenly by a fixed
+                        card width. */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                       {Array.from({ length: activeSeriesCount }, (_, i) => i + 1).map((seriesNumber) => (
                         <SeriesConfigCard
                           key={seriesNumber}
@@ -1130,7 +1146,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 )}
 
                 {activeWing.floors.length === 0 ? (
-                  <div style={{ padding: 24, color: t.textSecondary, fontSize: 13.5 }}>
+                  <div style={{ padding: 24, color: t.textSecondary, fontSize: 12 }}>
                     Generate floors in Step 3 first.
                   </div>
                 ) : (
@@ -1150,10 +1166,10 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                         cursor: 'pointer', padding: '12px 16px', fontFamily: t.fontFamily,
                       }}
                     >
-                      <span style={{ fontWeight: 700, fontSize: 14.5, color: '#4338ca' }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: '#4338ca' }}>
                         All Floors ({activeWing.floors.length})
                       </span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: t.textSecondary, fontSize: 13, fontWeight: 600 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: t.textSecondary, fontSize: 11.5, fontWeight: 600 }}>
                         {allFloorsOpen ? 'Collapse All' : 'Expand All'}
                         {allFloorsOpen ? <MdExpandMore size={20} /> : <MdChevronRight size={20} />}
                       </span>
@@ -1183,8 +1199,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="flex items-center gap-2.5 mb-4">
           <StepBadge n={5} />
           <div>
-            <h2 style={{ fontSize: 16.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Shop Details</h2>
-            <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Does this building have shops?</p>
+            <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Shop Details</h2>
+            <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Does this building have shops?</p>
           </div>
         </div>
 
@@ -1193,14 +1209,14 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             Do you have shops in this building? <span style={{ color: '#ef4444' }}>*</span>
           </label>
           <div className="flex items-center gap-5">
-            <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+            <label className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
               <input
                 type="radio" name="has_shops" checked={hasShops === true} disabled={isView}
                 onChange={() => { setHasShops(true); markDirty(); }}
               />
               Yes
             </label>
-            <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+            <label className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
               <input
                 type="radio" name="has_shops" checked={hasShops === false} disabled={isView}
                 onChange={() => { setHasShops(false); setShops([]); setShopCountInput(''); markDirty(); }}
@@ -1213,7 +1229,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         {hasShops && (
           <div className="mt-5" style={{ borderTop: `1px solid ${t.divider}`, paddingTop: 16 }}>
             <div className="flex flex-wrap items-center gap-3 mb-4">
-              <span style={{ fontWeight: 600, fontSize: 13.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+              <span style={{ fontWeight: 600, fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                 How many shops in this building? <span style={{ color: '#ef4444' }}>*</span>
               </span>
               <input
@@ -1239,7 +1255,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             </div>
 
             {shops.length === 0 ? (
-              <p style={{ color: t.textSecondary, fontSize: 13.5 }}>
+              <p style={{ color: t.textSecondary, fontSize: 12 }}>
                 No shops yet — enter a count above and click &quot;Generate Shops&quot;.
               </p>
             ) : (
@@ -1257,12 +1273,12 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                     width: '100%',
                     background: fieldsDisabled ? (isDark ? '#2a2a2a' : '#e5e7eb') : t.inputBg,
                     border: `1px solid ${t.inputBorder}`, borderRadius: 7, padding: '5px 8px',
-                    fontSize: 12.5, color: fieldsDisabled ? t.textSecondary : t.inputText,
+                    fontSize: 11, color: fieldsDisabled ? t.textSecondary : t.inputText,
                     outline: 'none', fontFamily: t.fontFamily,
                     cursor: fieldsDisabled ? 'not-allowed' : 'text',
                   };
                   const shopLabelStyle: React.CSSProperties = {
-                    display: 'block', fontSize: 10.5, fontWeight: 600, color: t.textSecondary, marginBottom: 3,
+                    display: 'block', fontSize: 10, fontWeight: 600, color: t.textSecondary, marginBottom: 3,
                   };
                   return (
                     <div
@@ -1322,8 +1338,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="flex items-center gap-2.5 mb-4">
           <StepBadge n={6} />
           <div>
-            <h2 style={{ fontSize: 16.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Parking</h2>
-            <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Does this building have parking?</p>
+            <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Parking</h2>
+            <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Does this building have parking?</p>
           </div>
         </div>
 
@@ -1332,14 +1348,14 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             Do you have parking? <span style={{ color: '#ef4444' }}>*</span>
           </label>
           <div className="flex items-center gap-5">
-            <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+            <label className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
               <input
                 type="radio" name="has_parking" checked={hasParking === true} disabled={isView}
                 onChange={() => { setHasParking(true); markDirty(); }}
               />
               Yes
             </label>
-            <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+            <label className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
               <input
                 type="radio" name="has_parking" checked={hasParking === false} disabled={isView}
                 onChange={() => { setHasParking(false); setParkingCountInput(''); markDirty(); }}
@@ -1352,7 +1368,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         {hasParking && (
           <div className="mt-5" style={{ borderTop: `1px solid ${t.divider}`, paddingTop: 16 }}>
             <div className="flex flex-wrap items-center gap-3">
-              <span style={{ fontWeight: 600, fontSize: 13.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+              <span style={{ fontWeight: 600, fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                 How many parking spaces are there in this building? <span style={{ color: '#ef4444' }}>*</span>
               </span>
               <input

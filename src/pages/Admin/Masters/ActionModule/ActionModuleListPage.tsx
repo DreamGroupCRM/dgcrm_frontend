@@ -187,12 +187,12 @@ const ActionModuleListPage: React.FC = () => {
             <MdSearch size={16} style={{ color: t.textPrimary, flexShrink: 0 }} />
             <input type="text" placeholder="Search by module name, slug..."
               value={moduleSearch} onChange={(e) => setModuleSearch(e.target.value)}
-              style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 13, width: '100%' }} />
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 11.5, width: '100%' }} />
           </div>
 
           <div className="flex items-center gap-2" onClick={moduleAccordion.toggle} style={{ cursor: 'pointer', userSelect: 'none', flex: '0 0 auto' }}>
             <MdSettings size={22} style={{ color: '#d97706' }} />
-            <span style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, fontFamily: t.fontFamily }}>Module Master</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, fontFamily: t.fontFamily }}>Module Master</span>
             <MdKeyboardArrowDown size={22} style={{ color: t.textPrimary, transition: 'transform 0.3s ease', transform: moduleAccordion.isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
           </div>
 
@@ -216,9 +216,9 @@ const ActionModuleListPage: React.FC = () => {
                 <thead>
                   <tr style={{ background: t.tableHeaderBg }}>
                     {['ID', 'Name', 'Description', 'Sort Order', 'Status', 'Created At'].map((h) => (
-                      <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
-                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 2, background: t.tableHeaderBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>Actions</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 2, background: t.tableHeaderBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -232,12 +232,12 @@ const ActionModuleListPage: React.FC = () => {
                       <tr key={m.m_id} style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`, transition: 'background 0.15s' }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                         onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{m.m_id}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500 }}>{m.m_name}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{m.m_slug}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{m.m_sort_order}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 11.5, color: t.textPrimary }}>{m.m_id}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 12.5, color: t.textPrimary, fontWeight: 500 }}>{m.m_name}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 11.5, color: t.textPrimary }}>{m.m_slug}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 11.5, color: t.textPrimary }}>{m.m_sort_order}</td>
                         <td style={{ padding: '12px 16px' }}>{statusBadge(m.m_is_active)}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(m.m_created_at)}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(m.m_created_at)}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 1, background: stickyBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>
                           <div className="flex items-center justify-center gap-1">
                             <button onClick={() => navigate(`/admin/masters/module/view/${m.m_id}`)} title="View" style={iconBtn}><MdVisibility size={18} /></button>
@@ -266,12 +266,12 @@ const ActionModuleListPage: React.FC = () => {
             <MdSearch size={16} style={{ color: t.textPrimary, flexShrink: 0 }} />
             <input type="text" placeholder="Search by action name, code..."
               value={actionSearch} onChange={(e) => setActionSearch(e.target.value)}
-              style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 13, width: '100%' }} />
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 11.5, width: '100%' }} />
           </div>
 
           <div className="flex items-center gap-2" onClick={actionAccordion.toggle} style={{ cursor: 'pointer', userSelect: 'none', flex: '0 0 auto' }}>
             <MdSettings size={22} style={{ color: '#2563eb' }} />
-            <span style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, fontFamily: t.fontFamily }}>Action Master</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, fontFamily: t.fontFamily }}>Action Master</span>
             <MdKeyboardArrowDown size={22} style={{ color: t.textPrimary, transition: 'transform 0.3s ease', transform: actionAccordion.isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
           </div>
 
@@ -295,9 +295,9 @@ const ActionModuleListPage: React.FC = () => {
                 <thead>
                   <tr style={{ background: t.tableHeaderBg }}>
                     {['ID', 'Name', 'Code', 'Description', 'Status', 'Created At'].map((h) => (
-                      <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
-                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 2, background: t.tableHeaderBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>Actions</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 2, background: t.tableHeaderBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -311,12 +311,12 @@ const ActionModuleListPage: React.FC = () => {
                       <tr key={a.id} style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`, transition: 'background 0.15s' }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                         onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{a.id}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 14, color: t.textPrimary, fontWeight: 500 }}>{a.name}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{a.code}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary }}>{a.description || '—'}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 11.5, color: t.textPrimary }}>{a.id}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 12.5, color: t.textPrimary, fontWeight: 500 }}>{a.name}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 11.5, color: t.textPrimary }}>{a.code}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 11.5, color: t.textPrimary }}>{a.description || '—'}</td>
                         <td style={{ padding: '12px 16px' }}>{statusBadge(a.is_active)}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(a.created_at)}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(a.created_at)}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 1, background: stickyBg, borderLeft: `2px solid ${t.divider}`, boxShadow: '-4px 0 8px rgba(0,0,0,0.06)' }}>
                           <div className="flex items-center justify-center gap-1">
                             <button onClick={() => navigate(`/admin/masters/action/view/${a.id}`)} title="View" style={iconBtn}><MdVisibility size={18} /></button>

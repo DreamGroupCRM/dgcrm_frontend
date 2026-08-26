@@ -16,6 +16,7 @@ import { getTheme } from '../../../../styles/theme';
 import { FetchEmployeeDetails, DeleteEmployee, Employee, EmployeeStatus } from '../../../../services/employeeDetailsService';
 import { formatDate, showAlert } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
+import './EmployeeDetails.css';
 
 // Age in years + months from a 'YYYY-MM-DD' date_of_birth — same "derive
 // from existing data, no schema change" approach as cityStateFromAddress
@@ -204,10 +205,14 @@ const EmployeeDetailsListPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const selectStyle: React.CSSProperties = {
-    background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10,
-    padding: '8px 12px', fontSize: 13, color: t.inputText, fontFamily: t.fontFamily, cursor: 'pointer',
-  };
+  // ── CSS custom properties for EmployeeDetails.css — set once here from
+  // this page's own getTheme(isDark) values, consumed by the emp-* classes
+  // below (and, via the emp-field-view modifier, by the Crud page too). ──
+  const cssVars = {
+    '--emp-field-bg': t.inputBg, '--emp-field-border': t.inputBorder, '--emp-field-text': t.inputText,
+    '--emp-inset-bg': t.insetBg, '--emp-text-primary': t.textPrimary, '--emp-text-secondary': t.textSecondary,
+    '--emp-surface-border': t.surfaceBorder, '--emp-divider': t.divider,
+  } as React.CSSProperties;
 
   // ── card ─────────────────────────────────────────────────────────────
   const EmployeeCard: React.FC<{ emp: Employee }> = ({ emp }) => {
@@ -226,14 +231,14 @@ const EmployeeDetailsListPage: React.FC = () => {
               ) : (
                 <div
                   className="flex items-center justify-center rounded-full text-white font-bold"
-                  style={{ width: 48, height: 48, background: 'linear-gradient(135deg,#4338ca,#4f46e5)', fontSize: 15 }}
+                  style={{ width: 48, height: 48, background: 'linear-gradient(135deg,#4338ca,#4f46e5)', fontSize: 13 }}
                 >
                   {initials(emp.first_name, emp.last_name)}
                 </div>
               )}
               <span
                 className="inline-flex items-center gap-1 px-1.5 rounded-full font-semibold"
-                style={{ background: status.bg, color: status.color, fontSize: 9, lineHeight: '14px', whiteSpace: 'nowrap' }}
+                style={{ background: status.bg, color: status.color, fontSize: 10, lineHeight: '14px', whiteSpace: 'nowrap' }}
               >
                 <span className="w-1 h-1 rounded-full bg-current" /> {status.label}
               </span>
@@ -242,13 +247,13 @@ const EmployeeDetailsListPage: React.FC = () => {
               {/* Wraps onto a 2nd line instead of truncating with "…" — at
                   card width, a single-line ellipsis was cutting "Sohel" down
                   to "Soh…"; wrapping keeps the full name readable. */}
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, lineHeight: 1.25, wordBreak: 'break-word' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary, lineHeight: 1.25, wordBreak: 'break-word' }}>
                 {emp.first_name} {emp.last_name}
               </div>
               <button
                 type="button"
                 onClick={() => navigate(`/admin/employee/employee-details/view/${emp.id}`)}
-                style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#4f46e5', fontSize: 12.5, fontWeight: 600 }}
+                style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#4f46e5', fontSize: 11, fontWeight: 600 }}
               >
                 {emp.employee_code}
               </button>
@@ -279,15 +284,15 @@ const EmployeeDetailsListPage: React.FC = () => {
                   }}
                 >
                   <button type="button" title="View" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/view/${emp.id}`); }}
-                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn">
                     <MdVisibility size={16} color="#2563eb" /> View
                   </button>
                   <button type="button" title="Edit" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/edit/${emp.id}`); }}
-                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn">
                     <MdEdit size={15} color="#7c3aed" /> Edit
                   </button>
                   <button type="button" title="Delete" onClick={() => handleDelete(emp)}
-                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn emp-menu-btn-danger">
                     <MdDelete size={16} /> Delete
                   </button>
                 </div>
@@ -302,13 +307,13 @@ const EmployeeDetailsListPage: React.FC = () => {
           // Designation filter dropdowns and the employee's own View page.
           const age = ageFromDob(emp.date_of_birth);
           return age != null ? (
-            <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 13, color: t.textSecondary, marginBottom: 8 }}>
+            <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 11.5, color: t.textSecondary, marginBottom: 8 }}>
               <span>{age}</span>
             </div>
           ) : null;
         })()}
 
-        <div className="space-y-1.5" style={{ fontSize: 12.5, color: t.textSecondary }}>
+        <div className="space-y-1.5" style={{ fontSize: 11, color: t.textSecondary }}>
           <div className="flex items-center gap-1.5 min-w-0">
             <MdEmail size={14} className="flex-shrink-0" />
             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.email}</span>
@@ -323,7 +328,7 @@ const EmployeeDetailsListPage: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ fontSize: 11.5, color: t.textSecondary, marginTop: 10, paddingTop: 8, borderTop: `1px solid ${t.divider}` }}>
+        <div style={{ fontSize: 10, color: t.textSecondary, marginTop: 10, paddingTop: 8, borderTop: `1px solid ${t.divider}` }}>
           Joined on {formatDate(emp.joining_date)}
         </div>
       </div>
@@ -332,12 +337,12 @@ const EmployeeDetailsListPage: React.FC = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="master-page" style={{ fontFamily: t.fontFamily }}>
+    <div className="master-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="mb-6">
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Employee List</h1>
-        <p style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 0' }}>Dashboard / Employee List</p>
+        <h1 className="emp-page-title">Employee List</h1>
+        <p className="emp-page-subtitle">Dashboard / Employee List</p>
       </div>
 
       {/* ── Summary cards — same compact sizing/spacing as Building master's
@@ -395,9 +400,9 @@ const EmployeeDetailsListPage: React.FC = () => {
         {/* cards */}
         <div className="p-5">
           {loading ? (
-            <div style={{ textAlign: 'center', padding: 32, color: t.textSecondary }}>Loading employees...</div>
+            <div className="emp-empty-state">Loading employees...</div>
           ) : pageRows.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 32, color: t.textSecondary }}>No employees found.</div>
+            <div className="emp-empty-state">No employees found.</div>
           ) : (
             <div className={view === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4' : 'flex flex-col gap-3'}>
               {pageRows.map((emp, idx) => <EmployeeCard key={emp.id || emp.employee_code || idx} emp={emp} />)}
@@ -408,13 +413,13 @@ const EmployeeDetailsListPage: React.FC = () => {
         {/* pagination */}
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4" style={{ borderTop: `1px solid ${t.divider}` }}>
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 13, color: t.textSecondary }}>Rows per page:</span>
+            <span style={{ fontSize: 11.5, color: t.textSecondary }}>Rows per page:</span>
             <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 11.5, cursor: 'pointer', outline: 'none' }}>
               {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
-          <div style={{ fontSize: 13, color: t.textSecondary }}>
+          <div style={{ fontSize: 11.5, color: t.textSecondary }}>
             Showing {filtered.length === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, filtered.length)} of {filtered.length} employees
           </div>
           <div className="flex items-center gap-1.5">

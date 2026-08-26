@@ -146,7 +146,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
 
   const dropdownItemStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 10,
-    padding: '10px 16px', fontSize: 14, cursor: 'pointer',
+    padding: '10px 16px', fontSize: 12.5, cursor: 'pointer',
     color: t.textPrimary, fontFamily: t.fontFamily,
     background: 'transparent', border: 'none', width: '100%', textAlign: 'left',
   };
@@ -225,10 +225,10 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
           />
           {/* Brand text: show on sm+ */}
           <div className="hidden sm:block text-left leading-none">
-            <p style={{ fontFamily: t.fontFamily, fontSize: 22, fontWeight: 700, color: t.textPrimary, margin: 1, whiteSpace: 'nowrap' }}>
+            <p style={{ fontFamily: t.fontFamily, fontSize: 19.5, fontWeight: 700, color: t.textPrimary, margin: 1, whiteSpace: 'nowrap' }}>
               Dream Group
             </p>
-            <p style={{ fontFamily: t.fontFamily, fontSize: 11, fontWeight: 500, color: isDark ? '#ffffff' : '#000000', margin: 2, whiteSpace: 'nowrap' }}>
+            <p style={{ fontFamily: t.fontFamily, fontSize: 10, fontWeight: 500, color: isDark ? '#ffffff' : '#000000', margin: 2, whiteSpace: 'nowrap' }}>
               CRM Platform
             </p>
           </div>
@@ -278,7 +278,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             </IconBtn>
             {settingsOpen && (
               <div style={dropdownStyle}>
-                <div style={{ padding: '8px 16px 4px', fontSize: 11, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <div style={{ padding: '8px 16px 4px', fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Settings
                 </div>
                 <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
@@ -342,7 +342,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
                 <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
 
                 {/* Settings: Enable Master */}
-                <div style={{ padding: '4px 16px 4px', fontSize: 11, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <div style={{ padding: '4px 16px 4px', fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Settings
                 </div>
                 <SettingsMenuContent />

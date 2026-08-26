@@ -10,6 +10,7 @@ import {
 
 import { useAppSelector } from '../../../../hooks';
 import { getTheme } from '../../../../styles/theme';
+import { showAlert } from '../../../../utils';
 import { Designation, CreateDepartmentPayload } from '../../../../types/index';
 import { ViewDepartment, CreateDepartment, UpdateDepartment } from '../../../../services/departmentService';
 
@@ -122,7 +123,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
       return;
     }
     if (designations.some((d) => d.name.toLowerCase() === name.toLowerCase())) {
-      toast.error('That designation already exists for this department.');
+      showAlert.error('Designation with the same name under this department already exists.');
       return;
     }
     setDesignations((prev) => [...prev, { id: localId(), name, is_active: true }]);
@@ -159,7 +160,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
       return;
     }
     if (designations.some((d) => d.id !== editingDesignationId && d.name.toLowerCase() === name.toLowerCase())) {
-      toast.error('That designation already exists for this department.');
+      showAlert.error('Designation with the same name under this department already exists.');
       return;
     }
     setDesignations((prev) => prev.map((d) => (d.id === editingDesignationId ? { ...d, name } : d)));
@@ -200,8 +201,18 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
         toast.success('Department Created Successfully');
       }
       navigate('/admin/masters/department');
-    } catch {
-      toast.error(mode === 'edit' ? 'Failed to update department.' : 'Failed to create department.');
+    } catch (e) {
+      // Backend duplicate-entry checks (department name, designation name
+      // within this department) throw a 409 with a specific message —
+      // surface it via SweetAlert as required, instead of the generic
+      // toast fallback below.
+      const status = (e as { response?: { status?: number; data?: { message?: string } } })?.response?.status;
+      const message = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (status === 409 && message) {
+        showAlert.error(message);
+      } else {
+        toast.error(mode === 'edit' ? 'Failed to update department.' : 'Failed to create department.');
+      }
     } finally {
       setSaving(false);
     }
@@ -209,12 +220,12 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
 
   // ── shared field styles ──────────────────────────────────────────────────
   const labelStyle: React.CSSProperties = {
-    display: 'block', fontSize: 13.5, fontWeight: 600, color: t.textPrimary, marginBottom: 6,
+    display: 'block', fontSize: 12, fontWeight: 600, color: t.textPrimary, marginBottom: 6,
   };
   const fieldStyle: React.CSSProperties = {
     width: '100%', background: isView ? t.insetBg : t.inputBg,
     border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '10px 14px',
-    fontSize: 14, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
+    fontSize: 12.5, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
   };
 
   if (fetching) {
@@ -241,7 +252,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
             >
               1
             </span>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Department Details</h2>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Department Details</h2>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-end gap-4">
@@ -264,18 +275,18 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
               className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 rounded-xl"
               style={{ background: t.insetBg, flex: 1 }}
             >
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: t.textPrimary }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: t.textPrimary }}>
                 Do you want to add designations for this department?
               </span>
               <div className="flex items-center gap-5 flex-shrink-0">
-                <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+                <label className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
                   <input
                     type="radio" name="want_designations" checked={wantDesignations === true} disabled={isView}
                     onChange={() => setWantDesignations(true)}
                   />
                   Yes
                 </label>
-                <label className="flex items-center gap-2" style={{ fontSize: 13.5, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+                <label className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
                   <input
                     type="radio" name="want_designations" checked={wantDesignations === false} disabled={isView}
                     onChange={() => setWantDesignations(false)}
@@ -302,7 +313,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
               >
                 2
               </span>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, margin: 0 }}>
+              <h2 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>
                 Add Designations{departmentName.trim() ? ` for ${departmentName.trim()} Department` : ''}
               </h2>
             </div>
@@ -336,7 +347,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
             )}
 
             {designations.length === 0 ? (
-              <p style={{ color: t.textSecondary, fontSize: 13.5 }}>
+              <p style={{ color: t.textSecondary, fontSize: 12 }}>
                 No designations added yet.
               </p>
             ) : (
@@ -348,7 +359,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                         <th
                           key={h}
                           style={{
-                            padding: '10px 16px', textAlign: h === 'Action' ? 'right' : 'left', fontSize: 12.5, fontWeight: 700,
+                            padding: '10px 16px', textAlign: h === 'Action' ? 'right' : 'left', fontSize: 11, fontWeight: 700,
                             textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary,
                           }}
                         >
@@ -366,8 +377,8 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                           background: d.is_active ? 'transparent' : (isDark ? 'rgba(148,163,184,0.10)' : '#f3f4f6'),
                         }}
                       >
-                        <td style={{ padding: '10px 16px', fontSize: 13.5, color: t.textSecondary, width: 48 }}>{idx + 1}</td>
-                        <td style={{ padding: '10px 16px', fontSize: 14, fontWeight: 600, color: d.is_active ? t.textPrimary : t.textSecondary }}>
+                        <td style={{ padding: '10px 16px', fontSize: 12, color: t.textSecondary, width: 48 }}>{idx + 1}</td>
+                        <td style={{ padding: '10px 16px', fontSize: 12.5, fontWeight: 600, color: d.is_active ? t.textPrimary : t.textSecondary }}>
                           {editingDesignationId === d.id ? (
                             <input
                               type="text" autoFocus value={editingDesignationName}
@@ -378,7 +389,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                               }}
                               style={{
                                 width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 8,
-                                padding: '6px 10px', fontSize: 14, fontWeight: 600, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
+                                padding: '6px 10px', fontSize: 12.5, fontWeight: 600, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
                               }}
                             />
                           ) : d.name}
