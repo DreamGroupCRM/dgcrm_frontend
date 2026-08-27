@@ -2,11 +2,22 @@
 
 import axiosInstance from '../services/axiosConfig';
 import {
+  Role,
   RoleListResponse,
   RoleResponse,
   CreateRolePayload,
   UpdateRolePayload,
 } from '../types/index';
+
+// ── Fetch the plain role dropdown (any authenticated user — GET /api/role
+//    above is the Role Master screen and is SuperAdmin-only; this is the
+//    separate, admin-usable "assign an existing role to an employee" list;
+//    see role.routes.ts's own comment on the distinction). Used by the
+//    Employee CRUD page's Role field. ───────────────────────────────────
+export const fetchAssignableRoles = async (): Promise<{ success: boolean; data: Role[] }> => {
+  const res = await axiosInstance.get('/masters/roles');
+  return res.data;
+};
 
 // ── Fetch list of all roles ─────────────────────────────────────────────────
 export const fetchRoleList = async (
