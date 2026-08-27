@@ -54,6 +54,37 @@
   width: 100%;
 }
 
+/* ── Stylish dark-bordered search box — Company/Department/BankAccount/
+   Building masters only (opt-in modifier alongside .master-search-box, so
+   the Employee list's search box — the only other page reusing that base
+   class — is untouched). Overrides the plain inputBorder-gray border with
+   a deliberate dark slate one, plus a lifted shadow and an indigo glow on
+   focus so the field reads as a considered control instead of a bare box. */
+.master-search-box-accent {
+  border-width: 1.5px !important;
+  border-color: #334155 !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+html.dark .master-search-box-accent {
+  border-color: #94a3b8 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.master-search-box-accent:focus-within {
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+.master-search-box-accent svg {
+  color: #4338ca !important;
+}
+
+html.dark .master-search-box-accent svg {
+  color: #a5b4fc !important;
+}
+
 .master-actions {
   display: flex;
   align-items: center;
@@ -138,6 +169,21 @@ html.dark .master-table th,
 html.dark .master-table td {
   color: #ffffff;
   border-color: #2f2f2f;
+}
+
+/* ── Radiant table-header gradient — Company/Department/BankAccount/Building
+   masters only. Applied via className on the header <tr>(s) *and* on the
+   sticky Actions <th> (which otherwise paints over the row with its own
+   opaque background), so the whole header reads as one continuous band
+   regardless of theme — unlike the old flat tableHeaderBg/insetBg, this
+   doesn't need a light/dark variant since it supplies its own contrast. */
+.master-table-header-gradient {
+  background: linear-gradient(90deg, #4338ca 0%, #7c3aed 50%, #2563eb 100%) !important;
+}
+
+.master-table-header-gradient th {
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
 }
 
 /* Sticky Actions column — same boxed-shadow-divider look every master

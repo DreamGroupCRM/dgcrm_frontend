@@ -497,11 +497,13 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
   // ── Assign Visible Employees checklist options — every other employee in
   //    the company, needed in every mode; the currently-assigned set is
-  //    loaded below alongside Edit/View's other per-employee data. ────────
+  //    loaded below alongside Edit/View's other per-employee data.
+  //    activeOnly=true — a deactivated employee isn't a meaningful pick for
+  //    "who can this employee view/manage". ─────────────────────────────
   useEffect(() => {
     (async () => {
       try {
-        const res = await FetchEmployeeDetails(1, 1000);
+        const res = await FetchEmployeeDetails(1, 1000, undefined, true);
         if (res.success) {
           const opts = (res.rows || [])
             .filter((e) => !(mode !== 'add' && id && String(e.id) === id))

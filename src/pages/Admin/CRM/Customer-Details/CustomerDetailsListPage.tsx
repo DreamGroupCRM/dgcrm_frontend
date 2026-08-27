@@ -256,7 +256,9 @@ const CustomerDetailsListPage: React.FC = () => {
     })();
     (async () => {
       try {
-        const res = await FetchEmployeeDetails(1, 1000);
+        // activeOnly=true — don't offer a deactivated employee as an
+        // assignee for a customer.
+        const res = await FetchEmployeeDetails(1, 1000, undefined, true);
         if (res.success) {
           setEmployees((res.rows ?? []).map((e) => ({ id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})` })));
         }

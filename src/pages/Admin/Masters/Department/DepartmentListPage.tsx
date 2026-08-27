@@ -452,7 +452,7 @@ const DepartmentListPage: React.FC = () => {
           Department/Export/Refresh sat inline with the search box instead
           of separated to the right. */}
       <div className="master-topbar">
-        <div className="master-search-box" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
+        <div className="master-search-box master-search-box-accent" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input
             type="text"
@@ -484,8 +484,8 @@ const DepartmentListPage: React.FC = () => {
         <div className="master-table-scroll">
           <table className="master-table" style={{ minWidth: 760 }}>
             <thead>
-              <tr style={{ background: t.insetBg }}>
-                <th className="master-table-actions-th" style={{
+              <tr className="master-table-header-gradient" style={{ background: t.insetBg }}>
+                <th className="master-table-actions-th master-table-header-gradient" style={{
                   width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
                   background: t.insetBg, borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                 }}>Action</th>

@@ -148,7 +148,7 @@ const BankAccountListPage: React.FC = () => {
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <div className="master-topbar">
-        <div className="master-search-box" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
+        <div className="master-search-box master-search-box-accent" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input type="text" placeholder="Search by bank name, IFSC, company..."
             value={search} onChange={(e) => setSearch(e.target.value)}
@@ -175,8 +175,8 @@ const BankAccountListPage: React.FC = () => {
         <div className="master-table-scroll">
           <table className="master-table" style={{ minWidth: 900 }}>
             <thead>
-              <tr style={{ background: t.tableHeaderBg }}>
-                <th className="master-table-actions-th" style={{
+              <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
+                <th className="master-table-actions-th master-table-header-gradient" style={{
                   width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
 <<<<<<< HEAD
                   fontSize: 12, fontWeight: 700, textTransform: 'camelcase',
