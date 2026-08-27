@@ -11,8 +11,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAppSelector } from '../hooks';
-import { ROUTES } from '../constants';
-import { isAdminRole } from '../types';
+import { homeRouteForRole } from '../utils';
 
 interface PublicRouteProps {
   children: React.ReactNode;
@@ -23,12 +22,7 @@ const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
 
   if (isAuthenticated && role) {
     // Already logged in — send to correct dashboard
-    return (
-      <Navigate
-        to={isAdminRole(role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD}
-        replace
-      />
-    );
+    return <Navigate to={homeRouteForRole(role)} replace />;
   }
 
   return <>{children}</>;

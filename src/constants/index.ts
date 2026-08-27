@@ -61,6 +61,14 @@ export const ROUTES = {
     PAYMENT_DUES: '/employee/payment-dues',
     ATTENDANCE: '/employee/attendance',
   },
+
+  // Customer First Login — dedicated portal, separate from the staff LOGIN
+  // above. Temporary landing page only for now (see CustomerDashboard).
+  CUSTOMER: {
+    ROOT: '/customer',
+    LOGIN: '/customer/login',
+    DASHBOARD: '/customer/dashboard',
+  },
 } as const;
 
 // Validation rules used by the login form

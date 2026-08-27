@@ -10,6 +10,7 @@ import { ROUTES } from '../../constants';
 import { useNavigate } from 'react-router-dom';
 import { getTheme } from '../../styles/theme';
 import { BaseRole, isAdminRole } from '../../types';
+import { homeRouteForRole, roleLabelFor } from '../../utils';
 
 import {
   MdDashboard, MdBusiness, MdPeople, MdContactPage,
@@ -221,8 +222,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
 
   const isDark = mode === 'dark';
   const t = getTheme(isDark);
-  const roleLabel = role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Admin' : 'Employee';
-  const dashboardRoute = isAdminRole(role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
+  const roleLabel = roleLabelFor(role);
+  const dashboardRoute = homeRouteForRole(role);
 
   // Authoritative desktop/drawer switch — see useIsDesktopSidebar above.
   const isDesktop = useIsDesktopSidebar();

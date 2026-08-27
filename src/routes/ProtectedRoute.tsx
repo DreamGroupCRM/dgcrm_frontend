@@ -11,8 +11,9 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../hooks';
-import { BaseRole, isAdminRole } from '../types';
+import { BaseRole } from '../types';
 import { ROUTES } from '../constants';
+import { homeRouteForRole } from '../utils';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -30,12 +31,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
 
   // Wrong role → redirect to own dashboard
   if (allowedRoles && role && !allowedRoles.includes(role)) {
-    return (
-      <Navigate
-        to={isAdminRole(role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD}
-        replace
-      />
-    );
+    return <Navigate to={homeRouteForRole(role)} replace />;
   }
 
   return <>{children}</>;

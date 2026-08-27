@@ -6,7 +6,9 @@
 // seed data but the frontend has never had a distinct view for it — it's
 // left out of this union deliberately, same as before, so it keeps landing
 // on the employee view rather than silently gaining admin access.
-export type BaseRole = 'superadmin' | 'admin' | 'employee';
+// 'customer' — Customer First Login: a customer's linked login account
+// (see backend's customer.repository.ts's createCustomerWithUser).
+export type BaseRole = 'superadmin' | 'admin' | 'employee' | 'customer';
 
 // superadmin is a strict superset of admin (see backend's role.ts middleware
 // comment) — anywhere the app decides "does this user get the admin view",
@@ -14,6 +16,8 @@ export type BaseRole = 'superadmin' | 'admin' | 'employee';
 // SuperAdmin-only screens" (Role Master, Action & Module, Module Mapping),
 // check `role === 'superadmin'` directly instead.
 export const isAdminRole = (role: BaseRole | null): boolean => role === 'admin' || role === 'superadmin';
+
+export const isCustomerRole = (role: BaseRole | null): boolean => role === 'customer';
 
 // Detailed role record (comes nested inside user.role from the login API)
 export interface RoleInfo {

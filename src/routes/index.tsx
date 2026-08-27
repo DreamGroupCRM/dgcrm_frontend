@@ -22,8 +22,10 @@ import PublicRoute from './PublicRoute';
 
 const LoginPage     = lazy(() => import('../pages/Login/LoginPage'));
 const ResetPasswordPage = lazy(() => import('../pages/Login/ResetPasswordPage'));
+const CustomerLoginPage = lazy(() => import('../pages/Login/CustomerLoginPage'));
 const AdminRoutes   = lazy(() => import('./AdminRoutes'));
 const EmployeeRoutes = lazy(() => import('./EmployeeRoutes'));
+const CustomerRoutes = lazy(() => import('./CustomerRoutes'));
 
 // Shown while any lazy chunk is loading
 const PageLoader = () => (
@@ -53,6 +55,18 @@ const AppRoutes: React.FC = () => (
             different account), so it never auto-redirects to a dashboard. */}
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
+        {/* Public: /customer/login — Customer First Login's dedicated
+            activation/login page (see CustomerLoginPage.tsx). Separate from
+            the staff /login above; same underlying auth mechanism. */}
+        <Route
+          path="/customer/login"
+          element={
+            <PublicRoute>
+              <CustomerLoginPage />
+            </PublicRoute>
+          }
+        />
+
         {/* Root redirect */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
@@ -61,6 +75,9 @@ const AppRoutes: React.FC = () => (
 
         {/* Employee pages: /Employee/... */}
         <Route path="/employee/*" element={<EmployeeRoutes />} />
+
+        {/* Customer pages: /customer/... (login route above is separate) */}
+        <Route path="/customer/*" element={<CustomerRoutes />} />
 
         {/* 404 fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />
