@@ -21,8 +21,8 @@ import { useAppDispatch, useAppSelector } from '../../hooks';
 import { loginThunk, verifyOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
 import { clearError, resetLoginFlow } from '../../redux/slices/authSlice';
 import { ROUTES } from '../../constants';
-import { isAdminRole } from '../../types';
-import { showAlert } from '../../utils';
+import { showAlert, homeRouteForRole } from '../../utils';
+import { authService } from '../../services/authService';
 import Logo from '../../components/ui/Logo';
 
 import {
@@ -102,9 +102,21 @@ const LoginPage: React.FC = () => {
     otpToken, otpMessage, mustChangePassword, resetToken,
   } = useAppSelector((s) => s.auth);
 
-  // Which step of the login flow is showing right now
-  const step: 'credentials' | 'otp' | 'reset-password' =
-    mustChangePassword ? 'reset-password' : otpToken ? 'otp' : 'credentials';
+  // Which step of the login flow is showing right now. Forgot-password is a
+  // purely local overlay (no redux session state involved — it's a public,
+  // unauthenticated request) that takes over the credentials step.
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const step: 'credentials' | 'otp' | 'reset-password' | 'forgot-password' =
+    showForgotPassword ? 'forgot-password'
+    : mustChangePassword ? 'reset-password'
+    : otpToken ? 'otp' : 'credentials';
+
+  // ── Forgot Password (self-service) ──
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotEmailError, setForgotEmailError] = useState('');
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
+  const [forgotSubmitted, setForgotSubmitted] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState('');
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({ email: '', password: '' });
@@ -144,7 +156,7 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated && role) {
       navigate(
-        isAdminRole(role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
+        homeRouteForRole(role),
         { replace: true }
       );
     }
@@ -295,7 +307,7 @@ const LoginPage: React.FC = () => {
       if (verifyOtpThunk.fulfilled.match(result) && 'token' in result.payload) {
         await showAlert.loginSuccess(result.payload.user.base_role);
         navigate(
-          isAdminRole(result.payload.user.base_role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
+          homeRouteForRole(result.payload.user.base_role),
           { replace: true }
         );
       }
@@ -320,7 +332,7 @@ const LoginPage: React.FC = () => {
       if (setNewPasswordThunk.fulfilled.match(result)) {
         await showAlert.loginSuccess(result.payload.user.base_role);
         navigate(
-          isAdminRole(result.payload.user.base_role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD,
+          homeRouteForRole(result.payload.user.base_role),
           { replace: true }
         );
       }
@@ -337,6 +349,48 @@ const LoginPage: React.FC = () => {
     setNewPasswordTouched(false);
     dispatch(resetLoginFlow());
   };
+
+  // ── Forgot Password: request a reset link ──
+  const openForgotPassword = () => {
+    setForgotEmail(form.email);
+    setForgotEmailError('');
+    setForgotSubmitted(false);
+    setForgotMessage('');
+    setShowForgotPassword(true);
+  };
+
+  const closeForgotPassword = () => {
+    setShowForgotPassword(false);
+    setForgotEmail('');
+    setForgotEmailError('');
+    setForgotSubmitted(false);
+    setForgotMessage('');
+  };
+
+  const handleForgotPasswordSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const err = validateEmail(forgotEmail);
+      setForgotEmailError(err);
+      if (err) {
+        showAlert.warning(err, 'Email Error');
+        return;
+      }
+      setForgotSubmitting(true);
+      try {
+        const response = await authService.forgotPassword({ email: forgotEmail });
+        setForgotMessage(response.message || 'If an account exists for that email, password reset instructions have been sent.');
+        setForgotSubmitted(true);
+      } catch (err) {
+        const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+          || 'Something went wrong. Please try again.';
+        showAlert.error(message);
+      } finally {
+        setForgotSubmitting(false);
+      }
+    },
+    [forgotEmail]
+  );
 
   const goToSlide = (index: number) => {
     setIsTransitioning(true);
@@ -428,6 +482,7 @@ const LoginPage: React.FC = () => {
                 {step === 'credentials' && 'Sign In to Your Account'}
                 {step === 'otp' && 'Enter Verification Code'}
                 {step === 'reset-password' && 'Set a New Password'}
+                {step === 'forgot-password' && 'Reset Your Password'}
               </span>
               <div className="flex-1 h-px bg-white/20" />
             </div>
@@ -482,6 +537,17 @@ const LoginPage: React.FC = () => {
                   }}
                   sx={glassFieldSx}
                 />
+
+                {/* Forgot password? */}
+                <div className="flex justify-end -mt-2">
+                  <button
+                    type="button"
+                    onClick={openForgotPassword}
+                    className="text-white/50 hover:text-white/80 text-xs transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
 
                 {/* Password strength hints */}
                 {form.password && (
@@ -666,6 +732,81 @@ const LoginPage: React.FC = () => {
                   )}
                 </button>
               </form>
+            )}
+
+            {/* ── Forgot Password: request a reset link ── */}
+            {step === 'forgot-password' && (
+              <>
+                {!forgotSubmitted ? (
+                  <form onSubmit={handleForgotPasswordSubmit} noValidate className="space-y-4">
+                    <p className="text-white/60 text-xs -mt-2 mb-1">
+                      Enter your account email and we'll send you a link to reset your password.
+                    </p>
+
+                    <TextField
+                      fullWidth required name="forgot_email" label="Email ID" type="email"
+                      value={forgotEmail}
+                      onChange={(e) => {
+                        const cleaned = e.target.value.replace(/[^a-zA-Z0-9@._+\-]/g, '');
+                        setForgotEmail(cleaned);
+                        if (forgotEmailError) setForgotEmailError(validateEmail(cleaned));
+                      }}
+                      onBlur={() => setForgotEmailError(validateEmail(forgotEmail))}
+                      error={!!forgotEmailError}
+                      helperText={forgotEmailError}
+                      size="small"
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <Email sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 17.5 }} />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={glassFieldSx}
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={forgotSubmitting}
+                      className="w-full mt-2 py-3 rounded-xl font-semibold text-white transition-all
+                        duration-300 flex items-center justify-center gap-2 disabled:opacity-70
+                        disabled:cursor-not-allowed login-submit-btn">
+                      {forgotSubmitting ? (
+                        <>
+                          <CircularProgress size={18} sx={{ color: 'white' }} />
+                          Sending...
+                        </>
+                      ) : (
+                        'Send Reset Link'
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={closeForgotPassword}
+                      className="w-full flex items-center justify-center gap-1 text-white/50 hover:text-white/80 text-xs py-1"
+                    >
+                      <KeyboardBackspace fontSize="inherit" /> Back to login
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-white/80 text-sm text-center py-2">
+                      {forgotMessage}
+                    </p>
+                    <p className="text-white/50 text-xs text-center">
+                      Check your inbox for a link to reset your password. It expires in 15 minutes and can only be used once.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={closeForgotPassword}
+                      className="w-full mt-2 py-3 rounded-xl font-semibold text-white transition-all
+                        duration-300 flex items-center justify-center gap-2 login-submit-btn">
+                      Back to Login
+                    </button>
+                  </div>
+                )}
+              </>
             )}
 
             <p className="text-center text-white/30 text-xs mt-5 font-body">

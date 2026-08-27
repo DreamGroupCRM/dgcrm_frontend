@@ -2,7 +2,24 @@
 // DREAM GROUP CRM - UTILITY FUNCTIONS
 // ==========================================
 import Swal from 'sweetalert2';
-import { BaseRole } from '../types';
+import { BaseRole, isAdminRole, isCustomerRole } from '../types';
+import { ROUTES } from '../constants';
+
+// Single source of truth for "where does this role land" — used by
+// PublicRoute/ProtectedRoute/LoginPage/Header/Sidebar so a new role (e.g.
+// 'customer') only needs to be taught here once, instead of in every
+// isAdminRole(role) ? ADMIN : EMPLOYEE ternary that used to be scattered
+// across those files.
+export const homeRouteForRole = (role: BaseRole | null): string => {
+  if (isAdminRole(role)) return ROUTES.ADMIN.DASHBOARD;
+  if (isCustomerRole(role)) return ROUTES.CUSTOMER.DASHBOARD;
+  return ROUTES.EMPLOYEE.DASHBOARD;
+};
+
+// Human-readable label for a BaseRole — shared by loginSuccess/logoutSuccess
+// below and Sidebar.tsx's own role display.
+export const roleLabelFor = (role: BaseRole | null): string =>
+  role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Admin' : role === 'customer' ? 'Customer' : 'Employee';
 
 /**
  * SweetAlert2 notifications
@@ -58,7 +75,7 @@ export const showAlert = {
   },
   /** Shows "Super Admin/Admin/Employee Logged in Successfully" based on base_role */
   loginSuccess: (baseRole: BaseRole) => {
-    const roleLabel = baseRole === 'superadmin' ? 'Super Admin' : baseRole === 'admin' ? 'Admin' : 'Employee';
+    const roleLabel = roleLabelFor(baseRole);
     return Swal.fire({
       icon: 'success',
       title: `${roleLabel} Logged in Successfully`,
@@ -72,7 +89,7 @@ export const showAlert = {
   },
   /** Shows "Super Admin/Admin/Employee Logged out Successfully" based on base_role */
   logoutSuccess: (baseRole: BaseRole) => {
-    const roleLabel = baseRole === 'superadmin' ? 'Super Admin' : baseRole === 'admin' ? 'Admin' : 'Employee';
+    const roleLabel = roleLabelFor(baseRole);
     return Swal.fire({
       icon: 'success',
       title: `${roleLabel} Logged out Successfully`,

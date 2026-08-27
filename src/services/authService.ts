@@ -3,9 +3,15 @@
 // ==========================================
 // Talks to the real backend auth endpoints. No mock/dummy data.
 import {
+  ChangePasswordCredentials,
+  ChangePasswordResponse,
+  ForgotPasswordCredentials,
+  ForgotPasswordResponse,
   LoginCredentials,
   LoginOtpResponse,
   LogoutResponse,
+  ResetPasswordCredentials,
+  ResetPasswordResponse,
   SessionResponse,
   SetNewPasswordCredentials,
   VerifyOtpCredentials,
@@ -51,5 +57,34 @@ export const authService = {
   logout: async (): Promise<LogoutResponse> => {
     const response = await axiosInstance.post('/auth/logout');
     return response.data as LogoutResponse;
+  },
+
+  /**
+   * Change Password — POST /api/auth/change-password (protected). Validates
+   * old_password server-side before setting new_password.
+   */
+  changePassword: async (credentials: ChangePasswordCredentials): Promise<ChangePasswordResponse> => {
+    const response = await axiosInstance.post('/auth/change-password', credentials);
+    return response.data as ChangePasswordResponse;
+  },
+
+  /**
+   * Forgot Password — POST /api/auth/forgot-password (public). Always
+   * resolves with the same generic message whether or not the email
+   * matches an account, so it cannot be used to enumerate registered users.
+   */
+  forgotPassword: async (credentials: ForgotPasswordCredentials): Promise<ForgotPasswordResponse> => {
+    const response = await axiosInstance.post('/auth/forgot-password', credentials);
+    return response.data as ForgotPasswordResponse;
+  },
+
+  /**
+   * Reset Password — POST /api/auth/reset-password (public). Consumes the
+   * token from the emailed reset link; expired/invalid/already-used tokens
+   * are rejected by the backend.
+   */
+  resetPassword: async (credentials: ResetPasswordCredentials): Promise<ResetPasswordResponse> => {
+    const response = await axiosInstance.post('/auth/reset-password', credentials);
+    return response.data as ResetPasswordResponse;
   },
 };

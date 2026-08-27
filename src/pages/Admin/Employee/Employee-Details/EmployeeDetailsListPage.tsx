@@ -8,12 +8,13 @@ import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh, MdSearch, MdVisibility,
   MdFilterList, MdGroups, MdLayers, MdEventBusy, MdPersonOff, MdMoreVert,
   MdGridView, MdViewList, MdEmail, MdPhone, MdLocationOn, MdChevronLeft, MdChevronRight,
+  MdToggleOn, MdToggleOff,
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
-import { FetchEmployeeDetails, DeleteEmployee, Employee, EmployeeStatus } from '../../../../services/employeeDetailsService';
+import { FetchEmployeeDetails, DeleteEmployee, SetEmployeeActiveStatus, Employee, EmployeeStatus } from '../../../../services/employeeDetailsService';
 import { formatDate, showAlert } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
 import './EmployeeDetails.css';
@@ -184,6 +185,25 @@ const EmployeeDetailsListPage: React.FC = () => {
     }
   };
 
+  const handleToggleActive = async (emp: Employee) => {
+    setOpenMenuId(null);
+    const activating = !emp.is_active;
+    const result = await showAlert.confirm(
+      activating
+        ? `${emp.first_name} ${emp.last_name} will be able to log in again.`
+        : `${emp.first_name} ${emp.last_name} will no longer be able to log in.`,
+      activating ? 'Activate Employee?' : 'Deactivate Employee?'
+    );
+    if (!result.isConfirmed) return;
+    try {
+      await SetEmployeeActiveStatus(String(emp.id), activating);
+      toast.success(activating ? 'Employee activated.' : 'Employee deactivated.');
+      fetchEmployees();
+    } catch {
+      toast.error(`Failed to ${activating ? 'activate' : 'deactivate'} employee.`);
+    }
+  };
+
   const handleExportCsv = () => {
     if (filtered.length === 0) {
       toast.error('No employees to export.');
@@ -290,6 +310,12 @@ const EmployeeDetailsListPage: React.FC = () => {
                   <button type="button" title="Edit" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/edit/${emp.id}`); }}
                     className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn">
                     <MdEdit size={15} color="#7c3aed" /> Edit
+                  </button>
+                  <button type="button" title={emp.is_active ? 'Deactivate' : 'Activate'} onClick={() => handleToggleActive(emp)}
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn">
+                    {emp.is_active
+                      ? <><MdToggleOff size={16} color="#ea580c" /> Deactivate</>
+                      : <><MdToggleOn size={16} color="#16a34a" /> Activate</>}
                   </button>
                   <button type="button" title="Delete" onClick={() => handleDelete(emp)}
                     className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn emp-menu-btn-danger">

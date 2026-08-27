@@ -20,6 +20,7 @@ export const STORAGE_KEYS = {
 // URL style: lowercase, hyphenated, no "Add" verb prefixes (e.g. /admin/masters/company).
 export const ROUTES = {
   LOGIN: '/login',
+  RESET_PASSWORD: '/reset-password',
 
   ADMIN: {
     ROOT: '/admin',
@@ -59,6 +60,14 @@ export const ROUTES = {
     PAYMENT_RECEIVED: '/employee/payment-received',
     PAYMENT_DUES: '/employee/payment-dues',
     ATTENDANCE: '/employee/attendance',
+  },
+
+  // Customer First Login — dedicated portal, separate from the staff LOGIN
+  // above. Temporary landing page only for now (see CustomerDashboard).
+  CUSTOMER: {
+    ROOT: '/customer',
+    LOGIN: '/customer/login',
+    DASHBOARD: '/customer/dashboard',
   },
 } as const;
 

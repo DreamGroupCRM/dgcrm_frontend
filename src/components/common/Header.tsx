@@ -8,10 +8,9 @@ import { toggleTheme } from '../../redux/slices/themeSlice';
 import { openProfileModal } from '../../redux/slices/profileSlice';
 import { logoutThunk } from '../../redux/thunks/authThunks';
 import { clearProfile } from '../../redux/slices/profileSlice';
-import { showAlert, getInitials } from '../../utils';
+import { showAlert, getInitials, homeRouteForRole } from '../../utils';
 import { SOCIAL_LINKS, ROUTES } from '../../constants';
 import { getTheme } from '../../styles/theme';
-import { isAdminRole } from '../../types';
 
 import { FiSun, FiMoon, FiMoreVertical, FiSettings } from 'react-icons/fi';
 import { AiOutlineInstagram, AiOutlineWhatsApp } from 'react-icons/ai';
@@ -74,7 +73,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   const t              = getTheme(isDark);
   const navigate       = useNavigate();
 
-  const dashboardRoute = isAdminRole(role) ? ROUTES.ADMIN.DASHBOARD : ROUTES.EMPLOYEE.DASHBOARD;
+  const dashboardRoute = homeRouteForRole(role);
   const notesUserId    = (user as any)?.id ?? user?.email ?? 'guest';
 
   // Authoritative desktop/mobile switch shared with Sidebar.tsx.

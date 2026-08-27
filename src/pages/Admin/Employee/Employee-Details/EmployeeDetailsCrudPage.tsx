@@ -14,12 +14,13 @@ import { getTheme } from '../../../../styles/theme';
 import {
   ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
   fetchEmployeePermissions, FetchEmployeeDetails,
-  FetchVisibleEmployees, AssignVisibleEmployees,
+  FetchVisibleEmployees, AssignVisibleEmployees, SetEmployeeRole,
   EmployeeFormValues, EmployeeFileValues, EmployeeStatus,
 } from '../../../../services/employeeDetailsService';
 import { FetchDepartmentList } from '../../../../services/departmentService';
 import { fetchDesignationList } from '../../../../services/designationService';
 import { fetchMappingMatrix } from '../../../../services/moduleActionService';
+import { fetchAssignableRoles } from '../../../../services/roleService';
 import './EmployeeDetails.css';
 
 type Mode = 'add' | 'edit' | 'view';
@@ -184,13 +185,30 @@ const CheckboxGroup: React.FC<{
   t: Theme; isView: boolean;
   label: string; required?: boolean; options: IdOption[];
   selected: number[]; onToggle: (v: number) => void; emptyHint?: string; loading?: boolean;
-}> = ({ t, isView, label, required, options, selected, onToggle, emptyHint, loading }) => (
+  // 'plain' — Department/Designation's compact inline checklist (default).
+  // 'chip' — Assign Visible Employees: one pill per employee, checkbox
+  // first, wrapping to a new line whenever the row runs out of width.
+  variant?: 'plain' | 'chip';
+}> = ({ t, isView, label, required, options, selected, onToggle, emptyHint, loading, variant = 'plain' }) => (
   <div className="mb-5">
     <label className="emp-label">{label}{required && <span className="emp-required"> *</span>}</label>
     {loading ? (
       <p className="emp-hint-text">Loading...</p>
     ) : options.length === 0 ? (
       <p className="emp-hint-text">{emptyHint}</p>
+    ) : variant === 'chip' ? (
+      <div className="emp-chip-row">
+        {options.map((opt) => (
+          <label
+            key={opt.value}
+            className={`emp-chip${selected.includes(opt.value) ? ' emp-chip-checked' : ''}`}
+            style={{ cursor: isView ? 'default' : 'pointer' }}
+          >
+            <input type="checkbox" checked={selected.includes(opt.value)} disabled={isView} onChange={() => onToggle(opt.value)} />
+            {opt.label}
+          </label>
+        ))}
+      </div>
     ) : (
       <div className="flex flex-wrap gap-x-5 gap-y-2.5">
         {options.map((opt) => (
@@ -238,15 +256,15 @@ const ModuleActionGrid: React.FC<{
   if (loading) return <p className="emp-hint-text">Loading...</p>;
   if (grid.modules.length === 0) return <p className="emp-hint-text">No modules available.</p>;
   return (
-    <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
+    <div className="emp-grid-scroll" style={{ border: `1px solid ${t.surfaceBorder}`, borderRadius: 12 }}>
       <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
         <thead>
           <tr>
-            <th className="emp-grid-th">
+            <th className="emp-grid-th-gradient">
               Module
             </th>
             {grid.actionColumns.map((a) => (
-              <th key={a.code} className="emp-grid-th-center">
+              <th key={a.code} className="emp-grid-th-gradient emp-grid-th-gradient-center">
                 {a.label}
               </th>
             ))}
@@ -254,17 +272,18 @@ const ModuleActionGrid: React.FC<{
         </thead>
         <tbody>
           {grid.modules.map((m) => (
-            <tr key={m.id}>
+            <tr key={m.id} className="emp-grid-tr">
               <td className="emp-grid-td">
                 {m.name}
               </td>
               {grid.actionColumns.map((a) => {
                 const moduleActionId = grid.cells[`${m.id}:${a.code}`];
+                const checked = moduleActionId != null && selected.includes(moduleActionId);
                 return (
-                  <td key={a.code} className="emp-grid-td-center">
+                  <td key={a.code} className={`emp-grid-td-center${checked ? ' emp-grid-td-checked' : ''}`}>
                     {moduleActionId != null ? (
                       <input
-                        type="checkbox" checked={selected.includes(moduleActionId)} disabled={isView}
+                        type="checkbox" checked={checked} disabled={isView}
                         style={{ cursor: isView ? 'default' : 'pointer' }}
                         onChange={() => onToggle(moduleActionId)}
                       />
@@ -368,6 +387,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [visibleEmployeeIds, setVisibleEmployeeIds] = useState<number[]>([]);
   const [loadingVisibleEmployees, setLoadingVisibleEmployees] = useState(true);
 
+  // User Management — Role. Lives outside `form` (like visibleEmployeeIds
+  // above) since role_id is saved through its own endpoint (SetEmployeeRole),
+  // not the main Employee create/update payload — see
+  // employeeDetailsService.ts's comment on why.
+  const [roleOptions, setRoleOptions] = useState<IdOption[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+
   const set = <K extends keyof EmployeeFormValues>(key: K, value: EmployeeFormValues[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -409,6 +436,23 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         toast.error('Failed to load designations.');
       } finally {
         setLoadingDesignations(false);
+      }
+    })();
+  }, []);
+
+  // ── Role dropdown options — needed in every mode. Uses the plain
+  //    admin-usable /masters/roles dropdown, not the SuperAdmin-only Role
+  //    Master screen's /role endpoint (roleService.fetchRoleList) — see
+  //    fetchAssignableRoles's own comment. ─────────────────────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetchAssignableRoles();
+        if (res.success) setRoleOptions((res.data || []).map((r) => ({ value: Number(r.id), label: r.name })));
+      } catch {
+        toast.error('Failed to load roles.');
+      } finally {
+        setLoadingRoles(false);
       }
     })();
   }, []);
@@ -503,6 +547,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             status: e.status || 'active',
             is_active: e.is_active,
           });
+          setSelectedRoleId(e.role_id != null ? Number(e.role_id) : null);
           setExistingUrls({
             profile_photo: e.profile_photo_url, aadhar_card: e.aadhar_card_url, pan_card: e.pan_card_url,
             resume: e.resume_url, appointment_letter: e.appointment_letter_url, passbook_photo: e.passbook_photo_url,
@@ -655,6 +700,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         } catch {
           toast.error('Employee saved, but failed to update the Visible Employees assignment.');
         }
+        // Role also saves through its own endpoint (role_id lives on the
+        // linked login user, not the Employee row) — same reasoning as
+        // Visible Employees above.
+        try {
+          await SetEmployeeRole(targetId, selectedRoleId);
+        } catch {
+          toast.error('Employee saved, but failed to update the Role assignment.');
+        }
       }
       navigate('/admin/employee/employee-details');
     } catch (err: any) {
@@ -688,7 +741,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40, ...cssVars }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -707,21 +760,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <div className="text-right px-4 py-2 rounded-xl" style={{ border: `1px solid ${t.surfaceBorder}` }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: t.textSecondary }}>Employee ID</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: '#4338ca' }}>
-              {employeeCode || 'Auto-generated'}
-            </div>
-          </div>
-          {mode === 'add' && (
-            <div
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
-              style={{ background: isDark ? 'rgba(99,102,241,0.12)' : '#eef2ff', color: '#4338ca', fontSize: 10.5, fontWeight: 600 }}
-            >
-              <MdInfoOutline size={15} /> ID will auto increment
-            </div>
-          )}
+        <div className="emp-id-badge">
+          <span className="emp-id-label">Employee ID</span>
+          <span className="emp-id-value">{employeeCode || '—'}</span>
         </div>
       </div>
 
@@ -729,7 +770,8 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+        {/* Row 1 of 4 — Name */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <Field t={t} label="First Name" required>
             <input type="text" placeholder="Enter first name" value={form.first_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('first_name', e.target.value)} className={fieldClass} />
@@ -742,45 +784,28 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter last name" value={form.last_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('last_name', e.target.value)} className={fieldClass} />
           </Field>
+          <Field t={t} label="Date of Birth" required>
+            <input type="date" value={form.date_of_birth} readOnly={isView} disabled={isView}
+              onChange={(e) => set('date_of_birth', e.target.value)} onClick={openPicker} className={fieldClass} />
+          </Field>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 items-start">
-          <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field t={t} label="Date of Birth" required>
-              <input type="date" value={form.date_of_birth} readOnly={isView} disabled={isView}
-                onChange={(e) => set('date_of_birth', e.target.value)} onClick={openPicker} className={fieldClass} />
-            </Field>
-            <Field t={t} label="Email" required>
-              <input type="email" placeholder="Enter email address" value={form.email} readOnly={isView} disabled={isView}
-                onChange={(e) => set('email', e.target.value)} className={fieldClass} />
-            </Field>
-            <PhoneField t={t} isView={isView} label="Mobile Number" required code={form.mobile_country_code} number={form.mobile_number}
-              onCode={(v) => set('mobile_country_code', v)} onNumber={(v) => set('mobile_number', v)} />
-            <PhoneField t={t} isView={isView} label="Alternate Number" code={form.alternate_country_code} number={form.alternate_number}
-              onCode={(v) => set('alternate_country_code', v)} onNumber={(v) => set('alternate_number', v)} />
-            <PhoneField t={t} isView={isView} label="WhatsApp Number" code={form.whatsapp_country_code} number={form.whatsapp_number}
-              onCode={(v) => set('whatsapp_country_code', v)} onNumber={(v) => set('whatsapp_number', v)} />
-          </div>
-
-          {/* Profile Photo */}
-          <div>
-            <label className="emp-label">Profile Photo</label>
-            <ProfilePhotoUpload
-              t={t} isDark={isDark} disabled={isView}
-              file={files.profile_photo} existingUrl={existingUrls.profile_photo}
-              onChange={setFile('profile_photo')}
-            />
-          </div>
+        {/* Row 2 of 4 — Contact */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <Field t={t} label="Email" required>
+            <input type="email" placeholder="Enter email address" value={form.email} readOnly={isView} disabled={isView}
+              onChange={(e) => set('email', e.target.value)} className={fieldClass} />
+          </Field>
+          <PhoneField t={t} isView={isView} label="Mobile Number" required code={form.mobile_country_code} number={form.mobile_number}
+            onCode={(v) => set('mobile_country_code', v)} onNumber={(v) => set('mobile_number', v)} />
+          <PhoneField t={t} isView={isView} label="Alternate Number" code={form.alternate_country_code} number={form.alternate_number}
+            onCode={(v) => set('alternate_country_code', v)} onNumber={(v) => set('alternate_number', v)} />
+          <PhoneField t={t} isView={isView} label="WhatsApp Number" code={form.whatsapp_country_code} number={form.whatsapp_number}
+            onCode={(v) => set('whatsapp_country_code', v)} onNumber={(v) => set('whatsapp_number', v)} />
         </div>
 
-        <Field t={t} label="Address" required className="mb-4">
-          <textarea
-            placeholder="Enter full address" value={form.address} readOnly={isView} disabled={isView} rows={2}
-            onChange={(e) => set('address', e.target.value)} className={fieldClass} style={{ resize: 'vertical' }}
-          />
-        </Field>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Row 3 of 4 — ID proofs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <Field t={t} label="Aadhar Number">
             <input type="text" placeholder="Enter aadhar number" value={form.aadhar_number} readOnly={isView} disabled={isView}
               onChange={(e) => set('aadhar_number', e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
@@ -794,13 +819,32 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf"
             file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={setFile('pan_card')} />
         </div>
+
+        {/* Row 4 of 4 — Address + Profile Photo */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start">
+          <Field t={t} label="Address" required className="lg:col-span-3">
+            <textarea
+              placeholder="Enter full address" value={form.address} readOnly={isView} disabled={isView} rows={2}
+              onChange={(e) => set('address', e.target.value)} className={fieldClass} style={{ resize: 'vertical' }}
+            />
+          </Field>
+          <div>
+            <label className="emp-label">Profile Photo</label>
+            <ProfilePhotoUpload
+              t={t} isDark={isDark} disabled={isView}
+              file={files.profile_photo} existingUrl={existingUrls.profile_photo}
+              onChange={setFile('profile_photo')}
+            />
+          </div>
+        </div>
       </div>
 
       {/* ── Office Use Only ──────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="linear-gradient(135deg,#c2410c,#fb923c)" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        {/* All 10 fields flow across exactly 2 rows on desktop (5 cols x 2) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <Field t={t} label="Employee Joining Date" required>
             <input type="date" value={form.joining_date} readOnly={isView} disabled={isView}
               onChange={(e) => set('joining_date', e.target.value)} onClick={openPicker} className={fieldClass} />
@@ -819,9 +863,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="time" value={form.check_out_time} readOnly={isView} disabled={isView}
               onChange={(e) => set('check_out_time', e.target.value)} onClick={openPicker} className={fieldClass} />
           </Field>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Field t={t} label="Holidays" required>
             <select value={form.holidays} disabled={isView} onChange={(e) => set('holidays', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select holidays</option>
@@ -847,6 +888,16 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </Field>
+          <Field t={t} label="Role">
+            <select
+              value={selectedRoleId ?? ''} disabled={isView || loadingRoles}
+              onChange={(e) => setSelectedRoleId(e.target.value ? Number(e.target.value) : null)}
+              className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}
+            >
+              <option value="">{loadingRoles ? 'Loading roles...' : 'No role assigned'}</option>
+              {roleOptions.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </select>
+          </Field>
         </div>
       </div>
 
@@ -854,7 +905,8 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="linear-gradient(135deg,#059669,#22c55e)" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+        {/* All 7 fields flow across exactly 2 rows on desktop (4 cols x 2) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Field t={t} label="Account Holder Name" required>
             <input type="text" placeholder="Enter account holder name" value={form.account_holder_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('account_holder_name', e.target.value)} className={fieldClass} />
@@ -867,9 +919,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter account number" value={form.bank_account_number} readOnly={isView} disabled={isView}
               onChange={(e) => set('bank_account_number', e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Field t={t} label="Account Type" required>
             <select value={form.account_type} disabled={isView} onChange={(e) => set('account_type', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select account type</option>
@@ -884,9 +933,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter branch name" value={form.branch} readOnly={isView} disabled={isView}
               onChange={(e) => set('branch', e.target.value)} className={fieldClass} />
           </Field>
-        </div>
-
-        <div className="mt-4" style={{ maxWidth: 320 }}>
           <FileUploadBox t={t} isView={isView} label="Upload Bank Passbook Photo" hint="JPG, PNG (Max 2MB)" accept=".jpg,.jpeg,.png" required
             file={files.passbook_photo} existingUrl={existingUrls.passbook_photo} onChange={setFile('passbook_photo')} />
         </div>
@@ -896,34 +942,44 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module for this Employee" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
 
-        <CheckboxGroup
-          t={t} isView={isView}
-          label="Assign Departments" required
-          options={departmentOptions} selected={form.department_ids}
-          onToggle={toggleDepartment}
-          loading={loadingDepartments} emptyHint="No departments available."
-        />
-        <CheckboxGroup
-          t={t} isView={isView}
-          label="Assign Designations" required
-          options={visibleDesignationOptions} selected={form.designation_ids}
-          onToggle={(v) => toggleIdInArray('designation_ids', v)}
-          loading={loadingDesignations}
-          emptyHint={form.department_ids.length === 0 ? 'Select a department above to see its designations.' : 'No designations available for the selected department(s).'}
-        />
+        {/* Department (left) + Designation (right) — side by side, equal balance */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+          <div className="emp-assign-box">
+            <CheckboxGroup
+              t={t} isView={isView}
+              label="Assign Departments" required
+              options={departmentOptions} selected={form.department_ids}
+              onToggle={toggleDepartment}
+              loading={loadingDepartments} emptyHint="No departments available."
+            />
+          </div>
+          <div className="emp-assign-box">
+            <CheckboxGroup
+              t={t} isView={isView}
+              label="Assign Designations" required
+              options={visibleDesignationOptions} selected={form.designation_ids}
+              onToggle={(v) => toggleIdInArray('designation_ids', v)}
+              loading={loadingDesignations}
+              emptyHint={form.department_ids.length === 0 ? 'Select a department above to see its designations.' : 'No designations available for the selected department(s).'}
+            />
+          </div>
+        </div>
+
         <div className="mb-5">
           <label className="emp-label">Assign Actions & Modules<span className="emp-required"> *</span></label>
-          <ModuleActionGrid
-            t={t} isView={isView} grid={moduleGrid}
-            selected={form.module_action_ids}
-            onToggle={(v) => toggleIdInArray('module_action_ids', v)}
-            loading={loadingModules}
-          />
+          <div className="emp-module-panel">
+            <ModuleActionGrid
+              t={t} isView={isView} grid={moduleGrid}
+              selected={form.module_action_ids}
+              onToggle={(v) => toggleIdInArray('module_action_ids', v)}
+              loading={loadingModules}
+            />
+          </div>
         </div>
 
         <CheckboxGroup
           t={t} isView={isView}
-          label="Assign Visible Employees"
+          label="Assign Visible Employees" variant="chip"
           options={visibleEmployeeOptions} selected={visibleEmployeeIds}
           onToggle={toggleVisibleEmployee}
           loading={loadingVisibleEmployees} emptyHint="No other employees available."

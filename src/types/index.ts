@@ -6,7 +6,9 @@
 // seed data but the frontend has never had a distinct view for it — it's
 // left out of this union deliberately, same as before, so it keeps landing
 // on the employee view rather than silently gaining admin access.
-export type BaseRole = 'superadmin' | 'admin' | 'employee';
+// 'customer' — Customer First Login: a customer's linked login account
+// (see backend's customer.repository.ts's createCustomerWithUser).
+export type BaseRole = 'superadmin' | 'admin' | 'employee' | 'customer';
 
 // superadmin is a strict superset of admin (see backend's role.ts middleware
 // comment) — anywhere the app decides "does this user get the admin view",
@@ -14,6 +16,8 @@ export type BaseRole = 'superadmin' | 'admin' | 'employee';
 // SuperAdmin-only screens" (Role Master, Action & Module, Module Mapping),
 // check `role === 'superadmin'` directly instead.
 export const isAdminRole = (role: BaseRole | null): boolean => role === 'admin' || role === 'superadmin';
+
+export const isCustomerRole = (role: BaseRole | null): boolean => role === 'customer';
 
 // Detailed role record (comes nested inside user.role from the login API)
 export interface RoleInfo {
@@ -108,6 +112,40 @@ export interface SetNewPasswordCredentials {
 
 // POST /api/auth/logout response
 export interface LogoutResponse {
+  success: boolean;
+  message?: string;
+}
+
+// POST /api/auth/change-password (authenticated) — Change Password
+export interface ChangePasswordCredentials {
+  old_password: string;
+  new_password: string;
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+  message?: string;
+}
+
+// POST /api/auth/forgot-password (public) — always resolves with the same
+// generic message regardless of whether the email matches an account.
+export interface ForgotPasswordCredentials {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  success: boolean;
+  message?: string;
+}
+
+// POST /api/auth/reset-password (public) — consumes the token from the
+// emailed reset link.
+export interface ResetPasswordCredentials {
+  token: string;
+  new_password: string;
+}
+
+export interface ResetPasswordResponse {
   success: boolean;
   message?: string;
 }
