@@ -21,6 +21,7 @@ import { CircularProgress } from '@mui/material';
 import PublicRoute from './PublicRoute';
 
 const LoginPage     = lazy(() => import('../pages/Login/LoginPage'));
+const ResetPasswordPage = lazy(() => import('../pages/Login/ResetPasswordPage'));
 const AdminRoutes   = lazy(() => import('./AdminRoutes'));
 const EmployeeRoutes = lazy(() => import('./EmployeeRoutes'));
 
@@ -45,6 +46,12 @@ const AppRoutes: React.FC = () => (
             </PublicRoute>
           }
         />
+
+        {/* Public: /reset-password?token=... — the emailed Forgot Password
+            link. Deliberately NOT wrapped in PublicRoute: it must work even
+            if the browser already has an active session (e.g. for a
+            different account), so it never auto-redirects to a dashboard. */}
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Root redirect */}
         <Route path="/" element={<Navigate to="/login" replace />} />

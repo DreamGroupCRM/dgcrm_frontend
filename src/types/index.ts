@@ -112,6 +112,40 @@ export interface LogoutResponse {
   message?: string;
 }
 
+// POST /api/auth/change-password (authenticated) — Change Password
+export interface ChangePasswordCredentials {
+  old_password: string;
+  new_password: string;
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+  message?: string;
+}
+
+// POST /api/auth/forgot-password (public) — always resolves with the same
+// generic message regardless of whether the email matches an account.
+export interface ForgotPasswordCredentials {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  success: boolean;
+  message?: string;
+}
+
+// POST /api/auth/reset-password (public) — consumes the token from the
+// emailed reset link.
+export interface ResetPasswordCredentials {
+  token: string;
+  new_password: string;
+}
+
+export interface ResetPasswordResponse {
+  success: boolean;
+  message?: string;
+}
+
 // GET /api/auth/profile response
 export interface ProfileResponse {
   success: boolean;

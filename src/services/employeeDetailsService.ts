@@ -94,6 +94,11 @@ export interface Employee {
   is_active                                           : boolean;
   created_at                                           : string;
   updated_at?                                           : string;
+
+  // User Management — Role. Lives on the linked login user (not on the
+  // Employee row itself), joined in by the backend's getEmployeeById.
+  role_id?                                             : number | null;
+  role_name?                                           : string | null;
 }
 
 // The backend's actual column names for several Employee fields differ from
@@ -378,6 +383,30 @@ export const DeleteEmployee = async (id: string): Promise<EmployeeDeleteResponse
     headers: { [API_NAME_HEADER]: 'DeleteEmployee' },
   });
   return res.data;
+};
+
+// ── Activate / Deactivate — User Management ─────────────────────────────────
+// Cascades to the linked login user's is_active on the backend (see
+// employees.repository.ts's setEmployeeActiveStatus), so deactivating here
+// actually blocks that employee's login, not just hides them from lists.
+/** PATCH /api/employees/:id/active-status */
+export const SetEmployeeActiveStatus = async (id: string, is_active: boolean): Promise<EmployeeSingleResponse> => {
+  const res = await axiosInstance.patch(`/employees/${id}/active-status`, { is_active }, {
+    headers: { [API_NAME_HEADER]: 'SetEmployeeActiveStatus' },
+  });
+  return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
+};
+
+// User Management — Role reassignment. Separate endpoint from
+// createEmployee/EditEmployee (role_id lives on the linked login user, not
+// the Employee row — see the backend's setEmployeeRole comment), called
+// after the main employee save, same pattern as AssignVisibleEmployees below.
+/** PATCH /api/employees/:id/role */
+export const SetEmployeeRole = async (id: string, role_id: number | null): Promise<EmployeeSingleResponse> => {
+  const res = await axiosInstance.patch(`/employees/${id}/role`, { role_id }, {
+    headers: { [API_NAME_HEADER]: 'SetEmployeeRole' },
+  });
+  return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
 };
 
 // ── Per-employee module/action permission checklist (Edit/View mode) ───────

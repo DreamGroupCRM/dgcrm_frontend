@@ -1,17 +1,25 @@
 // ==========================================
 // DREAM GROUP CRM - PROFILE MODAL
 // ==========================================
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { closeProfileModal } from '../../redux/slices/profileSlice';
 import { fetchProfileThunk } from '../../redux/thunks/profileThunks';
-import { getInitials, formatLastLogin } from '../../utils';
+import { getInitials, formatLastLogin, showAlert } from '../../utils';
 import { getTheme } from '../../styles/theme';
-import { CircularProgress } from '@mui/material';
+import { authService } from '../../services/authService';
+import { CircularProgress, InputAdornment, IconButton, TextField } from '@mui/material';
+import { Visibility, VisibilityOff, Lock } from '@mui/icons-material';
 import {
   MdClose, MdEmail, MdPhone, MdBadge,
-  MdCalendarToday, MdBusiness, MdAdminPanelSettings,
+  MdCalendarToday, MdBusiness, MdAdminPanelSettings, MdLockOutline,
 } from 'react-icons/md';
+
+// Change Password — new_password must be at least 6 characters, matching
+// auth.service.ts's ChangePasswordSchema (the existing, already-live
+// change-password endpoint's own minimum — deliberately not the stronger
+// 8-char+complexity rule used for first-login/forgot-password resets).
+const MIN_NEW_PASSWORD_LENGTH = 6;
 
 const ProfileModal: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -20,12 +28,73 @@ const ProfileModal: React.FC = () => {
   const isDark   = mode === 'dark';
   const t        = getTheme(isDark);
 
+  // ── Change Password (inline, collapsible section) ──
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [pwdForm, setPwdForm] = useState({ old_password: '', new_password: '', confirm_password: '' });
+  const [pwdErrors, setPwdErrors] = useState({ old_password: '', new_password: '', confirm_password: '' });
+  const [pwdVisibility, setPwdVisibility] = useState({ old: false, new: false, confirm: false });
+  const [pwdSaving, setPwdSaving] = useState(false);
+
   // Fetch profile from API when the modal is opened and data is not yet loaded
   useEffect(() => {
     if (profileModalOpen && !profile) dispatch(fetchProfileThunk());
   }, [profileModalOpen, profile, dispatch]);
 
   if (!profileModalOpen) return null;
+
+  const resetPasswordForm = () => {
+    setShowChangePassword(false);
+    setPwdForm({ old_password: '', new_password: '', confirm_password: '' });
+    setPwdErrors({ old_password: '', new_password: '', confirm_password: '' });
+  };
+
+  const handlePwdChange = (field: 'old_password' | 'new_password' | 'confirm_password', value: string) => {
+    setPwdForm((p) => ({ ...p, [field]: value }));
+  };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errors = {
+      old_password: pwdForm.old_password ? '' : 'Current password is required.',
+      new_password:
+        !pwdForm.new_password ? 'New password is required.'
+        : pwdForm.new_password.length < MIN_NEW_PASSWORD_LENGTH ? `New password must be at least ${MIN_NEW_PASSWORD_LENGTH} characters.`
+        : pwdForm.new_password === pwdForm.old_password ? 'New password must be different from the current password.'
+        : '',
+      confirm_password:
+        pwdForm.confirm_password !== pwdForm.new_password ? 'Passwords do not match.' : '',
+    };
+    setPwdErrors(errors);
+    if (errors.old_password || errors.new_password || errors.confirm_password) return;
+
+    setPwdSaving(true);
+    try {
+      await authService.changePassword({ old_password: pwdForm.old_password, new_password: pwdForm.new_password });
+      showAlert.success('Password changed successfully');
+      resetPasswordForm();
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        || 'Failed to change password. Please try again.';
+      showAlert.error(message);
+    } finally {
+      setPwdSaving(false);
+    }
+  };
+
+  const pwdFieldSx = {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '10px',
+      background: t.inputBg,
+      color: t.inputText,
+      '& fieldset': { borderColor: t.inputBorder },
+      '&:hover fieldset': { borderColor: t.inputFocusBorder },
+      '&.Mui-focused fieldset': { borderColor: '#2563eb' },
+      '&.Mui-error fieldset': { borderColor: '#ef4444' },
+    },
+    '& .MuiInputLabel-root': { color: t.textSecondary },
+    '& .MuiInputLabel-root.Mui-focused': { color: '#2563eb' },
+    '& .MuiFormHelperText-root': { color: '#ef4444' },
+  };
 
   // Full display name from first_name + last_name
   const fullName = profile
@@ -174,6 +243,89 @@ const ProfileModal: React.FC = () => {
                   label="Last Login"
                   value={formatLastLogin(profile.last_login_at)}
                 />
+              </div>
+
+              {/* Change Password — collapsible inline form */}
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => (showChangePassword ? resetPasswordForm() : setShowChangePassword(true))}
+                  className="w-full flex items-center gap-2 p-2.5 rounded-xl text-sm font-semibold transition-all"
+                  style={{ background: t.insetBg, color: t.textPrimary, border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
+                >
+                  <MdLockOutline size={17} style={{ color: '#2563eb' }} />
+                  Change Password
+                </button>
+
+                {showChangePassword && (
+                  <form onSubmit={handleChangePasswordSubmit} noValidate className="space-y-3 mt-2.5">
+                    <TextField
+                      fullWidth required size="small" label="Current Password"
+                      type={pwdVisibility.old ? 'text' : 'password'}
+                      value={pwdForm.old_password}
+                      onChange={(e) => handlePwdChange('old_password', e.target.value)}
+                      error={!!pwdErrors.old_password}
+                      helperText={pwdErrors.old_password}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start"><Lock sx={{ fontSize: 17.5, color: t.textSecondary }} /></InputAdornment>,
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton size="small" onClick={() => setPwdVisibility((p) => ({ ...p, old: !p.old }))}>
+                              {pwdVisibility.old ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={pwdFieldSx}
+                    />
+                    <TextField
+                      fullWidth required size="small" label="New Password"
+                      type={pwdVisibility.new ? 'text' : 'password'}
+                      value={pwdForm.new_password}
+                      onChange={(e) => handlePwdChange('new_password', e.target.value)}
+                      error={!!pwdErrors.new_password}
+                      helperText={pwdErrors.new_password || `At least ${MIN_NEW_PASSWORD_LENGTH} characters`}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start"><Lock sx={{ fontSize: 17.5, color: t.textSecondary }} /></InputAdornment>,
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton size="small" onClick={() => setPwdVisibility((p) => ({ ...p, new: !p.new }))}>
+                              {pwdVisibility.new ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={pwdFieldSx}
+                    />
+                    <TextField
+                      fullWidth required size="small" label="Confirm New Password"
+                      type={pwdVisibility.confirm ? 'text' : 'password'}
+                      value={pwdForm.confirm_password}
+                      onChange={(e) => handlePwdChange('confirm_password', e.target.value)}
+                      error={!!pwdErrors.confirm_password}
+                      helperText={pwdErrors.confirm_password}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start"><Lock sx={{ fontSize: 17.5, color: t.textSecondary }} /></InputAdornment>,
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton size="small" onClick={() => setPwdVisibility((p) => ({ ...p, confirm: !p.confirm }))}>
+                              {pwdVisibility.confirm ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={pwdFieldSx}
+                    />
+                    <button
+                      type="submit"
+                      disabled={pwdSaving}
+                      className="w-full py-2 rounded-xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                      style={{ background: 'linear-gradient(135deg,#1d4ed8,#2563eb)', border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
+                    >
+                      {pwdSaving ? (<><CircularProgress size={16} sx={{ color: 'white' }} /> Updating...</>) : 'Update Password'}
+                    </button>
+                  </form>
+                )}
               </div>
             </>
           )}

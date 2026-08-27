@@ -14,12 +14,13 @@ import { getTheme } from '../../../../styles/theme';
 import {
   ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
   fetchEmployeePermissions, FetchEmployeeDetails,
-  FetchVisibleEmployees, AssignVisibleEmployees,
+  FetchVisibleEmployees, AssignVisibleEmployees, SetEmployeeRole,
   EmployeeFormValues, EmployeeFileValues, EmployeeStatus,
 } from '../../../../services/employeeDetailsService';
 import { FetchDepartmentList } from '../../../../services/departmentService';
 import { fetchDesignationList } from '../../../../services/designationService';
 import { fetchMappingMatrix } from '../../../../services/moduleActionService';
+import { fetchRoleList } from '../../../../services/roleService';
 import './EmployeeDetails.css';
 
 type Mode = 'add' | 'edit' | 'view';
@@ -368,6 +369,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [visibleEmployeeIds, setVisibleEmployeeIds] = useState<number[]>([]);
   const [loadingVisibleEmployees, setLoadingVisibleEmployees] = useState(true);
 
+  // User Management — Role. Lives outside `form` (like visibleEmployeeIds
+  // above) since role_id is saved through its own endpoint (SetEmployeeRole),
+  // not the main Employee create/update payload — see
+  // employeeDetailsService.ts's comment on why.
+  const [roleOptions, setRoleOptions] = useState<IdOption[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+
   const set = <K extends keyof EmployeeFormValues>(key: K, value: EmployeeFormValues[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -409,6 +418,20 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         toast.error('Failed to load designations.');
       } finally {
         setLoadingDesignations(false);
+      }
+    })();
+  }, []);
+
+  // ── Role dropdown options — needed in every mode ────────────────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetchRoleList(1, 1000);
+        if (res.success) setRoleOptions((res.rows || []).map((r) => ({ value: Number(r.id), label: r.name })));
+      } catch {
+        toast.error('Failed to load roles.');
+      } finally {
+        setLoadingRoles(false);
       }
     })();
   }, []);
@@ -503,6 +526,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             status: e.status || 'active',
             is_active: e.is_active,
           });
+          setSelectedRoleId(e.role_id != null ? Number(e.role_id) : null);
           setExistingUrls({
             profile_photo: e.profile_photo_url, aadhar_card: e.aadhar_card_url, pan_card: e.pan_card_url,
             resume: e.resume_url, appointment_letter: e.appointment_letter_url, passbook_photo: e.passbook_photo_url,
@@ -654,6 +678,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           await AssignVisibleEmployees(targetId, visibleEmployeeIds);
         } catch {
           toast.error('Employee saved, but failed to update the Visible Employees assignment.');
+        }
+        // Role also saves through its own endpoint (role_id lives on the
+        // linked login user, not the Employee row) — same reasoning as
+        // Visible Employees above.
+        try {
+          await SetEmployeeRole(targetId, selectedRoleId);
+        } catch {
+          toast.error('Employee saved, but failed to update the Role assignment.');
         }
       }
       navigate('/admin/employee/employee-details');
@@ -845,6 +877,16 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Employee Status" required>
             <select value={form.status} disabled={isView} onChange={(e) => set('status', e.target.value as EmployeeStatus)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </Field>
+          <Field t={t} label="Role">
+            <select
+              value={selectedRoleId ?? ''} disabled={isView || loadingRoles}
+              onChange={(e) => setSelectedRoleId(e.target.value ? Number(e.target.value) : null)}
+              className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}
+            >
+              <option value="">{loadingRoles ? 'Loading roles...' : 'No role assigned'}</option>
+              {roleOptions.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </Field>
         </div>

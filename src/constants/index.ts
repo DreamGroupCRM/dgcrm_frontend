@@ -20,6 +20,7 @@ export const STORAGE_KEYS = {
 // URL style: lowercase, hyphenated, no "Add" verb prefixes (e.g. /admin/masters/company).
 export const ROUTES = {
   LOGIN: '/login',
+  RESET_PASSWORD: '/reset-password',
 
   ADMIN: {
     ROOT: '/admin',
