@@ -201,7 +201,7 @@ const BuildingListPage: React.FC = () => {
 
       {/* ── Top bar: Search | Add + Download + Refresh ─────────────────── */}
       <div className="master-topbar">
-        <div className="master-search-box" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
+        <div className="master-search-box master-search-box-accent" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input
             type="text"
@@ -238,8 +238,8 @@ const BuildingListPage: React.FC = () => {
                 second row; every other column spans both rows via rowSpan
                 so its bottom border still lines up with the sub-header row. */}
             <thead>
-              <tr style={{ background: t.tableHeaderBg }}>
-                <th className="master-table-actions-th" rowSpan={2} style={{
+              <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
+                <th className="master-table-actions-th master-table-header-gradient" rowSpan={2} style={{
                   width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
                   borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
                   borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
@@ -256,7 +256,7 @@ const BuildingListPage: React.FC = () => {
                 <SortableTh label="Parking" rowSpan={2} active={sortKey === 'parking'} dir={sortDir} onClick={() => toggleSort('parking')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Created At" rowSpan={2} active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} style={{ borderBottom: `1px solid ${t.divider}` }} />
               </tr>
-              <tr style={{ background: t.tableHeaderBg }}>
+              <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <SortableTh label="Total" active={sortKey === 'flats'} dir={sortDir} onClick={() => toggleSort('flats')} style={{ borderBottom: `1px solid ${t.divider}`, textAlign: 'center' }} />
                 <th style={{ borderBottom: `1px solid ${t.divider}`, textAlign: 'center' }}>Enabled</th>
                 <th style={{ borderBottom: `1px solid ${t.divider}`, textAlign: 'center' }}>Disabled</th>
