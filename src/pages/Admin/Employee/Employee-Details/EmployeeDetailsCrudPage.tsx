@@ -744,22 +744,25 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         targetId = created.data?.id != null ? String(created.data.id) : undefined;
         toast.success('Employee created successfully.');
       }
-      // Visible-employees assignment saves through its own endpoint (it's
-      // not part of the Employee payload) — always sent, including an empty
-      // selection, so unchecking everyone on Edit actually clears it rather
-      // than leaving the previous assignment in place.
+      // Visible-employees assignment and Role both save through their own
+      // endpoints (neither is part of the Employee payload) — always sent,
+      // including an empty Visible Employees selection, so unchecking
+      // everyone on Edit actually clears it rather than leaving the
+      // previous assignment in place. The two calls are independent of each
+      // other, so they run in parallel (Promise.allSettled — each still
+      // gets its own error toast regardless of how the other one turns
+      // out) instead of one waiting on the other to finish first; this used
+      // to add two full sequential round-trips after the main save before
+      // the page would navigate away.
       if (targetId) {
-        try {
-          await AssignVisibleEmployees(targetId, visibleEmployeeIds);
-        } catch {
+        const [visibleResult, roleResult] = await Promise.allSettled([
+          AssignVisibleEmployees(targetId, visibleEmployeeIds),
+          SetEmployeeRole(targetId, selectedRoleId),
+        ]);
+        if (visibleResult.status === 'rejected') {
           toast.error('Employee saved, but failed to update the Visible Employees assignment.');
         }
-        // Role also saves through its own endpoint (role_id lives on the
-        // linked login user, not the Employee row) — same reasoning as
-        // Visible Employees above.
-        try {
-          await SetEmployeeRole(targetId, selectedRoleId);
-        } catch {
+        if (roleResult.status === 'rejected') {
           toast.error('Employee saved, but failed to update the Role assignment.');
         }
       }
