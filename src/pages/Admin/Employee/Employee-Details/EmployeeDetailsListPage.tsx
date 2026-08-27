@@ -237,8 +237,22 @@ const EmployeeDetailsListPage: React.FC = () => {
   // ── card ─────────────────────────────────────────────────────────────
   const EmployeeCard: React.FC<{ emp: Employee }> = ({ emp }) => {
     const status = STATUS_STYLES[emp.status] || STATUS_STYLES.active;
+    // Deactivated (is_active=false, but not deleted — a deleted employee
+    // never reaches this list at all) — whole card reads as "grayed out"
+    // rather than disappearing, so it stays visible and its row menu
+    // (including Activate, to undo this) stays reachable.
+    const isInactive = !emp.is_active;
     return (
-      <div className="rounded-2xl p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      <div
+        className="rounded-2xl p-4"
+        style={{
+          background: isInactive ? (isDark ? '#1a1a1e' : '#f1f5f9') : t.surfaceBg,
+          border: `1px solid ${t.surfaceBorder}`,
+          opacity: isInactive ? 0.6 : 1,
+          filter: isInactive ? 'grayscale(55%)' : 'none',
+          transition: 'opacity 0.15s, filter 0.15s, background 0.15s',
+        }}
+      >
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3 min-w-0">
             {/* Status badge lives under the photo (small, out of the name's
@@ -311,15 +325,18 @@ const EmployeeDetailsListPage: React.FC = () => {
                     className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn">
                     <MdEdit size={15} color="#7c3aed" /> Edit
                   </button>
-                  <button type="button" title={emp.is_active ? 'Deactivate' : 'Activate'} onClick={() => handleToggleActive(emp)}
-                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn">
-                    {emp.is_active
-                      ? <><MdToggleOff size={16} color="#ea580c" /> Deactivate</>
-                      : <><MdToggleOn size={16} color="#16a34a" /> Activate</>}
-                  </button>
                   <button type="button" title="Delete" onClick={() => handleDelete(emp)}
                     className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn emp-menu-btn-danger">
                     <MdDelete size={16} /> Delete
+                  </button>
+                  {/* 4th option, visually set apart — a toggle, not a
+                      navigation/destructive action like the three above. */}
+                  <button type="button" title={emp.is_active ? 'Deactivate' : 'Activate'} onClick={() => handleToggleActive(emp)}
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn"
+                    style={{ borderTop: `1px solid ${t.divider}`, marginTop: 4, paddingTop: 10 }}>
+                    {emp.is_active
+                      ? <><MdToggleOff size={16} color="#ea580c" /> Deactivate</>
+                      : <><MdToggleOn size={16} color="#16a34a" /> Activate</>}
                   </button>
                 </div>
               )}

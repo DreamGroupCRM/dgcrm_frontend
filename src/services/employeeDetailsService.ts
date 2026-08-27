@@ -313,10 +313,16 @@ const toBackendEmployeeFormData = (formData: FormData): FormData => {
 export const FetchEmployeeDetails = async (
   page: number,
   limit: number,
-  search?: string
+  search?: string,
+  // Assignment pickers (Assign Visible Employees, Customer "assign to
+  // employee") pass true to keep excluding deactivated staff — the List
+  // page itself omits this so deactivated-but-not-deleted employees still
+  // show (rendered grayed out) instead of silently vanishing.
+  activeOnly?: boolean
 ): Promise<EmployeeListResponse> => {
-  const params: Record<string, string | number> = { page, limit };
+  const params: Record<string, string | number | boolean> = { page, limit };
   if (search && search.trim()) params.search = search.trim();
+  if (activeOnly) params.active_only = true;
   const res = await axiosInstance.get('/employees', {
     params,
     headers: { [API_NAME_HEADER]: 'FetchEmployeeDetails' },
