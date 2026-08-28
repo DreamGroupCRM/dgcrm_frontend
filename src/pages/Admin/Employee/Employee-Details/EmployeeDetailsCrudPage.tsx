@@ -851,7 +851,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Row 1: Personal Details + Office Use Only ──────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
+            <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)" />
             <div className="emp-view-grid">
               <ViewValue label="First Name" value={form.first_name} />
               <ViewValue label="Middle Name" value={form.middle_name} />
@@ -867,7 +867,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
 
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="linear-gradient(135deg,#c2410c,#fb923c)" />
+            <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="var(--grad-purple)" />
             <div className="emp-view-grid">
               <ViewValue label="Joining Date" value={form.joining_date ? formatDate(form.joining_date) : ''} />
               <ViewValue label="Working Hours" value={form.working_hours ? `${form.working_hours} Hours` : ''} />
@@ -883,7 +883,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Row 2: Bank Details + Assign Action & Module ───────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="linear-gradient(135deg,#059669,#22c55e)" />
+            <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="var(--grad-green)" />
             <div className="emp-view-grid">
               <ViewValue label="Account Holder Name" value={form.account_holder_name} />
               <ViewValue label="Bank Name" value={form.bank_name} />
@@ -895,7 +895,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
 
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
+            <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module" gradient="var(--grad-grey)" />
             <div className="mb-4">
               <div className="emp-view-label" style={{ marginBottom: 6 }}>Assigned Departments</div>
               <div className="emp-chip-row">
@@ -931,7 +931,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         {/* ── Uploaded Documents ──────────────────────────────────────────── */}
         <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-          <SectionHeader t={t} icon={<MdDescription size={16} />} title="Uploaded Documents" gradient="linear-gradient(135deg,#0f766e,#14b8a6)" />
+          <SectionHeader t={t} icon={<MdDescription size={16} />} title="Uploaded Documents" gradient="var(--grad-teal)" />
           <div className="emp-doc-grid">
             <DocumentCard t={t} label="Aadhar Card" url={existingUrls.aadhar_card} />
             <DocumentCard t={t} label="PAN Card" url={existingUrls.pan_card} />
@@ -988,7 +988,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Personal Details ─────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
+        <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)" />
 
         {/* Row 1 of 4 — Name */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
@@ -1058,7 +1058,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Office Use Only ──────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="linear-gradient(135deg,#c2410c,#fb923c)" />
+        <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="var(--grad-purple)" />
 
         {/* All 10 fields flow across exactly 2 rows on desktop (5 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -1120,7 +1120,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Bank Details ─────────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="linear-gradient(135deg,#059669,#22c55e)" />
+        <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="var(--grad-green)" />
 
         {/* All 7 fields flow across exactly 2 rows on desktop (4 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1157,7 +1157,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Assign Action & Module for this Employee ────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module for this Employee" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
+        <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module for this Employee" gradient="var(--grad-grey)" />
 
         {/* Department (left) + Designation (right) — side by side, equal balance */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">

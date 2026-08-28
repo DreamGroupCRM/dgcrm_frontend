@@ -104,7 +104,7 @@ html.dark .master-search-box-accent svg {
   color: #fff;
   border: none;
   cursor: pointer;
-  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  background: linear-gradient(135deg, #0284c7, #7c3aed);
   white-space: nowrap;
 }
 
@@ -171,14 +171,33 @@ html.dark .master-table td {
   border-color: #2f2f2f;
 }
 
+/* ── Shared gradient palette — sky blue / light blue / light purple / light
+   green / light grey, replacing the old heavy indigo/royal-blue used
+   everywhere (table headers, every CRUD section header). Named tokens so
+   every page (masters, Employee, Customer) pulls from the same small,
+   deliberately-limited set instead of each hardcoding its own gradient —
+   one place to keep the whole app's accent colors consistent. Softer/
+   lighter than the old #4338ca-heavy set by design (still enough contrast
+   for white header text), and varied across sections on the same page
+   (blue/purple/green/teal) rather than "every section is blue." */
+:root {
+  --grad-sky: linear-gradient(135deg, #0284c7, #38bdf8);
+  --grad-purple: linear-gradient(135deg, #7c3aed, #a78bfa);
+  --grad-green: linear-gradient(135deg, #059669, #34d399);
+  --grad-teal: linear-gradient(135deg, #0891b2, #22d3ee);
+  --grad-grey: linear-gradient(135deg, #64748b, #94a3b8);
+  --grad-table-header: linear-gradient(90deg, #0284c7 0%, #38bdf8 50%, #8b5cf6 100%);
+}
+
 /* ── Radiant table-header gradient — Company/Department/BankAccount/Building
-   masters only. Applied via className on the header <tr>(s) *and* on the
-   sticky Actions <th> (which otherwise paints over the row with its own
-   opaque background), so the whole header reads as one continuous band
-   regardless of theme — unlike the old flat tableHeaderBg/insetBg, this
-   doesn't need a light/dark variant since it supplies its own contrast. */
+   masters, and (V_17.0) Employee/Customer lists too. Applied via className
+   on the header <tr>(s) *and* on the sticky Actions <th> (which otherwise
+   paints over the row with its own opaque background), so the whole header
+   reads as one continuous band regardless of theme — unlike the old flat
+   tableHeaderBg/insetBg, this doesn't need a light/dark variant since it
+   supplies its own contrast. */
 .master-table-header-gradient {
-  background: linear-gradient(90deg, #4338ca 0%, #7c3aed 50%, #2563eb 100%) !important;
+  background: var(--grad-table-header) !important;
 }
 
 .master-table-header-gradient th {
