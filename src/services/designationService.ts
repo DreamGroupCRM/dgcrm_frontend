@@ -24,6 +24,7 @@ export interface Designation {
   id            : string;
   name          : string;
   department_id?: string;
+  department?   : string | null;
   is_active     : boolean;
 }
 

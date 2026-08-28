@@ -501,8 +501,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       try {
         const res = await fetchDesignationList(1, 1000);
         if (res.success) {
+          // Pipe-separated label ("Designation Name | Department Name") so
+          // it's clear which department a designation belongs to when
+          // several departments' designations are shown together.
           setDesignationOptions((res.rows || []).map((d) => ({
-            value: Number(d.id), label: d.name,
+            value: Number(d.id), label: d.department ? `${d.name} | ${d.department}` : d.name,
             departmentId: d.department_id != null && d.department_id !== '' ? Number(d.department_id) : null,
           })));
         }
