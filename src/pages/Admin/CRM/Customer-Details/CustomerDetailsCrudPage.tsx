@@ -21,6 +21,7 @@ import {
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { companyService } from '../../../../services/companyService';
 import { Building, Company, ParkingChoice } from '../../../../types/index';
+import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
 import './CustomerDetails.css';
 
 type Mode = 'add' | 'edit' | 'view';
@@ -700,6 +701,34 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const updateSecondaryNumber = (idx: number, patch: Partial<{ country_code: string; number: string }>) =>
     setSecondaryNumbers((prev) => prev.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
 
+  // ── OCR auto-fill from Aadhar/PAN photo (item 7) — client-side, open-
+  // source (Tesseract.js), never auto-submits: it only pre-fills the
+  // number field, which stays fully editable so the admin can correct a
+  // misread before saving. ────────────────────────────────────────────────
+  const [ocrRunning, setOcrRunning] = useState<'aadhar' | 'pancard' | null>(null);
+
+  const handleAadharPhotoChange = (f: File | null) => {
+    setAadharPhoto(f);
+    if (!(f instanceof File)) return;
+    setOcrRunning('aadhar');
+    runOcr(f).then((text) => {
+      const number = extractAadharNumber(text);
+      if (number) { setAadharNumber(number); toast.success('Aadhar number auto-filled from the photo — please verify it.'); }
+      else toast.info('Could not read an Aadhar number from that photo — please enter it manually.');
+    }).finally(() => setOcrRunning(null));
+  };
+
+  const handlePancardPhotoChange = (f: File | null) => {
+    setPancardPhoto(f);
+    if (!(f instanceof File)) return;
+    setOcrRunning('pancard');
+    runOcr(f).then((text) => {
+      const number = extractPanNumber(text);
+      if (number) { setPancardNumber(number); toast.success('PAN number auto-filled from the photo — please verify it.'); }
+      else toast.info('Could not read a PAN number from that photo — please enter it manually.');
+    }).finally(() => setOcrRunning(null));
+  };
+
   const isFormValid =
     firstName.trim() !== '' && middleName.trim() !== '' && lastName.trim() !== '' && !!customerPhoto &&
     email.trim() !== '' && mobileNumber.trim() !== '' && whatsappNumber.trim() !== '' &&
@@ -1036,7 +1065,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => setAadharNumber(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
           <Field t={t} label="Upload Aadhar Card Photo" required>
-            <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={setAadharPhoto} />
+            <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange} />
+            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
           <Field t={t} label="Pancard Number">
             <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView}
@@ -1084,7 +1114,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* Row 3 of 3 — remaining ID proof, DOB, address, alternate contact */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <Field t={t} label="Upload Pancard Photo" required>
-            <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={setPancardPhoto} />
+            <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange} />
+            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
           <Field t={t} label="Date of Birth" required>
             <div className="flex items-center gap-2">
