@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdArrowBack, MdSave, MdPerson, MdApartment, MdClose, MdKeyboardArrowDown,
-  MdCameraAlt, MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew,
+  MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew,
   MdPayments, MdDescription, MdVisibility, MdRadioButtonChecked, MdRadioButtonUnchecked,
 } from 'react-icons/md';
 import { FaWhatsapp } from 'react-icons/fa';
@@ -265,42 +265,6 @@ const PhoneField: React.FC<{
       style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
   </div>
 );
-
-// Circular avatar upload with a camera badge — Customer Photo.
-const PhotoUploadCircle: React.FC<{ t: Theme; isView?: boolean; value: FileValue; onChange: (f: File | null) => void }> = ({ t, isView, value, onChange }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (value instanceof File) {
-      const url = URL.createObjectURL(value);
-      setPreview(url);
-      return () => URL.revokeObjectURL(url);
-    }
-    setPreview(typeof value === 'string' ? value : null);
-  }, [value]);
-
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }}
-        onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
-      <div style={{ position: 'relative', width: 88, height: 88 }}>
-        <div className="rounded-full flex items-center justify-center overflow-hidden"
-          style={{ width: 88, height: 88, background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
-          {preview ? <img src={preview} alt="Customer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <MdPerson size={36} style={{ color: t.textSecondary }} />}
-        </div>
-        {!isView && (
-          <button type="button" onClick={() => inputRef.current?.click()}
-            className="flex items-center justify-center rounded-full"
-            style={{ position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, background: '#0284c7', border: `2px solid ${t.surfaceBg}`, cursor: 'pointer', color: '#fff' }}>
-            <MdCameraAlt size={14} />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
 
 // Compact "chosen file" chip with a trash icon (Aadhar / PAN photo), or an
 // upload prompt when nothing is chosen yet — matches "AadharCard.jpg [🗑]".
@@ -1029,8 +993,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="email" placeholder="Enter email address" value={email} readOnly={isView} disabled={isView}
               onChange={(e) => setEmail(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Customer Photo" required className="flex flex-col items-center justify-start">
-            <PhotoUploadCircle t={t} isView={isView} value={customerPhoto} onChange={setCustomerPhoto} />
+          <Field t={t} label="Customer Photo" required>
+            <CompactFileUpload t={t} isView={isView} accept="image/*" value={customerPhoto} onChange={setCustomerPhoto} />
           </Field>
         </div>
 
