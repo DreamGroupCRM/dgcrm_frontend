@@ -19,7 +19,8 @@ import {
   updateCustomerWithDetails,
 } from '../../../../services/customerDetailsService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
-import { Building, ParkingChoice } from '../../../../types/index';
+import { companyService } from '../../../../services/companyService';
+import { Building, Company, ParkingChoice } from '../../../../types/index';
 import './CustomerDetails.css';
 
 type Mode = 'add' | 'edit' | 'view';
@@ -53,6 +54,29 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 const fileDisplayName = (v: FileValue): string => {
   if (v instanceof File) return v.name;
   if (typeof v === 'string' && v) return v.split('/').pop() || v;
+  return '';
+};
+
+// ── Amount field formatting — Indian comma grouping while typing
+// ("400000" reads as "4,00,000") plus the K/L/Cr shorthand shown at the
+// end of the box, same pattern as the Customize Scheme page's SliderField/
+// compactINR. Every amount/EMI field in Payment Details is a plain numeric
+// STRING in this page's state (unlike Customize Scheme, which uses
+// numbers) — these helpers work on that string directly so no field's
+// underlying value type needs to change.
+const formatAmountDisplay = (v: string): string => {
+  if (!v) return '';
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : v;
+};
+
+const trimDecimal = (x: number): string => x.toFixed(2).replace(/\.?0+$/, '');
+
+const compactINR = (v: string): string => {
+  const n = Math.max(0, Number(v) || 0);
+  if (n >= 10000000) return `${trimDecimal(n / 10000000)} Cr`;
+  if (n >= 100000) return `${trimDecimal(n / 100000)} L`;
+  if (n >= 1000) return `${trimDecimal(n / 1000)} K`;
   return '';
 };
 
@@ -350,14 +374,21 @@ const RadioOption: React.FC<{ t: Theme; label: string; selected: boolean; onSele
 );
 
 // A ₹-amount input — shared by every currency field in Payment Details.
-const AmountField: React.FC<{ t: Theme; isView?: boolean; disabled?: boolean; placeholder: string; value: string; onChange: (v: string) => void }> = ({ t, isView, disabled, placeholder, value, onChange }) => (
-  <div className={`flex items-center gap-2 ${fieldClassName(!!isView || !!disabled)}`} style={{ padding: '0 12px' }}>
-    <span style={{ color: t.textSecondary }}>₹</span>
-    <input type="text" inputMode="decimal" placeholder={placeholder} value={value} readOnly={isView || disabled} disabled={isView || disabled}
-      onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ''))}
-      style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
-  </div>
-);
+// Displays the value comma-grouped ("4,00,000") while the underlying state
+// stays a plain digit string, and shows the K/L/Cr shorthand at the end of
+// the box — same as every ₹ field on the Customize Scheme page.
+const AmountField: React.FC<{ t: Theme; isView?: boolean; disabled?: boolean; placeholder: string; value: string; onChange: (v: string) => void }> = ({ t, isView, disabled, placeholder, value, onChange }) => {
+  const compact = compactINR(value);
+  return (
+    <div className={`flex items-center gap-1.5 ${fieldClassName(!!isView || !!disabled)}`} style={{ padding: '0 10px' }}>
+      <span style={{ color: t.textSecondary, flexShrink: 0 }}>₹</span>
+      <input type="text" inputMode="decimal" placeholder={placeholder} value={formatAmountDisplay(value)} readOnly={isView || disabled} disabled={isView || disabled}
+        onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ''))}
+        style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
+      {compact && <span style={{ color: '#0284c7', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
+    </div>
+  );
+};
 
 // A plain-number input — months / tenure fields.
 // `max`/`maxLength` are both opt-in (undefined everywhere except Total EMI
@@ -500,6 +531,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [fetching, setFetching] = useState(mode !== 'add');
   const [saving, setSaving] = useState(false);
   const [buildings, setBuildings] = useState<Building[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [customerCode, setCustomerCode] = useState('');
 
   // ── Personal Details ──────────────────────────────────────────────────
@@ -562,6 +594,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         const res = await FetchBuildingList(1, 1000);
         if (res.success) setBuildings(res.rows ?? []);
       } catch { /* dropdowns just stay empty if this fails */ }
+    })();
+    (async () => {
+      try {
+        const res = await companyService.FetchCompanyList(1, 1000);
+        if (res.success) setCompanies(res.rows ?? []);
+      } catch { /* dropdown just stays empty if this fails */ }
     })();
   }, []);
 
@@ -644,6 +682,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // specific building is selected, its real detail is fetched (ViewBuilding)
   // and THAT backs the Wing/Floor/Flat option lists and the ids actually
   // submitted below — not the list row's placeholders.
+  const companyNameOptions = useMemo(() => Array.from(new Set(companies.map((c) => c.name))), [companies]);
   const projectNameOptions = useMemo(() => Array.from(new Set(buildings.map((b) => b.project_name))), [buildings]);
   const buildingsForProject = useMemo(
     () => (projectName ? buildings.filter((b) => b.project_name === projectName) : buildings),
@@ -1056,8 +1095,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* Row 1 of 2 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
           <Field t={t} label="Company Name" required>
-            <input type="text" placeholder="Enter company name" value={companyName} readOnly={isView} disabled={isView}
-              onChange={(e) => setCompanyName(e.target.value)} className={fieldClass} />
+            <SearchableSelect t={t} placeholder="Select company" options={companyNameOptions} value={companyName} disabled={isView}
+              onChange={setCompanyName} />
           </Field>
           <Field t={t} label="Project Name" required>
             <SearchableSelect t={t} placeholder="Select project" options={projectNameOptions} value={projectName} disabled={isView}
