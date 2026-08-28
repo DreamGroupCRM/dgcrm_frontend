@@ -605,9 +605,12 @@ export type CustomerStatus = 'active' | 'inactive';
 
 export interface Customer {
   id                          : string;
+  customer_code?               : string;
+  customer_photo_url?          : string | null;
   customer_name               : string;
   mobile_number                : string;
   email                         : string;
+  address?                      : string;
 
   building_id                    : string;
   building_name                   : string;

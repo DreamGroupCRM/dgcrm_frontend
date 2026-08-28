@@ -11,6 +11,7 @@ import {
   MdKeyboardArrowDown, MdMoreVert, MdReceiptLong, MdLoyalty, MdPhone, MdEmail,
   MdChevronLeft, MdChevronRight, MdKeyboardDoubleArrowLeft, MdKeyboardDoubleArrowRight,
   MdPayments, MdPrint, MdAccountBalanceWallet, MdDescription, MdFilterList,
+  MdGridView, MdViewList, MdLocationOn, MdBadge,
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
@@ -139,6 +140,10 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 // `fixed` from the trigger button's own bounding rect, escapes that
 // clipped container entirely — the dropdown always shows all three
 // options in full, wherever the row sits on screen.
+// Compact popup, positioned beside the 3-dot trigger, with a horizontal
+// divider between every option (item 7's "Action menu matching Employee
+// List style") — same trio as before, just tighter width/padding and
+// dividers instead of a plain stacked list.
 const RowActionMenu: React.FC<{
   t: Theme; pos: { top: number; left: number };
   onView: () => void; onEdit: () => void; onDelete: () => void;
@@ -146,26 +151,99 @@ const RowActionMenu: React.FC<{
   <div
     data-customer-row-menu
     style={{
-      position: 'fixed', top: pos.top, left: pos.left, zIndex: 100, minWidth: 130,
-      background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
-      boxShadow: '0 8px 24px rgba(0,0,0,0.16)', padding: '6px 0',
+      position: 'fixed', top: pos.top, left: pos.left, zIndex: 100, minWidth: 118,
+      background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 8,
+      boxShadow: '0 6px 16px rgba(0,0,0,0.16)', overflow: 'hidden',
     }}
   >
     <button type="button" onClick={onView}
-      className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-      <MdVisibility size={16} color="#2563eb" /> View
+      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+      style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+      <MdVisibility size={14} color="#2563eb" /> View
     </button>
     <button type="button" onClick={onEdit}
-      className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-      <MdEdit size={15} color="#7c3aed" /> Edit
+      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+      style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+      <MdEdit size={13} color="#7c3aed" /> Edit
     </button>
     <button type="button" onClick={onDelete}
-      className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
-      <MdDelete size={16} /> Delete
+      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
+      <MdDelete size={14} /> Delete
     </button>
   </div>,
   document.body
 );
+
+// ── Grid card — module scope, mirrors Employee Grid View's card design
+// (avatar/status top, 3-dot menu top-right, contact rows below) so the two
+// modules' Grid Views read as one consistent visual language (item 10). ──
+const CustomerCard: React.FC<{
+  c: Customer; t: Theme; isDark: boolean;
+  onOpenMenu: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  menuOpen: boolean; menuPos: { top: number; left: number } | null;
+  onView: () => void; onEdit: () => void; onDelete: () => void;
+}> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onDelete }) => {
+  const statusBg = c.status === 'active' ? '#dcfce7' : '#fee2e2';
+  const statusColor = c.status === 'active' ? '#16a34a' : '#dc2626';
+  return (
+    <div className="rounded-2xl p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex flex-col items-center flex-shrink-0" style={{ gap: 4 }}>
+            {c.customer_photo_url ? (
+              <img src={c.customer_photo_url} alt="" className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
+            ) : (
+              <div className="flex items-center justify-center rounded-full text-white font-bold"
+                style={{ width: 48, height: 48, background: 'var(--grad-purple)', fontSize: 15 }}>
+                {(c.customer_name || '—').slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <span className="inline-flex items-center gap-1 px-1.5 rounded-full font-semibold"
+              style={{ background: statusBg, color: statusColor, fontSize: 10, lineHeight: '14px', whiteSpace: 'nowrap' }}>
+              <span className="w-1 h-1 rounded-full bg-current" /> {c.status === 'active' ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <div style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary, lineHeight: 1.25, wordBreak: 'break-word' }}>
+              {c.customer_name}
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#7c3aed' }}>{c.customer_code || '—'}</span>
+          </div>
+        </div>
+        <div style={{ position: 'relative' }}>
+          <button type="button" onClick={onOpenMenu} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}>
+            <MdMoreVert size={18} />
+          </button>
+          {menuOpen && menuPos && <RowActionMenu t={t} pos={menuPos} onView={onView} onEdit={onEdit} onDelete={onDelete} />}
+        </div>
+      </div>
+
+      <div className="space-y-1.5" style={{ fontSize: 11, color: t.textSecondary }}>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <MdEmail size={14} className="flex-shrink-0" />
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.email || '—'}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <MdPhone size={14} className="flex-shrink-0" />
+          {c.mobile_number || '—'}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <MdLocationOn size={14} className="flex-shrink-0" />
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.address || '—'}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <MdBadge size={14} className="flex-shrink-0" />
+          {c.building_name ? `${c.building_name}, ${c.wing_name} Wing, ${c.flat_no}` : '—'}
+        </div>
+      </div>
+
+      <div style={{ fontSize: 10, color: t.textSecondary, marginTop: 10, paddingTop: 8, borderTop: `1px solid ${t.divider}` }}>
+        Booked on {formatDate(c.booking_date)}
+      </div>
+    </div>
+  );
+};
 
 const CustomerDetailsListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -177,7 +255,8 @@ const CustomerDetailsListPage: React.FC = () => {
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(5);
+  const [limit, setLimit] = useState(10);
+  const [view, setView] = useState<'grid' | 'list'>('list');
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [employees, setEmployees] = useState<{ id: string; label: string }[]>([]);
@@ -188,6 +267,8 @@ const CustomerDetailsListPage: React.FC = () => {
   const [wingFilter, setWingFilter] = useState('');
   const [floorFilter, setFloorFilter] = useState('');
   const [flatNoFilter, setFlatNoFilter] = useState('');
+  const [flatTypeFilter, setFlatTypeFilter] = useState('');
+  const [flatAreaFilter, setFlatAreaFilter] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
@@ -325,10 +406,31 @@ const CustomerDetailsListPage: React.FC = () => {
 
   const customerNameOptions = useMemo(() => Array.from(new Set(allCustomers.map((c) => c.customer_name))), [allCustomers]);
   const employeeOptions = useMemo(() => employees.map((e) => e.label), [employees]);
+  const flatTypeOptions = useMemo(() => Array.from(new Set(allCustomers.map((c) => c.flat_type).filter(Boolean))), [allCustomers]);
+  const flatAreaOptions = useMemo(
+    () => Array.from(new Set(allCustomers.map((c) => c.area_sqft).filter((a): a is number => a != null))).sort((a, b) => a - b).map(String),
+    [allCustomers]
+  );
 
   const clearAllFilters = () => {
     setCustomerNameFilter(''); setBuildingFilter(''); setWingFilter(''); setFloorFilter(''); setFlatNoFilter('');
-    setFromDate(''); setToDate('');
+    setFlatTypeFilter(''); setFlatAreaFilter(''); setFromDate(''); setToDate('');
+  };
+
+  // Selecting an exact customer name (not just typing a partial match)
+  // auto-populates the Building/Wing/Floor/Flat No filters from that
+  // customer's own booking, narrowing the whole filter row to their flat
+  // in one action instead of four (item 11's "auto-populate related
+  // details... fast updates without manual actions").
+  const handleCustomerNameFilterChange = (v: string) => {
+    setCustomerNameFilter(v);
+    const exact = allCustomers.find((c) => c.customer_name === v);
+    if (exact) {
+      setBuildingFilter(exact.building_name || '');
+      setWingFilter(exact.wing_name || '');
+      setFloorFilter('');
+      setFlatNoFilter(exact.flat_no || '');
+    }
   };
 
   // ── filtered rows (client-side, same pattern as Building/Department/Employee) ──
@@ -338,13 +440,15 @@ const CustomerDetailsListPage: React.FC = () => {
       if (buildingFilter && c.building_name !== buildingFilter) return false;
       if (wingFilter && c.wing_name !== wingFilter) return false;
       if (flatNoFilter && c.flat_no !== flatNoFilter) return false;
+      if (flatTypeFilter && c.flat_type !== flatTypeFilter) return false;
+      if (flatAreaFilter && String(c.area_sqft ?? '') !== flatAreaFilter) return false;
       if (fromDate && c.booking_date && c.booking_date < fromDate) return false;
       if (toDate && c.booking_date && c.booking_date > toDate) return false;
       return true;
     });
-  }, [allCustomers, customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate]);
+  }, [allCustomers, customerNameFilter, buildingFilter, wingFilter, flatNoFilter, flatTypeFilter, flatAreaFilter, fromDate, toDate]);
 
-  useEffect(() => { setPage(1); }, [customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate]);
+  useEffect(() => { setPage(1); }, [customerNameFilter, buildingFilter, wingFilter, flatNoFilter, flatTypeFilter, flatAreaFilter, fromDate, toDate]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / limit));
   const safePage = Math.min(page, totalPages);
@@ -561,14 +665,14 @@ const CustomerDetailsListPage: React.FC = () => {
             gradient bar out to the card's own edges — the Select Flat No
             dropdown sits in this grid's last row and opens downward past
             the card's bottom edge, which `overflow-hidden` here would clip. */}
-        <div className="flex items-center gap-2.5 -m-5 mb-4 px-5 py-3.5 rounded-t-2xl" style={{ background: 'linear-gradient(135deg,#4338ca,#6366f1)' }}>
+        <div className="flex items-center gap-2.5 -m-5 mb-4 px-5 py-3.5 rounded-t-2xl" style={{ background: 'var(--grad-sky)' }}>
           <MdFilterList size={18} style={{ color: '#fff', flexShrink: 0 }} />
           <h3 style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>Search &amp; Filter Customers</h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div>
             <label className="cust-filter-label">Search Customer Name</label>
-            <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={setCustomerNameFilter} />
+            <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={handleCustomerNameFilterChange} />
           </div>
           <div>
             <label className="cust-filter-label">Search Building Name</label>
@@ -589,6 +693,14 @@ const CustomerDetailsListPage: React.FC = () => {
           <div>
             <label className="cust-filter-label">Select Flat No</label>
             <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} disabled={!selectedFloor} onChange={setFlatNoFilter} labelFor={flatLabelFor} />
+          </div>
+          <div>
+            <label className="cust-filter-label">Flat Type</label>
+            <SearchableSelect t={t} placeholder="Select flat type" options={flatTypeOptions} value={flatTypeFilter} onChange={setFlatTypeFilter} />
+          </div>
+          <div>
+            <label className="cust-filter-label">Flat Area (Sq Ft)</label>
+            <SearchableSelect t={t} placeholder="Select flat area" options={flatAreaOptions} value={flatAreaFilter} onChange={setFlatAreaFilter} />
           </div>
           <div>
             <label className="cust-filter-label">From Date</label>
@@ -622,7 +734,7 @@ const CustomerDetailsListPage: React.FC = () => {
             disabled={!assignmentEnabled || !employeeSearch || assigning}
             className="px-5 py-2.5 rounded-xl text-sm font-semibold"
             style={{
-              background: !assignmentEnabled || !employeeSearch || assigning ? t.insetBg : 'linear-gradient(135deg,#4338ca,#4f46e5)',
+              background: !assignmentEnabled || !employeeSearch || assigning ? t.insetBg : 'var(--grad-purple)',
               color: !assignmentEnabled || !employeeSearch || assigning ? t.textSecondary : '#fff',
               border: `1px solid ${!assignmentEnabled || !employeeSearch || assigning ? t.surfaceBorder : 'transparent'}`,
               cursor: !assignmentEnabled || !employeeSearch || assigning ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
@@ -633,9 +745,15 @@ const CustomerDetailsListPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5">
+          <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
+            title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
+            className="flex items-center justify-center rounded-xl"
+            style={{ width: 40, height: 40, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
+            {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
+          </button>
           <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'linear-gradient(135deg,#4338ca,#4f46e5)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <MdAdd size={18} /> Add Customer
           </button>
           <button type="button" onClick={handleExportCsv}
@@ -654,17 +772,43 @@ const CustomerDetailsListPage: React.FC = () => {
         <p style={{ fontSize: 10.5, color: t.textSecondary, margin: '0 0 12px' }}>ⓘ Select one or more customers to enable</p>
       )}
 
-      {/* ── Table ─────────────────────────────────────────────────────── */}
+      {/* ── Table / Grid ──────────────────────────────────────────────── */}
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        {view === 'grid' ? (
+          <div className="p-5">
+            {loading ? (
+              <div className="cust-empty-state">Loading customers...</div>
+            ) : pageRows.length === 0 ? (
+              <div className="cust-empty-state">No customers found.</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {pageRows.map((c) => (
+                  <CustomerCard key={c.id} c={c} t={t} isDark={isDark}
+                    onOpenMenu={(e) => {
+                      if (openMenuId === c.id) { setOpenMenuId(null); setMenuPos(null); return; }
+                      const r = e.currentTarget.getBoundingClientRect();
+                      setMenuPos({ top: r.bottom + 4, left: r.left - 96 });
+                      setOpenMenuId(c.id);
+                    }}
+                    menuOpen={openMenuId === c.id} menuPos={menuPos}
+                    onView={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/view/${c.id}`); }}
+                    onEdit={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/edit/${c.id}`); }}
+                    onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1250 }}>
             <thead>
-              <tr style={{ background: t.insetBg }}>
+              <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <th style={{ padding: '12px 14px', width: 40 }}>
                   <input type="checkbox" checked={pageRows.length > 0 && pageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
-                {['Action', 'Employee Code', 'Employee Name', 'Customer Name', 'Contact Details', 'Project / Flat Details', 'Flat Booking Date', 'Monthly EMI Amount'].map((h) => (
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                {['Action', 'Customer Code', 'Customer Name', 'Employee Name', 'Contact Details', 'Project & Flat Details', 'Flat Type', 'Flat Area (Sq Ft)', 'Flat Booking Date', 'Monthly EMI Amount'].map((h) => (
+                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
                 ))}
@@ -672,9 +816,9 @@ const CustomerDetailsListPage: React.FC = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="cust-empty-state">Loading customers...</td></tr>
+                <tr><td colSpan={11} className="cust-empty-state">Loading customers...</td></tr>
               ) : pageRows.length === 0 ? (
-                <tr><td colSpan={9} className="cust-empty-state">No customers found.</td></tr>
+                <tr><td colSpan={11} className="cust-empty-state">No customers found.</td></tr>
               ) : (
                 pageRows.map((c) => (
                   <tr key={c.id} className="cust-divider-top">
@@ -710,26 +854,33 @@ const CustomerDetailsListPage: React.FC = () => {
                         <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => navigate(`/admin/crm/customer-details/scheme/${c.id}`)}>
                           <MdLoyalty size={15} />
                         </button>
-                        
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                      {c.customer_code || '—'}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                      <div className="flex items-center gap-2">
+                        {c.customer_photo_url ? (
+                          <img src={c.customer_photo_url} alt="" className="rounded-full flex-shrink-0" style={{ width: 30, height: 30, objectFit: 'cover' }} />
+                        ) : (
+                          <div className="flex items-center justify-center rounded-full flex-shrink-0 text-white font-bold" style={{ width: 30, height: 30, fontSize: 11, background: 'var(--grad-purple)' }}>
+                            {(c.customer_name || '—').slice(0, 1).toUpperCase()}
+                          </div>
+                        )}
+                        {c.customer_name}
                       </div>
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <div className="flex items-center gap-2">
                         {c.assigned_employee_photo_url ? (
-                          <img src={c.assigned_employee_photo_url} alt="" className="rounded-full flex-shrink-0" style={{ width: 32, height: 32, objectFit: 'cover' }} />
-                        ) : (
-                          <div className="flex items-center justify-center rounded-full flex-shrink-0 text-white text-xs font-bold" style={{ width: 32, height: 32, background: 'linear-gradient(135deg,#4338ca,#4f46e5)' }}>
-                            {(c.assigned_employee_name || '—').slice(0, 1).toUpperCase()}
+                          <img src={c.assigned_employee_photo_url} alt="" className="rounded-full flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'cover' }} />
+                        ) : c.assigned_employee_name ? (
+                          <div className="flex items-center justify-center rounded-full flex-shrink-0 text-white text-xs font-bold" style={{ width: 28, height: 28, background: 'var(--grad-sky)' }}>
+                            {c.assigned_employee_name.slice(0, 1).toUpperCase()}
                           </div>
-                        )}
-                        <span style={{ fontSize: 11.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000' }}>{c.assigned_employee_code || '—'}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12, color: isDark ? '#ffffff' : '#000000' }}>{c.assigned_employee_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
-                      <div className="flex items-center gap-1.5">
-                        <MdGroups size={15} className="master-row-icon" />
-                        {c.customer_name}
+                        ) : null}
+                        <span style={{ fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{c.assigned_employee_name || '—'}</span>
                       </div>
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
@@ -738,8 +889,10 @@ const CustomerDetailsListPage: React.FC = () => {
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
                       <div style={{ fontWeight: 700 }}>{c.building_name}</div>
-                      <div>{c.wing_name} Wing, {c.flat_no} ({c.flat_type}{c.area_sqft ? ` - ${c.area_sqft} Sqft` : ''})</div>
+                      <div>{c.wing_name} Wing, {c.flat_no}</div>
                     </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{c.flat_type || '—'}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{c.area_sqft ?? '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{formatDate(c.booking_date)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       {c.monthly_emi != null ? `₹ ${c.monthly_emi.toLocaleString('en-IN')}` : '—'}
@@ -750,6 +903,7 @@ const CustomerDetailsListPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+        )}
 
         {/* pagination — bottom-center, First/Prev/[numbers]/Next/Last */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 cust-divider-top">
@@ -776,7 +930,7 @@ const CustomerDetailsListPage: React.FC = () => {
             {pageBtns().map((n) => (
               <button key={n} type="button" onClick={() => setPage(n)}
                 className="px-3 py-1.5 rounded-lg text-sm font-medium"
-                style={{ background: n === safePage ? '#4338ca' : t.insetBg, color: n === safePage ? '#fff' : t.textPrimary, border: `1px solid ${n === safePage ? '#4338ca' : t.surfaceBorder}`, cursor: 'pointer' }}>
+                style={{ background: n === safePage ? '#7c3aed' : t.insetBg, color: n === safePage ? '#fff' : t.textPrimary, border: `1px solid ${n === safePage ? '#7c3aed' : t.surfaceBorder}`, cursor: 'pointer' }}>
                 {n}
               </button>
             ))}

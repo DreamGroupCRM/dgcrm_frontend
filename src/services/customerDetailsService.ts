@@ -161,9 +161,12 @@ interface BackendAmountTransaction {
 // column to show; this fixes the read side, not the write side.
 const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   id: String(bc.id),
+  customer_code: bc.customer_code,
+  customer_photo_url: bc.customer_image,
   customer_name: [bc.name, bc.middle_name, bc.last_name].filter(Boolean).join(' '),
   mobile_number: bc.mobile_number ?? '',
   email: bc.email ?? '',
+  address: bc.address ?? '',
   building_id: bc.building_id != null ? String(bc.building_id) : '',
   building_name: bc.building?.name ?? '',
   wing_id: bc.wing_id != null ? String(bc.wing_id) : undefined,
