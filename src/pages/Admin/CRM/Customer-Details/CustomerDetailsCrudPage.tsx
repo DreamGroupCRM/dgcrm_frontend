@@ -281,13 +281,36 @@ const CompactFileUpload: React.FC<{ t: Theme; isView?: boolean; accept?: string;
   const inputRef = useRef<HTMLInputElement>(null);
   const displayName = fileDisplayName(value);
 
+  // Real image preview (item 7's "extend real image preview to Add/Edit
+  // upload controls, not just View mode") — a freshly-picked File gets an
+  // object URL (revoked on unmount/change to avoid leaking memory); an
+  // already-uploaded value is just its URL. A .pdf isn't previewable as an
+  // image, so it falls back to the plain file icon either way.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (value instanceof File && value.type.startsWith('image/')) {
+      const url = URL.createObjectURL(value);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    if (typeof value === 'string' && value && !/\.pdf($|\?)/i.test(value)) {
+      setPreviewUrl(value);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [value]);
+
   return (
     <div>
       <input ref={inputRef} type="file" accept={accept} style={{ display: 'none' }}
         onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
       {displayName ? (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
-          <MdInsertDriveFile size={16} style={{ color: '#0284c7', flexShrink: 0 }} />
+          {previewUrl ? (
+            <img src={previewUrl} alt="" className="rounded-lg flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'cover' }} />
+          ) : (
+            <MdInsertDriveFile size={16} style={{ color: '#0284c7', flexShrink: 0 }} />
+          )}
           <span className="truncate" style={{ fontSize: 11.5, color: t.textPrimary, flex: 1 }}>{displayName}</span>
           {!isView && (
             <button type="button" onClick={() => onChange(null)}
@@ -312,11 +335,32 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
   const inputRef = useRef<HTMLInputElement>(null);
   const displayName = fileDisplayName(value);
 
+  // Same real-image-preview treatment as CompactFileUpload above — a PDF
+  // (the other accepted type here) has no inline preview, so it just keeps
+  // the cloud-upload icon.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (value instanceof File && value.type.startsWith('image/')) {
+      const url = URL.createObjectURL(value);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    if (typeof value === 'string' && value && !/\.pdf($|\?)/i.test(value)) {
+      setPreviewUrl(value);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [value]);
+
   return (
     <div className="rounded-xl p-4 text-center" style={{ border: `1.5px dashed ${t.inputBorder}`, background: t.inputBg }}>
       <input ref={inputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }}
         onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
-      <MdCloudUpload size={26} style={{ color: '#0284c7', margin: '0 auto 6px' }} />
+      {previewUrl ? (
+        <img src={previewUrl} alt="" className="rounded-lg mx-auto mb-1.5" style={{ width: 48, height: 48, objectFit: 'cover' }} />
+      ) : (
+        <MdCloudUpload size={26} style={{ color: '#0284c7', margin: '0 auto 6px' }} />
+      )}
       {displayName ? (
         <div className="flex items-center justify-center gap-2">
           <span className="truncate" style={{ fontSize: 11, color: t.textPrimary, maxWidth: 150 }}>{displayName}</span>
@@ -1307,11 +1351,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Booster Interval After Possession (Months)" required>
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} />
           </Field>
-          <button type="button" onClick={handlePreview}
-            className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold lg:col-span-2"
-            style={{ background: t.insetBg, color: '#0284c7', border: `1px solid ${t.inputBorder}`, cursor: 'pointer' }}>
-            <MdVisibility size={16} /> Preview Customer Details
-          </button>
         </div>
       </div>
 
@@ -1346,11 +1385,20 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <MdClose size={16} /> Cancel
         </button>
         {!isView && (
-          <button type="button" onClick={handleSubmit} disabled={!isFormValid || saving}
-            className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white cust-btn-primary"
-            style={{ opacity: saving ? 0.8 : 1 }}>
-            <MdSave size={17} /> {saving ? 'Saving...' : mode === 'edit' ? 'Update Customer' : 'Create Customer'}
-          </button>
+          <>
+            {/* Item 9: same place as Submit — right beside Create/Update,
+                not buried inline in the Payment Details grid. */}
+            <button type="button" onClick={handlePreview} disabled={saving}
+              className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: t.insetBg, color: '#0284c7', border: `1px solid ${t.inputBorder}`, cursor: saving ? 'not-allowed' : 'pointer' }}>
+              <MdVisibility size={16} /> Preview
+            </button>
+            <button type="button" onClick={handleSubmit} disabled={!isFormValid || saving}
+              className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white cust-btn-primary"
+              style={{ opacity: saving ? 0.8 : 1 }}>
+              <MdSave size={17} /> {saving ? 'Saving...' : mode === 'edit' ? 'Update Customer' : 'Create Customer'}
+            </button>
+          </>
         )}
       </div>
 
