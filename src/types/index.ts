@@ -778,6 +778,9 @@ export interface CustomerDetailFormValues {
   mobile_number                  : string;
   whatsapp_country_code            : string;
   whatsapp_number                    : string;
+  // Secondary mobile numbers beyond the primary Mobile Number above — a
+  // "+" control on the Add/Edit form appends to this list (item 6).
+  secondary_numbers                    : { country_code: string; number: string }[];
   aadhar_number                        : string;
   aadhar_photo                          : File | null;
   pancard_number                          : string;

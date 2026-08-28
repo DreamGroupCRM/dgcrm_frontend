@@ -90,7 +90,10 @@ interface BackendCustomer {
   middle_name: string | null;
   last_name: string | null;
   mobile_number: string | null;
+  mobile_country_code: string | null;
   whatsapp_number: string | null;
+  whatsapp_country_code: string | null;
+  secondary_numbers?: { id: number | string; country_code: string; number: string }[];
   email: string | null;
   address: string | null;
   date_of_birth: string | null;
@@ -199,10 +202,11 @@ const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
   last_name: bc.last_name ?? '',
   customer_photo_url: bc.customer_image,
   email: bc.email ?? '',
-  mobile_country_code: '+91', // not tracked by the backend — no column
+  mobile_country_code: bc.mobile_country_code || '+91',
   mobile_number: bc.mobile_number ?? '',
-  whatsapp_country_code: '+91', // not tracked by the backend — no column
+  whatsapp_country_code: bc.whatsapp_country_code || '+91',
   whatsapp_number: bc.whatsapp_number ?? '',
+  secondary_numbers: (bc.secondary_numbers ?? []).map((p) => ({ country_code: p.country_code || '+91', number: p.number })),
   aadhar_number: bc.aadhar_card_no ?? '',
   aadhar_photo_url: bc.aadhar_card,
   pancard_number: bc.pan_card_no ?? '',
@@ -269,7 +273,8 @@ const mapTransactionToPaymentRecord = (t: BackendAmountTransaction): CustomerPay
 // Text-field renames from this app's form-field names to the backend's
 // real column names — see Customer.entity.ts / CreateCustomerSchema.
 // Fields not listed here already share the same name on both sides
-// (middle_name, last_name, email, mobile_number, address, date_of_birth,
+// (middle_name, last_name, email, mobile_number, mobile_country_code,
+// whatsapp_country_code, secondary_numbers, address, date_of_birth,
 // building_id, wing_id, flat_id, booking_date, booking_amount,
 // possession_amount, installment_date, parking_no, is_active) or have no
 // backend counterpart at all and are deliberately left unmapped (see file

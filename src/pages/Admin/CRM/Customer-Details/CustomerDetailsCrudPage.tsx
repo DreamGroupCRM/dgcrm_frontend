@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  MdArrowBack, MdSave, MdPerson, MdApartment, MdClose, MdKeyboardArrowDown,
+  MdArrowBack, MdSave, MdPerson, MdApartment, MdClose, MdKeyboardArrowDown, MdAdd,
   MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew,
   MdPayments, MdDescription, MdVisibility, MdRadioButtonChecked, MdRadioButtonUnchecked,
 } from 'react-icons/md';
@@ -32,7 +32,13 @@ type Theme = ReturnType<typeof getTheme>;
 // null (nothing chosen). Every upload control in this page speaks this type.
 type FileValue = File | string | null;
 
-const COUNTRY_CODES = ['+91', '+1', '+44', '+61', '+971', '+65'];
+// { dial code -> flag emoji } — item 5: "Mobile number field should have
+// flags and country code." +1 is shared by US/Canada; the US flag is used
+// as the conventional default for that dial code.
+const COUNTRY_CODE_FLAGS: Record<string, string> = {
+  '+91': '🇮🇳', '+1': '🇺🇸', '+44': '🇬🇧', '+61': '🇦🇺', '+971': '🇦🇪', '+65': '🇸🇬',
+};
+const COUNTRY_CODES = Object.keys(COUNTRY_CODE_FLAGS);
 const FOOTER_HEIGHT = 76;
 
 // ── module-scope helpers only — nothing defined inside the page component,
@@ -257,7 +263,7 @@ const PhoneField: React.FC<{
     {icon}
     <select value={code} disabled={isView} onChange={(e) => onCodeChange(e.target.value)}
       style={{ border: 'none', outline: 'none', background: 'transparent', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily, padding: '9px 2px' }}>
-      {COUNTRY_CODES.map((c) => <option key={c} value={c}>{c}</option>)}
+      {COUNTRY_CODES.map((c) => <option key={c} value={c}>{COUNTRY_CODE_FLAGS[c]} {c}</option>)}
     </select>
     <span style={{ width: 1, height: 18, background: t.inputBorder, flexShrink: 0 }} />
     <input type="tel" placeholder="Enter number" value={number} readOnly={isView} disabled={isView}
@@ -508,6 +514,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [mobileNumber, setMobileNumber] = useState('');
   const [whatsappCountryCode, setWhatsappCountryCode] = useState('+91');
   const [whatsappNumber, setWhatsappNumber] = useState('');
+  // Secondary mobile numbers beyond the primary Mobile Number above (item
+  // 6) — "+" appends a blank row, each row removable.
+  const [secondaryNumbers, setSecondaryNumbers] = useState<{ country_code: string; number: string }[]>([]);
   const [aadharNumber, setAadharNumber] = useState('');
   const [aadharPhoto, setAadharPhoto] = useState<FileValue>(null);
   const [pancardNumber, setPancardNumber] = useState('');
@@ -585,6 +594,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           setMobileNumber(c.mobile_number || '');
           setWhatsappCountryCode(c.whatsapp_country_code || '+91');
           setWhatsappNumber(c.whatsapp_number || '');
+          setSecondaryNumbers((c.secondary_numbers || []).map((p) => ({ country_code: p.country_code || '+91', number: p.number || '' })));
           setAadharNumber(c.aadhar_number || '');
           setAadharPhoto(c.aadhar_photo_url || null);
           setPancardNumber(c.pancard_number || '');
@@ -684,6 +694,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
   const age = useMemo(() => calcAge(dateOfBirth), [dateOfBirth]);
 
+  // ── Secondary mobile numbers (item 6) ───────────────────────────────────
+  const addSecondaryNumber = () => setSecondaryNumbers((prev) => [...prev, { country_code: '+91', number: '' }]);
+  const removeSecondaryNumber = (idx: number) => setSecondaryNumbers((prev) => prev.filter((_, i) => i !== idx));
+  const updateSecondaryNumber = (idx: number, patch: Partial<{ country_code: string; number: string }>) =>
+    setSecondaryNumbers((prev) => prev.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
+
   const isFormValid =
     firstName.trim() !== '' && middleName.trim() !== '' && lastName.trim() !== '' && !!customerPhoto &&
     email.trim() !== '' && mobileNumber.trim() !== '' && whatsappNumber.trim() !== '' &&
@@ -720,6 +736,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       formData.append('mobile_number', mobileNumber.trim());
       formData.append('whatsapp_country_code', whatsappCountryCode);
       formData.append('whatsapp_number', whatsappNumber.trim());
+      formData.append('secondary_numbers', JSON.stringify(
+        secondaryNumbers.map((p) => ({ country_code: p.country_code, number: p.number.trim() })).filter((p) => p.number)
+      ));
       formData.append('aadhar_number', aadharNumber.trim());
       if (aadharPhoto instanceof File) formData.append('aadhar_photo', aadharPhoto);
       formData.append('pancard_number', pancardNumber.trim());
@@ -871,6 +890,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <ViewValue label="Last Name" value={lastName} />
               <ViewValue label="Mobile Number" value={mobileNumber ? `${mobileCountryCode} ${mobileNumber}` : ''} />
               <ViewValue label="WhatsApp Number" value={whatsappNumber ? `${whatsappCountryCode} ${whatsappNumber}` : ''} />
+              <ViewValue
+                label="Secondary Mobile Numbers"
+                value={secondaryNumbers.length ? secondaryNumbers.map((p) => `${p.country_code} ${p.number}`).join(', ') : ''}
+                className="cust-view-field-wide"
+              />
               <ViewValue label="Date of Birth" value={dateOfBirth ? `${dateOfBirth}${age ? ` (${age.years}y ${age.months}m)` : ''}` : ''} />
               <ViewValue label="Aadhar Number" value={aadharNumber} />
               <ViewValue label="PAN Number" value={pancardNumber} />
@@ -1018,6 +1042,43 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView}
               onChange={(e) => setPancardNumber(e.target.value.toUpperCase())} className={fieldClass} />
           </Field>
+        </div>
+
+        {/* Secondary Mobile Numbers — item 6: primary stays above, "+" adds
+            more here, each independently removable. */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="cust-label" style={{ marginBottom: 0 }}>Secondary Mobile Numbers</label>
+            {!isView && (
+              <button type="button" onClick={addSecondaryNumber}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}`, color: '#0284c7', cursor: 'pointer' }}>
+                <MdAdd size={14} /> Add Number
+              </button>
+            )}
+          </div>
+          {secondaryNumbers.length === 0 ? (
+            <p style={{ fontSize: 11, color: t.textSecondary, margin: 0 }}>{isView ? 'None added.' : 'No secondary numbers added yet.'}</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {secondaryNumbers.map((p, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  <div style={{ flex: 1 }}>
+                    <PhoneField t={t} isView={isView} code={p.country_code}
+                      onCodeChange={(v) => updateSecondaryNumber(idx, { country_code: v })}
+                      number={p.number} onNumberChange={(v) => updateSecondaryNumber(idx, { number: v })} />
+                  </div>
+                  {!isView && (
+                    <button type="button" onClick={() => removeSecondaryNumber(idx)} title="Remove this number"
+                      className="flex items-center justify-center rounded-lg flex-shrink-0"
+                      style={{ width: 34, height: 34, background: t.insetBg, border: `1px solid ${t.inputBorder}`, color: '#dc2626', cursor: 'pointer' }}>
+                      <MdClose size={15} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Row 3 of 3 — remaining ID proof, DOB, address, alternate contact */}
