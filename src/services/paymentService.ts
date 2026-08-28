@@ -183,6 +183,28 @@ export const fetchPaymentReceipt = async (transactionId: string | number): Promi
   };
 };
 
+// ── Per-installment Due grid for one customer (item 15) ─────────────────
+export type DueGridStatus = 'paid' | 'due' | 'upcoming';
+export interface DueGridRow {
+  sr: number;
+  label: string;
+  date: string | null;
+  amount: number;
+  payment_for: PaymentFor | null;
+  status: DueGridStatus;
+}
+export interface CustomerDueGrid {
+  customer_id: number;
+  customer_name: string;
+  company_name: string | null;
+  rows: DueGridRow[];
+}
+/** GET /api/payments/customer/:customerId/due-grid */
+export const fetchCustomerDueGrid = async (customerId: string | number): Promise<CustomerDueGrid> => {
+  const res = await axiosInstance.get(`/payments/customer/${customerId}/due-grid`);
+  return res.data.data;
+};
+
 // Grouped export — same convenience pattern as buildingService / departmentService / customerDetailsService
 export const paymentService = {
   collect          : collectPayment,
@@ -190,4 +212,5 @@ export const paymentService = {
   customerDue      : fetchCustomerDue,
   customerRemaining: fetchCustomerRemaining,
   receipt          : fetchPaymentReceipt,
+  customerDueGrid  : fetchCustomerDueGrid,
 };
