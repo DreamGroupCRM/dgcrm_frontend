@@ -50,6 +50,7 @@ export const ROUTES = {
     AUDIT_HISTORY: '/admin/audit-history',
     CUSTOMIZE_SCHEME: '/admin/customize-scheme',
     BACKUP_DATABASE: '/admin/backup-database',
+    EXECUTIVE_DASHBOARD: '/admin/reports/executive-dashboard',
   },
 
   EMPLOYEE: {

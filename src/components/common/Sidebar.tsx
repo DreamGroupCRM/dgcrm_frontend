@@ -18,7 +18,7 @@ import {
   MdEventAvailable, MdLeaderboard, MdPayment, MdAttachMoney,
   MdApartment, MdAccountBalance, MdAccountTree,
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
-  MdPersonAdd, MdSettings, MdGridOn,
+  MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -63,6 +63,12 @@ interface NavItem {
 
 const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavItem[] => [
   { label: 'Dashboard', path: ROUTES.ADMIN.DASHBOARD, icon: <MdDashboard /> },
+  // Executive Dashboard — visible to Admin/SuperAdmin here same as the rest
+  // of this nav tree; the real gate is server-side (checkPermission
+  // ('reports','view') on GET /api/dashboard/executive) so a role without
+  // the 'reports' permission still can't pull data even if this link is
+  // somehow reached directly.
+  { label: 'Reports', path: ROUTES.ADMIN.EXECUTIVE_DASHBOARD, icon: <MdAssessment /> },
 
   // Master section — conditionally included based on settings toggle
   ...(masterEnabled ? [{
