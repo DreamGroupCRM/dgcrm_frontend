@@ -536,3 +536,12 @@ html.dark .master-row-icon {
   letter-spacing: 0.03em;
   opacity: 0.75;
 }
+
+/* Generic "hide when printing" utility — used by Customize Scheme's Print
+   button (and available to any future page) so interactive-only chrome
+   doesn't end up in the printed output. */
+@media print {
+  .print-hide {
+    display: none !important;
+  }
+}
