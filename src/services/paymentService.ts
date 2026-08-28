@@ -205,6 +205,40 @@ export const fetchCustomerDueGrid = async (customerId: string | number): Promise
   return res.data.data;
 };
 
+// ── Payment Received (item 16) ───────────────────────────────────────────
+export interface PaymentListRow {
+  id: string;
+  receipt_number: string;
+  payment_type: PaymentFor;
+  amount: number;
+  customer_id: string;
+  customer_name: string;
+  company: string | null;
+  mode_of_payment: string | null;
+  received_by: string | null;
+  is_approved: boolean;
+  created_at: string;
+}
+export interface PaymentListFilters {
+  approval?: 'approved' | 'pending';
+  search?: string;
+}
+/** GET /api/payments?page=&limit=&approval=&search= */
+export const fetchPaymentList = async (
+  page: number, limit: number, filters?: PaymentListFilters
+): Promise<{ success: boolean; rows: PaymentListRow[]; total: number }> => {
+  const params: Record<string, string | number> = { page, limit };
+  if (filters?.approval) params.approval = filters.approval;
+  if (filters?.search?.trim()) params.search = filters.search.trim();
+  const res = await axiosInstance.get('/payments', { params });
+  return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
+};
+/** PUT /api/payments/:id/approve */
+export const approvePayment = async (id: string | number): Promise<{ success: boolean; message: string }> => {
+  const res = await axiosInstance.put(`/payments/${id}/approve`);
+  return res.data;
+};
+
 // Grouped export — same convenience pattern as buildingService / departmentService / customerDetailsService
 export const paymentService = {
   collect          : collectPayment,
@@ -213,4 +247,6 @@ export const paymentService = {
   customerRemaining: fetchCustomerRemaining,
   receipt          : fetchPaymentReceipt,
   customerDueGrid  : fetchCustomerDueGrid,
+  list             : fetchPaymentList,
+  approve          : approvePayment,
 };

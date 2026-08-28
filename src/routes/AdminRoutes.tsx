@@ -43,6 +43,8 @@ import CustomizeSchemePage from '../pages/Admin/CustomizeScheme/CustomizeSchemeP
 // Audit History — replaces its former PlaceholderPage now that
 // GET /api/audit-logs exists (item 11).
 import AuditHistoryPage from '../pages/Admin/AuditHistory/AuditHistoryPage';
+// Payment Received — replaces its former PlaceholderPage (item 16).
+import PaymentReceivedPage from '../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage';
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
@@ -104,7 +106,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="crm/customer-details/edit/:id" element={<CustomerDetailsCrudPage mode="edit" />} />
       <Route path="crm/customer-details/scheme/:id" element={<CustomerSchemeViewPage />} />
       <Route path="crm/payment-dues" element={<DueReportPage />} />
-      <Route path="crm/payment-received" element={<PlaceholderPage title="Payment Received" />} />
+      <Route path="crm/payment-received" element={<PaymentReceivedPage />} />
       <Route path="crm/leads" element={<PlaceholderPage title="Leads" />} />
 
       <Route path="audit-history" element={<AuditHistoryPage />} />
