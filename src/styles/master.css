@@ -503,10 +503,6 @@ html.dark .master-row-icon {
 @media (min-width: 640px) { .master-stat-grid-5 { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 900px) { .master-stat-grid-5 { grid-template-columns: repeat(5, 1fr); } }
 
-.master-stat-card-multi {
-  align-items: flex-start;
-}
-
 .master-stat-body-multi {
   min-width: 0;
   flex: 1;
@@ -515,6 +511,7 @@ html.dark .master-row-icon {
 
 .master-stat-multi-row {
   display: flex;
+  justify-content: center;
   gap: 12px;
   margin-top: 4px;
 }
