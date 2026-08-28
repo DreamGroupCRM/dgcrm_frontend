@@ -208,8 +208,6 @@ const CustomerDetailsListPage: React.FC = () => {
     due?: CustomerDueSummary; remaining?: CustomerRemainingAmounts;
   } | null>(null);
 
-  // ── Collect Payment modal — reachable from the row actions, and also
-  // refreshes the Payment History modal above when that's open for the
   // same customer. ────────────────────────────────────────────────────
   const [collectPaymentModal, setCollectPaymentModal] = useState<{ customer: Customer } | null>(null);
   const [cpPaymentFor, setCpPaymentFor] = useState<PaymentFor>('EMIAmount');
@@ -451,15 +449,7 @@ const CustomerDetailsListPage: React.FC = () => {
     }
   };
 
-  // ── Collect Payment ──────────────────────────────────────────────────
-  const openCollectPayment = (c: Customer) => {
-    setOpenMenuId(null);
-    setCpPaymentFor('EMIAmount');
-    setCpAmount(''); setCpInstDate(''); setCpModeOfPayment(''); setCpChequeNumber('');
-    setCpClearanceDate(''); setCpCompany(''); setCpMaintenance(''); setCpIsAdvancePay(false);
-    setCpDate(''); setCpPaymentDate('');
-    setCollectPaymentModal({ customer: c });
-  };
+
 
   const handleCollectPayment = async () => {
     if (!collectPaymentModal) return;
@@ -613,7 +603,7 @@ const CustomerDetailsListPage: React.FC = () => {
               type="button" onClick={clearAllFilters}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}
-            > X
+            > Reset Filter
             </button>
           </div>
         </div>
@@ -720,9 +710,7 @@ const CustomerDetailsListPage: React.FC = () => {
                         <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => navigate(`/admin/crm/customer-details/scheme/${c.id}`)}>
                           <MdLoyalty size={15} />
                         </button>
-                        <button type="button" title="Collect Payment" className="master-icon-btn" onClick={() => openCollectPayment(c)}>
-                          <MdPayments size={15} />
-                        </button>
+                        
                       </div>
                     </td>
                     <td style={{ padding: '12px 14px' }}>
@@ -891,101 +879,6 @@ const CustomerDetailsListPage: React.FC = () => {
                   )}
                 </>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Collect Payment modal ────────────────────────────────────── */}
-      {collectPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}
-          onClick={() => !collecting && setCollectPaymentModal(null)}>
-          <div className="rounded-2xl w-full" style={{ maxWidth: 560, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '88vh', overflowY: 'auto' }}
-            onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 cust-divider-bottom">
-              <div>
-                <div className="cust-modal-title">Collect Payment</div>
-                <div className="cust-modal-subtitle">{collectPaymentModal.customer.customer_name}</div>
-              </div>
-              <button type="button" onClick={() => setCollectPaymentModal(null)} className="cust-modal-close">
-                <MdClose size={20} />
-              </button>
-            </div>
-            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="cust-modal-label">Payment For <span className="cust-required">*</span></label>
-                <select value={cpPaymentFor} onChange={(e) => setCpPaymentFor(e.target.value as PaymentFor)}
-                  className="cust-modal-field">
-                  {PAYMENT_FOR_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="cust-modal-label">Amount (₹) <span className="cust-required">*</span></label>
-                <div className="flex items-center gap-2" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '0 12px' }}>
-                  <span style={{ color: t.textSecondary }}>₹</span>
-                  <input type="text" inputMode="decimal" placeholder="Enter amount" value={cpAmount}
-                    onChange={(e) => setCpAmount(e.target.value.replace(/[^\d.]/g, ''))}
-                    style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
-                </div>
-              </div>
-              <div>
-                <label className="cust-modal-label">Installment Date</label>
-                <input type="date" value={cpInstDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpInstDate(e.target.value)} className="cust-date-field" />
-              </div>
-              <div>
-                <label className="cust-modal-label">Mode of Payment</label>
-                <input type="text" placeholder="e.g. Cash, Cheque, NEFT" value={cpModeOfPayment} onChange={(e) => setCpModeOfPayment(e.target.value)}
-                  className="cust-modal-field" />
-              </div>
-              <div>
-                <label className="cust-modal-label">Cheque Number</label>
-                <input type="text" placeholder="Optional" value={cpChequeNumber} onChange={(e) => setCpChequeNumber(e.target.value)}
-                  className="cust-modal-field" />
-              </div>
-              <div>
-                <label className="cust-modal-label">Clearance Date</label>
-                <input type="date" value={cpClearanceDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpClearanceDate(e.target.value)} className="cust-date-field" />
-              </div>
-              <div>
-                <label className="cust-modal-label">Company</label>
-                <input type="text" placeholder="Optional" value={cpCompany} onChange={(e) => setCpCompany(e.target.value)}
-                  className="cust-modal-field" />
-              </div>
-              <div>
-                <label className="cust-modal-label">Maintenance (₹)</label>
-                <input type="text" inputMode="numeric" placeholder="Optional" value={cpMaintenance}
-                  onChange={(e) => setCpMaintenance(e.target.value.replace(/[^\d]/g, ''))}
-                  className="cust-modal-field" />
-              </div>
-              {/* date/payment_date — only Admin/SuperAdmin callers actually get
-                  these applied server-side; a non-admin caller's submission is
-                  silently forced to "now" instead (see paymentService.ts). */}
-              <div>
-                <label className="cust-modal-label">Date <span style={{ fontWeight: 400 }}>(Admin only)</span></label>
-                <input type="date" value={cpDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpDate(e.target.value)} className="cust-date-field" />
-              </div>
-              <div>
-                <label className="cust-modal-label">Payment Date <span style={{ fontWeight: 400 }}>(Admin only)</span></label>
-                <input type="date" value={cpPaymentDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setCpPaymentDate(e.target.value)} className="cust-date-field" />
-              </div>
-              {cpPaymentFor === 'EMIAmount' && (
-                <div className="sm:col-span-2 flex items-center gap-2">
-                  <input id="cp-advance-pay" type="checkbox" checked={cpIsAdvancePay} onChange={(e) => setCpIsAdvancePay(e.target.checked)} />
-                  <label htmlFor="cp-advance-pay" style={{ fontSize: 11.5, color: t.textPrimary, cursor: 'pointer' }}>
-                    Advance Pay <span style={{ color: t.textSecondary }}>(pay ahead into future EMIs)</span>
-                  </label>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center justify-end gap-3 p-5 cust-divider-top">
-              <button type="button" onClick={() => setCollectPaymentModal(null)} disabled={collecting}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
-                Cancel
-              </button>
-              <button type="button" onClick={handleCollectPayment} disabled={collecting}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white cust-btn-primary">
-                {collecting ? 'Collecting...' : 'Collect Payment'}
-              </button>
             </div>
           </div>
         </div>
