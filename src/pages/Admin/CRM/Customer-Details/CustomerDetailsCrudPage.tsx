@@ -221,7 +221,7 @@ const PhotoUploadCircle: React.FC<{ t: Theme; isView?: boolean; value: FileValue
         {!isView && (
           <button type="button" onClick={() => inputRef.current?.click()}
             className="flex items-center justify-center rounded-full"
-            style={{ position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, background: '#4338ca', border: `2px solid ${t.surfaceBg}`, cursor: 'pointer', color: '#fff' }}>
+            style={{ position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, background: '#0284c7', border: `2px solid ${t.surfaceBg}`, cursor: 'pointer', color: '#fff' }}>
             <MdCameraAlt size={14} />
           </button>
         )}
@@ -242,7 +242,7 @@ const CompactFileUpload: React.FC<{ t: Theme; isView?: boolean; accept?: string;
         onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
       {displayName ? (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
-          <MdInsertDriveFile size={16} style={{ color: '#4338ca', flexShrink: 0 }} />
+          <MdInsertDriveFile size={16} style={{ color: '#0284c7', flexShrink: 0 }} />
           <span className="truncate" style={{ fontSize: 11.5, color: t.textPrimary, flex: 1 }}>{displayName}</span>
           {!isView && (
             <button type="button" onClick={() => onChange(null)}
@@ -271,7 +271,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
     <div className="rounded-xl p-4 text-center" style={{ border: `1.5px dashed ${t.inputBorder}`, background: t.inputBg }}>
       <input ref={inputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }}
         onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
-      <MdCloudUpload size={26} style={{ color: '#4338ca', margin: '0 auto 6px' }} />
+      <MdCloudUpload size={26} style={{ color: '#0284c7', margin: '0 auto 6px' }} />
       {displayName ? (
         <div className="flex items-center justify-center gap-2">
           <span className="truncate" style={{ fontSize: 11, color: t.textPrimary, maxWidth: 150 }}>{displayName}</span>
@@ -284,7 +284,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
         </div>
       ) : (
         <button type="button" disabled={isView} onClick={() => inputRef.current?.click()}
-          style={{ background: 'transparent', border: 'none', cursor: isView ? 'not-allowed' : 'pointer', color: '#4338ca', fontSize: 11, fontWeight: 700, fontFamily: t.fontFamily }}>
+          style={{ background: 'transparent', border: 'none', cursor: isView ? 'not-allowed' : 'pointer', color: '#0284c7', fontSize: 11, fontWeight: 700, fontFamily: t.fontFamily }}>
           Upload {label}
         </button>
       )}
@@ -296,7 +296,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
 const RadioOption: React.FC<{ t: Theme; label: string; selected: boolean; onSelect: () => void; disabled?: boolean }> = ({ t, label, selected, onSelect, disabled }) => (
   <button type="button" disabled={disabled} onClick={onSelect}
     className="flex items-center gap-2" style={{ background: 'transparent', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', padding: 0 }}>
-    {selected ? <MdRadioButtonChecked size={18} style={{ color: '#4338ca' }} /> : <MdRadioButtonUnchecked size={18} style={{ color: t.textSecondary }} />}
+    {selected ? <MdRadioButtonChecked size={18} style={{ color: '#0284c7' }} /> : <MdRadioButtonUnchecked size={18} style={{ color: t.textSecondary }} />}
     <span style={{ fontSize: 12, color: t.textPrimary, fontWeight: 600 }}>{label}</span>
   </button>
 );
@@ -325,6 +325,119 @@ const NumberField: React.FC<{
       const clamped = max !== undefined && digitsOnly !== '' ? String(Math.min(max, Number(digitsOnly))) : digitsOnly;
       onChange(clamped);
     }} className={fieldClassName(!!isView)} />
+);
+
+// ── Preview modal (item 13) — reads straight from the form's current
+// (possibly unsaved) state, purely presentational; it never touches the
+// form fields themselves, so closing it leaves every entered value intact.
+// Grouped into the same 4 sections as the form itself so it reads as a
+// professional customer profile/document rather than a raw field dump. ──
+const PreviewRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  <div>
+    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--cust-text-secondary)', marginBottom: 2 }}>{label}</div>
+    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--cust-text-primary)', wordBreak: 'break-word' }}>{value || '—'}</div>
+  </div>
+);
+
+const PreviewSection: React.FC<{ icon: React.ReactNode; title: string; gradient: string; children: React.ReactNode }> = ({ icon, title, gradient, children }) => (
+  <div className="rounded-2xl mb-4" style={{ border: '1px solid var(--cust-surface-border)', overflow: 'hidden' }}>
+    <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: gradient }}>
+      <span className="flex items-center justify-center rounded-lg" style={{ width: 24, height: 24, background: 'rgba(255,255,255,0.22)', color: '#fff' }}>{icon}</span>
+      <h3 style={{ fontSize: 12.5, fontWeight: 800, color: '#fff', margin: 0 }}>{title}</h3>
+    </div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4" style={{ background: 'var(--cust-surface-bg)' }}>
+      {children}
+    </div>
+  </div>
+);
+
+interface PreviewData {
+  photoUrl: string | null; fullName: string; email: string; mobile: string; whatsapp: string;
+  aadhar: string; pan: string; address: string; dob: string; age: string;
+  altName: string; altMobile: string;
+  companyName: string; projectName: string; buildingName: string; wingName: string; floorLabel: string;
+  flatNo: string; flatType: string; flatArea: string; parking: string;
+  totalCost: string; bookingDate: string; bookingAmount: string; remainingAmount: string; remainingDate: string;
+  possessionAmount: string; installmentDate: string; emiBefore: string; emiAfter: string; tenure: string;
+  boosterBefore: string; boosterAfter: string; boosterIntervalBefore: string; boosterIntervalAfter: string;
+  documents: { label: string; value: FileValue }[];
+}
+
+const CustomerPreviewModal: React.FC<{ data: PreviewData; onClose: () => void }> = ({ data, onClose }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
+    <div className="rounded-2xl w-full" style={{ maxWidth: 720, maxHeight: '90vh', overflowY: 'auto', background: 'var(--cust-surface-bg)', border: '1px solid var(--cust-surface-border)' }}
+      onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--cust-divider)' }}>
+        <div className="flex items-center gap-3">
+          {data.photoUrl ? (
+            <img src={data.photoUrl} alt="" className="rounded-full" style={{ width: 44, height: 44, objectFit: 'cover' }} />
+          ) : (
+            <div className="flex items-center justify-center rounded-full text-white font-bold" style={{ width: 44, height: 44, background: 'var(--grad-purple)' }}>
+              {(data.fullName || '—').slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--cust-text-primary)' }}>{data.fullName || 'Customer Preview'}</div>
+            <div style={{ fontSize: 10.5, color: 'var(--cust-text-secondary)' }}>Customer Profile Preview — unsaved</div>
+          </div>
+        </div>
+        <button type="button" onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--cust-text-secondary)' }}>
+          <MdClose size={20} />
+        </button>
+      </div>
+
+      <div className="p-5">
+        <PreviewSection icon={<MdPerson size={13} />} title="Personal Details" gradient="var(--grad-sky)">
+          <PreviewRow label="Full Name" value={data.fullName} />
+          <PreviewRow label="Email ID" value={data.email} />
+          <PreviewRow label="Mobile Number" value={data.mobile} />
+          <PreviewRow label="WhatsApp Number" value={data.whatsapp} />
+          <PreviewRow label="Aadhar Number" value={data.aadhar} />
+          <PreviewRow label="PAN Number" value={data.pan} />
+          <PreviewRow label="Date of Birth" value={data.dob ? `${data.dob}${data.age ? ` (${data.age})` : ''}` : ''} />
+          <PreviewRow label="Alternate Contact" value={data.altName ? `${data.altName}${data.altMobile ? ` · ${data.altMobile}` : ''}` : ''} />
+          <PreviewRow label="Address" value={data.address} />
+        </PreviewSection>
+
+        <PreviewSection icon={<MdApartment size={13} />} title="Property Booking Details" gradient="var(--grad-teal)">
+          <PreviewRow label="Company Name" value={data.companyName} />
+          <PreviewRow label="Project Name" value={data.projectName} />
+          <PreviewRow label="Building" value={data.buildingName} />
+          <PreviewRow label="Wing / Floor" value={[data.wingName, data.floorLabel].filter(Boolean).join(' / ')} />
+          <PreviewRow label="Flat No" value={data.flatNo} />
+          <PreviewRow label="Flat Type" value={data.flatType} />
+          <PreviewRow label="Flat Area" value={data.flatArea} />
+          <PreviewRow label="Parking" value={data.parking} />
+        </PreviewSection>
+
+        <PreviewSection icon={<MdPayments size={13} />} title="Payment Details" gradient="var(--grad-green)">
+          <PreviewRow label="Total Cost" value={data.totalCost && `₹ ${data.totalCost}`} />
+          <PreviewRow label="Booking Date" value={data.bookingDate} />
+          <PreviewRow label="Booking Amount" value={data.bookingAmount && `₹ ${data.bookingAmount}`} />
+          <PreviewRow label="Remaining Booking Amount" value={data.remainingAmount && `₹ ${data.remainingAmount}${data.remainingDate ? ` (${data.remainingDate})` : ''}`} />
+          <PreviewRow label="Possession Amount" value={data.possessionAmount && `₹ ${data.possessionAmount}`} />
+          <PreviewRow label="Installment Date" value={data.installmentDate} />
+          <PreviewRow label="Monthly EMI Before Possession" value={data.emiBefore && `₹ ${data.emiBefore}`} />
+          <PreviewRow label="Monthly EMI After Possession" value={data.emiAfter && `₹ ${data.emiAfter}`} />
+          <PreviewRow label="Total EMI Tenure" value={data.tenure && `${data.tenure} months`} />
+          <PreviewRow label="Booster Before Possession" value={data.boosterBefore && `₹ ${data.boosterBefore} / ${data.boosterIntervalBefore || '—'} mo`} />
+          <PreviewRow label="Booster After Possession" value={data.boosterAfter && `₹ ${data.boosterAfter} / ${data.boosterIntervalAfter || '—'} mo`} />
+        </PreviewSection>
+
+        <PreviewSection icon={<MdDescription size={13} />} title="Uploaded Documents" gradient="var(--grad-purple)">
+          {data.documents.map((d) => (
+            <PreviewRow key={d.label} label={d.label} value={fileDisplayName(d.value) || 'Not uploaded'} />
+          ))}
+        </PreviewSection>
+      </div>
+
+      <div className="flex items-center justify-end gap-3 px-5 py-4" style={{ borderTop: '1px solid var(--cust-divider)' }}>
+        <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
+          Close Preview
+        </button>
+      </div>
+    </div>
+  </div>
 );
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -393,6 +506,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [allotmentLetter, setAllotmentLetter] = useState<FileValue>(null);
 
   const [isActive, setIsActive] = useState(true);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -534,9 +648,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     boosterIntervalBeforePossession.trim() !== '' && boosterIntervalAfterPossession.trim() !== '' &&
     !!applicationForm && !!declarationForm && !!allotmentLetter;
 
-  const handlePreview = () => {
-    toast.info('Preview is not available yet.');
-  };
+  const handlePreview = () => setPreviewOpen(true);
 
   const handleSubmit = async () => {
     if (!isFormValid) {
@@ -637,58 +749,71 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const cssVars = {
     '--cust-field-bg': t.inputBg, '--cust-field-border': t.inputBorder, '--cust-field-text': t.inputText,
     '--cust-inset-bg': t.insetBg, '--cust-text-primary': t.textPrimary, '--cust-text-secondary': t.textSecondary,
-    '--cust-surface-bg': t.surfaceBg, '--cust-surface-border': t.surfaceBorder,
+    '--cust-surface-bg': t.surfaceBg, '--cust-surface-border': t.surfaceBorder, '--cust-divider': t.divider,
   } as React.CSSProperties;
 
   return (
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16, ...cssVars }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-6">
-        <button type="button" onClick={() => navigate('/admin/crm/customer-details')}
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, padding: 6 }}>
-          <MdArrowBack size={20} />
-        </button>
-        <div>
-          <h1 className="cust-crud-title">
-            {mode === 'add' ? 'Create Customer' : mode === 'edit' ? 'Edit Customer' : 'View Customer'}
-          </h1>
-          <p className="cust-crud-subtitle">
-            {mode === 'add' ? 'Add new customer details' : 'Customer details'}
-          </p>
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => navigate('/admin/crm/customer-details')}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, padding: 6 }}>
+            <MdArrowBack size={20} />
+          </button>
+          <div>
+            <h1 className="cust-crud-title">
+              {mode === 'add' ? 'Create Customer' : mode === 'edit' ? 'Edit Customer' : 'View Customer'}
+            </h1>
+            <p className="cust-crud-subtitle">
+              {mode === 'add' ? 'Add new customer details' : 'Customer details'}
+            </p>
+          </div>
         </div>
+
+        {/* Top-right "Customer ID - C001" badge, at 28px — matches the
+            Employee CRUD page's top-right ID badge, sized per item 5's
+            spec (Customer ID is shown larger than Employee's 18px). Only
+            shown once a code exists (Edit/View — a not-yet-created
+            customer has none yet). */}
+        {customerCode && (
+          <div className="cust-id-badge">
+            <span className="cust-id-value">Customer ID - {customerCode}</span>
+          </div>
+        )}
       </div>
 
       {/* ── Customer Details (Personal Details) ──────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdPerson size={16} />} title="Customer Details" gradient="linear-gradient(135deg,#4338ca,#6366f1)" badge={customerCode || undefined} />
+        <SectionHeader t={t} icon={<MdPerson size={16} />} title="Customer Details" gradient="var(--grad-sky)" />
         <SubHeading t={t} title="Personal Details" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field t={t} label="First Name" required>
-              <input type="text" placeholder="Enter first name" value={firstName} readOnly={isView} disabled={isView}
-                onChange={(e) => setFirstName(e.target.value)} className={fieldClass} />
-            </Field>
-            <Field t={t} label="Middle Name" required>
-              <input type="text" placeholder="Enter middle name" value={middleName} readOnly={isView} disabled={isView}
-                onChange={(e) => setMiddleName(e.target.value)} className={fieldClass} />
-            </Field>
-            <Field t={t} label="Last Name" required>
-              <input type="text" placeholder="Enter last name" value={lastName} readOnly={isView} disabled={isView}
-                onChange={(e) => setLastName(e.target.value)} className={fieldClass} />
-            </Field>
-          </div>
+        {/* Row 1 of 3 — Name + Photo */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+          <Field t={t} label="First Name" required>
+            <input type="text" placeholder="Enter first name" value={firstName} readOnly={isView} disabled={isView}
+              onChange={(e) => setFirstName(e.target.value)} className={fieldClass} />
+          </Field>
+          <Field t={t} label="Middle Name" required>
+            <input type="text" placeholder="Enter middle name" value={middleName} readOnly={isView} disabled={isView}
+              onChange={(e) => setMiddleName(e.target.value)} className={fieldClass} />
+          </Field>
+          <Field t={t} label="Last Name" required>
+            <input type="text" placeholder="Enter last name" value={lastName} readOnly={isView} disabled={isView}
+              onChange={(e) => setLastName(e.target.value)} className={fieldClass} />
+          </Field>
+          <Field t={t} label="Email ID" required>
+            <input type="email" placeholder="Enter email address" value={email} readOnly={isView} disabled={isView}
+              onChange={(e) => setEmail(e.target.value)} className={fieldClass} />
+          </Field>
           <Field t={t} label="Customer Photo" required className="flex flex-col items-center justify-start">
             <PhotoUploadCircle t={t} isView={isView} value={customerPhoto} onChange={setCustomerPhoto} />
           </Field>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-          <Field t={t} label="Email ID" required>
-            <input type="email" placeholder="Enter email address" value={email} readOnly={isView} disabled={isView}
-              onChange={(e) => setEmail(e.target.value)} className={fieldClass} />
-          </Field>
+        {/* Row 2 of 3 — Contact + ID proofs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="Mobile Number" required>
             <PhoneField t={t} isView={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber} />
           </Field>
@@ -696,9 +821,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <PhoneField t={t} isView={isView} icon={<FaWhatsapp size={15} style={{ color: '#25D366', flexShrink: 0 }} />}
               code={whatsappCountryCode} onCodeChange={setWhatsappCountryCode} number={whatsappNumber} onNumberChange={setWhatsappNumber} />
           </Field>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Field t={t} label="Aadhar Number">
             <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView}
               onChange={(e) => setAadharNumber(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
@@ -710,47 +832,46 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView}
               onChange={(e) => setPancardNumber(e.target.value.toUpperCase())} className={fieldClass} />
           </Field>
+        </div>
+
+        {/* Row 3 of 3 — remaining ID proof, DOB, address, alternate contact */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <Field t={t} label="Upload Pancard Photo" required>
             <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={setPancardPhoto} />
           </Field>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          <Field t={t} label="Address" required>
-            <textarea placeholder="Enter address" value={address} readOnly={isView} disabled={isView} rows={3}
-              onChange={(e) => setAddress(e.target.value)} className={fieldClass} style={{ resize: 'vertical' }} />
-          </Field>
           <Field t={t} label="Date of Birth" required>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <input type="date" value={dateOfBirth} readOnly={isView} disabled={isView}
                 onClick={openPicker} onFocus={openPicker} onChange={(e) => setDateOfBirth(e.target.value)} className={fieldClass} />
               {age && (
-                <div className="rounded-xl px-3 py-2 flex-shrink-0" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
-                  <p style={{ fontSize: 10, color: t.textSecondary, margin: 0, fontWeight: 600 }}>Age</p>
-                  <p style={{ fontSize: 11.5, color: '#4338ca', margin: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>{age.years} Years&nbsp;&nbsp;{age.months} Months</p>
+                <div className="rounded-xl px-2 py-2 flex-shrink-0" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
+                  <p style={{ fontSize: 9, color: t.textSecondary, margin: 0, fontWeight: 600 }}>Age</p>
+                  <p style={{ fontSize: 10.5, color: '#0284c7', margin: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>{age.years}y {age.months}m</p>
                 </div>
               )}
             </div>
           </Field>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field t={t} label="Alternate Person to Contact (Full Name)">
+          <Field t={t} label="Alternate Contact Name">
             <input type="text" placeholder="Enter full name" value={alternatePersonName} readOnly={isView} disabled={isView}
               onChange={(e) => setAlternatePersonName(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Alternate Person Mobile Number">
+          <Field t={t} label="Alternate Contact Mobile">
             <input type="tel" placeholder="Enter mobile number" value={alternatePersonMobile} readOnly={isView} disabled={isView}
               onChange={(e) => setAlternatePersonMobile(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
+          </Field>
+          <Field t={t} label="Address" required>
+            <textarea placeholder="Enter address" value={address} readOnly={isView} disabled={isView} rows={2}
+              onChange={(e) => setAddress(e.target.value)} className={fieldClass} style={{ resize: 'vertical' }} />
           </Field>
         </div>
       </div>
 
       {/* ── Property Booking Details ─────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="linear-gradient(135deg,#0e7490,#22d3ee)" />
+        <SectionHeader t={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="var(--grad-teal)" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        {/* Row 1 of 2 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
           <Field t={t} label="Company Name" required>
             <input type="text" placeholder="Enter company name" value={companyName} readOnly={isView} disabled={isView}
               onChange={(e) => setCompanyName(e.target.value)} className={fieldClass} />
@@ -766,9 +887,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <SearchableSelect t={t} placeholder="Select building" options={buildingNameOptions} value={buildingName} disabled={isView}
               onChange={(v) => { setBuildingName(v); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
           </Field>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
           <Field t={t} label="Wing">
             <SearchableSelect
               t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingName}
@@ -779,6 +897,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorLabel} disabled={isView || !selectedWing}
               onChange={(v) => { setFloorLabel(v); setFlatNo(''); }} />
           </Field>
+        </div>
+
+        {/* Row 2 of 2 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <Field t={t} label="Flat No">
             <SearchableSelect
               t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNo} disabled={isView || !selectedFloor}
@@ -796,17 +918,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Flat Area">
             <input type="text" readOnly value={selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : '—'} className="cust-field cust-field-view" />
           </Field>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field t={t} label="Do you Want to Purchase Parking?" required>
-            <div className="flex items-center gap-6" style={{ height: 38 }}>
+          <Field t={t} label="Purchase Parking?" required>
+            <div className="flex items-center gap-4" style={{ height: 38 }}>
               <RadioOption t={t} label="Yes" selected={wantsParking === 'yes'} disabled={isView} onSelect={() => setWantsParking('yes')} />
               <RadioOption t={t} label="No" selected={wantsParking === 'no'} disabled={isView} onSelect={() => { setWantsParking('no'); setParkingNo(''); }} />
             </div>
           </Field>
           {wantsParking === 'yes' && (
-            <Field t={t} label="Which is the Parking No?" required>
+            <Field t={t} label="Parking No?" required>
               <input type="text" placeholder="Enter parking number" value={parkingNo} readOnly={isView} disabled={isView}
                 onChange={(e) => setParkingNo(e.target.value)} className={fieldClass} />
             </Field>
@@ -816,9 +935,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Payment Details ──────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" gradient="linear-gradient(135deg,#059669,#10b981)" />
+        <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" gradient="var(--grad-green)" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        {/* Row 1 of 3 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="Total Cost of Flat (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter total cost" value={totalCost} onChange={setTotalCost} />
           </Field>
@@ -836,25 +956,23 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 onClick={openPicker} onFocus={openPicker} onChange={(e) => setRemainingBookingDate(e.target.value)} className={fieldClass} />
             </div>
           </Field>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Field t={t} label="Possession Amount (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter possession amount" value={possessionAmount} onChange={setPossessionAmount} />
           </Field>
+        </div>
+
+        {/* Row 2 of 3 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="Installment Date" required>
             <input type="date" value={installmentDate} readOnly={isView} disabled={isView}
               onClick={openPicker} onFocus={openPicker} onChange={(e) => setInstallmentDate(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Monthly EMI Amount Before Possession (₹)" required>
+          <Field t={t} label="Monthly EMI Before Possession (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} />
           </Field>
-          <Field t={t} label="Monthly EMI Amount After Possession (₹)" required>
+          <Field t={t} label="Monthly EMI After Possession (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} />
           </Field>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4 items-end">
           <Field t={t} label="Total EMI Tenure (Months)" required>
             {/* Max 99 / 2-digit cap (Task 6) — maxLength blocks typing a 3rd
                 digit, and the max clamp inside NumberField covers paste
@@ -864,12 +982,13 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Booster Amount Before Possession (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} />
           </Field>
+        </div>
+
+        {/* Row 3 of 3 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
           <Field t={t} label="Booster Amount After Possession (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} />
           </Field>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
           <Field t={t} label="Booster Interval Before Possession (Months)" required>
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} />
           </Field>
@@ -877,8 +996,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} />
           </Field>
           <button type="button" onClick={handlePreview}
-            className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: t.insetBg, color: '#4338ca', border: `1px solid ${t.inputBorder}`, cursor: 'pointer' }}>
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold lg:col-span-2"
+            style={{ background: t.insetBg, color: '#0284c7', border: `1px solid ${t.inputBorder}`, cursor: 'pointer' }}>
             <MdVisibility size={16} /> Preview Customer Details
           </button>
         </div>
@@ -886,7 +1005,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Document Upload ──────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdDescription size={16} />} title="Document Upload" gradient="linear-gradient(135deg,#a21caf,#e879f9)" />
+        <SectionHeader t={t} icon={<MdDescription size={16} />} title="Document Upload" gradient="var(--grad-purple)" />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field t={t} label="Application Form" required>
@@ -922,6 +1041,37 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </button>
         )}
       </div>
+
+      {previewOpen && (
+        <CustomerPreviewModal
+          onClose={() => setPreviewOpen(false)}
+          data={{
+            photoUrl: typeof customerPhoto === 'string' ? customerPhoto : null,
+            fullName: [firstName, middleName, lastName].filter(Boolean).join(' '),
+            email, mobile: mobileNumber ? `${mobileCountryCode} ${mobileNumber}` : '',
+            whatsapp: whatsappNumber ? `${whatsappCountryCode} ${whatsappNumber}` : '',
+            aadhar: aadharNumber, pan: pancardNumber, address, dob: dateOfBirth,
+            age: age ? `${age.years}y ${age.months}m` : '',
+            altName: alternatePersonName, altMobile: alternatePersonMobile,
+            companyName, projectName, buildingName, wingName, floorLabel,
+            flatNo: selectedFlat?.flat_no || flatNo,
+            flatType: selectedFlat?.flat_type || '',
+            flatArea: selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : '',
+            parking: wantsParking === 'yes' ? `Yes${parkingNo ? ` · ${parkingNo}` : ''}` : 'No',
+            totalCost, bookingDate, bookingAmount, remainingAmount: remainingBookingAmount, remainingDate: remainingBookingDate,
+            possessionAmount, installmentDate, emiBefore: monthlyEmiBeforePossession, emiAfter: monthlyEmiAfterPossession, tenure: totalEmiTenure,
+            boosterBefore: boosterAmountBeforePossession, boosterAfter: boosterAmountAfterPossession,
+            boosterIntervalBefore: boosterIntervalBeforePossession, boosterIntervalAfter: boosterIntervalAfterPossession,
+            documents: [
+              { label: 'Aadhar Card', value: aadharPhoto },
+              { label: 'Pancard', value: pancardPhoto },
+              { label: 'Application Form', value: applicationForm },
+              { label: 'Declaration Form', value: declarationForm },
+              { label: 'Allotment Letter', value: allotmentLetter },
+            ],
+          }}
+        />
+      )}
     </div>
   );
 };

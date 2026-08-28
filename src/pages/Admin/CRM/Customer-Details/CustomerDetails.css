@@ -103,6 +103,24 @@
   color: var(--cust-text-secondary);
 }
 
+/* ── Customer ID badge (Crud page header, top-right) — "Customer ID -
+   C001" at 28px, per item 5's spec (larger than Employee's 18px
+   .emp-id-value, same badge shape). ────────────────────────────────── */
+.cust-id-badge {
+  padding: 8px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--cust-surface-border);
+  background: var(--cust-inset-bg);
+  white-space: nowrap;
+}
+
+.cust-id-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0284c7;
+  line-height: 1;
+}
+
 /* ── Loading/empty states — List page's table body. ────────────────────── */
 .cust-empty-state {
   text-align: center;
