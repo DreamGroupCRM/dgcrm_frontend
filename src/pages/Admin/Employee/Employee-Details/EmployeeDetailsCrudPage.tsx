@@ -6,11 +6,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdArrowBack, MdCloudUpload, MdPerson, MdBusinessCenter, MdAccountBalance,
-  MdGroups, MdCameraAlt, MdInfoOutline,
+  MdGroups, MdInfoOutline, MdDescription, MdCheckCircle, MdOpenInNew,
 } from 'react-icons/md';
 
 import { useAppSelector } from '../../../../hooks';
 import { getTheme } from '../../../../styles/theme';
+import { formatDate } from '../../../../utils';
 import {
   ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
   fetchEmployeePermissions, FetchEmployeeDetails,
@@ -23,6 +24,16 @@ import { fetchMappingMatrix } from '../../../../services/moduleActionService';
 import { fetchAssignableRoles } from '../../../../services/roleService';
 import './EmployeeDetails.css';
 
+// Employee Status badge colors for View mode — same palette as
+// EmployeeDetailsListPage.tsx's STATUS_STYLES, kept as its own small local
+// copy since that map isn't exported (and View mode only ever needs the
+// label + 2 colors, not the full card-rendering logic built around it there).
+const VIEW_STATUS_STYLES: Record<string, { bg: string; color: string; label: string }> = {
+  active: { bg: '#dcfce7', color: '#16a34a', label: 'Active' },
+  inactive: { bg: '#fee2e2', color: '#dc2626', label: 'Inactive' },
+  on_leave: { bg: '#fef9c3', color: '#ca8a04', label: 'On Leave' },
+};
+
 type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
 type Theme = ReturnType<typeof getTheme>;
@@ -34,7 +45,6 @@ const ACCOUNT_TYPE_OPTIONS = ['Savings', 'Current'];
 const STATUS_OPTIONS: { value: EmployeeStatus; label: string }[] = [
   { value: 'active', label: 'Active' },
   { value: 'inactive', label: 'Inactive' },
-  { value: 'on_leave', label: 'On Leave' },
 ];
 
 // Sticky crud-footer height, matching every other Master CRUD page's
@@ -282,11 +292,15 @@ const ModuleActionGrid: React.FC<{
                 return (
                   <td key={a.code} className={`emp-grid-td-center${checked ? ' emp-grid-td-checked' : ''}`}>
                     {moduleActionId != null ? (
-                      <input
-                        type="checkbox" checked={checked} disabled={isView}
-                        style={{ cursor: isView ? 'default' : 'pointer' }}
-                        onChange={() => onToggle(moduleActionId)}
-                      />
+                      isView ? (
+                        checked ? <MdCheckCircle size={15} color="#16a34a" /> : <span style={{ color: t.divider }}>–</span>
+                      ) : (
+                        <input
+                          type="checkbox" checked={checked} disabled={isView}
+                          style={{ cursor: isView ? 'default' : 'pointer' }}
+                          onChange={() => onToggle(moduleActionId)}
+                        />
+                      )
                     ) : (
                       <span style={{ color: t.divider }}>—</span>
                     )}
@@ -301,51 +315,39 @@ const ModuleActionGrid: React.FC<{
   );
 };
 
-// ── Profile Photo upload — square, camera-icon placeholder ────────────────
-const ProfilePhotoUpload: React.FC<{
-  t: Theme; isDark: boolean; disabled?: boolean;
-  file: File | null | undefined; existingUrl?: string | null;
-  onChange: (f: File | null) => void;
-}> = ({ t, isDark, disabled, file, existingUrl, onChange }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(existingUrl || null);
+// ── View mode — label-over-value "ID card" cell, used instead of Field's
+// label+input pairing so a read-only page never looks like a disabled form.
+const ViewValue: React.FC<{ label: string; value: React.ReactNode; className?: string }> = ({ label, value, className }) => (
+  <div className={`emp-view-field${className ? ` ${className}` : ''}`}>
+    <div className="emp-view-label">{label}</div>
+    <div className="emp-view-value">
+      {value === '' || value == null ? <span style={{ opacity: 0.5 }}>—</span> : value}
+    </div>
+  </div>
+);
 
-  useEffect(() => {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-
+// ── View mode — one uploaded-document card (Aadhar/PAN/Resume/Appointment
+// Letter/Passbook). Shows an inline thumbnail for image uploads, a generic
+// document icon otherwise, and a "View" link that opens the file in a new
+// tab — no download machinery of our own, just the URL the backend already
+// serves uploaded files from.
+const DocumentCard: React.FC<{ t: Theme; label: string; url?: string | null }> = ({ t, label, url }) => {
+  const isImage = !!url && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url);
   return (
-    <>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => inputRef.current?.click()}
-        className="w-full flex flex-col items-center justify-center gap-2 rounded-xl"
-        style={{
-          border: `1.5px dashed ${t.inputBorder}`, aspectRatio: '1 / 1', maxWidth: 170,
-          background: disabled ? t.insetBg : t.inputBg, cursor: disabled ? 'default' : 'pointer', overflow: 'hidden',
-        }}
-      >
-        {previewUrl ? (
-          <img src={previewUrl} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <>
-            <span className="flex items-center justify-center rounded-full" style={{ width: 40, height: 40, background: 'linear-gradient(135deg,#4338ca,#4f46e5)' }}>
-              <MdCameraAlt size={19} color="#fff" />
-            </span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: t.textPrimary }}>Upload Photo</span>
-            <span style={{ fontSize: 10, color: t.textSecondary }}>JPG, PNG (Max 2MB)</span>
-          </>
-        )}
-      </button>
-      <input
-        ref={inputRef} type="file" hidden accept=".jpg,.jpeg,.png"
-        onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-      />
-    </>
+    <div className="emp-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg }}>
+      <div className="emp-doc-card-icon" style={{ background: url ? 'linear-gradient(135deg,#4338ca,#4f46e5)' : t.surfaceBorder }}>
+        {isImage && url ? <img src={url} alt="" /> : <MdDescription size={19} color={url ? '#fff' : t.textSecondary} />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="emp-doc-card-label">{label}</div>
+        <div className="emp-doc-card-status">{url ? 'Uploaded' : 'Not uploaded'}</div>
+      </div>
+      {url && (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="emp-doc-card-link">
+          <MdOpenInNew size={12} /> View
+        </a>
+      )}
+    </div>
   );
 };
 
@@ -400,6 +402,51 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
   const setFile = (key: keyof EmployeeFileValues) => (f: File | null) =>
     setFiles((prev) => ({ ...prev, [key]: f }));
+
+  // ── Scroll-wheel stepping for Check In/Check Out (time) and Date of Birth
+  // (date) — native browser scroll-to-adjust on these input types is wildly
+  // inconsistent: on a trackpad it fires many wheel events per physical
+  // gesture, so time fields flip through many minutes on one scroll (too
+  // fast); the date field's native step, by contrast, reads as sluggish (too
+  // slow). Both are intercepted here and driven by one deliberate step per
+  // throttle window instead — a longer window for time (normal/expected
+  // speed), a shorter one for date (snappier than the native default).
+  const timeWheelThrottleRef = useRef(0);
+  const dateWheelThrottleRef = useRef(0);
+
+  const stepTime = (value: string, deltaSign: number): string => {
+    const [hStr, mStr] = (value || '00:00').split(':');
+    let h = Number(hStr) || 0;
+    let m = (Number(mStr) || 0) + deltaSign;
+    if (m < 0) { m = 59; h = (h + 23) % 24; }
+    if (m > 59) { m = 0; h = (h + 1) % 24; }
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  };
+
+  const handleTimeWheel = (key: 'check_in_time' | 'check_out_time') => (e: React.WheelEvent<HTMLInputElement>) => {
+    if (isView) return;
+    e.preventDefault();
+    const now = Date.now();
+    if (now - timeWheelThrottleRef.current < 120) return;
+    timeWheelThrottleRef.current = now;
+    set(key, stepTime(form[key], e.deltaY > 0 ? -1 : 1));
+  };
+
+  const stepDate = (value: string, deltaSign: number): string => {
+    const base = value ? new Date(`${value}T00:00:00`) : new Date();
+    if (Number.isNaN(base.getTime())) return value;
+    base.setDate(base.getDate() + deltaSign);
+    return base.toISOString().slice(0, 10);
+  };
+
+  const handleDobWheel = (e: React.WheelEvent<HTMLInputElement>) => {
+    if (isView) return;
+    e.preventDefault();
+    const now = Date.now();
+    if (now - dateWheelThrottleRef.current < 40) return;
+    dateWheelThrottleRef.current = now;
+    set('date_of_birth', stepDate(form.date_of_birth, e.deltaY > 0 ? -1 : 1));
+  };
 
   // ── employee code preview (Add) or actual code (Edit/View) ────────────
   useEffect(() => {
@@ -655,6 +702,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     if (!form.email.trim()) return 'Please enter the Email address.';
     if (!form.mobile_number.trim()) return 'Please enter the Mobile Number.';
     if (!form.address.trim()) return 'Please enter the Address.';
+    if (!form.aadhar_number.trim()) return 'Please enter the Aadhar Number.';
+    if (!files.aadhar_card && !existingUrls.aadhar_card) return 'Please upload the Aadhar Card.';
+    if (!form.pan_number.trim()) return 'Please enter the PAN Number.';
+    if (!files.pan_card && !existingUrls.pan_card) return 'Please upload the PAN Card.';
+    if (!files.profile_photo && !existingUrls.profile_photo) return 'Please upload the Profile Photo.';
     if (!form.joining_date) return 'Please enter the Employee Joining Date.';
     if (!form.working_hours) return 'Please select Working Hours.';
     if (!form.check_in_time || !form.check_out_time) return 'Please enter both Check In and Check Out time.';
@@ -692,22 +744,25 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         targetId = created.data?.id != null ? String(created.data.id) : undefined;
         toast.success('Employee created successfully.');
       }
-      // Visible-employees assignment saves through its own endpoint (it's
-      // not part of the Employee payload) — always sent, including an empty
-      // selection, so unchecking everyone on Edit actually clears it rather
-      // than leaving the previous assignment in place.
+      // Visible-employees assignment and Role both save through their own
+      // endpoints (neither is part of the Employee payload) — always sent,
+      // including an empty Visible Employees selection, so unchecking
+      // everyone on Edit actually clears it rather than leaving the
+      // previous assignment in place. The two calls are independent of each
+      // other, so they run in parallel (Promise.allSettled — each still
+      // gets its own error toast regardless of how the other one turns
+      // out) instead of one waiting on the other to finish first; this used
+      // to add two full sequential round-trips after the main save before
+      // the page would navigate away.
       if (targetId) {
-        try {
-          await AssignVisibleEmployees(targetId, visibleEmployeeIds);
-        } catch {
+        const [visibleResult, roleResult] = await Promise.allSettled([
+          AssignVisibleEmployees(targetId, visibleEmployeeIds),
+          SetEmployeeRole(targetId, selectedRoleId),
+        ]);
+        if (visibleResult.status === 'rejected') {
           toast.error('Employee saved, but failed to update the Visible Employees assignment.');
         }
-        // Role also saves through its own endpoint (role_id lives on the
-        // linked login user, not the Employee row) — same reasoning as
-        // Visible Employees above.
-        try {
-          await SetEmployeeRole(targetId, selectedRoleId);
-        } catch {
+        if (roleResult.status === 'rejected') {
           toast.error('Employee saved, but failed to update the Role assignment.');
         }
       }
@@ -739,6 +794,170 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     '--emp-surface-border': t.surfaceBorder, '--emp-divider': t.divider,
   } as React.CSSProperties;
 
+  // ── View mode — a completely separate, read-only "ID card" layout instead
+  // of the same form fields disabled: 4 boxes (Personal Details / Office Use
+  // Only / Bank Details / Assign Action & Module) in 2 rows, label-over-
+  // value cells instead of inputs, plus an Uploaded Documents section. The
+  // sticky footer below is untouched from the add/edit return further down
+  // — same markup, same behavior, same positioning.
+  if (isView) {
+    const statusStyle = VIEW_STATUS_STYLES[form.status] || VIEW_STATUS_STYLES.active;
+    const roleLabel = roleOptions.find((r) => r.value === selectedRoleId)?.label || 'No role assigned';
+    const deptLabels = departmentOptions.filter((d) => form.department_ids.includes(d.value)).map((d) => d.label);
+    const desigLabels = designationOptions.filter((d) => form.designation_ids.includes(d.value)).map((d) => d.label);
+    const visibleLabels = visibleEmployeeOptions.filter((e) => visibleEmployeeIds.includes(e.value)).map((e) => e.label);
+    const fullName = [form.first_name, form.middle_name, form.last_name].filter(Boolean).join(' ');
+
+    return (
+      <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40, ...cssVars }}>
+
+        {/* ── Page header ─────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/admin/employee/employee-details')}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, padding: 6 }}
+            >
+              <MdArrowBack size={20} />
+            </button>
+            <div>
+              <h1 className="emp-crud-title">View Employee</h1>
+              <p className="emp-crud-subtitle">Employee details</p>
+            </div>
+          </div>
+
+          <div className="emp-id-badge">
+            <span className="emp-id-value">Employee ID - {employeeCode || '—'}</span>
+          </div>
+        </div>
+
+        {/* ── Identity strip — photo + name + email, above the 4 boxes ──── */}
+        <div className="flex items-center gap-3 mb-5">
+          {existingUrls.profile_photo ? (
+            <img src={existingUrls.profile_photo} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover' }} />
+          ) : (
+            <div className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ width: 56, height: 56, background: 'linear-gradient(135deg,#4338ca,#4f46e5)', fontSize: 18 }}>
+              {(form.first_name[0] || '')}{(form.last_name[0] || '')}
+            </div>
+          )}
+          <div className="min-w-0">
+            <div style={{ fontSize: 16, fontWeight: 800, color: t.textPrimary, wordBreak: 'break-word' }}>{fullName || '—'}</div>
+            <div style={{ fontSize: 11.5, color: t.textSecondary }}>{form.email}</div>
+          </div>
+          <span className="emp-view-status-badge" style={{ background: statusStyle.bg, color: statusStyle.color }}>{statusStyle.label}</span>
+        </div>
+
+        {/* ── Row 1: Personal Details + Office Use Only ──────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+            <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
+            <div className="emp-view-grid">
+              <ViewValue label="First Name" value={form.first_name} />
+              <ViewValue label="Middle Name" value={form.middle_name} />
+              <ViewValue label="Last Name" value={form.last_name} />
+              <ViewValue label="Date of Birth" value={form.date_of_birth ? formatDate(form.date_of_birth) : ''} />
+              <ViewValue label="Mobile Number" value={form.mobile_number ? `${form.mobile_country_code} ${form.mobile_number}` : ''} />
+              <ViewValue label="Alternate Number" value={form.alternate_number ? `${form.alternate_country_code} ${form.alternate_number}` : ''} />
+              <ViewValue label="WhatsApp Number" value={form.whatsapp_number ? `${form.whatsapp_country_code} ${form.whatsapp_number}` : ''} />
+              <ViewValue label="Aadhar Number" value={form.aadhar_number} />
+              <ViewValue label="PAN Number" value={form.pan_number} />
+              <ViewValue label="Address" value={form.address} className="emp-view-field-wide" />
+            </div>
+          </div>
+
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+            <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="linear-gradient(135deg,#c2410c,#fb923c)" />
+            <div className="emp-view-grid">
+              <ViewValue label="Joining Date" value={form.joining_date ? formatDate(form.joining_date) : ''} />
+              <ViewValue label="Working Hours" value={form.working_hours ? `${form.working_hours} Hours` : ''} />
+              <ViewValue label="Check In" value={form.check_in_time} />
+              <ViewValue label="Check Out" value={form.check_out_time} />
+              <ViewValue label="Holidays" value={form.holidays} />
+              <ViewValue label="Salary" value={form.salary ? `₹ ${Number(form.salary).toLocaleString('en-IN')}` : ''} />
+              <ViewValue label="Role" value={roleLabel} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Row 2: Bank Details + Assign Action & Module ───────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+            <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="linear-gradient(135deg,#059669,#22c55e)" />
+            <div className="emp-view-grid">
+              <ViewValue label="Account Holder Name" value={form.account_holder_name} />
+              <ViewValue label="Bank Name" value={form.bank_name} />
+              <ViewValue label="Account Number" value={form.bank_account_number} />
+              <ViewValue label="Account Type" value={form.account_type} />
+              <ViewValue label="IFSC Code" value={form.ifsc_code} />
+              <ViewValue label="Branch" value={form.branch} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+            <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
+            <div className="mb-4">
+              <div className="emp-view-label" style={{ marginBottom: 6 }}>Assigned Departments</div>
+              <div className="emp-chip-row">
+                {deptLabels.length > 0
+                  ? deptLabels.map((l) => <span key={l} className="emp-view-chip">{l}</span>)
+                  : <p className="emp-hint-text">None assigned.</p>}
+              </div>
+            </div>
+            <div className="mb-4">
+              <div className="emp-view-label" style={{ marginBottom: 6 }}>Assigned Designations</div>
+              <div className="emp-chip-row">
+                {desigLabels.length > 0
+                  ? desigLabels.map((l) => <span key={l} className="emp-view-chip">{l}</span>)
+                  : <p className="emp-hint-text">None assigned.</p>}
+              </div>
+            </div>
+            <div className="mb-4">
+              <div className="emp-view-label" style={{ marginBottom: 6 }}>Assigned Actions &amp; Modules</div>
+              <div className="emp-module-panel">
+                <ModuleActionGrid t={t} isView grid={moduleGrid} selected={form.module_action_ids} onToggle={() => {}} loading={loadingModules} />
+              </div>
+            </div>
+            <div>
+              <div className="emp-view-label" style={{ marginBottom: 6 }}>Visible Employees</div>
+              <div className="emp-chip-row">
+                {visibleLabels.length > 0
+                  ? visibleLabels.map((l) => <span key={l} className="emp-view-chip">{l}</span>)
+                  : <p className="emp-hint-text">None assigned.</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Uploaded Documents ──────────────────────────────────────────── */}
+        <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+          <SectionHeader t={t} icon={<MdDescription size={16} />} title="Uploaded Documents" gradient="linear-gradient(135deg,#0f766e,#14b8a6)" />
+          <div className="emp-doc-grid">
+            <DocumentCard t={t} label="Aadhar Card" url={existingUrls.aadhar_card} />
+            <DocumentCard t={t} label="PAN Card" url={existingUrls.pan_card} />
+            <DocumentCard t={t} label="Resume" url={existingUrls.resume} />
+            <DocumentCard t={t} label="Appointment Letter" url={existingUrls.appointment_letter} />
+            <DocumentCard t={t} label="Bank Passbook" url={existingUrls.passbook_photo} />
+          </div>
+        </div>
+
+        {/* ── Sticky footer — Go Back only, exactly as every other mode's
+            footer (same markup/behavior/positioning; !isView below just
+            keeps this to Go Back with no Create/Update button). ────────── */}
+        <div className="master-crud-footer flex items-center justify-center gap-3" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
+          <button
+            type="button"
+            onClick={() => navigate('/admin/employee/employee-details')}
+            className="px-6 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: t.surfaceBg, color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40, ...cssVars }}>
 
@@ -754,7 +973,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </button>
           <div>
             <h1 className="emp-crud-title">
-              {mode === 'add' ? 'Create Employee' : mode === 'edit' ? 'Edit Employee' : 'View Employee'}
+              {mode === 'add' ? 'Create Employee' : 'Edit Employee'}
             </h1>
             <p className="emp-crud-subtitle">
               {mode === 'add' ? 'Add new employee details' : 'Employee details'}
@@ -763,8 +982,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
 
         <div className="emp-id-badge">
-          <span className="emp-id-label">Employee ID</span>
-          <span className="emp-id-value">{employeeCode || '—'}</span>
+          <span className="emp-id-value">Employee ID - {employeeCode || '—'}</span>
         </div>
       </div>
 
@@ -788,7 +1006,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Date of Birth" required>
             <input type="date" value={form.date_of_birth} readOnly={isView} disabled={isView}
-              onChange={(e) => set('date_of_birth', e.target.value)} onClick={openPicker} className={fieldClass} />
+              onChange={(e) => set('date_of_birth', e.target.value)} onClick={openPicker} onWheel={handleDobWheel} className={fieldClass} />
           </Field>
         </div>
 
@@ -808,21 +1026,24 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         {/* Row 3 of 4 — ID proofs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <Field t={t} label="Aadhar Number">
+          <Field t={t} label="Aadhar Number" required>
             <input type="text" placeholder="Enter aadhar number" value={form.aadhar_number} readOnly={isView} disabled={isView}
               onChange={(e) => set('aadhar_number', e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf"
+          <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
             file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={setFile('aadhar_card')} />
-          <Field t={t} label="PAN Number">
+          <Field t={t} label="PAN Number" required>
             <input type="text" placeholder="Enter PAN number" value={form.pan_number} readOnly={isView} disabled={isView}
               onChange={(e) => set('pan_number', e.target.value.toUpperCase())} className={fieldClass} />
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf"
+          <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
             file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={setFile('pan_card')} />
         </div>
 
-        {/* Row 4 of 4 — Address + Profile Photo */}
+        {/* Row 4 of 4 — Address + Profile Photo. Profile Photo now uses the
+            same compact FileUploadBox as Aadhar/PAN just above (was a tall
+            square dropzone that left a lot of dead space below the much
+            shorter Address textarea next to it). */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start">
           <Field t={t} label="Address" required className="lg:col-span-3">
             <textarea
@@ -830,14 +1051,8 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => set('address', e.target.value)} className={fieldClass} style={{ resize: 'vertical' }}
             />
           </Field>
-          <div>
-            <label className="emp-label">Profile Photo</label>
-            <ProfilePhotoUpload
-              t={t} isDark={isDark} disabled={isView}
-              file={files.profile_photo} existingUrl={existingUrls.profile_photo}
-              onChange={setFile('profile_photo')}
-            />
-          </div>
+          <FileUploadBox t={t} isView={isView} label="Upload Profile Photo" hint="JPG, PNG (Max 2MB)" accept=".jpg,.jpeg,.png" required
+            file={files.profile_photo} existingUrl={existingUrls.profile_photo} onChange={setFile('profile_photo')} />
         </div>
       </div>
 
@@ -859,11 +1074,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Check In" required>
             <input type="time" value={form.check_in_time} readOnly={isView} disabled={isView}
-              onChange={(e) => set('check_in_time', e.target.value)} onClick={openPicker} className={fieldClass} />
+              onChange={(e) => set('check_in_time', e.target.value)} onClick={openPicker} onWheel={handleTimeWheel('check_in_time')} className={fieldClass} />
           </Field>
           <Field t={t} label="Check Out" required>
             <input type="time" value={form.check_out_time} readOnly={isView} disabled={isView}
-              onChange={(e) => set('check_out_time', e.target.value)} onClick={openPicker} className={fieldClass} />
+              onChange={(e) => set('check_out_time', e.target.value)} onClick={openPicker} onWheel={handleTimeWheel('check_out_time')} className={fieldClass} />
           </Field>
           <Field t={t} label="Holidays" required>
             <select value={form.holidays} disabled={isView} onChange={(e) => set('holidays', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>

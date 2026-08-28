@@ -228,19 +228,26 @@ const NarrowAmountDateField: React.FC<{
 }> = ({ t, label, amount, onAmountChange, date, onDateChange }) => (
   <FieldWrap t={t} label={label} span={2}>
     <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1.5" style={{ ...getFieldStyle(t), padding: '0 10px', width: 135, flexShrink: 0 }}>
+      {/* K/L/Cr shorthand now sits inside this box (after the input, before
+          its closing div) instead of as a sibling out in the row — it used
+          to render past the date field entirely, outside the amount box it
+          describes. Same placement SliderField already uses for every
+          other ₹ field. */}
+      <div className="flex items-center gap-1.5" style={{ ...getFieldStyle(t), padding: '0 10px', width: 158, flexShrink: 0 }}>
         <span style={{ color: t.textSecondary, flexShrink: 0 }}>₹</span>
         <input
           type="text" inputMode="decimal" value={formatAmountInput(amount)}
           onChange={(e) => onAmountChange(parseAmountInput(e.target.value))}
           style={{ border: 'none', outline: 'none', background: 'transparent', padding: '6px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 11, fontFamily: t.fontFamily }}
         />
+        {amount > 0 && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 9, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(amount)}</span>}
       </div>
+      {/* Fixed, compact width instead of flex:1 — a date value doesn't need
+          (and shouldn't stretch to fill) the rest of the row. */}
       <input
         type="date" value={date} onClick={openPicker} onFocus={openPicker}
-        onChange={(e) => onDateChange(e.target.value)} style={{ ...getFieldStyle(t), flex: 1, minWidth: 0 }}
+        onChange={(e) => onDateChange(e.target.value)} style={{ ...getFieldStyle(t), width: 128, flexShrink: 0 }}
       />
-      {amount > 0 && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 9, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(amount)}</span>}
     </div>
   </FieldWrap>
 );

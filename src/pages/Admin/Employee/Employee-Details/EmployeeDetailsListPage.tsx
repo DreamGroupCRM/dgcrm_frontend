@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh, MdSearch, MdVisibility,
-  MdFilterList, MdGroups, MdLayers, MdEventBusy, MdPersonOff, MdMoreVert,
+  MdFilterList, MdGroups, MdLayers, MdPersonOff, MdMoreVert,
   MdGridView, MdViewList, MdEmail, MdPhone, MdLocationOn, MdChevronLeft, MdChevronRight,
   MdToggleOn, MdToggleOff,
 } from 'react-icons/md';
@@ -311,32 +311,32 @@ const EmployeeDetailsListPage: React.FC = () => {
               </button>
               {openMenuId === emp.id && (
                 <div
+                  className="emp-row-menu"
                   style={{
-                    position: 'absolute', top: '110%', right: 0, zIndex: 20, minWidth: 140,
-                    background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.14)', padding: '6px 0',
+                    background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`,
                   }}
                 >
                   <button type="button" title="View" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/view/${emp.id}`); }}
-                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn">
-                    <MdVisibility size={16} color="#2563eb" /> View
+                    className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
+                    <MdVisibility size={14} color="#2563eb" /> View
                   </button>
                   <button type="button" title="Edit" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/edit/${emp.id}`); }}
-                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn">
-                    <MdEdit size={15} color="#7c3aed" /> Edit
+                    className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
+                    <MdEdit size={13} color="#7c3aed" /> Edit
                   </button>
                   <button type="button" title="Delete" onClick={() => handleDelete(emp)}
-                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn emp-menu-btn-danger">
-                    <MdDelete size={16} /> Delete
+                    className="emp-row-menu-btn emp-menu-btn-danger" style={{ borderBottom: `1px solid ${t.divider}` }}>
+                    <MdDelete size={14} /> Delete
                   </button>
-                  {/* 4th option, visually set apart — a toggle, not a
-                      navigation/destructive action like the three above. */}
+                  {/* 4th option — a toggle, not a navigation/destructive
+                      action like the three above, but same compact row
+                      style (divider above it already came from Delete's
+                      own borderBottom). */}
                   <button type="button" title={emp.is_active ? 'Deactivate' : 'Activate'} onClick={() => handleToggleActive(emp)}
-                    className="w-full flex items-center gap-2 px-3.5 py-2 text-sm emp-menu-btn"
-                    style={{ borderTop: `1px solid ${t.divider}`, marginTop: 4, paddingTop: 10 }}>
+                    className="emp-row-menu-btn">
                     {emp.is_active
-                      ? <><MdToggleOff size={16} color="#ea580c" /> Deactivate</>
-                      : <><MdToggleOn size={16} color="#16a34a" /> Activate</>}
+                      ? <><MdToggleOff size={14} color="#ea580c" /> Deactivate</>
+                      : <><MdToggleOn size={14} color="#16a34a" /> Activate</>}
                   </button>
                 </div>
               )}
@@ -386,12 +386,11 @@ const EmployeeDetailsListPage: React.FC = () => {
           boxes; label font-size fixed at 16px (StatCard's labelFontSize
           prop — every other caller leaves it unset and keeps the CSS
           class's default label size). ──────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         {[
           { label: 'Total Employees', value: summary.total, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
           { label: 'Active Employees', value: summary.active, icon: MdLayers, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
           { label: 'Inactive Employees', value: summary.inactive, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
-          { label: 'On Leave', value: summary.onLeave, icon: MdEventBusy, color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff' },
         ].map((card) => (
           <StatCard key={card.label} {...card} loading={loading} compact labelFontSize={14}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
@@ -404,7 +403,7 @@ const EmployeeDetailsListPage: React.FC = () => {
           inherits the same responsive stacking behavior at narrower
           widths for free. ──────────────────────────────────────────── */}
       <div className="master-topbar">
-        <div className="master-search-box" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
+        <div className="master-search-box master-search-box-accent" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
           <input
             type="text"
