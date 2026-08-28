@@ -51,7 +51,13 @@ const SearchableSelect: React.FC<{
   // show "A-101 · 2 BHK · 850 Sqft" per option while still filtering
   // customers by the bare flat number underneath.
   labelFor?: (opt: string) => string;
-}> = ({ t, placeholder, options, value, onChange, disabled, labelFor }) => {
+  // Fired once the field's dropdown closes with a committed value — either
+  // an option was clicked, or the user clicked away. Used by the chip/tag
+  // filter bar to collapse a filter back into its compact pill once a value
+  // has been chosen, instead of leaving the full dropdown open.
+  onCommit?: () => void;
+  autoFocus?: boolean;
+}> = ({ t, placeholder, options, value, onChange, disabled, labelFor, onCommit, autoFocus }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
@@ -60,11 +66,11 @@ const SearchableSelect: React.FC<{
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); onCommit?.(); }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  }, [onCommit]);
 
   const filtered = options.filter((o) => o?.toLowerCase().includes(query.toLowerCase()));
 
@@ -80,6 +86,7 @@ const SearchableSelect: React.FC<{
           placeholder={placeholder}
           value={query}
           disabled={disabled}
+          autoFocus={autoFocus}
           onFocus={() => setOpen(true)}
           onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
           style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 11.5, width: '100%' }}
@@ -106,7 +113,7 @@ const SearchableSelect: React.FC<{
           {filtered.map((opt) => (
             <button
               key={opt} type="button"
-              onClick={() => { onChange(opt); setQuery(opt); setOpen(false); }}
+              onClick={() => { onChange(opt); setQuery(opt); setOpen(false); onCommit?.(); }}
               className="w-full text-left px-3.5 py-2 text-sm"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}
             >
@@ -115,6 +122,66 @@ const SearchableSelect: React.FC<{
           ))}
         </div>
       )}
+    </div>
+  );
+};
+
+// ── Filter chip/tag bar — only currently-applied filters are shown, each as
+// a small removable pill (e.g. "Building: Skyline ✕"). A collapsed pill
+// reopens its control on click; a freshly-added filter (via "Add Filter")
+// starts open so the user can immediately pick a value. This replaces the
+// old fixed grid of always-visible filter boxes (item 4: "show only which
+// filter is applied"). ──────────────────────────────────────────────────
+type FilterKey = 'customerName' | 'building' | 'wing' | 'floor' | 'flatNo' | 'fromDate' | 'toDate';
+const FILTER_LABELS: Record<FilterKey, string> = {
+  customerName: 'Customer Name', building: 'Building', wing: 'Wing', floor: 'Floor',
+  flatNo: 'Flat No', fromDate: 'From Date', toDate: 'To Date',
+};
+// Fields whose options depend on another filter's value being set —
+// removing the parent also removes and clears these.
+const FILTER_DEPENDENTS: Partial<Record<FilterKey, FilterKey[]>> = {
+  building: ['wing', 'floor', 'flatNo'],
+  wing: ['floor', 'flatNo'],
+  floor: ['flatNo'],
+};
+
+const FilterChip: React.FC<{
+  t: Theme; label: string; displayValue: string; editing: boolean;
+  onOpen: () => void; onRemove: () => void; children: React.ReactNode;
+}> = ({ t, label, displayValue, editing, onOpen, onRemove, children }) => {
+  if (!editing) {
+    return (
+      <button
+        type="button" onClick={onOpen}
+        className="inline-flex items-center gap-1.5 rounded-full"
+        style={{
+          padding: '6px 6px 6px 12px', background: t.insetBg, border: `1px solid ${t.surfaceBorder}`,
+          color: t.textPrimary, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap',
+        }}
+      >
+        <span style={{ fontWeight: 700 }}>{label}:</span> {displayValue}
+        <span
+          role="button" tabIndex={-1}
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          className="flex items-center justify-center rounded-full"
+          style={{ width: 18, height: 18, marginLeft: 2, background: t.surfaceBg, color: t.textSecondary }}
+        >
+          <MdClose size={12} />
+        </span>
+      </button>
+    );
+  }
+  return (
+    <div style={{ minWidth: 190 }}>
+      <label className="cust-filter-label">{label}</label>
+      <div className="flex items-center gap-1">
+        <div style={{ flex: 1 }}>{children}</div>
+        <button type="button" onClick={onRemove} title={`Remove ${label} filter`}
+          className="flex items-center justify-center rounded-lg flex-shrink-0"
+          style={{ width: 30, height: 30, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textSecondary, cursor: 'pointer' }}>
+          <MdClose size={14} />
+        </button>
+      </div>
     </div>
   );
 };
@@ -267,10 +334,24 @@ const CustomerDetailsListPage: React.FC = () => {
   const [wingFilter, setWingFilter] = useState('');
   const [floorFilter, setFloorFilter] = useState('');
   const [flatNoFilter, setFlatNoFilter] = useState('');
-  const [flatTypeFilter, setFlatTypeFilter] = useState('');
-  const [flatAreaFilter, setFlatAreaFilter] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+
+  // Which filters are currently applied (shown as chips), and which one (if
+  // any) is currently open for editing — see FilterChip above.
+  const [activeFilters, setActiveFilters] = useState<FilterKey[]>([]);
+  const [editingFilter, setEditingFilter] = useState<FilterKey | null>(null);
+  const [addFilterMenuOpen, setAddFilterMenuOpen] = useState(false);
+  const addFilterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!addFilterMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (addFilterRef.current && !addFilterRef.current.contains(e.target as Node)) setAddFilterMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [addFilterMenuOpen]);
 
   // ── selection + assignment ──────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -406,22 +487,49 @@ const CustomerDetailsListPage: React.FC = () => {
 
   const customerNameOptions = useMemo(() => Array.from(new Set(allCustomers.map((c) => c.customer_name))), [allCustomers]);
   const employeeOptions = useMemo(() => employees.map((e) => e.label), [employees]);
-  const flatTypeOptions = useMemo(() => Array.from(new Set(allCustomers.map((c) => c.flat_type).filter(Boolean))), [allCustomers]);
-  const flatAreaOptions = useMemo(
-    () => Array.from(new Set(allCustomers.map((c) => c.area_sqft).filter((a): a is number => a != null))).sort((a, b) => a - b).map(String),
-    [allCustomers]
-  );
 
   const clearAllFilters = () => {
     setCustomerNameFilter(''); setBuildingFilter(''); setWingFilter(''); setFloorFilter(''); setFlatNoFilter('');
-    setFlatTypeFilter(''); setFlatAreaFilter(''); setFromDate(''); setToDate('');
+    setFromDate(''); setToDate('');
+    setActiveFilters([]); setEditingFilter(null);
   };
+
+  // ── chip/tag filter bar helpers ─────────────────────────────────────────
+  const addFilter = (key: FilterKey) => {
+    setActiveFilters((prev) => (prev.includes(key) ? prev : [...prev, key]));
+    setEditingFilter(key);
+    setAddFilterMenuOpen(false);
+  };
+  const removeFilter = (key: FilterKey) => {
+    const toRemove = [key, ...(FILTER_DEPENDENTS[key] ?? [])];
+    setActiveFilters((prev) => prev.filter((k) => !toRemove.includes(k)));
+    if (editingFilter && toRemove.includes(editingFilter)) setEditingFilter(null);
+    if (toRemove.includes('customerName')) setCustomerNameFilter('');
+    if (toRemove.includes('building')) setBuildingFilter('');
+    if (toRemove.includes('wing')) setWingFilter('');
+    if (toRemove.includes('floor')) setFloorFilter('');
+    if (toRemove.includes('flatNo')) setFlatNoFilter('');
+    if (toRemove.includes('fromDate')) setFromDate('');
+    if (toRemove.includes('toDate')) setToDate('');
+  };
+  // Prerequisite fields must already have a value before their dependent
+  // field can be added — mirrors the old disabled-select behavior.
+  const filterAvailable = (key: FilterKey): boolean => {
+    if (activeFilters.includes(key)) return false;
+    if (key === 'wing') return !!buildingFilter;
+    if (key === 'floor') return !!wingFilter;
+    if (key === 'flatNo') return !!floorFilter;
+    return true;
+  };
+  const availableFilterKeys = (Object.keys(FILTER_LABELS) as FilterKey[]).filter(filterAvailable);
 
   // Selecting an exact customer name (not just typing a partial match)
   // auto-populates the Building/Wing/Floor/Flat No filters from that
   // customer's own booking, narrowing the whole filter row to their flat
   // in one action instead of four (item 11's "auto-populate related
-  // details... fast updates without manual actions").
+  // details... fast updates without manual actions") — and surfaces each
+  // one as its own chip, since a filter is only ever silently "applied"
+  // if it's visible as a chip.
   const handleCustomerNameFilterChange = (v: string) => {
     setCustomerNameFilter(v);
     const exact = allCustomers.find((c) => c.customer_name === v);
@@ -430,6 +538,14 @@ const CustomerDetailsListPage: React.FC = () => {
       setWingFilter(exact.wing_name || '');
       setFloorFilter('');
       setFlatNoFilter(exact.flat_no || '');
+      setActiveFilters((prev) => {
+        const next = new Set(prev);
+        next.add('customerName');
+        if (exact.building_name) next.add('building');
+        if (exact.wing_name) next.add('wing');
+        if (exact.flat_no) next.add('flatNo');
+        return Array.from(next);
+      });
     }
   };
 
@@ -440,15 +556,13 @@ const CustomerDetailsListPage: React.FC = () => {
       if (buildingFilter && c.building_name !== buildingFilter) return false;
       if (wingFilter && c.wing_name !== wingFilter) return false;
       if (flatNoFilter && c.flat_no !== flatNoFilter) return false;
-      if (flatTypeFilter && c.flat_type !== flatTypeFilter) return false;
-      if (flatAreaFilter && String(c.area_sqft ?? '') !== flatAreaFilter) return false;
       if (fromDate && c.booking_date && c.booking_date < fromDate) return false;
       if (toDate && c.booking_date && c.booking_date > toDate) return false;
       return true;
     });
-  }, [allCustomers, customerNameFilter, buildingFilter, wingFilter, flatNoFilter, flatTypeFilter, flatAreaFilter, fromDate, toDate]);
+  }, [allCustomers, customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate]);
 
-  useEffect(() => { setPage(1); }, [customerNameFilter, buildingFilter, wingFilter, flatNoFilter, flatTypeFilter, flatAreaFilter, fromDate, toDate]);
+  useEffect(() => { setPage(1); }, [customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / limit));
   const safePage = Math.min(page, totalPages);
@@ -630,6 +744,48 @@ const CustomerDetailsListPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  // ── chip/tag filter bar: per-key control + display value ───────────────
+  const renderFilterControl = (key: FilterKey): React.ReactNode => {
+    const collapse = () => setEditingFilter(null);
+    switch (key) {
+      case 'customerName':
+        return <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={handleCustomerNameFilterChange} onCommit={collapse} autoFocus />;
+      case 'building':
+        return (
+          <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter} onCommit={collapse} autoFocus
+            onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFloorFilter(''); setFlatNoFilter(''); }} />
+        );
+      case 'wing':
+        return (
+          <SearchableSelect t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingFilter}
+            disabled={!selectedBuilding || loadingBuildingDetail} onCommit={collapse} autoFocus
+            onChange={(v) => { setWingFilter(v); setFloorFilter(''); setFlatNoFilter(''); }} />
+        );
+      case 'floor':
+        return (
+          <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter} disabled={!selectedWing} onCommit={collapse} autoFocus
+            onChange={(v) => { setFloorFilter(v); setFlatNoFilter(''); }} />
+        );
+      case 'flatNo':
+        return <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} disabled={!selectedFloor} onChange={setFlatNoFilter} labelFor={flatLabelFor} onCommit={collapse} autoFocus />;
+      case 'fromDate':
+        return <input type="date" autoFocus value={fromDate} onClick={openPicker} onFocus={openPicker} onBlur={collapse} onChange={(e) => { setFromDate(e.target.value); collapse(); }} className="cust-date-field" />;
+      case 'toDate':
+        return <input type="date" autoFocus value={toDate} onClick={openPicker} onFocus={openPicker} onBlur={collapse} onChange={(e) => { setToDate(e.target.value); collapse(); }} className="cust-date-field" />;
+    }
+  };
+  const filterDisplayValue = (key: FilterKey): string => {
+    switch (key) {
+      case 'customerName': return customerNameFilter || '—';
+      case 'building': return buildingFilter || '—';
+      case 'wing': return wingFilter || '—';
+      case 'floor': return floorFilter || '—';
+      case 'flatNo': return flatNoFilter || '—';
+      case 'fromDate': return fromDate ? formatDate(fromDate) : '—';
+      case 'toDate': return toDate ? formatDate(toDate) : '—';
+    }
+  };
+
   // ── CSS custom properties for CustomerDetails.css — set once here from
   // this page's own getTheme(isDark) values, consumed by the cust-* classes
   // used throughout this page's filters/table/modals below. ─────────────
@@ -669,55 +825,68 @@ const CustomerDetailsListPage: React.FC = () => {
           <MdFilterList size={18} style={{ color: '#fff', flexShrink: 0 }} />
           <h3 style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>Search &amp; Filter Customers</h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <div>
-            <label className="cust-filter-label">Search Customer Name</label>
-            <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={handleCustomerNameFilterChange} />
+
+        {/* Only applied filters show, each as a small removable chip — click
+            a collapsed chip to edit its value, click its ✕ to remove it
+            entirely. "Add Filter" reveals the fields not yet applied. */}
+        <div className="flex flex-wrap items-start gap-2.5">
+          {activeFilters.map((key) => (
+            <FilterChip
+              key={key} t={t} label={FILTER_LABELS[key]}
+              displayValue={filterDisplayValue(key)}
+              editing={editingFilter === key}
+              onOpen={() => setEditingFilter(key)}
+              onRemove={() => removeFilter(key)}
+            >
+              {renderFilterControl(key)}
+            </FilterChip>
+          ))}
+
+          <div ref={addFilterRef} style={{ position: 'relative' }}>
+            <button
+              type="button" onClick={() => setAddFilterMenuOpen((v) => !v)}
+              disabled={availableFilterKeys.length === 0}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap"
+              style={{
+                background: 'transparent', border: `1px dashed ${t.surfaceBorder}`, color: t.textSecondary,
+                cursor: availableFilterKeys.length === 0 ? 'not-allowed' : 'pointer', opacity: availableFilterKeys.length === 0 ? 0.5 : 1,
+              }}
+            >
+              <MdAdd size={15} /> Add Filter
+            </button>
+            {addFilterMenuOpen && availableFilterKeys.length > 0 && (
+              <div
+                style={{
+                  position: 'absolute', top: '110%', left: 0, zIndex: 30, minWidth: 170,
+                  background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0',
+                }}
+              >
+                {availableFilterKeys.map((key) => (
+                  <button
+                    key={key} type="button" onClick={() => addFilter(key)}
+                    className="w-full text-left px-3.5 py-2 text-sm"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}
+                  >
+                    {FILTER_LABELS[key]}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <div>
-            <label className="cust-filter-label">Search Building Name</label>
-            <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter}
-              onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFloorFilter(''); setFlatNoFilter(''); }} />
-          </div>
-          <div>
-            <label className="cust-filter-label">Select Wing</label>
-            <SearchableSelect t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingFilter}
-              disabled={!selectedBuilding || loadingBuildingDetail}
-              onChange={(v) => { setWingFilter(v); setFloorFilter(''); setFlatNoFilter(''); }} />
-          </div>
-          <div>
-            <label className="cust-filter-label">Select Floor</label>
-            <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter} disabled={!selectedWing}
-              onChange={(v) => { setFloorFilter(v); setFlatNoFilter(''); }} />
-          </div>
-          <div>
-            <label className="cust-filter-label">Select Flat No</label>
-            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} disabled={!selectedFloor} onChange={setFlatNoFilter} labelFor={flatLabelFor} />
-          </div>
-          <div>
-            <label className="cust-filter-label">Flat Type</label>
-            <SearchableSelect t={t} placeholder="Select flat type" options={flatTypeOptions} value={flatTypeFilter} onChange={setFlatTypeFilter} />
-          </div>
-          <div>
-            <label className="cust-filter-label">Flat Area (Sq Ft)</label>
-            <SearchableSelect t={t} placeholder="Select flat area" options={flatAreaOptions} value={flatAreaFilter} onChange={setFlatAreaFilter} />
-          </div>
-          <div>
-            <label className="cust-filter-label">From Date</label>
-            <input type="date" value={fromDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setFromDate(e.target.value)} className="cust-date-field" />
-          </div>
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="cust-filter-label">To Date</label>
-              <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} className="cust-date-field" />
-            </div>
+
+          {activeFilters.length > 0 && (
             <button
               type="button" onClick={clearAllFilters}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}
-            > Reset Filter
+            > Reset Filters
             </button>
-          </div>
+          )}
+
+          {activeFilters.length === 0 && (
+            <span style={{ fontSize: 11.5, color: t.textSecondary, alignSelf: 'center' }}>No filters applied.</span>
+          )}
         </div>
       </div>
 
