@@ -12,7 +12,7 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
-import { FetchDepartmentList, DeleteDepartment } from '../../../../services/departmentService';
+import { FetchDepartmentList, DeleteDepartment, GetDepartmentAssignedEmployees } from '../../../../services/departmentService';
 import { Department } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
 import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
@@ -114,10 +114,23 @@ const DepartmentListPage: React.FC = () => {
 
   // ── actions ──────────────────────────────────────────────────────────
   const handleDelete = async (dept: Department) => {
-    const result = await showAlert.confirm(
-      `This will permanently delete "${dept.name}" and all of its designations.`,
-      'Delete Department?'
-    );
+    let assigned: { name: string; employee_code: string | null }[] = [];
+    try {
+      assigned = await GetDepartmentAssignedEmployees(dept.id);
+    } catch {
+      // lookup failure shouldn't block the delete flow — fall through with an empty list
+    }
+
+    const result = assigned.length > 0
+      ? await showAlert.confirmWithList(
+          `"${dept.name}" has ${assigned.length} active employee${assigned.length === 1 ? '' : 's'} assigned to it. Deleting it will not unassign them automatically.`,
+          'Department Has Assigned Employees',
+          assigned.map((e) => (e.employee_code ? `${e.name} (${e.employee_code})` : e.name))
+        )
+      : await showAlert.confirm(
+          `This will permanently delete "${dept.name}" and all of its designations.`,
+          'Delete Department?'
+        );
     if (!result.isConfirmed) return;
     try {
       await DeleteDepartment(dept.id);

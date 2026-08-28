@@ -169,6 +169,21 @@ export const DeleteDepartment = async (id: string): Promise<DepartmentDeleteResp
   return res.data;
 };
 
+// ── Employees currently assigned to this department (for the delete/
+// deactivate warn-but-allow popup) ──────────────────────────────────────────
+/** GET /api/department/:id/assigned-employees */
+export interface AssignedEmployee {
+  id: number | string;
+  name: string;
+  employee_code: string | null;
+}
+export const GetDepartmentAssignedEmployees = async (id: string): Promise<AssignedEmployee[]> => {
+  const res = await axiosInstance.get(`/department/${id}/assigned-employees`, {
+    headers: { [API_NAME_HEADER]: 'GetDepartmentAssignedEmployees' },
+  });
+  return res.data.rows as AssignedEmployee[];
+};
+
 // Grouped export — same convenience pattern as buildingService
 export const departmentService = {
   getAll  : FetchDepartmentList,
@@ -176,4 +191,5 @@ export const departmentService = {
   create  : CreateDepartment,
   update  : UpdateDepartment,
   remove  : DeleteDepartment,
+  getAssignedEmployees: GetDepartmentAssignedEmployees,
 };
