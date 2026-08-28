@@ -234,6 +234,50 @@ const EmployeeDetailsListPage: React.FC = () => {
     '--emp-surface-border': t.surfaceBorder, '--emp-divider': t.divider,
   } as React.CSSProperties;
 
+  // ── row action dropdown — shared between Grid cards and List rows so the
+  // "same View/Edit/Delete as Grid View" requirement (item 6) is trivially
+  // true: both views render this exact same block. ──────────────────────
+  // `align="left"` is for the List view's Action column, which is the
+  // table's leftmost/sticky column — a right-anchored menu there would
+  // grow off the left edge of the table (nothing to its left to grow
+  // into) and get clipped by the panel/scroll container instead.
+  const renderActionMenu = (emp: Employee, align: 'left' | 'right' = 'right') => (
+    <div style={{ position: 'relative' }} ref={openMenuId === emp.id ? menuRef : undefined}>
+      <button
+        type="button"
+        onClick={() => setOpenMenuId((v) => (v === emp.id ? null : emp.id))}
+        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}
+      >
+        <MdMoreVert size={18} />
+      </button>
+      {openMenuId === emp.id && (
+        <div
+          className="emp-row-menu"
+          style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, ...(align === 'left' ? { left: 0, right: 'auto' } : {}) }}
+        >
+          <button type="button" title="View" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/view/${emp.id}`); }}
+            className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
+            <MdVisibility size={14} color="#2563eb" /> View
+          </button>
+          <button type="button" title="Edit" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/edit/${emp.id}`); }}
+            className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
+            <MdEdit size={13} color="#7c3aed" /> Edit
+          </button>
+          <button type="button" title="Delete" onClick={() => handleDelete(emp)}
+            className="emp-row-menu-btn emp-menu-btn-danger" style={{ borderBottom: `1px solid ${t.divider}` }}>
+            <MdDelete size={14} /> Delete
+          </button>
+          <button type="button" title={emp.is_active ? 'Deactivate' : 'Activate'} onClick={() => handleToggleActive(emp)}
+            className="emp-row-menu-btn">
+            {emp.is_active
+              ? <><MdToggleOff size={14} color="#ea580c" /> Deactivate</>
+              : <><MdToggleOn size={14} color="#16a34a" /> Activate</>}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   // ── card ─────────────────────────────────────────────────────────────
   const EmployeeCard: React.FC<{ emp: Employee }> = ({ emp }) => {
     const status = STATUS_STYLES[emp.status] || STATUS_STYLES.active;
@@ -301,46 +345,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                 button's own relative wrapper (not the whole card) so it
                 can't get clipped by the card's edge in the grid's
                 rightmost columns. */}
-            <div style={{ position: 'relative' }} ref={openMenuId === emp.id ? menuRef : undefined}>
-              <button
-                type="button"
-                onClick={() => setOpenMenuId((v) => (v === emp.id ? null : emp.id))}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}
-              >
-                <MdMoreVert size={18} />
-              </button>
-              {openMenuId === emp.id && (
-                <div
-                  className="emp-row-menu"
-                  style={{
-                    background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`,
-                  }}
-                >
-                  <button type="button" title="View" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/view/${emp.id}`); }}
-                    className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
-                    <MdVisibility size={14} color="#2563eb" /> View
-                  </button>
-                  <button type="button" title="Edit" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/edit/${emp.id}`); }}
-                    className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
-                    <MdEdit size={13} color="#7c3aed" /> Edit
-                  </button>
-                  <button type="button" title="Delete" onClick={() => handleDelete(emp)}
-                    className="emp-row-menu-btn emp-menu-btn-danger" style={{ borderBottom: `1px solid ${t.divider}` }}>
-                    <MdDelete size={14} /> Delete
-                  </button>
-                  {/* 4th option — a toggle, not a navigation/destructive
-                      action like the three above, but same compact row
-                      style (divider above it already came from Delete's
-                      own borderBottom). */}
-                  <button type="button" title={emp.is_active ? 'Deactivate' : 'Activate'} onClick={() => handleToggleActive(emp)}
-                    className="emp-row-menu-btn">
-                    {emp.is_active
-                      ? <><MdToggleOff size={14} color="#ea580c" /> Deactivate</>
-                      : <><MdToggleOn size={14} color="#16a34a" /> Activate</>}
-                  </button>
-                </div>
-              )}
-            </div>
+            {renderActionMenu(emp)}
           </div>
         </div>
 
@@ -416,6 +421,11 @@ const EmployeeDetailsListPage: React.FC = () => {
         </div>
 
         <div className="master-actions">
+          <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
+            title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'} className="master-btn-icon"
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
+            {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
+          </button>
           <button type="button" onClick={() => navigate('/admin/employee/employee-details/add')} className="master-btn-primary">
             <MdAdd size={18} /> Add Employee
           </button>
@@ -433,18 +443,96 @@ const EmployeeDetailsListPage: React.FC = () => {
       {/* ── All Employees panel ──────────────────────────────────────── */}
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
 
-        {/* cards */}
-        <div className="p-5">
-          {loading ? (
-            <div className="emp-empty-state">Loading employees...</div>
-          ) : pageRows.length === 0 ? (
-            <div className="emp-empty-state">No employees found.</div>
-          ) : (
-            <div className={view === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4' : 'flex flex-col gap-3'}>
-              {pageRows.map((emp, idx) => <EmployeeCard key={emp.id || emp.employee_code || idx} emp={emp} />)}
-            </div>
-          )}
-        </div>
+        {view === 'grid' ? (
+          <div className="p-5">
+            {loading ? (
+              <div className="emp-empty-state">Loading employees...</div>
+            ) : pageRows.length === 0 ? (
+              <div className="emp-empty-state">No employees found.</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                {pageRows.map((emp, idx) => <EmployeeCard key={emp.id || emp.employee_code || idx} emp={emp} />)}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="master-table-scroll">
+            <table className="master-table" style={{ minWidth: 980 }}>
+              <thead>
+                <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
+                  <th className="master-table-actions-th master-table-header-gradient" style={{
+                    width: 64, minWidth: 64, maxWidth: 64,
+                    borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
+                    borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                  }}>Action</th>
+                  {['Employee Code', 'Employee Name', 'D.O.B', 'Email ID', 'Mobile No', 'Joining Date', 'Designation', 'Status'].map((h) => (
+                    <th key={h} style={{ borderBottom: `1px solid ${t.divider}` }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 48 }}>Loading employees...</td></tr>
+                ) : pageRows.length === 0 ? (
+                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 48 }}>No employees found.</td></tr>
+                ) : (
+                  pageRows.map((emp, idx) => {
+                    const status = STATUS_STYLES[emp.status] || STATUS_STYLES.active;
+                    const isInactive = !emp.is_active;
+                    const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
+                    return (
+                      <tr key={emp.id || emp.employee_code || idx}
+                        style={{
+                          background: isInactive ? (isDark ? '#1a1a1e' : '#f1f5f9') : rowBg,
+                          borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`,
+                          opacity: isInactive ? 0.6 : 1,
+                          transition: 'background 0.15s',
+                        }}>
+                        <td className="master-table-actions-td" style={{
+                          width: 64, minWidth: 64, maxWidth: 64,
+                          zIndex: openMenuId === emp.id ? 30 : 1, background: isInactive ? 'transparent' : (isDark ? t.surfaceBg : '#ffffff'),
+                          borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
+                        }}>
+                          <div className="flex items-center justify-center">{renderActionMenu(emp, 'left')}</div>
+                        </td>
+                        <td>
+                          <button type="button" onClick={() => navigate(`/admin/employee/employee-details/view/${emp.id}`)}
+                            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#0284c7', fontWeight: 600 }}>
+                            {emp.employee_code}
+                          </button>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            {emp.profile_photo_url ? (
+                              <img src={emp.profile_photo_url} alt="" className="rounded-full" style={{ width: 30, height: 30, objectFit: 'cover', flexShrink: 0 }} />
+                            ) : (
+                              <div className="flex items-center justify-center rounded-full text-white font-bold"
+                                style={{ width: 30, height: 30, background: 'linear-gradient(135deg,#0284c7,#7c3aed)', fontSize: 11, flexShrink: 0 }}>
+                                {initials(emp.first_name, emp.last_name)}
+                              </div>
+                            )}
+                            <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{emp.first_name} {emp.last_name}</span>
+                          </div>
+                        </td>
+                        <td>{formatDate(emp.date_of_birth) || '—'}</td>
+                        <td>{emp.email || '—'}</td>
+                        <td>{emp.mobile_country_code} {emp.mobile_number}</td>
+                        <td>{formatDate(emp.joining_date) || '—'}</td>
+                        <td>{(emp.designation_names || []).join(', ') || '—'}</td>
+                        <td>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
+                            style={{ background: status.bg, color: status.color, fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                            <span className="w-1 h-1 rounded-full bg-current" /> {status.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* pagination */}
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4" style={{ borderTop: `1px solid ${t.divider}` }}>
