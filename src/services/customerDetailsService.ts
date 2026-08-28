@@ -397,6 +397,26 @@ export const fetchCustomerFullDetails = async (id: string): Promise<CustomerFull
   return { success: res.data.success, message: res.data.message, data: mapCustomerFullDetail(res.data.data as BackendCustomer) };
 };
 
+// ── Duplicate mobile/email check (item 18) — the Create Customer form's
+// warn-but-allow popup: called just before final submit, so the admin can
+// still confirm and create a genuine second booking anyway. ────────────────
+export interface DuplicateContactMatch {
+  id: number | string;
+  name: string | null;
+  customer_code: string;
+  mobile_number: string | null;
+  email: string | null;
+}
+/** GET /api/customers/duplicate-check?mobile=...&email=... */
+export const checkDuplicateCustomerContacts = async (mobile: string, email: string): Promise<DuplicateContactMatch[]> => {
+  const params: Record<string, string> = {};
+  if (mobile.trim()) params.mobile = mobile.trim();
+  if (email.trim()) params.email = email.trim();
+  if (!params.mobile && !params.email) return [];
+  const res = await axiosInstance.get('/customers/duplicate-check', { params });
+  return (res.data.rows ?? []) as DuplicateContactMatch[];
+};
+
 // ── Create new customer ──────────────────────────────────────────────────────
 // NOTE: kept as originally written. CreateCustomerPayload has no
 // aadhar_card_no field, which CreateCustomerSchema requires (the one

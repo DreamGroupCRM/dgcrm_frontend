@@ -17,10 +17,12 @@ import {
   fetchCustomerFullDetails,
   createCustomerWithDetails,
   updateCustomerWithDetails,
+  checkDuplicateCustomerContacts,
 } from '../../../../services/customerDetailsService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { companyService } from '../../../../services/companyService';
 import { Building, Company, ParkingChoice } from '../../../../types/index';
+import { showAlert } from '../../../../utils';
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
 import './CustomerDetails.css';
 
@@ -751,6 +753,38 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       toast.error('Please fill all mandatory fields.');
       return;
     }
+    // Item 8: Installment Date can't predate Booking Date — plus the same
+    // "paid after booking" reasoning applied to Remaining Booking Date.
+    // Backend re-checks both as the source of truth (see customer.service.ts's
+    // assertDatesValid); this is just instant feedback without a round trip.
+    if (installmentDate && bookingDate && installmentDate < bookingDate) {
+      toast.error('Installment Date cannot be before the Booking Date.');
+      return;
+    }
+    if (remainingBookingDate && bookingDate && remainingBookingDate < bookingDate) {
+      toast.error('Remaining Booking Date cannot be before the Booking Date.');
+      return;
+    }
+
+    // Item 18: possible-duplicate warn-but-allow popup — Create only (an
+    // existing customer editing their own record isn't a "duplicate" of
+    // themselves). The admin can still confirm and proceed — this is a
+    // warning, not a hard block, since a genuine second booking for the
+    // same customer is expected to share their mobile/email.
+    if (mode === 'add') {
+      try {
+        const matches = await checkDuplicateCustomerContacts(mobileNumber.trim(), email.trim());
+        if (matches.length > 0) {
+          const result = await showAlert.confirmWithList(
+            'A customer with this mobile number or email already exists. If this is a genuine second booking for the same customer, you can continue.',
+            'Possible Duplicate Customer',
+            matches.map((m) => `${m.name || 'Unnamed'} (${m.customer_code})${m.mobile_number ? ` — ${m.mobile_number}` : ''}${m.email ? ` — ${m.email}` : ''}`)
+          );
+          if (!result.isConfirmed) return;
+        }
+      } catch { /* lookup failure shouldn't block create — fall through */ }
+    }
+
     setSaving(true);
     try {
       const formData = new FormData();
