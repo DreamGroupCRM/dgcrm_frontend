@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdArrowBack, MdSave, MdPerson, MdApartment, MdClose, MdKeyboardArrowDown,
-  MdCameraAlt, MdDelete, MdInsertDriveFile, MdCloudUpload,
+  MdCameraAlt, MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew,
   MdPayments, MdDescription, MdVisibility, MdRadioButtonChecked, MdRadioButtonUnchecked,
 } from 'react-icons/md';
 import { FaWhatsapp } from 'react-icons/fa';
@@ -108,6 +108,54 @@ const Field: React.FC<{ t: Theme; label: string; required?: boolean; children: R
     {children}
   </div>
 );
+
+// ── View Customer — label-over-value cell, same visual language as
+// Employee View's ViewValue. ────────────────────────────────────────────
+const ViewValue: React.FC<{ label: string; value: React.ReactNode; className?: string }> = ({ label, value, className }) => (
+  <div className={className}>
+    <div className="cust-view-label">{label}</div>
+    <div className="cust-view-value">
+      {value === '' || value == null ? <span style={{ opacity: 0.5 }}>—</span> : value}
+    </div>
+  </div>
+);
+
+// ── View Customer — one uploaded-document card (Aadhar/PAN/Application
+// Form/Declaration Form/Allotment Letter). Real preview — an image renders
+// as an actual thumbnail, a PDF/other document gets an icon block — and
+// the whole card opens the file in a new tab, matching Employee View's
+// DocumentCard exactly (item 16's "same document-preview behavior").
+const CustomerDocumentCard: React.FC<{ t: Theme; label: string; url?: string | null }> = ({ t, label, url }) => {
+  const isImage = !!url && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url);
+  const content = (
+    <>
+      <div className="w-full flex items-center justify-center overflow-hidden"
+        style={{ height: 120, background: isImage ? t.insetBg : url ? 'var(--grad-purple)' : t.insetBg }}>
+        {isImage && url ? (
+          <img src={url} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <MdDescription size={34} color={url ? '#fff' : t.textSecondary} />
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-2 px-3.5 py-2.5">
+        <div className="min-w-0">
+          <div className="cust-doc-card-label">{label}</div>
+          <div className="cust-doc-card-status">{url ? 'Uploaded' : 'Not uploaded'}</div>
+        </div>
+        {url && <span className="cust-doc-card-link" style={{ flexShrink: 0 }}><MdOpenInNew size={12} /> Open</span>}
+      </div>
+    </>
+  );
+  return url ? (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="cust-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg, textDecoration: 'none' }}>
+      {content}
+    </a>
+  ) : (
+    <div className="cust-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg, cursor: 'default' }}>
+      {content}
+    </div>
+  );
+};
 
 // Same searchable dropdown as the List page's filters — click to open, type
 // to filter, select, or clear. Duplicated locally rather than pulled from a
@@ -682,13 +730,20 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       formData.append('company_name', companyName.trim());
       formData.append('project_name', projectName.trim());
       formData.append('location', location.trim());
-      formData.append('building_id', selectedBuilding?.id || '');
+      // building_id/wing_id/flat_id are genuinely optional (Building/Wing/
+      // Flat No have no required-marker on this form) — CreateCustomerSchema's
+      // optionalId is z.coerce.number().positive().optional(), which only
+      // skips validation when the KEY IS ABSENT. Appending '' for a
+      // not-yet-selected id used to send the key anyway, which z.coerce
+      // turns into 0 and ".positive()" then rejects with a 400 on every
+      // submission that didn't pick a Building/Wing/Flat No.
+      if (selectedBuilding?.id) formData.append('building_id', selectedBuilding.id);
       formData.append('building_name', selectedBuilding?.building_name || buildingName.trim());
-      formData.append('wing_id', selectedWing?.id || '');
+      if (selectedWing?.id) formData.append('wing_id', selectedWing.id);
       formData.append('wing_name', selectedWing?.name || wingName.trim());
       formData.append('floor_id', selectedFloor?.id || '');
       formData.append('floor_label', selectedFloor?.label || floorLabel.trim());
-      formData.append('flat_id', selectedFlat?.id || '');
+      if (selectedFlat?.id) formData.append('flat_id', selectedFlat.id);
       formData.append('flat_no', selectedFlat?.flat_no || flatNo.trim());
       formData.append('flat_type', selectedFlat?.flat_type || '');
       formData.append('area_sqft', selectedFlat?.area_sqft != null ? String(selectedFlat.area_sqft) : '');
@@ -726,8 +781,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         toast.success('Customer Created Successfully');
       }
       navigate('/admin/crm/customer-details');
-    } catch {
-      toast.error(mode === 'edit' ? 'Failed to update customer.' : 'Failed to create customer.');
+    } catch (e: any) {
+      const backendErrors = e?.response?.data?.errors as { field: string; message: string }[] | undefined;
+      const detail = backendErrors?.length
+        ? backendErrors.map((er) => `${er.field}: ${er.message}`).join('; ')
+        : e?.response?.data?.message;
+      toast.error(detail || (mode === 'edit' ? 'Failed to update customer.' : 'Failed to create customer.'));
     } finally {
       setSaving(false);
     }
@@ -751,6 +810,130 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     '--cust-inset-bg': t.insetBg, '--cust-text-primary': t.textPrimary, '--cust-text-secondary': t.textSecondary,
     '--cust-surface-bg': t.surfaceBg, '--cust-surface-border': t.surfaceBorder, '--cust-divider': t.divider,
   } as React.CSSProperties;
+
+  // ── View Customer — read-only "ID card" layout (item 14): 4 professional
+  // info boxes (Personal/Customer Details, Property Booking Details,
+  // Payment Details, Uploaded Documents) with label-over-value cells,
+  // instead of the same editable-looking form with every field disabled.
+  // Same visual language as View Employee (ViewValue + real doc previews). ──
+  if (isView) {
+    const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
+    return (
+      <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16, ...cssVars }}>
+
+        {/* ── Page header ───────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => navigate('/admin/crm/customer-details')}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, padding: 6 }}>
+              <MdArrowBack size={20} />
+            </button>
+            <div>
+              <h1 className="cust-crud-title">View Customer</h1>
+              <p className="cust-crud-subtitle">Customer details</p>
+            </div>
+          </div>
+          {customerCode && (
+            <div className="cust-id-badge">
+              <span className="cust-id-value">Customer ID - {customerCode}</span>
+            </div>
+          )}
+        </div>
+
+        {/* ── Identity strip — photo + name + email, above the boxes ─────── */}
+        <div className="flex items-center gap-3 mb-5">
+          {typeof customerPhoto === 'string' && customerPhoto ? (
+            <img src={customerPhoto} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover' }} />
+          ) : (
+            <div className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ width: 56, height: 56, background: 'var(--grad-purple)', fontSize: 18 }}>
+              {(firstName[0] || '')}{(lastName[0] || '')}
+            </div>
+          )}
+          <div className="min-w-0">
+            <div style={{ fontSize: 16, fontWeight: 800, color: t.textPrimary, wordBreak: 'break-word' }}>{fullName || '—'}</div>
+            <div style={{ fontSize: 11.5, color: t.textSecondary }}>{email}</div>
+          </div>
+          <span className="cust-view-status-badge" style={{ background: isActive ? '#dcfce7' : '#fee2e2', color: isActive ? '#16a34a' : '#dc2626' }}>
+            {isActive ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+
+        {/* ── Row 1: Personal Details + Property Booking Details ─────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+            <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)" />
+            <div className="cust-view-grid">
+              <ViewValue label="First Name" value={firstName} />
+              <ViewValue label="Middle Name" value={middleName} />
+              <ViewValue label="Last Name" value={lastName} />
+              <ViewValue label="Mobile Number" value={mobileNumber ? `${mobileCountryCode} ${mobileNumber}` : ''} />
+              <ViewValue label="WhatsApp Number" value={whatsappNumber ? `${whatsappCountryCode} ${whatsappNumber}` : ''} />
+              <ViewValue label="Date of Birth" value={dateOfBirth ? `${dateOfBirth}${age ? ` (${age.years}y ${age.months}m)` : ''}` : ''} />
+              <ViewValue label="Aadhar Number" value={aadharNumber} />
+              <ViewValue label="PAN Number" value={pancardNumber} />
+              <ViewValue label="Alternate Contact" value={alternatePersonName ? `${alternatePersonName}${alternatePersonMobile ? ` · ${alternatePersonMobile}` : ''}` : ''} />
+              <ViewValue label="Address" value={address} className="cust-view-field-wide" />
+            </div>
+          </div>
+
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+            <SectionHeader t={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="var(--grad-teal)" />
+            <div className="cust-view-grid">
+              <ViewValue label="Company Name" value={companyName} />
+              <ViewValue label="Project Name" value={projectName} />
+              <ViewValue label="Building" value={buildingName} />
+              <ViewValue label="Wing / Floor" value={[wingName, floorLabel].filter(Boolean).join(' / ')} />
+              <ViewValue label="Flat No" value={selectedFlat?.flat_no || flatNo} />
+              <ViewValue label="Flat Type" value={selectedFlat?.flat_type} />
+              <ViewValue label="Flat Area" value={selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : ''} />
+              <ViewValue label="Parking" value={wantsParking === 'yes' ? `Yes${parkingNo ? ` · ${parkingNo}` : ''}` : 'No'} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Row 2: Payment Details + Uploaded Documents ─────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+            <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" gradient="var(--grad-green)" />
+            <div className="cust-view-grid">
+              <ViewValue label="Total Cost" value={totalCost && `₹ ${totalCost}`} />
+              <ViewValue label="Booking Date" value={bookingDate} />
+              <ViewValue label="Booking Amount" value={bookingAmount && `₹ ${bookingAmount}`} />
+              <ViewValue label="Remaining Booking Amount" value={remainingBookingAmount && `₹ ${remainingBookingAmount}`} />
+              <ViewValue label="Remaining Booking Date" value={remainingBookingDate} />
+              <ViewValue label="Possession Amount" value={possessionAmount && `₹ ${possessionAmount}`} />
+              <ViewValue label="Installment Date" value={installmentDate} />
+              <ViewValue label="Monthly EMI Before Possession" value={monthlyEmiBeforePossession && `₹ ${monthlyEmiBeforePossession}`} />
+              <ViewValue label="Monthly EMI After Possession" value={monthlyEmiAfterPossession && `₹ ${monthlyEmiAfterPossession}`} />
+              <ViewValue label="Total EMI Tenure" value={totalEmiTenure && `${totalEmiTenure} months`} />
+              <ViewValue label="Booster Before Possession" value={boosterAmountBeforePossession && `₹ ${boosterAmountBeforePossession} / ${boosterIntervalBeforePossession || '—'} mo`} />
+              <ViewValue label="Booster After Possession" value={boosterAmountAfterPossession && `₹ ${boosterAmountAfterPossession} / ${boosterIntervalAfterPossession || '—'} mo`} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+            <SectionHeader t={t} icon={<MdDescription size={16} />} title="Uploaded Documents" gradient="var(--grad-purple)" />
+            <div className="cust-doc-grid">
+              <CustomerDocumentCard t={t} label="Aadhar Card" url={typeof aadharPhoto === 'string' ? aadharPhoto : null} />
+              <CustomerDocumentCard t={t} label="Pancard" url={typeof pancardPhoto === 'string' ? pancardPhoto : null} />
+              <CustomerDocumentCard t={t} label="Application Form" url={typeof applicationForm === 'string' ? applicationForm : null} />
+              <CustomerDocumentCard t={t} label="Declaration Form" url={typeof declarationForm === 'string' ? declarationForm : null} />
+              <CustomerDocumentCard t={t} label="Allotment Letter" url={typeof allotmentLetter === 'string' ? allotmentLetter : null} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Sticky footer — Go Back only, same shared class every other
+            CRUD page's footer uses. ────────────────────────────────────── */}
+        <div className="master-crud-footer flex items-center justify-center gap-3 z-10" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
+          <button type="button" onClick={() => navigate('/admin/crm/customer-details')}
+            className="px-6 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16, ...cssVars }}>

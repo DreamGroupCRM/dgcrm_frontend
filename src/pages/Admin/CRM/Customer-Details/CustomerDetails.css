@@ -121,6 +121,105 @@
   line-height: 1;
 }
 
+/* ── View Customer — read-only "ID card" layout (item 14): 4 boxes
+   (Personal / Property Booking / Payment / Documents), label-over-value
+   cells instead of disabled form inputs — same visual language as
+   Employee View's .emp-view-grid/.emp-view-value. ─────────────────────── */
+.cust-view-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px 18px;
+}
+
+@media (min-width: 640px) {
+  .cust-view-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.cust-view-field-wide {
+  grid-column: 1 / -1;
+}
+
+.cust-view-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cust-text-secondary);
+  margin-bottom: 3px;
+}
+
+.cust-view-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cust-text-primary);
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.cust-view-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ── View Customer — Uploaded Documents grid, real image/icon preview
+   cards, whole card is a link opening the file — same pattern as
+   Employee View's .emp-doc-grid/.emp-doc-card. ────────────────────────── */
+.cust-doc-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .cust-doc-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.cust-doc-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.cust-doc-card:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.cust-doc-card:active {
+  transform: scale(0.99);
+}
+
+.cust-doc-card-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--cust-text-primary);
+}
+
+.cust-doc-card-status {
+  font-size: 10.5px;
+  color: var(--cust-text-secondary);
+  margin-top: 1px;
+}
+
+.cust-doc-card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0284c7;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(2, 132, 199, 0.1);
+}
+
 /* ── Loading/empty states — List page's table body. ────────────────────── */
 .cust-empty-state {
   text-align: center;
