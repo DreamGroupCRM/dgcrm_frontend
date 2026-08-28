@@ -41,3 +41,19 @@ export const fetchDashboardSummary = async (): Promise<DashboardSummary> => {
   const res = await axiosInstance.get('/dashboard/stats');
   return res.data.data;
 };
+
+// ── Employee Dashboard — scoped to the caller's own employee record ─────
+export interface EmployeeDashboardSummary {
+  employee: { id: number; name: string };
+  my_leads: number;
+  my_customers: number;
+  payments_due: number;
+  payments_due_customer_count: number;
+  attendance: { present_days: number; marked_days: number; percent: number | null };
+}
+
+/** GET /api/dashboard/employee-stats */
+export const fetchEmployeeDashboardSummary = async (): Promise<EmployeeDashboardSummary> => {
+  const res = await axiosInstance.get('/dashboard/employee-stats');
+  return res.data.data;
+};
