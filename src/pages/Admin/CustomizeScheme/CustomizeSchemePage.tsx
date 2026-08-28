@@ -262,7 +262,7 @@ const DateField: React.FC<{ t: Theme; label: string; value: string; onChange: (v
 // EMI Schedule) — visually distinguishes "results" from the plain white
 // Payment Details input panel above them, and carries the panel's headline
 // figure (total cost / schedule length) right in the header band.
-const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradient: string; subtitle: string }> = ({ icon, title, gradient, subtitle }) => (
+const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradient: string; subtitle: React.ReactNode }> = ({ icon, title, gradient, subtitle }) => (
   <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5" style={{ background: gradient }}>
     <div className="flex items-center gap-2">
       <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.2)' }}>
@@ -526,7 +526,27 @@ const CustomizeSchemePage: React.FC = () => {
         <ResultPanelHeader
           icon={<MdPayments size={15} color="#fff" />} title="Payment Details"
           gradient="linear-gradient(135deg,#059669,#10b981,#0d9488)"
-          subtitle={totalCost > 0 ? `Total Cost of Flat: ${formatINR(totalCost)}` : 'Enter the scheme inputs below'}
+          subtitle={
+            totalCost > 0 ? (
+              // Live "what's left of Total Cost of Flat" — totalCost minus
+              // every amount entered so far (Booking + Remaining Booking +
+              // EMI-before x tenure + boosters + Possession = computed.totalA).
+              // Monthly EMI After Possession isn't subtracted directly here
+              // since it's a per-month rate, not a lump sum — it's what the
+              // after-possession phase (computed.totalB) draws THIS
+              // remaining balance down against, greedily, in the schedule
+              // below. Turns orange once entries exceed Total Cost of Flat,
+              // same "over budget" cue costMismatch already uses.
+              <span className="flex items-center gap-1.5 flex-wrap">
+                <span style={{ color: computed.totalA > totalCost ? '#fed7aa' : '#fff' }}>
+                  Remaining: {formatINR(Math.max(0, totalCost - computed.totalA))}
+                </span>
+                <span style={{ color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>
+                  of {formatINR(totalCost)}
+                </span>
+              </span>
+            ) : 'Enter the scheme inputs below'
+          }
         />
         <div
           className="p-4"
