@@ -336,6 +336,9 @@ const CustomerDetailsListPage: React.FC = () => {
   const [flatNoFilter, setFlatNoFilter] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  // Item 13: the assign/unassign area doubles as an Assigned/Unassigned
+  // filter on the table below it.
+  const [assignmentStatusFilter, setAssignmentStatusFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
 
   // Which filters are currently applied (shown as chips), and which one (if
   // any) is currently open for editing — see FilterChip above.
@@ -558,11 +561,13 @@ const CustomerDetailsListPage: React.FC = () => {
       if (flatNoFilter && c.flat_no !== flatNoFilter) return false;
       if (fromDate && c.booking_date && c.booking_date < fromDate) return false;
       if (toDate && c.booking_date && c.booking_date > toDate) return false;
+      if (assignmentStatusFilter === 'assigned' && !c.assigned_employee_id) return false;
+      if (assignmentStatusFilter === 'unassigned' && c.assigned_employee_id) return false;
       return true;
     });
-  }, [allCustomers, customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate]);
+  }, [allCustomers, customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter]);
 
-  useEffect(() => { setPage(1); }, [customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate]);
+  useEffect(() => { setPage(1); }, [customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / limit));
   const safePage = Math.min(page, totalPages);
@@ -589,7 +594,10 @@ const CustomerDetailsListPage: React.FC = () => {
     return { total, active, inactive, newThisMonth, activePct: total ? ((active / total) * 100).toFixed(2) : '0', inactivePct: total ? ((inactive / total) * 100).toFixed(2) : '0' };
   }, [allCustomers]);
 
-  // ── checkbox selection ───────────────────────────────────────────────
+  // ── checkbox selection — item 13: an inactive customer can't be
+  // selected for assignment at all (its checkbox is disabled in the
+  // table), so these never need to guard against one slipping in via a
+  // stale selection. ──────────────────────────────────────────────────
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -597,11 +605,12 @@ const CustomerDetailsListPage: React.FC = () => {
       return next;
     });
   };
+  const activePageRows = useMemo(() => pageRows.filter((c) => c.status === 'active'), [pageRows]);
   const toggleSelectAllOnPage = () => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      const allSelected = pageRows.every((c) => next.has(c.id));
-      pageRows.forEach((c) => (allSelected ? next.delete(c.id) : next.add(c.id)));
+      const allSelected = activePageRows.length > 0 && activePageRows.every((c) => next.has(c.id));
+      activePageRows.forEach((c) => (allSelected ? next.delete(c.id) : next.add(c.id)));
       return next;
     });
   };
@@ -911,6 +920,30 @@ const CustomerDetailsListPage: React.FC = () => {
           >
             {assigning ? 'Assigning...' : 'Assign to Employee'}
           </button>
+
+          {/* Item 13: this same area doubles as an Assigned/Unassigned
+              filter on the table below — inactive customers are excluded
+              from selection above (their checkbox is disabled), not from
+              this filter, since "inactive but was assigned" is still a
+              meaningful thing to be able to see. */}
+          <div>
+            <label className="cust-filter-label">Assignment</label>
+            <div className="flex items-center rounded-xl p-0.5" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}` }}>
+              {([['all', 'All'], ['assigned', 'Assigned'], ['unassigned', 'Unassigned']] as const).map(([value, label]) => (
+                <button
+                  key={value} type="button" onClick={() => setAssignmentStatusFilter(value)}
+                  className="px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap"
+                  style={{
+                    background: assignmentStatusFilter === value ? 'var(--grad-purple)' : 'transparent',
+                    color: assignmentStatusFilter === value ? '#fff' : t.textSecondary,
+                    border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -974,7 +1007,8 @@ const CustomerDetailsListPage: React.FC = () => {
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <th style={{ padding: '12px 14px', width: 40 }}>
-                  <input type="checkbox" checked={pageRows.length > 0 && pageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
+                  <input type="checkbox" title="Select all active customers on this page"
+                    checked={activePageRows.length > 0 && activePageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
                 {['Action', 'Customer Code', 'Customer Name', 'Employee Name', 'Contact Details', 'Project & Flat Details', 'Flat Type', 'Flat Area (Sq Ft)', 'Flat Booking Date', 'Monthly EMI Amount'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -992,7 +1026,8 @@ const CustomerDetailsListPage: React.FC = () => {
                 pageRows.map((c) => (
                   <tr key={c.id} className="cust-divider-top">
                     <td style={{ padding: '12px 14px' }}>
-                      <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)} />
+                      <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)}
+                        disabled={c.status !== 'active'} title={c.status !== 'active' ? "Inactive customers can't be assigned" : undefined} />
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <div className="flex items-center gap-1.5" ref={openMenuId === c.id ? menuRef : undefined}>
