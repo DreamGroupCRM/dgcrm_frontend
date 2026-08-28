@@ -331,22 +331,49 @@ const ViewValue: React.FC<{ label: string; value: React.ReactNode; className?: s
 // document icon otherwise, and a "View" link that opens the file in a new
 // tab — no download machinery of our own, just the URL the backend already
 // serves uploaded files from.
+// Real preview, not just a filename — an image renders as an actual
+// thumbnail spanning the card's top; a PDF/other document gets a clear
+// document icon block instead, since there's no reasonable inline
+// thumbnail for those. Either way, the whole card opens the file in a new
+// tab (the browser's own image/PDF viewer) on click, not just a small
+// "View" link tucked into a corner.
 const DocumentCard: React.FC<{ t: Theme; label: string; url?: string | null }> = ({ t, label, url }) => {
   const isImage = !!url && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url);
-  return (
-    <div className="emp-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg }}>
-      <div className="emp-doc-card-icon" style={{ background: url ? 'linear-gradient(135deg,#4338ca,#4f46e5)' : t.surfaceBorder }}>
-        {isImage && url ? <img src={url} alt="" /> : <MdDescription size={19} color={url ? '#fff' : t.textSecondary} />}
+  const content = (
+    <>
+      <div
+        className="w-full flex items-center justify-center overflow-hidden"
+        style={{
+          height: 120,
+          background: isImage ? t.insetBg : url ? 'linear-gradient(135deg,#0284c7,#7c3aed)' : t.insetBg,
+        }}
+      >
+        {isImage && url ? (
+          <img src={url} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <MdDescription size={34} color={url ? '#fff' : t.textSecondary} />
+        )}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="emp-doc-card-label">{label}</div>
-        <div className="emp-doc-card-status">{url ? 'Uploaded' : 'Not uploaded'}</div>
+      <div className="flex items-center justify-between gap-2 px-3.5 py-2.5">
+        <div className="min-w-0">
+          <div className="emp-doc-card-label">{label}</div>
+          <div className="emp-doc-card-status">{url ? 'Uploaded' : 'Not uploaded'}</div>
+        </div>
+        {url && (
+          <span className="emp-doc-card-link" style={{ flexShrink: 0 }}>
+            <MdOpenInNew size={12} /> Open
+          </span>
+        )}
       </div>
-      {url && (
-        <a href={url} target="_blank" rel="noopener noreferrer" className="emp-doc-card-link">
-          <MdOpenInNew size={12} /> View
-        </a>
-      )}
+    </>
+  );
+  return url ? (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="emp-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg, textDecoration: 'none' }}>
+      {content}
+    </a>
+  ) : (
+    <div className="emp-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg, cursor: 'default' }}>
+      {content}
     </div>
   );
 };
@@ -892,6 +919,22 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <ViewValue label="IFSC Code" value={form.ifsc_code} />
               <ViewValue label="Branch" value={form.branch} />
             </div>
+            {/* Bank Passbook lives here now, filling the space this box used
+                to leave empty below its 6 field values — no longer
+                duplicated in the Documents section below. */}
+            <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${t.divider}` }}>
+              <div className="emp-view-label" style={{ marginBottom: 8 }}>Bank Passbook</div>
+              {existingUrls.passbook_photo ? (
+                <a
+                  href={existingUrls.passbook_photo} target="_blank" rel="noopener noreferrer"
+                  className="block rounded-xl overflow-hidden" style={{ border: `1px solid ${t.surfaceBorder}`, maxWidth: 280 }}
+                >
+                  <img src={existingUrls.passbook_photo} alt="Bank Passbook" style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />
+                </a>
+              ) : (
+                <p className="emp-hint-text">Not uploaded.</p>
+              )}
+            </div>
           </div>
 
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
@@ -932,12 +975,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Uploaded Documents ──────────────────────────────────────────── */}
         <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
           <SectionHeader t={t} icon={<MdDescription size={16} />} title="Uploaded Documents" gradient="var(--grad-teal)" />
+          {/* Bank Passbook moved into the Bank Details box above (no longer
+              duplicated here) — the remaining 4 documents fill 2 rows of 2
+              at the .emp-doc-grid breakpoint. */}
           <div className="emp-doc-grid">
             <DocumentCard t={t} label="Aadhar Card" url={existingUrls.aadhar_card} />
             <DocumentCard t={t} label="PAN Card" url={existingUrls.pan_card} />
             <DocumentCard t={t} label="Resume" url={existingUrls.resume} />
             <DocumentCard t={t} label="Appointment Letter" url={existingUrls.appointment_letter} />
-            <DocumentCard t={t} label="Bank Passbook" url={existingUrls.passbook_photo} />
           </div>
         </div>
 
