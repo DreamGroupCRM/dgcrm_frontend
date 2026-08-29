@@ -24,6 +24,7 @@ import {
 } from '../../../../services/paymentService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
+import { fetchCustomerIntelligence, CustomerIntelligence } from '../../../../services/intelligenceService';
 import {
   Customer, Building, CustomerPaymentRecord,
   PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload, isAdminRole,
@@ -374,6 +375,9 @@ const CustomerDetailsListPage: React.FC = () => {
     // Customer Due view — fetched alongside payment history, additive to
     // the existing Payment History modal (see openPaymentHistory below).
     due?: CustomerDueSummary; remaining?: CustomerRemainingAmounts;
+    // AI Customer Intelligence — fetched alongside the above, same
+    // allSettled defensive pattern (see openPaymentHistory below).
+    ai?: CustomerIntelligence;
   } | null>(null);
 
   // same customer. ────────────────────────────────────────────────────
@@ -661,10 +665,11 @@ const CustomerDetailsListPage: React.FC = () => {
       // + the per-type remaining breakdown) is fetched alongside it so the
       // one modal shows both — using allSettled so a due/remaining failure
       // never blocks the existing payment history from rendering.
-      const [historyRes, dueRes, remainingRes] = await Promise.allSettled([
+      const [historyRes, dueRes, remainingRes, aiRes] = await Promise.allSettled([
         fetchCustomerPaymentHistory(c.id),
         fetchCustomerDue(c.id),
         fetchCustomerRemaining(c.id),
+        fetchCustomerIntelligence(c.id),
       ]);
       if (historyRes.status === 'rejected') throw historyRes.reason;
       setInfoModal({
@@ -672,6 +677,7 @@ const CustomerDetailsListPage: React.FC = () => {
         payments: historyRes.value.rows,
         due: dueRes.status === 'fulfilled' ? dueRes.value.data : undefined,
         remaining: remainingRes.status === 'fulfilled' ? remainingRes.value.data : undefined,
+        ai: aiRes.status === 'fulfilled' ? aiRes.value : undefined,
       });
     } catch {
       toast.error('Failed to load payment history.');
@@ -1272,6 +1278,47 @@ const CustomerDetailsListPage: React.FC = () => {
                 <p style={{ color: t.textSecondary, fontSize: 12 }}>Loading...</p>
               ) : (
                 <>
+                  {/* ── 🤖 AI Customer Intelligence — engagement/risk
+                      computed server-side from this customer's own payment
+                      history (see intelligenceService.ts /
+                      customerIntelligence.service.ts). Silently omitted if
+                      the fetch failed (allSettled in openPaymentHistory) —
+                      never shown with fabricated data. ─────────────────── */}
+                  {infoModal.ai && (
+                    <div className="rounded-xl p-3.5 mb-4" style={{ background: isDark ? 'rgba(124,58,237,0.08)' : '#f5f3ff', border: `1px solid ${isDark ? 'rgba(124,58,237,0.3)' : '#ddd6fe'}` }}>
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <span style={{ fontSize: 13 }}>🤖</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>AI Customer Intelligence</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mb-2.5">
+                        <div>
+                          <div style={{ fontSize: 9.5, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }}>Engagement</div>
+                          <div style={{
+                            fontSize: 12, fontWeight: 800,
+                            color: infoModal.ai.engagement === 'HIGH' ? '#16a34a' : infoModal.ai.engagement === 'MEDIUM' ? '#d97706' : '#64748b',
+                          }}>
+                            {infoModal.ai.engagement}
+                          </div>
+                          <div style={{ fontSize: 10, color: t.textSecondary }}>{infoModal.ai.engagement_reason}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 9.5, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }}>Risk</div>
+                          <div style={{
+                            fontSize: 12, fontWeight: 800,
+                            color: infoModal.ai.risk === 'HIGH' ? '#dc2626' : infoModal.ai.risk === 'MEDIUM' ? '#d97706' : '#16a34a',
+                          }}>
+                            {infoModal.ai.risk === 'HIGH' ? '⚠️ HIGH' : infoModal.ai.risk}
+                          </div>
+                          <div style={{ fontSize: 10, color: t.textSecondary }}>{infoModal.ai.risk_reason}</div>
+                        </div>
+                      </div>
+                      <div className="rounded-lg px-2.5 py-2" style={{ background: isDark ? 'rgba(124,58,237,0.12)' : '#fff', border: `1px solid ${isDark ? 'rgba(124,58,237,0.25)' : '#e9d5ff'}` }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: '#7c3aed', marginBottom: 1 }}>{infoModal.ai.recommended_action}</div>
+                        <div style={{ fontSize: 10, color: t.textSecondary }}>{infoModal.ai.recommended_action_reason}</div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* ── Customer Due panel — total_due/remaining_amount +
                       per-type remaining breakdown, additive above the
                       existing payment list. ──────────────────────────── */}

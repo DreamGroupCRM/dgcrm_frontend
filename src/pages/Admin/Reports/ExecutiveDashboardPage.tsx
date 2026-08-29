@@ -33,6 +33,11 @@ import {
 import { FetchBuildingList } from '../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../services/employeeDetailsService';
 import { exportDashboardToPdf, exportDashboardToExcel } from './dashboardExport';
+import {
+  fetchSalesInsights, fetchPatterns, fetchPriorityQueue,
+  SalesInsights, DetectedPattern, PriorityQueueItem,
+} from '../../../services/intelligenceService';
+import { MdAutoAwesome, MdPersonSearch, MdTrendingFlat, MdInsights } from 'react-icons/md';
 
 type Theme = ReturnType<typeof getTheme>;
 
@@ -127,6 +132,55 @@ const Skeleton: React.FC<{ t: Theme; height?: number }> = ({ t, height = 280 }) 
   <div className="animate-pulse rounded-xl" style={{ height, background: t.insetBg }} />
 );
 
+// ── AI Intelligence — small presentational pieces used only by the
+// "🤖 DGCRM Intelligence" section below. Deliberately separate from
+// SectionCard/StatCard's own styling so this reads as its own product
+// surface rather than another generic report panel. ─────────────────────
+const TEMPERATURE_META: Record<string, { emoji: string; color: string }> = {
+  HOT: { emoji: '🔥', color: '#dc2626' },
+  WARM: { emoji: '🟡', color: '#d97706' },
+  COLD: { emoji: '🔵', color: '#2563eb' },
+};
+
+const InsightTile: React.FC<{ t: Theme; isDark: boolean; emoji: string; label: string; value: string }> = ({ t, isDark, emoji, label, value }) => (
+  <div className="rounded-xl p-3" style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#fff', border: `1px solid ${t.surfaceBorder}` }}>
+    <div style={{ fontSize: 18, marginBottom: 4 }}>{emoji}</div>
+    <div style={{ fontSize: 16, fontWeight: 800, color: t.textPrimary }}>{value}</div>
+    <div style={{ fontSize: 10.5, color: t.textSecondary }}>{label}</div>
+  </div>
+);
+
+const PatternCard: React.FC<{ t: Theme; isDark: boolean; pattern: DetectedPattern }> = ({ t, isDark, pattern }) => {
+  const isWarning = pattern.severity === 'warning';
+  const color = isWarning ? '#dc2626' : '#2563eb';
+  return (
+    <div className="rounded-xl p-3" style={{ background: isDark ? `${color}1a` : `${color}0d`, border: `1px solid ${color}33` }}>
+      <div className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 3 }}>
+        <MdInsights size={14} /> {pattern.title}
+      </div>
+      <div style={{ fontSize: 11.5, color: t.textPrimary, marginBottom: 4 }}>{pattern.detail}</div>
+      <div style={{ fontSize: 11, color: t.textSecondary, fontStyle: 'italic' }}>Recommendation: {pattern.recommendation}</div>
+    </div>
+  );
+};
+
+const PriorityRow: React.FC<{ t: Theme; rank: number; item: PriorityQueueItem }> = ({ t, rank, item }) => {
+  const meta = TEMPERATURE_META[item.temperature] ?? TEMPERATURE_META.COLD;
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: t.insetBg, marginBottom: 6 }}>
+      <span style={{ fontSize: 11.5, fontWeight: 700, color: t.textMuted, width: 18, flexShrink: 0 }}>{rank}.</span>
+      <span style={{ fontSize: 15, flexShrink: 0 }}>{meta.emoji}</span>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>
+          {item.name} <span style={{ fontWeight: 600, color: meta.color }}>· Score {item.score}</span>
+        </div>
+        <div style={{ fontSize: 11, color: t.textSecondary }}>{item.action}{item.is_overdue ? ' (overdue)' : ''} — {item.reason}</div>
+      </div>
+      {item.assigned_to && <span style={{ fontSize: 10.5, color: t.textMuted, flexShrink: 0, whiteSpace: 'nowrap' }}>{item.assigned_to}</span>}
+    </div>
+  );
+};
+
 interface FilterOption { id: string; label: string }
 
 const ExecutiveDashboardPage: React.FC = () => {
@@ -189,6 +243,35 @@ const ExecutiveDashboardPage: React.FC = () => {
   }, [range.from, range.to, employeeId, buildingId, preset, customFrom, customTo]);
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
+
+  // ── AI Intelligence — independent of the date-range/employee/building
+  // filters above (these are always "as of right now" snapshots, not a
+  // period report), and independently loaded/erred so a failure here never
+  // blocks or breaks the rest of the dashboard above. ───────────────────
+  const [aiInsights, setAiInsights] = useState<SalesInsights | null>(null);
+  const [aiPatterns, setAiPatterns] = useState<DetectedPattern[]>([]);
+  const [aiPriorityQueue, setAiPriorityQueue] = useState<PriorityQueueItem[]>([]);
+  const [aiLoading, setAiLoading] = useState(true);
+  const [aiError, setAiError] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setAiLoading(true);
+      setAiError(false);
+      try {
+        const [insightsRes, patternsRes, queueRes] = await Promise.all([
+          fetchSalesInsights(), fetchPatterns(), fetchPriorityQueue(10),
+        ]);
+        setAiInsights(insightsRes);
+        setAiPatterns(patternsRes);
+        setAiPriorityQueue(queueRes);
+      } catch {
+        setAiError(true);
+      } finally {
+        setAiLoading(false);
+      }
+    })();
+  }, []);
 
   const selectStyle: React.CSSProperties = {
     background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
@@ -298,6 +381,66 @@ const ExecutiveDashboardPage: React.FC = () => {
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Pending / Overdue Activities" value={loading ? '—' : kpis!.pending_or_overdue_activities} icon={MdWarningAmber} color="#dc2626" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+      </div>
+
+      {/* ── 🤖 DGCRM Intelligence — every figure/recommendation below is
+          computed server-side by deterministic rules over this app's own
+          Lead/LeadActivity data (see src/modules/intelligence/ in
+          dgcrm_backend for the scoring formulas) — no LLM, no external AI
+          service, nothing fabricated. Independent load/error state from
+          the rest of this page (see the effect above) so a failure here
+          can never take down the Executive Dashboard around it. ──────── */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${isDark ? 'rgba(124,58,237,0.35)' : '#ddd6fe'}`, boxShadow: isDark ? 'none' : '0 4px 16px rgba(124,58,237,0.08)', marginBottom: 18 }}>
+        <div className="flex items-center gap-2 px-5 py-3.5" style={{ background: 'linear-gradient(135deg,#4c1d95,#7c3aed,#a855f7)' }}>
+          <MdAutoAwesome size={18} color="#fff" />
+          <h2 style={{ fontSize: 15, fontWeight: 800, color: '#fff', margin: 0 }}>DGCRM Intelligence</h2>
+          <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.85)', marginLeft: 4 }}>Lead scoring, priorities and patterns — computed from your own CRM data</span>
+        </div>
+        <div className="p-4">
+          {aiLoading ? (
+            <Skeleton t={t} height={220} />
+          ) : aiError || !aiInsights ? (
+            <EmptyState t={t} text="AI Intelligence is temporarily unavailable." />
+          ) : (
+            <>
+              {/* Insight tiles — Feature 8 */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5" style={{ marginBottom: 16 }}>
+                <InsightTile t={t} isDark={isDark} emoji="🔥" label="Hot Leads" value={String(aiInsights.hot_leads)} />
+                <InsightTile t={t} isDark={isDark} emoji="⚠️" label="Overdue Follow-ups" value={String(aiInsights.overdue_follow_ups)} />
+                <InsightTile t={t} isDark={isDark} emoji="🎯" label="Ready for Site Visit" value={String(aiInsights.ready_for_site_visit)} />
+                <InsightTile t={t} isDark={isDark} emoji="📉" label="Becoming Inactive" value={String(aiInsights.becoming_inactive)} />
+                <InsightTile t={t} isDark={isDark} emoji="🏠" label="Most Requested" value={aiInsights.most_requested_type?.value ?? '—'} />
+                <InsightTile t={t} isDark={isDark} emoji="👥" label="Top Follow-up: Employee" value={aiInsights.top_employee_by_follow_up?.name ?? '—'} />
+                <InsightTile t={t} isDark={isDark} emoji="📈" label={`Conversion Rate${aiInsights.conversion_rate_is_estimate ? ' (est.)' : ''}`} value={aiInsights.conversion_rate_percent !== null ? `${aiInsights.conversion_rate_percent}%` : '—'} />
+              </div>
+
+              {/* Pattern Detection — Feature 9 */}
+              {aiPatterns.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>
+                    <MdTrendingFlat size={15} /> Patterns Detected
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+                    {aiPatterns.map((p, i) => <PatternCard key={i} t={t} isDark={isDark} pattern={p} />)}
+                  </div>
+                </div>
+              )}
+
+              {/* Priority Queue — Feature 10. Informational ranking only —
+                  no Leads detail page exists yet to link these rows to. */}
+              <div>
+                <div className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>
+                  <MdPersonSearch size={15} /> Today's AI Priorities
+                </div>
+                {aiPriorityQueue.length === 0 ? (
+                  <EmptyState t={t} text="No leads need attention right now." />
+                ) : (
+                  aiPriorityQueue.map((item, i) => <PriorityRow key={item.lead_id} t={t} rank={i + 1} item={item} />)
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── Sales Trend + Property Overview ─────────────────────────── */}
