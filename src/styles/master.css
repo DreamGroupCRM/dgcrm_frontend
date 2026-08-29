@@ -545,3 +545,27 @@ html.dark .master-row-icon {
     display: none !important;
   }
 }
+
+/* Generic "print only this" utility. `.print-hide` alone only hides
+   elements explicitly marked inside the page — it does nothing about the
+   DashboardLayout's Sidebar/Header, which live outside the page component
+   entirely, so a plain window.print() still printed the whole app chrome
+   around the content. Wrapping a page's printable content in `.print-area`
+   hides literally everything else in the document instead (same technique
+   CustomerDetailsListPage's receipt-print-area already uses, hoisted here
+   so any page can reuse it — see CustomizeSchemePage's Print Scheme button). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+}

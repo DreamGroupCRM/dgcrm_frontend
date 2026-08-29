@@ -47,6 +47,10 @@ import AuditHistoryPage from '../pages/Admin/AuditHistory/AuditHistoryPage';
 import PaymentReceivedPage from '../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage';
 // Executive Dashboard — new "Reports" sidebar entry.
 const ExecutiveDashboardPage = lazy(() => import('../pages/Admin/Reports/ExecutiveDashboardPage'));
+// Backup Database — replaces its former PlaceholderPage with real whole-
+// database snapshot/restore. User Management — new Super Admin lobby page.
+const BackupDatabasePage = lazy(() => import('../pages/Admin/Backup/BackupDatabasePage'));
+const UserManagementPage = lazy(() => import('../pages/Admin/UserManagement/UserManagementPage'));
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
@@ -114,7 +118,10 @@ const AdminRoutes: React.FC = () => (
       <Route path="reports/executive-dashboard" element={<ExecutiveDashboardPage />} />
       <Route path="audit-history" element={<AuditHistoryPage />} />
       <Route path="customize-scheme" element={<CustomizeSchemePage />} />
-      <Route path="backup-database" element={<PlaceholderPage title="Backup Database" />} />
+
+      {/* SuperAdmin-only — see Sidebar.tsx / backend's requireSuperAdmin */}
+      <Route path="backup-database" element={<ProtectedRoute allowedRoles={['superadmin']}><BackupDatabasePage /></ProtectedRoute>} />
+      <Route path="user-management" element={<ProtectedRoute allowedRoles={['superadmin']}><UserManagementPage /></ProtectedRoute>} />
     </Route>
   </Routes>
 );

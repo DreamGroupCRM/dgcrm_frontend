@@ -630,7 +630,12 @@ const CustomizeSchemePage: React.FC = () => {
   };
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    // print-area (master.css) — hides the DashboardLayout Sidebar/Header
+    // (and everything else outside this div) when printing, so "Print
+    // Scheme" prints just the scheme content below instead of the raw page
+    // with the app's nav chrome around it. .print-hide'd elements (the
+    // Print button itself, Generate PDF button) still collapse as before.
+    <div className="print-area" style={{ fontFamily: t.fontFamily }}>
 
       {/* ── Page header + Print action (Generate PDF now lives in the Bank
           Loan sidebar card below, next to the comparison it produces) ──── */}
