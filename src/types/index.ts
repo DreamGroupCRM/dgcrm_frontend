@@ -705,6 +705,8 @@ export interface CustomerPaymentRecord {
   mode?        : string;
   reference_no?: string;
   notes?       : string;
+  is_approved  : boolean;
+  payment_type : string;
 }
 
 export interface CustomerPaymentHistoryResponse {
@@ -995,4 +997,21 @@ export interface PaymentReceipt {
 export interface PaymentReceiptResponse {
   success: boolean;
   data   : PaymentReceipt;
+}
+
+// Smart "Record Payment" suggester (GET /payments/customer/:id/default-amount)
+// — default amount AND next due date per payment type, phase-aware, plus
+// whether maintenance is currently collectible (all pre-possession EMIs
+// paid). Distinct from CustomerRemainingAmounts above, which only answers
+// "how much is left" with no date or maintenance-eligibility awareness.
+export interface DefaultAmountData {
+  payment_for     : PaymentFor;
+  amount          : number;
+  date            : string | null;
+  show_maintenance: boolean;
+}
+
+export interface DefaultAmountResponse {
+  success: boolean;
+  data   : DefaultAmountData;
 }

@@ -20,14 +20,15 @@ import { getTheme } from '../../../../styles/theme';
 import StatCard from '../../../../components/masters/StatCard';
 import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory } from '../../../../services/customerDetailsService';
 import {
-  collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, PAYMENT_FOR_OPTIONS, paymentForLabel,
+  collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, deletePayment, PAYMENT_FOR_OPTIONS, paymentForLabel,
 } from '../../../../services/paymentService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
   Customer, Building, CustomerPaymentRecord,
-  PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload,
+  PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload, isAdminRole,
 } from '../../../../types/index';
+import jsPDF from 'jspdf';
 import { formatDate, showAlert } from '../../../../utils';
 import './CustomerDetails.css';
 
@@ -318,6 +319,8 @@ const CustomerDetailsListPage: React.FC = () => {
   const { mode } = useAppSelector((s) => s.theme);
   const isDark = mode === 'dark';
   const t = getTheme(isDark);
+  const role = useAppSelector((s) => s.auth.role);
+  const isAdmin = isAdminRole(role);
 
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
@@ -390,7 +393,7 @@ const CustomerDetailsListPage: React.FC = () => {
 
   // ── View Receipt modal — layered on top of the Payment History modal,
   // opened from a "View Receipt" button on each of its rows. ──────────
-  const [receiptModal, setReceiptModal] = useState<{ transactionId: string; loading: boolean; data?: PaymentReceipt } | null>(null);
+  const [receiptModal, setReceiptModal] = useState<{ transactionId: string; loading: boolean; data?: PaymentReceipt; pendingApproval?: boolean } | null>(null);
 
   useEffect(() => { dispatch(setPageTitle('Customer Details')); }, [dispatch]);
 
@@ -722,14 +725,103 @@ const CustomerDetailsListPage: React.FC = () => {
   };
 
   // ── View Receipt ─────────────────────────────────────────────────────
+  // Legacy blocks receipt/PDF access until an admin approves the payment —
+  // the backend returns 403 for that specific case (admins bypass it
+  // server-side), which is shown here as an inline "pending approval"
+  // state inside the modal rather than treated like any other failure.
   const openReceipt = async (transactionId: string) => {
     setReceiptModal({ transactionId, loading: true });
     try {
       const res = await fetchPaymentReceipt(transactionId);
       setReceiptModal({ transactionId, loading: false, data: res.data });
-    } catch {
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setReceiptModal({ transactionId, loading: false, pendingApproval: true });
+        return;
+      }
       toast.error('Failed to load receipt.');
       setReceiptModal(null);
+    }
+  };
+
+  // ── Download Receipt PDF — client-side (jsPDF), same approach as the
+  // Executive Dashboard's export (dashboardExport.ts). Only reachable once
+  // receiptModal.data exists at all, which itself required the approval
+  // gate above to pass. ───────────────────────────────────────────────────
+  const handleDownloadReceiptPdf = () => {
+    if (!receiptModal?.data) return;
+    const { transaction: tx, customer, paid_emis, future_emis, total_emis, emi_number } = receiptModal.data;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a5' });
+    const marginX = 36;
+    let y = 40;
+
+    doc.setFontSize(15);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Dream Group CRM', marginX, y);
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Payment Receipt', marginX, y + 14);
+    y += 34;
+
+    doc.setFontSize(9.5);
+    const line = (label: string, value: string) => { doc.text(label, marginX, y); doc.setFont('helvetica', 'bold'); doc.text(value, 220, y); doc.setFont('helvetica', 'normal'); y += 15; };
+    line('Receipt No.', tx.receipt_number);
+    line('Date', formatDate(tx.date || tx.created_at));
+    line('Received By', tx.received_by || '—');
+    y += 6;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(customer.customer_name || '—', marginX, y);
+    doc.setFont('helvetica', 'normal');
+    y += 13;
+    doc.setFontSize(8.5);
+    doc.text(`${customer.customer_code}${customer.mobile_number ? ` · ${customer.mobile_number}` : ''}`, marginX, y);
+    y += 20;
+
+    doc.setFontSize(9.5);
+    doc.text(paymentForLabel(tx.payment_type), marginX, y);
+    y += 16;
+    doc.setFontSize(17);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Rs. ${tx.amount.toLocaleString('en-IN')}`, marginX, y);
+    doc.setFont('helvetica', 'normal');
+    y += 18;
+
+    if (tx.payment_type === 'EMIAmount' && emi_number > 0) {
+      doc.setFontSize(8.5);
+      doc.text(`EMI #${emi_number} of ${total_emis} total (${paid_emis} paid, ${future_emis} future)`, marginX, y);
+      y += 18;
+    }
+
+    doc.setFontSize(9);
+    if (tx.mode_of_payment) { line('Mode of Payment', tx.mode_of_payment); }
+    if (tx.cheque_number) { line('Cheque Number', tx.cheque_number); }
+    if (tx.clearance_date) { line('Clearance Date', formatDate(tx.clearance_date)); }
+    if (tx.company) { line('Company', tx.company); }
+    if (tx.payment_tag) { line('Tag', tx.payment_tag); }
+
+    doc.save(`receipt-${tx.receipt_number}.pdf`);
+  };
+
+  // ── Delete Payment (admin-only) — triggers the backend's EMI
+  // recalculation ripple for EMIAmount transactions. Confirm dialog warns
+  // about that specifically rather than using the generic delete-confirm
+  // wording, since this is a bigger blast radius than a normal row delete. ─
+  const handleDeletePayment = async (payment: CustomerPaymentRecord, customer: Customer) => {
+    const isEmi = payment.payment_type === 'EMIAmount';
+    const result = await showAlert.confirm(
+      isEmi
+        ? `This will permanently delete this ₹${payment.amount.toLocaleString('en-IN')} EMI payment and recalculate every other EMI transaction for ${customer.customer_name}.`
+        : `This will permanently delete this ₹${payment.amount.toLocaleString('en-IN')} payment for ${customer.customer_name}.`,
+      'Delete Payment?'
+    );
+    if (!result.isConfirmed) return;
+    try {
+      await deletePayment(payment.id);
+      toast.success('Payment deleted.');
+      openPaymentHistory(customer);
+    } catch {
+      toast.error('Failed to delete payment.');
     }
   };
 
@@ -1220,7 +1312,17 @@ const CustomerDetailsListPage: React.FC = () => {
                       {infoModal.payments!.map((p) => (
                         <div key={p.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: t.insetBg }}>
                           <div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: t.textPrimary }}>₹ {p.amount.toLocaleString('en-IN')}</div>
+                            <div className="flex items-center gap-1.5">
+                              <span style={{ fontSize: 12, fontWeight: 600, color: t.textPrimary }}>₹ {p.amount.toLocaleString('en-IN')}</span>
+                              <span
+                                style={{
+                                  fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 999,
+                                  color: p.is_approved ? '#16a34a' : '#d97706',
+                                  background: p.is_approved ? (isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7') : (isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7'),
+                                }}>
+                                {p.is_approved ? 'Approved' : 'Pending'}
+                              </span>
+                            </div>
                             <div style={{ fontSize: 10.5, color: t.textSecondary }}>{formatDate(p.paid_on)}{p.mode ? ` · ${p.mode}` : ''}</div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1230,6 +1332,13 @@ const CustomerDetailsListPage: React.FC = () => {
                               style={{ background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff', border: 'none', color: '#2563eb', cursor: 'pointer' }}>
                               <MdDescription size={13} /> Receipt
                             </button>
+                            {isAdmin && (
+                              <button type="button" title="Delete Payment" onClick={() => handleDeletePayment(p, infoModal.customer)}
+                                className="flex items-center justify-center rounded-lg"
+                                style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
+                                <MdDelete size={13} />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1267,7 +1376,12 @@ const CustomerDetailsListPage: React.FC = () => {
               </button>
             </div>
             <div className="p-5">
-              {receiptModal.loading || !receiptModal.data ? (
+              {receiptModal.pendingApproval ? (
+                <div className="rounded-xl p-4 text-center" style={{ background: isDark ? 'rgba(217,119,6,0.1)' : '#fffbeb', border: `1px solid ${isDark ? 'rgba(217,119,6,0.25)' : '#fde68a'}` }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#d97706', marginBottom: 3 }}>Pending Approval</div>
+                  <div style={{ fontSize: 11, color: t.textSecondary }}>This receipt will be available to view, print, or download once an admin approves the payment.</div>
+                </div>
+              ) : receiptModal.loading || !receiptModal.data ? (
                 <p style={{ color: t.textSecondary, fontSize: 12 }}>{receiptModal.loading ? 'Loading receipt...' : 'Receipt not found.'}</p>
               ) : (
                 <>
@@ -1332,6 +1446,11 @@ const CustomerDetailsListPage: React.FC = () => {
               <button type="button" onClick={() => setReceiptModal(null)}
                 className="px-5 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
                 Close
+              </button>
+              <button type="button" onClick={handleDownloadReceiptPdf} disabled={!receiptModal.data}
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: receiptModal.data ? 'pointer' : 'not-allowed' }}>
+                <MdDownload size={16} /> Download PDF
               </button>
               <button type="button" onClick={() => window.print()} disabled={!receiptModal.data}
                 className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold text-white cust-btn-primary">

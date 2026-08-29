@@ -20,7 +20,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
 import StatCard from '../../../../components/masters/StatCard';
 import {
-  fetchCustomerDueGrid, collectPayment, PAYMENT_FOR_OPTIONS, DueGridRow, CustomerDueGrid,
+  fetchCustomerDueGrid, collectPayment, fetchDefaultAmount, PAYMENT_FOR_OPTIONS, DueGridRow, CustomerDueGrid,
 } from '../../../../services/paymentService';
 import { fetchAllCustomerDetails } from '../../../../services/customerDetailsService';
 import { companyService } from '../../../../services/companyService';
@@ -180,8 +180,39 @@ const DueReportPage: React.FC = () => {
   const [apIsAdvancePay, setApIsAdvancePay] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // ── Smart suggester (GET .../default-amount) — phase-aware default
+  // amount + next due date per payment type, plus whether maintenance is
+  // currently collectible. A row click already carries a perfectly good
+  // amount/date (it's a specific due-grid row the user picked, which may
+  // not even be the "first due" one this endpoint would suggest), so this
+  // is only used to PREFILL when there's no row to go on (the general "Add
+  // Payment" button, or after switching "Payment For" mid-form) — never to
+  // silently override an explicit row selection. show_maintenance is
+  // always refreshed either way, since neither a row nor the old value
+  // says anything about eligibility for the newly-selected type. ─────────
+  const [apShowMaintenance, setApShowMaintenance] = useState(true);
+  const [apSuggestLoading, setApSuggestLoading] = useState(false);
+
+  const applySuggestion = useCallback(async (customerId: number, paymentFor: PaymentFor, prefill: boolean) => {
+    setApSuggestLoading(true);
+    try {
+      const suggestion = await fetchDefaultAmount(customerId, paymentFor);
+      setApShowMaintenance(suggestion.show_maintenance);
+      if (prefill) {
+        setApAmount(suggestion.amount > 0 ? String(suggestion.amount) : '');
+        setApInstDate(suggestion.date ?? '');
+      }
+    } catch {
+      // A convenience prefill, not a required field — leave whatever the
+      // user already has (or the row-provided values) untouched on failure.
+    } finally {
+      setApSuggestLoading(false);
+    }
+  }, []);
+
   const openAddPayment = (row?: DueGridRow) => {
-    setApPaymentFor(row?.payment_for ?? 'EMIAmount');
+    const paymentFor = row?.payment_for ?? 'EMIAmount';
+    setApPaymentFor(paymentFor);
     setApInstDate(row?.date ?? '');
     setApAmount(row && row.amount > 0 ? String(row.amount) : '');
     setApModeOfPayment('');
@@ -191,6 +222,12 @@ const DueReportPage: React.FC = () => {
     setApMaintenance('');
     setApIsAdvancePay(false);
     setAddPaymentOpen(true);
+    if (grid) applySuggestion(grid.customer_id, paymentFor, !row);
+  };
+
+  const handlePaymentForChange = (newType: PaymentFor) => {
+    setApPaymentFor(newType);
+    if (grid) applySuggestion(grid.customer_id, newType, true);
   };
 
   const handleSubmitPayment = async () => {
@@ -343,18 +380,22 @@ const DueReportPage: React.FC = () => {
                   dates, so this order matters. */}
               <div>
                 <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>Payment For</label>
-                <select value={apPaymentFor} onChange={(e) => setApPaymentFor(e.target.value as PaymentFor)}
+                <select value={apPaymentFor} onChange={(e) => handlePaymentForChange(e.target.value as PaymentFor)}
                   style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }}>
                   {PAYMENT_FOR_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>Installment Date</label>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  Installment Date{apSuggestLoading ? ' (suggesting...)' : ''}
+                </label>
                 <input type="date" value={apInstDate} onChange={(e) => setApInstDate(e.target.value)}
                   style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '8px 10px', fontSize: 12, outline: 'none' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>Amount (₹) *</label>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  Amount (₹) *{apSuggestLoading ? ' (suggesting...)' : ''}
+                </label>
                 <input type="text" inputMode="numeric" value={apAmount} onChange={(e) => setApAmount(e.target.value.replace(/[^\d]/g, ''))} placeholder="Enter amount"
                   style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }} />
               </div>
@@ -385,11 +426,20 @@ const DueReportPage: React.FC = () => {
                 <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>Company</label>
                 <SearchableSelect t={t} placeholder="Select company" options={companyNameOptions} value={apCompany} onChange={setApCompany} />
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>Maintenance (₹)</label>
-                <input type="text" inputMode="numeric" value={apMaintenance} onChange={(e) => setApMaintenance(e.target.value.replace(/[^\d]/g, ''))} placeholder="Optional"
-                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }} />
-              </div>
+              {/* Maintenance is only collectible once every pre-possession EMI is
+                  fully paid — apShowMaintenance comes from the same suggester
+                  fetch above (getDefaultAmount's maintenance-eligibility flag). */}
+              {apShowMaintenance ? (
+                <div>
+                  <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>Maintenance (₹)</label>
+                  <input type="text" inputMode="numeric" value={apMaintenance} onChange={(e) => setApMaintenance(e.target.value.replace(/[^\d]/g, ''))} placeholder="Optional"
+                    style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }} />
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: t.textSecondary, background: t.insetBg, borderRadius: 10, padding: '8px 10px' }}>
+                  Maintenance becomes collectible once all pre-possession EMIs are paid.
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-end gap-3 p-5" style={{ borderTop: `1px solid ${t.divider}` }}>
               <button type="button" onClick={() => setAddPaymentOpen(false)} disabled={submitting}

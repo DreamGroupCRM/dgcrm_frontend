@@ -16,7 +16,7 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
 import StatCard from '../../../../components/masters/StatCard';
-import { fetchPaymentList, approvePayment, paymentForLabel, PaymentListRow } from '../../../../services/paymentService';
+import { fetchPaymentList, approvePayment, bulkApprovePayments, paymentForLabel, PaymentListRow } from '../../../../services/paymentService';
 import { isAdminRole } from '../../../../types';
 import { formatLastLogin } from '../../../../utils';
 
@@ -49,6 +49,8 @@ const PaymentReceivedPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [approvalFilter, setApprovalFilter] = useState<'all' | 'approved' | 'pending'>('all');
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkApproving, setBulkApproving] = useState(false);
 
   // Lightweight counts (limit=1, only .total read) — same pattern as
   // Audit History's KPI row.
@@ -86,6 +88,10 @@ const PaymentReceivedPage: React.FC = () => {
   useEffect(() => { fetchCounts(); }, [fetchCounts]);
   useEffect(() => { fetchRows(); }, [fetchRows]);
   useEffect(() => { setPage(1); }, [approvalFilter, search]);
+  // Selection is page-scoped (like the Customer List's own row selection) —
+  // clear it whenever the visible rows change under it (new page, filter,
+  // search, refresh) so a stale id can't get bulk-approved by surprise.
+  useEffect(() => { setSelectedIds(new Set()); }, [rows]);
 
   const handleApprove = async (row: PaymentListRow) => {
     setApprovingId(row.id);
@@ -98,6 +104,36 @@ const PaymentReceivedPage: React.FC = () => {
       toast.error('Failed to approve payment.');
     } finally {
       setApprovingId(null);
+    }
+  };
+
+  const pendingRowIds = useMemo(() => rows.filter((r) => !r.is_approved).map((r) => r.id), [rows]);
+  const allPendingSelected = pendingRowIds.length > 0 && pendingRowIds.every((id) => selectedIds.has(id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allPendingSelected ? new Set() : new Set(pendingRowIds));
+  };
+  const toggleSelectRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkApproving(true);
+    try {
+      const res = await bulkApprovePayments(Array.from(selectedIds));
+      toast.success(`${res.approved} payment(s) approved.`);
+      setSelectedIds(new Set());
+      fetchRows();
+      fetchCounts();
+    } catch {
+      toast.error('Failed to approve selected payments.');
+    } finally {
+      setBulkApproving(false);
     }
   };
 
@@ -144,6 +180,13 @@ const PaymentReceivedPage: React.FC = () => {
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
+            {isAdmin && selectedIds.size > 0 && (
+              <button type="button" disabled={bulkApproving} onClick={handleBulkApprove}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white"
+                style={{ background: '#16a34a', border: 'none', cursor: bulkApproving ? 'not-allowed' : 'pointer', opacity: bulkApproving ? 0.7 : 1, whiteSpace: 'nowrap' }}>
+                <MdCheckCircle size={15} /> {bulkApproving ? 'Approving...' : `Approve Selected (${selectedIds.size})`}
+              </button>
+            )}
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 240 }}>
               <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
               <input type="text" placeholder="Search customer or receipt #..." value={search} onChange={(e) => setSearch(e.target.value)}
@@ -161,19 +204,32 @@ const PaymentReceivedPage: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Receipt #', 'Customer', 'Payment For', 'Amount', 'Company', 'Mode', 'Received By', 'Date', 'Status', 'Action'].map((h) => (
+                {isAdmin && (
+                  <th style={{ padding: '12px 14px', width: 36 }}>
+                    <input type="checkbox" checked={allPendingSelected} onChange={toggleSelectAll} disabled={pendingRowIds.length === 0}
+                      style={{ cursor: pendingRowIds.length === 0 ? 'not-allowed' : 'pointer' }} />
+                  </th>
+                )}
+                {['Receipt #', 'Customer', 'Payment For', 'Amount', 'Company', 'Mode', 'Received By', 'Date', 'Status', 'Approved By', 'Action'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
+                <tr><td colSpan={isAdmin ? 12 : 11} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
+                <tr><td colSpan={isAdmin ? 12 : 11} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                    {isAdmin && (
+                      <td style={{ padding: '12px 14px' }}>
+                        {!r.is_approved && (
+                          <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelectRow(r.id)} style={{ cursor: 'pointer' }} />
+                        )}
+                      </td>
+                    )}
                     <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.customer_name || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{paymentForLabel(r.payment_type)}</td>
@@ -183,6 +239,14 @@ const PaymentReceivedPage: React.FC = () => {
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.received_by || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatLastLogin(r.created_at)}</td>
                     <td style={{ padding: '12px 14px' }}><ApprovalPill approved={r.is_approved} /></td>
+                    <td style={{ padding: '12px 14px', fontSize: 11, color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                      {r.is_approved && r.approved_by_name ? (
+                        <>
+                          <div style={{ fontWeight: 600, color: t.textPrimary }}>{r.approved_by_name}</div>
+                          {r.approved_at && <div style={{ fontSize: 10 }}>{formatLastLogin(r.approved_at)}</div>}
+                        </>
+                      ) : '—'}
+                    </td>
                     <td style={{ padding: '12px 14px' }}>
                       {!r.is_approved && isAdmin ? (
                         <button type="button" disabled={approvingId === r.id} onClick={() => handleApprove(r)}

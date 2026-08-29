@@ -153,6 +153,7 @@ interface BackendAmountTransaction {
   possession_amount: number | null;
   annual_amount: number | null;
   annual_amount1: number | null;
+  is_approved: boolean;
   created_at: string;
 }
 
@@ -268,6 +269,8 @@ const mapTransactionToPaymentRecord = (t: BackendAmountTransaction): CustomerPay
   amount: t.emi_amnt ?? t.booking_amount ?? t.pay_after_booking ?? t.possession_amount ?? t.annual_amount ?? t.annual_amount1 ?? 0,
   mode: t.mode_of_payment ?? undefined,
   reference_no: t.receipt_number || t.cheque_number || undefined,
+  is_approved: t.is_approved,
+  payment_type: t.payment_type,
 });
 
 // Text-field renames from this app's form-field names to the backend's

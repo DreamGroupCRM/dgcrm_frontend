@@ -34,6 +34,8 @@ import {
   PaymentReceiptTransaction,
   PaymentReceiptCustomer,
   PaymentFor,
+  DefaultAmountData,
+  DefaultAmountResponse,
 } from '../types/index';
 
 // ── Backend response shapes (V_13.0) — only the fields this file reads.
@@ -217,6 +219,8 @@ export interface PaymentListRow {
   mode_of_payment: string | null;
   received_by: string | null;
   is_approved: boolean;
+  approved_by_name: string | null;
+  approved_at: string | null;
   created_at: string;
 }
 export interface PaymentListFilters {
@@ -239,6 +243,27 @@ export const approvePayment = async (id: string | number): Promise<{ success: bo
   return res.data;
 };
 
+/** PUT /api/payments/bulk-approve */
+export const bulkApprovePayments = async (ids: (string | number)[]): Promise<{ success: boolean; approved: number; message: string }> => {
+  const res = await axiosInstance.put('/payments/bulk-approve', { ids: ids.map(Number) });
+  return res.data;
+};
+
+// ── Delete + EMI recalculation ripple (admin-only) ───────────────────────
+/** DELETE /api/payments/:id */
+export const deletePayment = async (id: string | number): Promise<{ success: boolean; message: string }> => {
+  const res = await axiosInstance.delete(`/payments/${id}`);
+  return res.data;
+};
+
+// ── Smart "Record Payment" suggester — default amount + next due date +
+// maintenance eligibility, phase-aware, per payment type. ────────────────
+/** GET /api/payments/customer/:customerId/default-amount?payment_for= */
+export const fetchDefaultAmount = async (customerId: string | number, paymentFor: PaymentFor): Promise<DefaultAmountData> => {
+  const res = await axiosInstance.get<DefaultAmountResponse>(`/payments/customer/${customerId}/default-amount`, { params: { payment_for: paymentFor } });
+  return res.data.data;
+};
+
 // Grouped export — same convenience pattern as buildingService / departmentService / customerDetailsService
 export const paymentService = {
   collect          : collectPayment,
@@ -249,4 +274,7 @@ export const paymentService = {
   customerDueGrid  : fetchCustomerDueGrid,
   list             : fetchPaymentList,
   approve          : approvePayment,
+  bulkApprove      : bulkApprovePayments,
+  remove           : deletePayment,
+  defaultAmount    : fetchDefaultAmount,
 };
