@@ -26,15 +26,17 @@
 // Possession has been entered.
 import React, { useMemo, useState } from 'react';
 import { IconType } from 'react-icons';
+import { toast } from 'react-toastify';
 import {
   MdCalculate, MdPayments, MdListAlt,
   MdHome, MdAccountBalanceWallet, MdSchedule, MdTrendingDown, MdTrendingUp,
-  MdPrint, MdAccountBalance, MdExpandMore, MdExpandLess, MdSavings,
+  MdPrint, MdAccountBalance, MdExpandMore, MdExpandLess, MdSavings, MdPictureAsPdf,
 } from 'react-icons/md';
 
 import { useAppSelector } from '../../../hooks';
 import { getTheme } from '../../../styles/theme';
 import StatCard from '../../../components/masters/StatCard';
+import { exportSchemePdf } from './schemePdfExport';
 
 type Theme = ReturnType<typeof getTheme>;
 
@@ -573,17 +575,48 @@ const CustomizeSchemePage: React.FC = () => {
 
   const handlePrint = () => window.print();
 
+  // ── Generate Scheme PDF — "Traditional Bank Loan VS. Our Interest-Free
+  // Model" comparison, built purely from the Flat Cost already entered
+  // above (Total Cost of Flat). See schemePdfExport.ts for the calculation
+  // and layout; this handler only validates the input and manages the
+  // button's loading/error state (async because the PDF embeds the logo,
+  // which has to be fetched first).
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  const handleGeneratePdf = async () => {
+    if (!totalCost || totalCost <= 0 || !Number.isFinite(totalCost)) {
+      toast.error('Enter a valid Flat Cost (Total Cost of Flat) before generating the PDF.');
+      return;
+    }
+    setGeneratingPdf(true);
+    try {
+      await exportSchemePdf(totalCost);
+    } catch {
+      toast.error('Failed to generate the PDF. Please try again.');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   return (
     <div style={{ fontFamily: t.fontFamily }}>
 
-      {/* ── Page header + Print action ──────────────────────────────── */}
+      {/* ── Page header + Generate PDF / Print actions ──────────────────── */}
       <div className="flex items-center justify-between mb-3 print-hide">
         <div />
-        <button type="button" onClick={handlePrint}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold"
-          style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}>
-          <MdPrint size={15} /> Print Scheme
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={handleGeneratePdf} disabled={generatingPdf}
+            title="Generate a Bank Loan vs. Interest-Free Model comparison PDF from the Flat Cost above"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white"
+            style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: 'none', cursor: generatingPdf ? 'not-allowed' : 'pointer', opacity: generatingPdf ? 0.75 : 1 }}>
+            <MdPictureAsPdf size={15} /> {generatingPdf ? 'Generating...' : 'Generate PDF'}
+          </button>
+          <button type="button" onClick={handlePrint}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold"
+            style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}>
+            <MdPrint size={15} /> Print Scheme
+          </button>
+        </div>
       </div>
 
       {/* ── Top summary row — Remaining shown here ONLY (moved out of the
