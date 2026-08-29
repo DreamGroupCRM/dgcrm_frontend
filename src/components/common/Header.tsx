@@ -41,7 +41,7 @@ const IconBtn: React.FC<{
   const base: React.CSSProperties = {
     display       : 'inline-flex', alignItems: 'center', justifyContent: 'center',
     padding       : '8px', borderRadius: '8px', border: 'none',
-    background    : 'transparent', color: t.textSecondary,
+    background    : 'transparent', color: t.textPrimary,
     cursor        : 'pointer', transition: 'background 0.15s, color 0.15s',
     textDecoration: 'none', fontFamily: t.fontFamily, flexShrink: 0,
     ...style,
@@ -52,7 +52,7 @@ const IconBtn: React.FC<{
   };
   const onLeave = (e: React.MouseEvent<HTMLElement>) => {
     (e.currentTarget as HTMLElement).style.background = 'transparent';
-    (e.currentTarget as HTMLElement).style.color      = t.textSecondary;
+    (e.currentTarget as HTMLElement).style.color      = t.textPrimary;
   };
   if (href) return (
     <a href={href} target="_blank" rel="noreferrer" title={title}
@@ -161,7 +161,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
     >
       {masterEnabled
         ? <MdCheckBox size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
-        : <MdCheckBoxOutlineBlank size={18} style={{ color: t.textSecondary, flexShrink: 0 }} />
+        : <MdCheckBoxOutlineBlank size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
       }
       Enable Master
     </button>
@@ -201,7 +201,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               padding: '8px', borderRadius: '8px', border: 'none',
-              background: 'transparent', color: t.textSecondary, cursor: 'pointer', flexShrink: 0,
+              background: 'transparent', color: t.textPrimary, cursor: 'pointer', flexShrink: 0,
             }}
           >
             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
