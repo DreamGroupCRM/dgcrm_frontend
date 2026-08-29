@@ -705,22 +705,26 @@ const CustomizeSchemePage: React.FC = () => {
                     schedule keeps computing off these dates internally
                     (defaulted to today at state-init above), they're just no
                     longer editable from this form. */}
-                <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
+                {/* noSlider on every field below except Total Cost of Flat
+                    above — per explicit request, the slider row under each
+                    box was making the form feel cluttered; the text boxes
+                    (still typed/pasted the same way) are what's kept. */}
+                <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" noSlider />
                 <NarrowAmountDateField
                   t={t} label="Remaining Booking Amount" amount={remainingBookingAmount} onAmountChange={setRemainingBookingAmount}
                   date={remainingBookingDate} onDateChange={setRemainingBookingDate} hideDate
                 />
-                <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
-                <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" />
+                <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" noSlider />
                 {/* Max 99 / 2-digit cap (Task 6) — maxLength blocks typing a 3rd
                     digit, and the onChange clamp covers paste/backspace-then-
                     retype edge cases so the stored value can never exceed 99. */}
                 <SliderField t={t} label="Total EMI Tenure Before Possession" value={totalEmiTenure}
                   onChange={(v) => setTotalEmiTenure(Math.min(99, v))} max={99} step={1} suffix="months" noSlider maxLength={2} />
-                <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" />
-                <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" />
+                <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" noSlider />
                 <SliderField t={t} label="Booster Interval Before Possession" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" noSlider />
-                <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" />
+                <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" noSlider />
                 <SliderField t={t} label="Booster Interval After Possession" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" noSlider />
               </div>
 
