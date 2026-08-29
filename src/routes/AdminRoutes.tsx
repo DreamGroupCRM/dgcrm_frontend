@@ -19,6 +19,9 @@ import CustomerDetailsListPage from '../pages/Admin/CRM/Customer-Details/Custome
 import CustomerDetailsCrudPage from '../pages/Admin/CRM/Customer-Details/CustomerDetailsCrudPage';
 import CustomerSchemeViewPage from '../pages/Admin/CRM/Customer-Details/CustomerSchemeViewPage';
 
+import LeadListPage from '../pages/Admin/CRM/Leads/LeadListPage';
+import LeadCrudPage from '../pages/Admin/CRM/Leads/LeadCrudPage';
+
 import RoleListPage from '../pages/Admin/Masters/Roles/RoleListPage';
 import RoleCrudPage from '../pages/Admin/Masters/Roles/RoleCrudPage';
 
@@ -113,7 +116,10 @@ const AdminRoutes: React.FC = () => (
       <Route path="crm/customer-details/scheme/:id" element={<CustomerSchemeViewPage />} />
       <Route path="crm/payment-dues" element={<DueReportPage />} />
       <Route path="crm/payment-received" element={<PaymentReceivedPage />} />
-      <Route path="crm/leads" element={<PlaceholderPage title="Leads" />} />
+      <Route path="crm/leads" element={<LeadListPage />} />
+      <Route path="crm/leads/add" element={<LeadCrudPage mode="add" />} />
+      <Route path="crm/leads/view/:id" element={<LeadCrudPage mode="view" />} />
+      <Route path="crm/leads/edit/:id" element={<LeadCrudPage mode="edit" />} />
 
       <Route path="reports/executive-dashboard" element={<ExecutiveDashboardPage />} />
       <Route path="audit-history" element={<AuditHistoryPage />} />
