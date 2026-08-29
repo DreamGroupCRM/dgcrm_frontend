@@ -331,22 +331,49 @@ const ViewValue: React.FC<{ label: string; value: React.ReactNode; className?: s
 // document icon otherwise, and a "View" link that opens the file in a new
 // tab — no download machinery of our own, just the URL the backend already
 // serves uploaded files from.
+// Real preview, not just a filename — an image renders as an actual
+// thumbnail spanning the card's top; a PDF/other document gets a clear
+// document icon block instead, since there's no reasonable inline
+// thumbnail for those. Either way, the whole card opens the file in a new
+// tab (the browser's own image/PDF viewer) on click, not just a small
+// "View" link tucked into a corner.
 const DocumentCard: React.FC<{ t: Theme; label: string; url?: string | null }> = ({ t, label, url }) => {
   const isImage = !!url && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url);
-  return (
-    <div className="emp-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg }}>
-      <div className="emp-doc-card-icon" style={{ background: url ? 'linear-gradient(135deg,#4338ca,#4f46e5)' : t.surfaceBorder }}>
-        {isImage && url ? <img src={url} alt="" /> : <MdDescription size={19} color={url ? '#fff' : t.textSecondary} />}
+  const content = (
+    <>
+      <div
+        className="w-full flex items-center justify-center overflow-hidden"
+        style={{
+          height: 120,
+          background: isImage ? t.insetBg : url ? 'linear-gradient(135deg,#0284c7,#7c3aed)' : t.insetBg,
+        }}
+      >
+        {isImage && url ? (
+          <img src={url} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <MdDescription size={34} color={url ? '#fff' : t.textSecondary} />
+        )}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="emp-doc-card-label">{label}</div>
-        <div className="emp-doc-card-status">{url ? 'Uploaded' : 'Not uploaded'}</div>
+      <div className="flex items-center justify-between gap-2 px-3.5 py-2.5">
+        <div className="min-w-0">
+          <div className="emp-doc-card-label">{label}</div>
+          <div className="emp-doc-card-status">{url ? 'Uploaded' : 'Not uploaded'}</div>
+        </div>
+        {url && (
+          <span className="emp-doc-card-link" style={{ flexShrink: 0 }}>
+            <MdOpenInNew size={12} /> Open
+          </span>
+        )}
       </div>
-      {url && (
-        <a href={url} target="_blank" rel="noopener noreferrer" className="emp-doc-card-link">
-          <MdOpenInNew size={12} /> View
-        </a>
-      )}
+    </>
+  );
+  return url ? (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="emp-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg, textDecoration: 'none' }}>
+      {content}
+    </a>
+  ) : (
+    <div className="emp-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg, cursor: 'default' }}>
+      {content}
     </div>
   );
 };
@@ -474,8 +501,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       try {
         const res = await fetchDesignationList(1, 1000);
         if (res.success) {
+          // Pipe-separated label ("Designation Name | Department Name") so
+          // it's clear which department a designation belongs to when
+          // several departments' designations are shown together.
           setDesignationOptions((res.rows || []).map((d) => ({
-            value: Number(d.id), label: d.name,
+            value: Number(d.id), label: d.department ? `${d.name} | ${d.department}` : d.name,
             departmentId: d.department_id != null && d.department_id !== '' ? Number(d.department_id) : null,
           })));
         }
@@ -851,7 +881,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Row 1: Personal Details + Office Use Only ──────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
+            <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)" />
             <div className="emp-view-grid">
               <ViewValue label="First Name" value={form.first_name} />
               <ViewValue label="Middle Name" value={form.middle_name} />
@@ -867,7 +897,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
 
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="linear-gradient(135deg,#c2410c,#fb923c)" />
+            <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="var(--grad-purple)" />
             <div className="emp-view-grid">
               <ViewValue label="Joining Date" value={form.joining_date ? formatDate(form.joining_date) : ''} />
               <ViewValue label="Working Hours" value={form.working_hours ? `${form.working_hours} Hours` : ''} />
@@ -883,7 +913,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Row 2: Bank Details + Assign Action & Module ───────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="linear-gradient(135deg,#059669,#22c55e)" />
+            <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="var(--grad-green)" />
             <div className="emp-view-grid">
               <ViewValue label="Account Holder Name" value={form.account_holder_name} />
               <ViewValue label="Bank Name" value={form.bank_name} />
@@ -892,10 +922,26 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <ViewValue label="IFSC Code" value={form.ifsc_code} />
               <ViewValue label="Branch" value={form.branch} />
             </div>
+            {/* Bank Passbook lives here now, filling the space this box used
+                to leave empty below its 6 field values — no longer
+                duplicated in the Documents section below. */}
+            <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${t.divider}` }}>
+              <div className="emp-view-label" style={{ marginBottom: 8 }}>Bank Passbook</div>
+              {existingUrls.passbook_photo ? (
+                <a
+                  href={existingUrls.passbook_photo} target="_blank" rel="noopener noreferrer"
+                  className="block rounded-xl overflow-hidden" style={{ border: `1px solid ${t.surfaceBorder}`, maxWidth: 280 }}
+                >
+                  <img src={existingUrls.passbook_photo} alt="Bank Passbook" style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />
+                </a>
+              ) : (
+                <p className="emp-hint-text">Not uploaded.</p>
+              )}
+            </div>
           </div>
 
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
+            <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module" gradient="var(--grad-grey)" />
             <div className="mb-4">
               <div className="emp-view-label" style={{ marginBottom: 6 }}>Assigned Departments</div>
               <div className="emp-chip-row">
@@ -931,13 +977,15 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         {/* ── Uploaded Documents ──────────────────────────────────────────── */}
         <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-          <SectionHeader t={t} icon={<MdDescription size={16} />} title="Uploaded Documents" gradient="linear-gradient(135deg,#0f766e,#14b8a6)" />
+          <SectionHeader t={t} icon={<MdDescription size={16} />} title="Uploaded Documents" gradient="var(--grad-teal)" />
+          {/* Bank Passbook moved into the Bank Details box above (no longer
+              duplicated here) — the remaining 4 documents fill 2 rows of 2
+              at the .emp-doc-grid breakpoint. */}
           <div className="emp-doc-grid">
             <DocumentCard t={t} label="Aadhar Card" url={existingUrls.aadhar_card} />
             <DocumentCard t={t} label="PAN Card" url={existingUrls.pan_card} />
             <DocumentCard t={t} label="Resume" url={existingUrls.resume} />
             <DocumentCard t={t} label="Appointment Letter" url={existingUrls.appointment_letter} />
-            <DocumentCard t={t} label="Bank Passbook" url={existingUrls.passbook_photo} />
           </div>
         </div>
 
@@ -988,7 +1036,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Personal Details ─────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
+        <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)" />
 
         {/* Row 1 of 4 — Name */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
@@ -1058,7 +1106,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Office Use Only ──────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="linear-gradient(135deg,#c2410c,#fb923c)" />
+        <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="var(--grad-purple)" />
 
         {/* All 10 fields flow across exactly 2 rows on desktop (5 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -1120,7 +1168,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Bank Details ─────────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="linear-gradient(135deg,#059669,#22c55e)" />
+        <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="var(--grad-green)" />
 
         {/* All 7 fields flow across exactly 2 rows on desktop (4 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1157,7 +1205,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Assign Action & Module for this Employee ────────────────── */}
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module for this Employee" gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
+        <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module for this Employee" gradient="var(--grad-grey)" />
 
         {/* Department (left) + Designation (right) — side by side, equal balance */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">

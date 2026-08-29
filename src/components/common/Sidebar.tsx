@@ -18,7 +18,8 @@ import {
   MdEventAvailable, MdLeaderboard, MdPayment, MdAttachMoney,
   MdApartment, MdAccountBalance, MdAccountTree,
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
-  MdPersonAdd, MdSettings, MdGridOn,
+  MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
+  MdAdminPanelSettings, MdManageAccounts,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -63,6 +64,12 @@ interface NavItem {
 
 const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavItem[] => [
   { label: 'Dashboard', path: ROUTES.ADMIN.DASHBOARD, icon: <MdDashboard /> },
+  // Executive Dashboard — visible to Admin/SuperAdmin here same as the rest
+  // of this nav tree; the real gate is server-side (checkPermission
+  // ('reports','view') on GET /api/dashboard/executive) so a role without
+  // the 'reports' permission still can't pull data even if this link is
+  // somehow reached directly.
+  { label: 'Reports', path: ROUTES.ADMIN.EXECUTIVE_DASHBOARD, icon: <MdAssessment /> },
 
   // Master section — conditionally included based on settings toggle
   ...(masterEnabled ? [{
@@ -104,7 +111,19 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
 
   { label: 'Audit History', path: ROUTES.ADMIN.AUDIT_HISTORY, icon: <MdHistory /> },
   { label: 'Customize Scheme', path: ROUTES.ADMIN.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
-  { label: 'Backup Database', path: ROUTES.ADMIN.BACKUP_DATABASE, icon: <MdStorage /> },
+
+  // Super Admin lobby — Backup Database moved in here (was previously
+  // visible to every admin with no real page behind it) and User
+  // Management is new. Both are superadmin-only server-side
+  // (requireSuperAdmin on /api/backup and /api/user-management), same
+  // restriction as the Roles/Action & Module/Module Mapping group above.
+  ...(role === 'superadmin' ? [{
+    label: 'Super Admin', icon: <MdAdminPanelSettings />,
+    children: [
+      { label: 'User Management', path: ROUTES.ADMIN.USER_MANAGEMENT, icon: <MdManageAccounts /> },
+      { label: 'Backup Database', path: ROUTES.ADMIN.BACKUP_DATABASE, icon: <MdStorage /> },
+    ],
+  }] : []),
 ];
 
 const employeeNavItems: NavItem[] = [

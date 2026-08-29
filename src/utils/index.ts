@@ -73,6 +73,30 @@ export const showAlert = {
       cancelButtonText: 'No',
     });
   },
+  /**
+   * Warn-but-allow confirm: shows the base confirm message plus a scrollable
+   * list of affected items (e.g. employees currently assigned to a
+   * department/designation being deleted). The admin can still confirm and
+   * proceed — this is a warning, not a hard block.
+   */
+  confirmWithList: (message: string, title: string, items: string[]) => {
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const listHtml = items.length
+      ? `<div style="text-align:left;max-height:180px;overflow-y:auto;margin-top:10px;padding:8px 12px;background:#fff7e6;border:1px solid #ffd591;border-radius:6px;font-size:13px;">${items
+          .map((i) => `<div style="padding:2px 0;">• ${esc(i)}</div>`)
+          .join('')}</div>`
+      : '';
+    return Swal.fire({
+      icon: 'warning',
+      title,
+      html: `<div>${esc(message)}</div>${listHtml}`,
+      showCancelButton: true,
+      confirmButtonColor: '#d9822b',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Continue Anyway',
+      cancelButtonText: 'Cancel',
+    });
+  },
   /** Shows "Super Admin/Admin/Employee Logged in Successfully" based on base_role */
   loginSuccess: (baseRole: BaseRole) => {
     const roleLabel = roleLabelFor(baseRole);

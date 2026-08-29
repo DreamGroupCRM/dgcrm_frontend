@@ -40,6 +40,17 @@ import DueReportPage from '../pages/Admin/CRM/DueReport/DueReportPage';
 // Customize Scheme — replaces the former "Interest Free Calculator"
 // placeholder with a real EMI Scheme & Schedule builder.
 import CustomizeSchemePage from '../pages/Admin/CustomizeScheme/CustomizeSchemePage';
+// Audit History — replaces its former PlaceholderPage now that
+// GET /api/audit-logs exists (item 11).
+import AuditHistoryPage from '../pages/Admin/AuditHistory/AuditHistoryPage';
+// Payment Received — replaces its former PlaceholderPage (item 16).
+import PaymentReceivedPage from '../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage';
+// Executive Dashboard — new "Reports" sidebar entry.
+const ExecutiveDashboardPage = lazy(() => import('../pages/Admin/Reports/ExecutiveDashboardPage'));
+// Backup Database — replaces its former PlaceholderPage with real whole-
+// database snapshot/restore. User Management — new Super Admin lobby page.
+const BackupDatabasePage = lazy(() => import('../pages/Admin/Backup/BackupDatabasePage'));
+const UserManagementPage = lazy(() => import('../pages/Admin/UserManagement/UserManagementPage'));
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
@@ -101,12 +112,16 @@ const AdminRoutes: React.FC = () => (
       <Route path="crm/customer-details/edit/:id" element={<CustomerDetailsCrudPage mode="edit" />} />
       <Route path="crm/customer-details/scheme/:id" element={<CustomerSchemeViewPage />} />
       <Route path="crm/payment-dues" element={<DueReportPage />} />
-      <Route path="crm/payment-received" element={<PlaceholderPage title="Payment Received" />} />
+      <Route path="crm/payment-received" element={<PaymentReceivedPage />} />
       <Route path="crm/leads" element={<PlaceholderPage title="Leads" />} />
 
-      <Route path="audit-history" element={<PlaceholderPage title="Audit History" />} />
+      <Route path="reports/executive-dashboard" element={<ExecutiveDashboardPage />} />
+      <Route path="audit-history" element={<AuditHistoryPage />} />
       <Route path="customize-scheme" element={<CustomizeSchemePage />} />
-      <Route path="backup-database" element={<PlaceholderPage title="Backup Database" />} />
+
+      {/* SuperAdmin-only — see Sidebar.tsx / backend's requireSuperAdmin */}
+      <Route path="backup-database" element={<ProtectedRoute allowedRoles={['superadmin']}><BackupDatabasePage /></ProtectedRoute>} />
+      <Route path="user-management" element={<ProtectedRoute allowedRoles={['superadmin']}><UserManagementPage /></ProtectedRoute>} />
     </Route>
   </Routes>
 );

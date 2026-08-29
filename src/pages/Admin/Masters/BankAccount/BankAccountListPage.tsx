@@ -178,23 +178,6 @@ const BankAccountListPage: React.FC = () => {
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <th className="master-table-actions-th master-table-header-gradient" style={{
                   width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
-<<<<<<< HEAD
-                  fontSize: 12, fontWeight: 700, textTransform: 'camelcase',
-                  letterSpacing: '0.05em', color: t.textPrimary,
-                  borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
-                  position: 'sticky', left: 0, zIndex: 2,
-                  background: t.tableHeaderBg,
-                  borderRight: `2px solid ${t.divider}`,
-                  boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
-                }}>Actions</th>
-                {['ID', 'Company Name', 'Bank Name', 'Account Holder Name', 'Account Number', 'Branch Name', 'IFSC Code', 'Status', 'Created At'].map((h) => (
-                  <th key={h} style={{
-                    padding: '12px 16px', textAlign: 'left',
-                    fontSize: 12, fontWeight: 700, textTransform: 'camelcase',
-                    letterSpacing: '0.05em', color: t.textPrimary,
-                    borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
-                  }}>{h}</th>
-=======
                   borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
                   borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                 }}>Actions</th>
@@ -205,7 +188,6 @@ const BankAccountListPage: React.FC = () => {
                 <SortableTh label="Account Number" active={sortKey === 'account_number'} dir={sortDir} onClick={() => toggleSort('account_number')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 {['Branch Name', 'IFSC Code'].map((h) => (
                   <th key={h} style={{ borderBottom: `1px solid ${t.divider}` }}>{h}</th>
->>>>>>> V_14.0
                 ))}
                 <SortableTh label="Created At" active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} style={{ borderBottom: `1px solid ${t.divider}` }} />
               </tr>

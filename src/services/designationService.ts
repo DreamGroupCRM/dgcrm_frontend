@@ -24,6 +24,7 @@ export interface Designation {
   id            : string;
   name          : string;
   department_id?: string;
+  department?   : string | null;
   is_active     : boolean;
 }
 
@@ -56,7 +57,21 @@ export const fetchDesignationList = async (
   };
 };
 
+// ── Employees currently assigned to this designation (for the delete/
+// deactivate warn-but-allow popup) ──────────────────────────────────────────
+export interface AssignedEmployee {
+  id: number | string;
+  name: string;
+  employee_code: string | null;
+}
+/** GET /api/designation/:id/assigned-employees */
+export const getDesignationAssignedEmployees = async (id: string): Promise<AssignedEmployee[]> => {
+  const res = await axiosInstance.get(`/designation/${id}/assigned-employees`);
+  return res.data.rows as AssignedEmployee[];
+};
+
 // Grouped export — same convenience pattern as departmentService
 export const designationService = {
   getAll: fetchDesignationList,
+  getAssignedEmployees: getDesignationAssignedEmployees,
 };

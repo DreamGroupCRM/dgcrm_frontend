@@ -26,14 +26,17 @@
 // Possession has been entered.
 import React, { useMemo, useState } from 'react';
 import { IconType } from 'react-icons';
+import { toast } from 'react-toastify';
 import {
   MdCalculate, MdPayments, MdListAlt,
   MdHome, MdAccountBalanceWallet, MdSchedule, MdTrendingDown, MdTrendingUp,
+  MdPrint, MdAccountBalance, MdExpandMore, MdExpandLess, MdSavings, MdPictureAsPdf,
 } from 'react-icons/md';
 
 import { useAppSelector } from '../../../hooks';
 import { getTheme } from '../../../styles/theme';
 import StatCard from '../../../components/masters/StatCard';
+import { exportSchemePdf } from './schemePdfExport';
 
 type Theme = ReturnType<typeof getTheme>;
 
@@ -222,18 +225,25 @@ const SliderField: React.FC<{
 // grid-cell width every other amount field gets) paired with a date input,
 // under one shared label. No slider here either — this pairs with a date,
 // so it behaves like a one-off entry rather than something to be dragged.
+//
+// hideDate (Customize Scheme overhaul): the date input is hidden per the
+// "remove booking/EMI/installment date inputs" ask — the underlying date
+// state still exists and still drives the schedule math (defaulted to
+// today, see the page's own state init), it's just no longer editable
+// here. The amount box widens to fill the row on its own once the date
+// input next to it is gone.
 const NarrowAmountDateField: React.FC<{
   t: Theme; label: string; amount: number; onAmountChange: (v: number) => void;
-  date: string; onDateChange: (v: string) => void;
-}> = ({ t, label, amount, onAmountChange, date, onDateChange }) => (
-  <FieldWrap t={t} label={label} span={2}>
+  date: string; onDateChange: (v: string) => void; hideDate?: boolean;
+}> = ({ t, label, amount, onAmountChange, date, onDateChange, hideDate }) => (
+  <FieldWrap t={t} label={label} span={hideDate ? 1 : 2}>
     <div className="flex items-center gap-2">
       {/* K/L/Cr shorthand now sits inside this box (after the input, before
           its closing div) instead of as a sibling out in the row — it used
           to render past the date field entirely, outside the amount box it
           describes. Same placement SliderField already uses for every
           other ₹ field. */}
-      <div className="flex items-center gap-1.5" style={{ ...getFieldStyle(t), padding: '0 10px', width: 158, flexShrink: 0 }}>
+      <div className="flex items-center gap-1.5" style={{ ...getFieldStyle(t), padding: '0 10px', width: hideDate ? '100%' : 158, flexShrink: 0 }}>
         <span style={{ color: t.textSecondary, flexShrink: 0 }}>₹</span>
         <input
           type="text" inputMode="decimal" value={formatAmountInput(amount)}
@@ -244,17 +254,13 @@ const NarrowAmountDateField: React.FC<{
       </div>
       {/* Fixed, compact width instead of flex:1 — a date value doesn't need
           (and shouldn't stretch to fill) the rest of the row. */}
-      <input
-        type="date" value={date} onClick={openPicker} onFocus={openPicker}
-        onChange={(e) => onDateChange(e.target.value)} style={{ ...getFieldStyle(t), width: 128, flexShrink: 0 }}
-      />
+      {!hideDate && (
+        <input
+          type="date" value={date} onClick={openPicker} onFocus={openPicker}
+          onChange={(e) => onDateChange(e.target.value)} style={{ ...getFieldStyle(t), width: 128, flexShrink: 0 }}
+        />
+      )}
     </div>
-  </FieldWrap>
-);
-
-const DateField: React.FC<{ t: Theme; label: string; value: string; onChange: (v: string) => void }> = ({ t, label, value, onChange }) => (
-  <FieldWrap t={t} label={label}>
-    <input type="date" value={value} onClick={openPicker} onFocus={openPicker} onChange={(e) => onChange(e.target.value)} style={getFieldStyle(t)} />
   </FieldWrap>
 );
 
@@ -262,7 +268,7 @@ const DateField: React.FC<{ t: Theme; label: string; value: string; onChange: (v
 // EMI Schedule) — visually distinguishes "results" from the plain white
 // Payment Details input panel above them, and carries the panel's headline
 // figure (total cost / schedule length) right in the header band.
-const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradient: string; subtitle: string }> = ({ icon, title, gradient, subtitle }) => (
+const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradient: string; subtitle: React.ReactNode }> = ({ icon, title, gradient, subtitle }) => (
   <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5" style={{ background: gradient }}>
     <div className="flex items-center gap-2">
       <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.2)' }}>
@@ -284,11 +290,17 @@ const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradie
 // separately hand-tuned card markup drifting to a smaller size over time.
 interface SchemeSummaryCard { label: string; value: string; icon: IconType; color: string; }
 
+// "Remaining" moved here from the Payment Details panel's header subtitle —
+// it needs to be visible at a glance while a rep is still balancing the
+// scheme, not buried inside a panel further down the page ("Remaining
+// amount should show on top only"). Shown first so it's the leftmost/most
+// prominent card in the row.
 const SchemeSummaryRow: React.FC<{
-  t: Theme; totalCost: number; bookingAmount: number; remainingBookingAmount: number;
+  t: Theme; totalCost: number; remaining: number; bookingAmount: number; remainingBookingAmount: number;
   tenureBefore: number; emiBefore: number; emiAfter: number;
-}> = ({ t, totalCost, bookingAmount, remainingBookingAmount, tenureBefore, emiBefore, emiAfter }) => {
+}> = ({ t, totalCost, remaining, bookingAmount, remainingBookingAmount, tenureBefore, emiBefore, emiAfter }) => {
   const cards: SchemeSummaryCard[] = [
+    { label: 'Remaining to Allocate', value: formatINR(remaining), icon: MdSavings, color: remaining > 0 ? '#dc2626' : '#16a34a' },
     { label: 'Total Flat Cost', value: formatINR(totalCost), icon: MdHome, color: '#7c3aed' },
     { label: 'Booking + Remaining', value: formatINR(bookingAmount + remainingBookingAmount), icon: MdAccountBalanceWallet, color: '#2563eb' },
     { label: 'EMI Tenure (Before)', value: `${tenureBefore} month${tenureBefore === 1 ? '' : 's'}`, icon: MdSchedule, color: '#0891b2' },
@@ -296,11 +308,101 @@ const SchemeSummaryRow: React.FC<{
     { label: 'Monthly EMI (After)', value: formatINR(emiAfter), icon: MdTrendingUp, color: '#16a34a' },
   ];
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mb-4">
       {cards.map((card) => (
         <StatCard key={card.label} {...card} bg="" compact labelFontSize={14}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       ))}
+    </div>
+  );
+};
+
+// ── Bank loan comparison (fixed 20-year tenure, 8.5% p.a., standard
+//    reducing-balance amortization) — "how much would this flat cost if
+//    financed by a bank instead of this scheme". Principal is the scheme's
+//    own Total Cost of Flat, so the comparison is apples-to-apples against
+//    the same flat. Tenure/rate are fixed per the brief, not editable here —
+//    surfaced as read-only labels rather than form fields so they can't be
+//    mistaken for inputs. ──────────────────────────────────────────────────
+const LOAN_TENURE_YEARS = 20;
+const LOAN_INTEREST_RATE = 8.5;
+
+interface LoanComparison { monthlyEmi: number; principal: number; totalInterest: number; totalPayable: number; }
+
+function computeLoanComparison(principal: number): LoanComparison {
+  if (principal <= 0) return { monthlyEmi: 0, principal: 0, totalInterest: 0, totalPayable: 0 };
+  const n = LOAN_TENURE_YEARS * 12;
+  const r = LOAN_INTEREST_RATE / 12 / 100;
+  const monthlyEmi = (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  const totalPayable = monthlyEmi * n;
+  return { monthlyEmi, principal, totalInterest: totalPayable - principal, totalPayable };
+}
+
+// Compact sidebar version (was BankComparisonPanel, a full-width panel
+// buried below the EMI Scheme section) — per explicit request, this now
+// sits directly beside the Payment Details form (sticky on desktop, so it
+// stays in view while scrolling) instead of requiring a scroll past EMI
+// Scheme/Schedule to find it. The Generate PDF button lives at the top of
+// THIS card rather than up in the page header, since it's a PDF of this
+// exact comparison — co-locating them makes that relationship obvious.
+const BankComparisonSidebar: React.FC<{
+  t: Theme; isDark: boolean; totalCost: number;
+  onGeneratePdf: () => void; generatingPdf: boolean;
+}> = ({ t, isDark, totalCost, onGeneratePdf, generatingPdf }) => {
+  const loan = useMemo(() => computeLoanComparison(totalCost), [totalCost]);
+  const hasCost = totalCost > 0;
+  const pdfDisabled = generatingPdf || !hasCost;
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 4px 16px rgba(0,0,0,0.07)' }}>
+      <ResultPanelHeader
+        icon={<MdAccountBalance size={15} color="#fff" />} title="Bank Loan vs. Our Plan"
+        gradient="linear-gradient(135deg,#b91c1c,#dc2626)"
+        subtitle={`${LOAN_TENURE_YEARS}yr @ ${LOAN_INTEREST_RATE}%`}
+      />
+      <div className="p-3.5">
+        <button type="button" onClick={onGeneratePdf} disabled={pdfDisabled}
+          title="Generate a Bank Loan vs. Interest-Free Model comparison PDF from the Flat Cost above"
+          className="print-hide flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl text-xs font-bold text-white mb-3.5"
+          style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: 'none', cursor: pdfDisabled ? 'not-allowed' : 'pointer', opacity: pdfDisabled ? 0.55 : 1 }}>
+          <MdPictureAsPdf size={15} /> {generatingPdf ? 'Generating...' : 'Generate PDF'}
+        </button>
+
+        {!hasCost ? (
+          <div className="rounded-xl px-3 py-5 text-center" style={{ background: t.insetBg, fontSize: 11, color: t.textSecondary }}>
+            Enter the Total Cost of Flat to see the bank loan comparison.
+          </div>
+        ) : (
+          <>
+            <div className="rounded-xl p-3 mb-2" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}` }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 }}>
+                Bank Loan ({LOAN_TENURE_YEARS} yrs @ {LOAN_INTEREST_RATE}%)
+              </div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span style={{ fontSize: 10.5, color: t.textSecondary }}>Monthly EMI</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary }}>{formatINR(loan.monthlyEmi)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span style={{ fontSize: 10.5, color: t.textSecondary }}>Total Payable</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary }}>{formatINR(loan.totalPayable)}</span>
+              </div>
+            </div>
+            <div className="rounded-xl p-3 mb-3" style={{ background: isDark ? 'rgba(22,163,74,0.1)' : '#f0fdf4', border: `1px solid ${isDark ? 'rgba(22,163,74,0.25)' : '#bbf7d0'}` }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 }}>Our Plan (0% Interest)</div>
+              <div className="flex items-center justify-between">
+                <span style={{ fontSize: 10.5, color: t.textSecondary }}>Total Payable</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: '#16a34a' }}>{formatINR(totalCost)}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2' }}>
+              <MdTrendingUp size={16} style={{ color: '#dc2626', flexShrink: 0 }} />
+              <span style={{ fontSize: 10.5, color: '#b91c1c', fontWeight: 600 }}>
+                Save <strong>{formatINR(loan.totalInterest)}</strong> in interest vs. a bank loan.
+              </span>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };
@@ -396,6 +498,12 @@ const CustomizeSchemePage: React.FC = () => {
   const [boosterIntervalBeforePossession, setBoosterIntervalBeforePossession] = useState(0);
   const [boosterAmountAfterPossession, setBoosterAmountAfterPossession] = useState(0);
   const [boosterIntervalAfterPossession, setBoosterIntervalAfterPossession] = useState(0);
+
+  // Detailed EMI Schedule table is collapsed by default — "below scheme row
+  // should [be] visible on click of a button" — the EMI Scheme summary
+  // stays visible; only the long row-by-row Schedule table hides behind
+  // this toggle.
+  const [showSchedule, setShowSchedule] = useState(false);
 
   // ── the whole EMI Scheme + EMI Schedule, recomputed live on every field
   //    change — see the file-header note on the direct-input + greedy-
@@ -494,82 +602,149 @@ const CustomizeSchemePage: React.FC = () => {
   ]);
 
   const costMismatch = totalCost > 0 && Math.round(computed.grandTotal) !== Math.round(totalCost);
+  const remaining = Math.max(0, totalCost - computed.totalA);
+
+  const handlePrint = () => window.print();
+
+  // ── Generate Scheme PDF — "Traditional Bank Loan VS. Our Interest-Free
+  // Model" comparison, built purely from the Flat Cost already entered
+  // above (Total Cost of Flat). See schemePdfExport.ts for the calculation
+  // and layout; this handler only validates the input and manages the
+  // button's loading/error state (async because the PDF embeds the logo,
+  // which has to be fetched first).
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  const handleGeneratePdf = async () => {
+    if (!totalCost || totalCost <= 0 || !Number.isFinite(totalCost)) {
+      toast.error('Enter a valid Flat Cost (Total Cost of Flat) before generating the PDF.');
+      return;
+    }
+    setGeneratingPdf(true);
+    try {
+      await exportSchemePdf(totalCost);
+    } catch {
+      toast.error('Failed to generate the PDF. Please try again.');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    // print-area (master.css) — hides the DashboardLayout Sidebar/Header
+    // (and everything else outside this div) when printing, so "Print
+    // Scheme" prints just the scheme content below instead of the raw page
+    // with the app's nav chrome around it. .print-hide'd elements (the
+    // Print button itself, Generate PDF button) still collapse as before.
+    <div className="print-area" style={{ fontFamily: t.fontFamily }}>
 
-      {/* ── Top summary row — 5 gradient KPI boxes in a single row ──── */}
+      {/* ── Page header + Print action (Generate PDF now lives in the Bank
+          Loan sidebar card below, next to the comparison it produces) ──── */}
+      <div className="flex items-center justify-end mb-3 print-hide">
+        <button type="button" onClick={handlePrint}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold"
+          style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}>
+          <MdPrint size={15} /> Print Scheme
+        </button>
+      </div>
+
+      {/* ── Top summary row — Remaining shown here ONLY (moved out of the
+          Payment Details panel below), alongside 5 more gradient KPI boxes ── */}
       <SchemeSummaryRow
-        t={t} totalCost={totalCost} bookingAmount={bookingAmount} remainingBookingAmount={remainingBookingAmount}
+        t={t} totalCost={totalCost} remaining={remaining} bookingAmount={bookingAmount} remainingBookingAmount={remainingBookingAmount}
         tenureBefore={computed.tenure} emiBefore={monthlyEmiBeforePossession} emiAfter={monthlyEmiAfterPossession}
       />
 
-      {/* ── Payment Details form ────────────────────────────────────────
-          Gradient header band (same card pattern as the EMI Scheme/
-          Schedule result panels below) PLUS a soft emerald/teal wash
-          behind the fields themselves (fading to plain surfaceBg toward
-          the bottom) — makes this INPUT panel clearly distinguishable at
-          a glance from the plain-white-bodied EMI Scheme/Schedule OUTPUT
-          panels below it, not just by its header. The tinted emerald
-          border replaces the neutral one for the same reason. Every
-          field/handler is untouched — each input keeps its own solid
-          t.inputBg background (see getFieldStyle), so label/value/icon
-          contrast against the wash is unaffected either theme. */}
-      <div
-        className="rounded-2xl mb-4 overflow-hidden"
-        style={{
-          background: t.surfaceBg,
-          border: `1px solid ${isDark ? 'rgba(16,185,129,0.28)' : '#a7f3d0'}`,
-          boxShadow: isDark ? '0 4px 20px rgba(5,150,105,0.18)' : '0 10px 28px rgba(5,150,105,0.14)',
-        }}
-      >
-        <ResultPanelHeader
-          icon={<MdPayments size={15} color="#fff" />} title="Payment Details"
-          gradient="linear-gradient(135deg,#059669,#10b981,#0d9488)"
-          subtitle={totalCost > 0 ? `Total Cost of Flat: ${formatINR(totalCost)}` : 'Enter the scheme inputs below'}
-        />
-        <div
-          className="p-4"
-          style={{
-            background: isDark
-              ? 'linear-gradient(180deg, rgba(5,150,105,0.12) 0%, rgba(13,148,136,0.05) 45%, transparent 100%)'
-              : 'linear-gradient(180deg, #ecfdf5 0%, #f0fdfa 45%, #ffffff 100%)',
-          }}
-        >
-          {/* One grid for every field — equal-width columns, however many
-              fit the container per row, each row's inputs starting at the
-              same Y (see getLabelStyle's fixed label height above). Narrower
-              minmax (was 200px) fits more fields per row on wide screens —
-              matches the "fewer, wider empty rows" complaint. */}
-          <div className="grid gap-x-3 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))' }}>
-            <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" />
-            <DateField t={t} label="Booking Date" value={bookingDate} onChange={setBookingDate} />
-            <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
-            <NarrowAmountDateField
-              t={t} label="Remaining Booking Amount & Date" amount={remainingBookingAmount} onAmountChange={setRemainingBookingAmount}
-              date={remainingBookingDate} onDateChange={setRemainingBookingDate}
+      {/* ── Payment Details (left) + Bank Loan Comparison (right sidebar) ──
+          Two columns on desktop (lg+) so the bank comparison + Generate PDF
+          button stay visible right beside the Flat Cost field the moment
+          it's entered, without scrolling past EMI Scheme/Schedule below.
+          `lg:sticky lg:top-4` keeps the sidebar in view while the (taller)
+          Payment Details form scrolls past it. Below lg, this collapses to
+          a single column — the sidebar naturally stacks under the form
+          (order in the DOM), still far higher on the page than its old spot
+          after the EMI Scheme section. ─────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 items-start">
+        <div className="lg:col-span-2">
+          {/* Gradient header band (same card pattern as the EMI Scheme/
+              Schedule result panels below) PLUS a soft emerald/teal wash
+              behind the fields themselves (fading to plain surfaceBg toward
+              the bottom) — makes this INPUT panel clearly distinguishable at
+              a glance from the plain-white-bodied EMI Scheme/Schedule OUTPUT
+              panels below it, not just by its header. The tinted emerald
+              border replaces the neutral one for the same reason. Every
+              field/handler is untouched — each input keeps its own solid
+              t.inputBg background (see getFieldStyle), so label/value/icon
+              contrast against the wash is unaffected either theme. */}
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{
+              background: t.surfaceBg,
+              border: `1px solid ${isDark ? 'rgba(16,185,129,0.28)' : '#a7f3d0'}`,
+              boxShadow: isDark ? '0 4px 20px rgba(5,150,105,0.18)' : '0 10px 28px rgba(5,150,105,0.14)',
+            }}
+          >
+            <ResultPanelHeader
+              icon={<MdPayments size={15} color="#fff" />} title="Payment Details"
+              gradient="linear-gradient(135deg,#059669,#10b981,#0d9488)"
+              // "Remaining" now lives ONLY in the top KPI row (SchemeSummaryRow)
+              // — kept out of this panel's own header so it isn't shown twice.
+              subtitle={totalCost > 0 ? `Total Cost of Flat: ${formatINR(totalCost)}` : 'Enter the scheme inputs below'}
             />
-            <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" />
-            <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" />
-            <DateField t={t} label="Installment Date (1st EMI)" value={installmentDate} onChange={setInstallmentDate} />
-            {/* Max 99 / 2-digit cap (Task 6) — maxLength blocks typing a 3rd
-                digit, and the onChange clamp covers paste/backspace-then-
-                retype edge cases so the stored value can never exceed 99. */}
-            <SliderField t={t} label="Total EMI Tenure Before Possession" value={totalEmiTenure}
-              onChange={(v) => setTotalEmiTenure(Math.min(99, v))} max={99} step={1} suffix="months" noSlider maxLength={2} />
-            <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" />
-            <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" />
-            <SliderField t={t} label="Booster Interval Before Possession" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" noSlider />
-            <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" />
-            <SliderField t={t} label="Booster Interval After Possession" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" noSlider />
-          </div>
+            <div
+              className="p-4"
+              style={{
+                background: isDark
+                  ? 'linear-gradient(180deg, rgba(5,150,105,0.12) 0%, rgba(13,148,136,0.05) 45%, transparent 100%)'
+                  : 'linear-gradient(180deg, #ecfdf5 0%, #f0fdfa 45%, #ffffff 100%)',
+              }}
+            >
+              {/* One grid for every field — equal-width columns, however many
+                  fit the container per row, each row's inputs starting at the
+                  same Y (see getLabelStyle's fixed label height above). Narrower
+                  minmax (was 200px) fits more fields per row on wide screens —
+                  matches the "fewer, wider empty rows" complaint. */}
+              <div className="grid gap-x-3 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))' }}>
+                <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" />
+                {/* Booking Date / Remaining Booking Date / Installment Date
+                    inputs are hidden per the Customize Scheme overhaul — the
+                    schedule keeps computing off these dates internally
+                    (defaulted to today at state-init above), they're just no
+                    longer editable from this form. */}
+                {/* noSlider on every field below except Total Cost of Flat
+                    above — per explicit request, the slider row under each
+                    box was making the form feel cluttered; the text boxes
+                    (still typed/pasted the same way) are what's kept. */}
+                <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" noSlider />
+                <NarrowAmountDateField
+                  t={t} label="Remaining Booking Amount" amount={remainingBookingAmount} onAmountChange={setRemainingBookingAmount}
+                  date={remainingBookingDate} onDateChange={setRemainingBookingDate} hideDate
+                />
+                <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" noSlider />
+                {/* Max 99 / 2-digit cap (Task 6) — maxLength blocks typing a 3rd
+                    digit, and the onChange clamp covers paste/backspace-then-
+                    retype edge cases so the stored value can never exceed 99. */}
+                <SliderField t={t} label="Total EMI Tenure Before Possession" value={totalEmiTenure}
+                  onChange={(v) => setTotalEmiTenure(Math.min(99, v))} max={99} step={1} suffix="months" noSlider maxLength={2} />
+                <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} label="Booster Interval Before Possession" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" noSlider />
+                <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} label="Booster Interval After Possession" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" noSlider />
+              </div>
 
-          {costMismatch && (
-            <div className="flex items-center gap-2 rounded-xl px-3 py-2 mt-3" style={{ background: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed', color: '#c2410c', fontSize: 10 }}>
-              The scheme below totals {formatINR(computed.grandTotal)}, which doesn't match the Total Cost of Flat ({formatINR(totalCost)}) — adjust the values above until they match
-              {monthlyEmiAfterPossession === 0 && computed.totalA < totalCost ? ' (Monthly EMI After Possession is still 0, so the after-possession balance has nowhere to go yet).' : '.'}
+              {costMismatch && (
+                <div className="flex items-center gap-2 rounded-xl px-3 py-2 mt-3" style={{ background: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed', color: '#c2410c', fontSize: 10 }}>
+                  The scheme below totals {formatINR(computed.grandTotal)}, which doesn't match the Total Cost of Flat ({formatINR(totalCost)}) — adjust the values above until they match
+                  {monthlyEmiAfterPossession === 0 && computed.totalA < totalCost ? ' (Monthly EMI After Possession is still 0, so the after-possession balance has nowhere to go yet).' : '.'}
+                </div>
+              )}
             </div>
-          )}
+          </div>
+        </div>
+
+        <div className="lg:sticky lg:top-4">
+          <BankComparisonSidebar t={t} isDark={isDark} totalCost={totalCost} onGeneratePdf={handleGeneratePdf} generatingPdf={generatingPdf} />
         </div>
       </div>
 
@@ -590,21 +765,36 @@ const CustomizeSchemePage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── EMI Schedule — full month-by-month breakdown ────────────── */}
+      {/* ── EMI Schedule — full month-by-month breakdown, collapsed by
+          default ("below scheme row should [be] visible on click of a
+          button"). The header itself is the toggle, plus an explicit
+          button on the right so the click target reads clearly either way. ── */}
       <div className="rounded-2xl mb-4 overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <ResultPanelHeader
-          icon={<MdListAlt size={15} color="#fff" />} title="EMI Schedule"
-          gradient="linear-gradient(135deg,#059669,#10b981)"
-          subtitle={`Schedule ${formatINR(totalCost)} · ${computed.tenure} + ${computed.afterCount} months`}
-        />
-        <div className="p-4">
-          <ScheduleTable t={t} section="A" rows={computed.beforeRows} total={computed.totalA} totalLabel="(A) Total Before Possession" />
-          <ScheduleTable t={t} section="B" rows={computed.afterRows} total={computed.totalB} totalLabel="(B) Total After Possession" />
-          <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
-            <span style={{ fontSize: 11.5, fontWeight: 800, color: '#4338ca' }}>{formatINR(computed.grandTotal)}</span>
+        <button
+          type="button" onClick={() => setShowSchedule((v) => !v)}
+          className="w-full text-left" style={{ border: 'none', padding: 0, cursor: 'pointer', display: 'block' }}
+        >
+          <ResultPanelHeader
+            icon={<MdListAlt size={15} color="#fff" />} title="EMI Schedule"
+            gradient="linear-gradient(135deg,#059669,#10b981)"
+            subtitle={
+              <span className="flex items-center gap-1.5">
+                {`${computed.tenure} + ${computed.afterCount} months`}
+                {showSchedule ? <MdExpandLess size={16} /> : <MdExpandMore size={16} />}
+              </span>
+            }
+          />
+        </button>
+        {showSchedule && (
+          <div className="p-4">
+            <ScheduleTable t={t} section="A" rows={computed.beforeRows} total={computed.totalA} totalLabel="(A) Total Before Possession" />
+            <ScheduleTable t={t} section="B" rows={computed.afterRows} total={computed.totalB} totalLabel="(B) Total After Possession" />
+            <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
+              <span style={{ fontSize: 11.5, fontWeight: 800, color: '#4338ca' }}>{formatINR(computed.grandTotal)}</span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

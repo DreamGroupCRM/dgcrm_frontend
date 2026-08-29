@@ -13,6 +13,7 @@ import { getTheme } from '../../../../styles/theme';
 import { showAlert } from '../../../../utils';
 import { Designation, CreateDepartmentPayload } from '../../../../types/index';
 import { ViewDepartment, CreateDepartment, UpdateDepartment } from '../../../../services/departmentService';
+import { getDesignationAssignedEmployees } from '../../../../services/designationService';
 
 // ── local id helper for not-yet-saved designation rows ──────────────────────
 let localIdCounter = 0;
@@ -135,10 +136,30 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
     setDesignations((prev) => prev.map((d) => (d.id === designationId ? { ...d, is_active: v } : d)));
   };
 
-  // Deleting a designation is immediate and local — no confirmation dialog,
-  // no separate API call. It's just removed from the array that gets sent
-  // on Save, same as removing a not-yet-saved row in a Building floor.
-  const removeDesignation = (designationId: string | undefined) => {
+  // Deleting a not-yet-saved (local) designation row is still immediate and
+  // local. An already-saved designation (a real id, not a `local_...` one)
+  // may have employees assigned to it, so we look that up first and show a
+  // warn-but-allow popup — the admin can still confirm and remove it; it
+  // only actually deactivates in the backend once the department is Saved.
+  const removeDesignation = async (designationId: string | undefined) => {
+    if (!designationId) return;
+    const isLocal = designationId.startsWith('local_');
+    if (!isLocal) {
+      let assigned: { name: string; employee_code: string | null }[] = [];
+      try {
+        assigned = await getDesignationAssignedEmployees(designationId);
+      } catch {
+        // lookup failure shouldn't block removal — fall through with an empty list
+      }
+      if (assigned.length > 0) {
+        const result = await showAlert.confirmWithList(
+          `This designation has ${assigned.length} active employee${assigned.length === 1 ? '' : 's'} assigned to it. Removing it will not unassign them automatically.`,
+          'Designation Has Assigned Employees',
+          assigned.map((e) => (e.employee_code ? `${e.name} (${e.employee_code})` : e.name))
+        );
+        if (!result.isConfirmed) return;
+      }
+    }
     setDesignations((prev) => prev.filter((d) => d.id !== designationId));
     if (designationId === editingDesignationId) setEditingDesignationId(null);
   };
@@ -359,13 +380,8 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                         <th
                           key={h}
                           style={{
-<<<<<<< HEAD
-                            padding: '10px 16px', textAlign: h === 'Action' ? 'right' : 'left', fontSize: 12.5, fontWeight: 700,
-                            textTransform: 'camelcase', letterSpacing: '0.04em', color: t.textSecondary,
-=======
                             padding: '10px 16px', textAlign: h === 'Action' ? 'right' : 'left', fontSize: 11, fontWeight: 700,
                             textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary,
->>>>>>> V_16.0
                           }}
                         >
                           {h}

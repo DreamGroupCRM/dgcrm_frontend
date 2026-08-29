@@ -277,11 +277,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             </IconBtn>
             {settingsOpen && (
               <div style={dropdownStyle}>
-<<<<<<< HEAD
-                <div style={{ padding: '8px 16px 4px', fontSize: 11, fontWeight: 700, color: t.textPrimary, textTransform: 'camelcase', letterSpacing: '0.08em' }}>
-=======
                 <div style={{ padding: '8px 16px 4px', fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
->>>>>>> V_16.0
                   Settings
                 </div>
                 <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
@@ -345,11 +341,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
                 <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
 
                 {/* Settings: Enable Master */}
-<<<<<<< HEAD
-                <div style={{ padding: '4px 16px 4px', fontSize: 11, fontWeight: 700, color: t.textPrimary, textTransform: 'camelcase', letterSpacing: '0.08em' }}>
-=======
                 <div style={{ padding: '4px 16px 4px', fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
->>>>>>> V_16.0
                   Settings
                 </div>
                 <SettingsMenuContent />

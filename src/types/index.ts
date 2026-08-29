@@ -605,9 +605,12 @@ export type CustomerStatus = 'active' | 'inactive';
 
 export interface Customer {
   id                          : string;
+  customer_code?               : string;
+  customer_photo_url?          : string | null;
   customer_name               : string;
   mobile_number                : string;
   email                         : string;
+  address?                      : string;
 
   building_id                    : string;
   building_name                   : string;
@@ -702,6 +705,8 @@ export interface CustomerPaymentRecord {
   mode?        : string;
   reference_no?: string;
   notes?       : string;
+  is_approved  : boolean;
+  payment_type : string;
 }
 
 export interface CustomerPaymentHistoryResponse {
@@ -775,6 +780,9 @@ export interface CustomerDetailFormValues {
   mobile_number                  : string;
   whatsapp_country_code            : string;
   whatsapp_number                    : string;
+  // Secondary mobile numbers beyond the primary Mobile Number above — a
+  // "+" control on the Add/Edit form appends to this list (item 6).
+  secondary_numbers                    : { country_code: string; number: string }[];
   aadhar_number                        : string;
   aadhar_photo                          : File | null;
   pancard_number                          : string;
@@ -989,4 +997,21 @@ export interface PaymentReceipt {
 export interface PaymentReceiptResponse {
   success: boolean;
   data   : PaymentReceipt;
+}
+
+// Smart "Record Payment" suggester (GET /payments/customer/:id/default-amount)
+// — default amount AND next due date per payment type, phase-aware, plus
+// whether maintenance is currently collectible (all pre-possession EMIs
+// paid). Distinct from CustomerRemainingAmounts above, which only answers
+// "how much is left" with no date or maintenance-eligibility awareness.
+export interface DefaultAmountData {
+  payment_for     : PaymentFor;
+  amount          : number;
+  date            : string | null;
+  show_maintenance: boolean;
+}
+
+export interface DefaultAmountResponse {
+  success: boolean;
+  data   : DefaultAmountData;
 }

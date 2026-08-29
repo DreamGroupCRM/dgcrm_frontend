@@ -115,30 +115,18 @@ const ModuleMappingPage: React.FC = () => {
             <thead>
               <tr style={{ background: t.tableHeaderBg }}>
                 <th style={{
-<<<<<<< HEAD
-                  padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, textTransform: 'camelcase',
-=======
                   padding: '12px 16px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase',
->>>>>>> V_16.0
                   letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   position: 'sticky', left: 0, zIndex: 2, background: t.tableHeaderBg,
                 }}>
                   Module
                 </th>
                 {matrix.actions.map((a) => (
-<<<<<<< HEAD
-                  <th key={a.id} style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, textTransform: 'camelcase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>
-                    {a.name}
-                  </th>
-                ))}
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, textTransform: 'camelcase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>
-=======
                   <th key={a.id} style={{ padding: '12px 16px', textAlign: 'center', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>
                     {a.name}
                   </th>
                 ))}
                 <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>
->>>>>>> V_16.0
                   All
                 </th>
               </tr>

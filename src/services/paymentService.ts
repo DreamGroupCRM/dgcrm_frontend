@@ -34,6 +34,8 @@ import {
   PaymentReceiptTransaction,
   PaymentReceiptCustomer,
   PaymentFor,
+  DefaultAmountData,
+  DefaultAmountResponse,
 } from '../types/index';
 
 // ── Backend response shapes (V_13.0) — only the fields this file reads.
@@ -183,6 +185,85 @@ export const fetchPaymentReceipt = async (transactionId: string | number): Promi
   };
 };
 
+// ── Per-installment Due grid for one customer (item 15) ─────────────────
+export type DueGridStatus = 'paid' | 'due' | 'upcoming';
+export interface DueGridRow {
+  sr: number;
+  label: string;
+  date: string | null;
+  amount: number;
+  payment_for: PaymentFor | null;
+  status: DueGridStatus;
+}
+export interface CustomerDueGrid {
+  customer_id: number;
+  customer_name: string;
+  company_name: string | null;
+  rows: DueGridRow[];
+}
+/** GET /api/payments/customer/:customerId/due-grid */
+export const fetchCustomerDueGrid = async (customerId: string | number): Promise<CustomerDueGrid> => {
+  const res = await axiosInstance.get(`/payments/customer/${customerId}/due-grid`);
+  return res.data.data;
+};
+
+// ── Payment Received (item 16) ───────────────────────────────────────────
+export interface PaymentListRow {
+  id: string;
+  receipt_number: string;
+  payment_type: PaymentFor;
+  amount: number;
+  customer_id: string;
+  customer_name: string;
+  company: string | null;
+  mode_of_payment: string | null;
+  received_by: string | null;
+  is_approved: boolean;
+  approved_by_name: string | null;
+  approved_at: string | null;
+  created_at: string;
+}
+export interface PaymentListFilters {
+  approval?: 'approved' | 'pending';
+  search?: string;
+}
+/** GET /api/payments?page=&limit=&approval=&search= */
+export const fetchPaymentList = async (
+  page: number, limit: number, filters?: PaymentListFilters
+): Promise<{ success: boolean; rows: PaymentListRow[]; total: number }> => {
+  const params: Record<string, string | number> = { page, limit };
+  if (filters?.approval) params.approval = filters.approval;
+  if (filters?.search?.trim()) params.search = filters.search.trim();
+  const res = await axiosInstance.get('/payments', { params });
+  return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
+};
+/** PUT /api/payments/:id/approve */
+export const approvePayment = async (id: string | number): Promise<{ success: boolean; message: string }> => {
+  const res = await axiosInstance.put(`/payments/${id}/approve`);
+  return res.data;
+};
+
+/** PUT /api/payments/bulk-approve */
+export const bulkApprovePayments = async (ids: (string | number)[]): Promise<{ success: boolean; approved: number; message: string }> => {
+  const res = await axiosInstance.put('/payments/bulk-approve', { ids: ids.map(Number) });
+  return res.data;
+};
+
+// ── Delete + EMI recalculation ripple (admin-only) ───────────────────────
+/** DELETE /api/payments/:id */
+export const deletePayment = async (id: string | number): Promise<{ success: boolean; message: string }> => {
+  const res = await axiosInstance.delete(`/payments/${id}`);
+  return res.data;
+};
+
+// ── Smart "Record Payment" suggester — default amount + next due date +
+// maintenance eligibility, phase-aware, per payment type. ────────────────
+/** GET /api/payments/customer/:customerId/default-amount?payment_for= */
+export const fetchDefaultAmount = async (customerId: string | number, paymentFor: PaymentFor): Promise<DefaultAmountData> => {
+  const res = await axiosInstance.get<DefaultAmountResponse>(`/payments/customer/${customerId}/default-amount`, { params: { payment_for: paymentFor } });
+  return res.data.data;
+};
+
 // Grouped export — same convenience pattern as buildingService / departmentService / customerDetailsService
 export const paymentService = {
   collect          : collectPayment,
@@ -190,4 +271,10 @@ export const paymentService = {
   customerDue      : fetchCustomerDue,
   customerRemaining: fetchCustomerRemaining,
   receipt          : fetchPaymentReceipt,
+  customerDueGrid  : fetchCustomerDueGrid,
+  list             : fetchPaymentList,
+  approve          : approvePayment,
+  bulkApprove      : bulkApprovePayments,
+  remove           : deletePayment,
+  defaultAmount    : fetchDefaultAmount,
 };

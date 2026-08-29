@@ -90,7 +90,10 @@ interface BackendCustomer {
   middle_name: string | null;
   last_name: string | null;
   mobile_number: string | null;
+  mobile_country_code: string | null;
   whatsapp_number: string | null;
+  whatsapp_country_code: string | null;
+  secondary_numbers?: { id: number | string; country_code: string; number: string }[];
   email: string | null;
   address: string | null;
   date_of_birth: string | null;
@@ -150,6 +153,7 @@ interface BackendAmountTransaction {
   possession_amount: number | null;
   annual_amount: number | null;
   annual_amount1: number | null;
+  is_approved: boolean;
   created_at: string;
 }
 
@@ -161,9 +165,12 @@ interface BackendAmountTransaction {
 // column to show; this fixes the read side, not the write side.
 const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   id: String(bc.id),
+  customer_code: bc.customer_code,
+  customer_photo_url: bc.customer_image,
   customer_name: [bc.name, bc.middle_name, bc.last_name].filter(Boolean).join(' '),
   mobile_number: bc.mobile_number ?? '',
   email: bc.email ?? '',
+  address: bc.address ?? '',
   building_id: bc.building_id != null ? String(bc.building_id) : '',
   building_name: bc.building?.name ?? '',
   wing_id: bc.wing_id != null ? String(bc.wing_id) : undefined,
@@ -196,10 +203,11 @@ const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
   last_name: bc.last_name ?? '',
   customer_photo_url: bc.customer_image,
   email: bc.email ?? '',
-  mobile_country_code: '+91', // not tracked by the backend — no column
+  mobile_country_code: bc.mobile_country_code || '+91',
   mobile_number: bc.mobile_number ?? '',
-  whatsapp_country_code: '+91', // not tracked by the backend — no column
+  whatsapp_country_code: bc.whatsapp_country_code || '+91',
   whatsapp_number: bc.whatsapp_number ?? '',
+  secondary_numbers: (bc.secondary_numbers ?? []).map((p) => ({ country_code: p.country_code || '+91', number: p.number })),
   aadhar_number: bc.aadhar_card_no ?? '',
   aadhar_photo_url: bc.aadhar_card,
   pancard_number: bc.pan_card_no ?? '',
@@ -261,12 +269,15 @@ const mapTransactionToPaymentRecord = (t: BackendAmountTransaction): CustomerPay
   amount: t.emi_amnt ?? t.booking_amount ?? t.pay_after_booking ?? t.possession_amount ?? t.annual_amount ?? t.annual_amount1 ?? 0,
   mode: t.mode_of_payment ?? undefined,
   reference_no: t.receipt_number || t.cheque_number || undefined,
+  is_approved: t.is_approved,
+  payment_type: t.payment_type,
 });
 
 // Text-field renames from this app's form-field names to the backend's
 // real column names — see Customer.entity.ts / CreateCustomerSchema.
 // Fields not listed here already share the same name on both sides
-// (middle_name, last_name, email, mobile_number, address, date_of_birth,
+// (middle_name, last_name, email, mobile_number, mobile_country_code,
+// whatsapp_country_code, secondary_numbers, address, date_of_birth,
 // building_id, wing_id, flat_id, booking_date, booking_amount,
 // possession_amount, installment_date, parking_no, is_active) or have no
 // backend counterpart at all and are deliberately left unmapped (see file
@@ -387,6 +398,26 @@ export const fetchCustomerById = async (id: string): Promise<CustomerSingleRespo
 export const fetchCustomerFullDetails = async (id: string): Promise<CustomerFullDetailResponse> => {
   const res = await axiosInstance.get(`/customers/${id}`);
   return { success: res.data.success, message: res.data.message, data: mapCustomerFullDetail(res.data.data as BackendCustomer) };
+};
+
+// ── Duplicate mobile/email check (item 18) — the Create Customer form's
+// warn-but-allow popup: called just before final submit, so the admin can
+// still confirm and create a genuine second booking anyway. ────────────────
+export interface DuplicateContactMatch {
+  id: number | string;
+  name: string | null;
+  customer_code: string;
+  mobile_number: string | null;
+  email: string | null;
+}
+/** GET /api/customers/duplicate-check?mobile=...&email=... */
+export const checkDuplicateCustomerContacts = async (mobile: string, email: string): Promise<DuplicateContactMatch[]> => {
+  const params: Record<string, string> = {};
+  if (mobile.trim()) params.mobile = mobile.trim();
+  if (email.trim()) params.email = email.trim();
+  if (!params.mobile && !params.email) return [];
+  const res = await axiosInstance.get('/customers/duplicate-check', { params });
+  return (res.data.rows ?? []) as DuplicateContactMatch[];
 };
 
 // ── Create new customer ──────────────────────────────────────────────────────

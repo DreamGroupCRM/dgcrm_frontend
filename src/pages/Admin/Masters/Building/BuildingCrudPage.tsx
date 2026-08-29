@@ -252,13 +252,8 @@ const FloorAccordionItem: React.FC<{
                 <tr style={{ background: t.tableHeaderBg }}>
                   {['Flat No.', 'Flat Type', 'Area (Sq Ft)', 'Status'].map((h) => (
                     <th key={h} style={{
-<<<<<<< HEAD
-                      padding: '8px 16px', textAlign: 'left', fontSize: 12.5, fontWeight: 700,
-                      textTransform: 'camelcase', letterSpacing: '0.04em', color: t.textSecondary,
-=======
                       padding: '8px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                       textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary,
->>>>>>> V_16.0
                     }}>
                       {h}
                     </th>
@@ -937,13 +932,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 onChange={(e) => updateWing(w.id, { name: e.target.value.toUpperCase() })}
                 style={{
                   border: 'none', outline: 'none', background: 'transparent',
-<<<<<<< HEAD
-                  color: t.inputText, fontSize: 14, width: 130, fontFamily: t.fontFamily,
-                  textTransform: 'camelcase',
-=======
                   color: t.inputText, fontSize: 12.5, width: 130, fontFamily: t.fontFamily,
                   textTransform: 'uppercase',
->>>>>>> V_16.0
                 }}
               />
               {!isView && (

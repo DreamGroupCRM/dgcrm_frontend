@@ -188,14 +188,7 @@ const CustomerSchemeViewPage: React.FC = () => {
         <div className="rounded-2xl p-6 text-center" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textSecondary, fontSize: 12 }}>
           {error || 'Customer not found.'}
         </div>
-        <div
-          className="flex items-center justify-center"
-          style={{
-            position: 'fixed', left: 0, right: 0, bottom: 0, height: FOOTER_HEIGHT, zIndex: 40,
-            padding: '0 24px', background: t.surfaceBg, borderTop: `1px solid ${t.surfaceBorder}`,
-            boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
-          }}
-        >
+        <div className="master-crud-footer flex items-center justify-center" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
           <button type="button" onClick={goBack}
             className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold"
             style={{ background: t.surfaceBg, color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}>
@@ -208,6 +201,14 @@ const CustomerSchemeViewPage: React.FC = () => {
 
   const c = data.customer;
   const flatLine = [c.building_name, c.wing_name, c.flat_no ? `Flat ${c.flat_no}` : null].filter(Boolean).join(' · ');
+
+  // Item 12: "your payment will be end as on" — the last dated row across
+  // both schedule phases, i.e. whichever of scheduleB/scheduleA actually
+  // has rows (scheduleB is the later phase when it exists at all).
+  const finalScheduleRow = data.scheduleB.length > 0
+    ? data.scheduleB[data.scheduleB.length - 1]
+    : data.scheduleA[data.scheduleA.length - 1];
+  const paymentsCompleteBy = finalScheduleRow?.date ?? null;
 
   return (
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16 }}>
@@ -225,7 +226,7 @@ const CustomerSchemeViewPage: React.FC = () => {
 
       {/* ── Customer Info ───────────────────────────────────────────── */}
       <SectionCard t={t} isDark={isDark}>
-        <div className="px-5 sm:px-6 py-5" style={{ background: 'linear-gradient(135deg,#4338ca,#6366f1)' }}>
+        <div className="px-5 sm:px-6 py-5" style={{ background: 'var(--grad-sky)' }}>
           <div className="flex items-center gap-3.5 mb-5">
             {c.customer_image ? (
               <img src={c.customer_image} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover', border: '2px solid rgba(255,255,255,0.5)' }} />
@@ -252,11 +253,29 @@ const CustomerSchemeViewPage: React.FC = () => {
         </div>
       </SectionCard>
 
+      {/* ── Item 12: "your payment will be end as on" — highlighted final
+          payment date, computed from the last row of whichever schedule
+          phase actually has one (see paymentsCompleteBy above). ────────── */}
+      {paymentsCompleteBy && (
+        <div
+          className="flex items-center gap-3 rounded-2xl mb-5 px-5 py-4"
+          style={{ background: isDark ? 'rgba(16,185,129,0.14)' : '#ecfdf5', border: `1px solid ${isDark ? 'rgba(16,185,129,0.35)' : '#a7f3d0'}` }}
+        >
+          <div className="flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 38, height: 38, background: isDark ? 'rgba(16,185,129,0.25)' : '#d1fae5' }}>
+            <MdCalculate size={19} style={{ color: '#059669' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: 0.4 }}>Payments Complete By</div>
+            <div style={{ fontSize: 16.5, fontWeight: 800, color: isDark ? '#6ee7b7' : '#047857' }}>{formatDMY(paymentsCompleteBy)}</div>
+          </div>
+        </div>
+      )}
+
       {/* ── EMI Scheme summary ──────────────────────────────────────── */}
       <SectionCard t={t} isDark={isDark}>
         <ResultPanelHeader
           icon={<MdCalculate size={17} color="#fff" />} title="EMI Scheme"
-          gradient="linear-gradient(135deg,#4338ca,#6366f1)"
+          gradient="var(--grad-sky)"
           subtitle={`Total Cost of Flat: ${formatINR(c.flat_amount)}`}
         />
         <div className="p-5 sm:p-6">
@@ -273,7 +292,7 @@ const CustomerSchemeViewPage: React.FC = () => {
       <SectionCard t={t} isDark={isDark}>
         <ResultPanelHeader
           icon={<MdListAlt size={17} color="#fff" />} title="EMI Schedule"
-          gradient="linear-gradient(135deg,#059669,#10b981)"
+          gradient="var(--grad-green)"
           subtitle={`Schedule ${formatINR(c.flat_amount)}`}
         />
         <div className="p-5 sm:p-6">
@@ -286,17 +305,14 @@ const CustomerSchemeViewPage: React.FC = () => {
         </div>
       </SectionCard>
 
-      {/* ── Footer — fixed to the viewport bottom, single centered "Go
-          Back" button (unlike the CRUD pages' right-aligned Cancel/Save
-          pair — this page is a read-only report, not a form). ─────────── */}
-      <div
-        className="flex items-center justify-center"
-        style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0, height: FOOTER_HEIGHT, zIndex: 40,
-          padding: '0 24px', background: t.surfaceBg, borderTop: `1px solid ${t.surfaceBorder}`,
-          boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
-        }}
-      >
+      {/* ── Footer — same shared `master-crud-footer` class every other
+          CRUD page uses: a floating card inset 16px from the edges,
+          offset past the sidebar via --sidebar-w, instead of a raw
+          `left:0` fixed bar that spanned underneath the sidebar itself.
+          Single centered "Go Back" button (unlike the CRUD pages'
+          right-aligned Cancel/Save pair — this page is a read-only
+          report, not a form) — same Go Back behavior as before. ──────── */}
+      <div className="master-crud-footer flex items-center justify-center" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
         <button type="button" onClick={goBack}
           className="flex items-center gap-1.5 px-8 py-2.5 rounded-xl text-sm font-semibold"
           style={{ background: t.surfaceBg, color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}>

@@ -11,6 +11,7 @@ import {
   MdKeyboardArrowDown, MdMoreVert, MdReceiptLong, MdLoyalty, MdPhone, MdEmail,
   MdChevronLeft, MdChevronRight, MdKeyboardDoubleArrowLeft, MdKeyboardDoubleArrowRight,
   MdPayments, MdPrint, MdAccountBalanceWallet, MdDescription, MdFilterList,
+  MdGridView, MdViewList, MdLocationOn, MdBadge,
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
@@ -19,14 +20,16 @@ import { getTheme } from '../../../../styles/theme';
 import StatCard from '../../../../components/masters/StatCard';
 import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory } from '../../../../services/customerDetailsService';
 import {
-  collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, PAYMENT_FOR_OPTIONS, paymentForLabel,
+  collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, deletePayment, PAYMENT_FOR_OPTIONS, paymentForLabel,
 } from '../../../../services/paymentService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
+import { fetchCustomerIntelligence, CustomerIntelligence } from '../../../../services/intelligenceService';
 import {
   Customer, Building, CustomerPaymentRecord,
-  PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload,
+  PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload, isAdminRole,
 } from '../../../../types/index';
+import jsPDF from 'jspdf';
 import { formatDate, showAlert } from '../../../../utils';
 import './CustomerDetails.css';
 
@@ -50,7 +53,13 @@ const SearchableSelect: React.FC<{
   // show "A-101 · 2 BHK · 850 Sqft" per option while still filtering
   // customers by the bare flat number underneath.
   labelFor?: (opt: string) => string;
-}> = ({ t, placeholder, options, value, onChange, disabled, labelFor }) => {
+  // Fired once the field's dropdown closes with a committed value — either
+  // an option was clicked, or the user clicked away. Used by the chip/tag
+  // filter bar to collapse a filter back into its compact pill once a value
+  // has been chosen, instead of leaving the full dropdown open.
+  onCommit?: () => void;
+  autoFocus?: boolean;
+}> = ({ t, placeholder, options, value, onChange, disabled, labelFor, onCommit, autoFocus }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
@@ -59,11 +68,11 @@ const SearchableSelect: React.FC<{
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); onCommit?.(); }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  }, [onCommit]);
 
   const filtered = options.filter((o) => o?.toLowerCase().includes(query.toLowerCase()));
 
@@ -79,6 +88,7 @@ const SearchableSelect: React.FC<{
           placeholder={placeholder}
           value={query}
           disabled={disabled}
+          autoFocus={autoFocus}
           onFocus={() => setOpen(true)}
           onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
           style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 11.5, width: '100%' }}
@@ -105,7 +115,7 @@ const SearchableSelect: React.FC<{
           {filtered.map((opt) => (
             <button
               key={opt} type="button"
-              onClick={() => { onChange(opt); setQuery(opt); setOpen(false); }}
+              onClick={() => { onChange(opt); setQuery(opt); setOpen(false); onCommit?.(); }}
               className="w-full text-left px-3.5 py-2 text-sm"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}
             >
@@ -114,6 +124,66 @@ const SearchableSelect: React.FC<{
           ))}
         </div>
       )}
+    </div>
+  );
+};
+
+// ── Filter chip/tag bar — only currently-applied filters are shown, each as
+// a small removable pill (e.g. "Building: Skyline ✕"). A collapsed pill
+// reopens its control on click; a freshly-added filter (via "Add Filter")
+// starts open so the user can immediately pick a value. This replaces the
+// old fixed grid of always-visible filter boxes (item 4: "show only which
+// filter is applied"). ──────────────────────────────────────────────────
+type FilterKey = 'customerName' | 'building' | 'wing' | 'floor' | 'flatNo' | 'fromDate' | 'toDate';
+const FILTER_LABELS: Record<FilterKey, string> = {
+  customerName: 'Customer Name', building: 'Building', wing: 'Wing', floor: 'Floor',
+  flatNo: 'Flat No', fromDate: 'From Date', toDate: 'To Date',
+};
+// Fields whose options depend on another filter's value being set —
+// removing the parent also removes and clears these.
+const FILTER_DEPENDENTS: Partial<Record<FilterKey, FilterKey[]>> = {
+  building: ['wing', 'floor', 'flatNo'],
+  wing: ['floor', 'flatNo'],
+  floor: ['flatNo'],
+};
+
+const FilterChip: React.FC<{
+  t: Theme; label: string; displayValue: string; editing: boolean;
+  onOpen: () => void; onRemove: () => void; children: React.ReactNode;
+}> = ({ t, label, displayValue, editing, onOpen, onRemove, children }) => {
+  if (!editing) {
+    return (
+      <button
+        type="button" onClick={onOpen}
+        className="inline-flex items-center gap-1.5 rounded-full"
+        style={{
+          padding: '6px 6px 6px 12px', background: t.insetBg, border: `1px solid ${t.surfaceBorder}`,
+          color: t.textPrimary, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap',
+        }}
+      >
+        <span style={{ fontWeight: 700 }}>{label}:</span> {displayValue}
+        <span
+          role="button" tabIndex={-1}
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          className="flex items-center justify-center rounded-full"
+          style={{ width: 18, height: 18, marginLeft: 2, background: t.surfaceBg, color: t.textSecondary }}
+        >
+          <MdClose size={12} />
+        </span>
+      </button>
+    );
+  }
+  return (
+    <div style={{ minWidth: 190 }}>
+      <label className="cust-filter-label">{label}</label>
+      <div className="flex items-center gap-1">
+        <div style={{ flex: 1 }}>{children}</div>
+        <button type="button" onClick={onRemove} title={`Remove ${label} filter`}
+          className="flex items-center justify-center rounded-lg flex-shrink-0"
+          style={{ width: 30, height: 30, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textSecondary, cursor: 'pointer' }}>
+          <MdClose size={14} />
+        </button>
+      </div>
     </div>
   );
 };
@@ -139,6 +209,10 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 // `fixed` from the trigger button's own bounding rect, escapes that
 // clipped container entirely — the dropdown always shows all three
 // options in full, wherever the row sits on screen.
+// Compact popup, positioned beside the 3-dot trigger, with a horizontal
+// divider between every option (item 7's "Action menu matching Employee
+// List style") — same trio as before, just tighter width/padding and
+// dividers instead of a plain stacked list.
 const RowActionMenu: React.FC<{
   t: Theme; pos: { top: number; left: number };
   onView: () => void; onEdit: () => void; onDelete: () => void;
@@ -146,26 +220,99 @@ const RowActionMenu: React.FC<{
   <div
     data-customer-row-menu
     style={{
-      position: 'fixed', top: pos.top, left: pos.left, zIndex: 100, minWidth: 130,
-      background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
-      boxShadow: '0 8px 24px rgba(0,0,0,0.16)', padding: '6px 0',
+      position: 'fixed', top: pos.top, left: pos.left, zIndex: 100, minWidth: 118,
+      background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 8,
+      boxShadow: '0 6px 16px rgba(0,0,0,0.16)', overflow: 'hidden',
     }}
   >
     <button type="button" onClick={onView}
-      className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-      <MdVisibility size={16} color="#2563eb" /> View
+      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+      style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+      <MdVisibility size={14} color="#2563eb" /> View
     </button>
     <button type="button" onClick={onEdit}
-      className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-      <MdEdit size={15} color="#7c3aed" /> Edit
+      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+      style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+      <MdEdit size={13} color="#7c3aed" /> Edit
     </button>
     <button type="button" onClick={onDelete}
-      className="w-full flex items-center gap-2 px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
-      <MdDelete size={16} /> Delete
+      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
+      <MdDelete size={14} /> Delete
     </button>
   </div>,
   document.body
 );
+
+// ── Grid card — module scope, mirrors Employee Grid View's card design
+// (avatar/status top, 3-dot menu top-right, contact rows below) so the two
+// modules' Grid Views read as one consistent visual language (item 10). ──
+const CustomerCard: React.FC<{
+  c: Customer; t: Theme; isDark: boolean;
+  onOpenMenu: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  menuOpen: boolean; menuPos: { top: number; left: number } | null;
+  onView: () => void; onEdit: () => void; onDelete: () => void;
+}> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onDelete }) => {
+  const statusBg = c.status === 'active' ? '#dcfce7' : '#fee2e2';
+  const statusColor = c.status === 'active' ? '#16a34a' : '#dc2626';
+  return (
+    <div className="rounded-2xl p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex flex-col items-center flex-shrink-0" style={{ gap: 4 }}>
+            {c.customer_photo_url ? (
+              <img src={c.customer_photo_url} alt="" className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
+            ) : (
+              <div className="flex items-center justify-center rounded-full text-white font-bold"
+                style={{ width: 48, height: 48, background: 'var(--grad-purple)', fontSize: 15 }}>
+                {(c.customer_name || '—').slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <span className="inline-flex items-center gap-1 px-1.5 rounded-full font-semibold"
+              style={{ background: statusBg, color: statusColor, fontSize: 10, lineHeight: '14px', whiteSpace: 'nowrap' }}>
+              <span className="w-1 h-1 rounded-full bg-current" /> {c.status === 'active' ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <div style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary, lineHeight: 1.25, wordBreak: 'break-word' }}>
+              {c.customer_name}
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#7c3aed' }}>{c.customer_code || '—'}</span>
+          </div>
+        </div>
+        <div style={{ position: 'relative' }}>
+          <button type="button" onClick={onOpenMenu} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}>
+            <MdMoreVert size={18} />
+          </button>
+          {menuOpen && menuPos && <RowActionMenu t={t} pos={menuPos} onView={onView} onEdit={onEdit} onDelete={onDelete} />}
+        </div>
+      </div>
+
+      <div className="space-y-1.5" style={{ fontSize: 11, color: t.textSecondary }}>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <MdEmail size={14} className="flex-shrink-0" />
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.email || '—'}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <MdPhone size={14} className="flex-shrink-0" />
+          {c.mobile_number || '—'}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <MdLocationOn size={14} className="flex-shrink-0" />
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.address || '—'}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <MdBadge size={14} className="flex-shrink-0" />
+          {c.building_name ? `${c.building_name}, ${c.wing_name} Wing, ${c.flat_no}` : '—'}
+        </div>
+      </div>
+
+      <div style={{ fontSize: 10, color: t.textSecondary, marginTop: 10, paddingTop: 8, borderTop: `1px solid ${t.divider}` }}>
+        Booked on {formatDate(c.booking_date)}
+      </div>
+    </div>
+  );
+};
 
 const CustomerDetailsListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -173,11 +320,14 @@ const CustomerDetailsListPage: React.FC = () => {
   const { mode } = useAppSelector((s) => s.theme);
   const isDark = mode === 'dark';
   const t = getTheme(isDark);
+  const role = useAppSelector((s) => s.auth.role);
+  const isAdmin = isAdminRole(role);
 
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(5);
+  const [limit, setLimit] = useState(10);
+  const [view, setView] = useState<'grid' | 'list'>('list');
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [employees, setEmployees] = useState<{ id: string; label: string }[]>([]);
@@ -190,6 +340,25 @@ const CustomerDetailsListPage: React.FC = () => {
   const [flatNoFilter, setFlatNoFilter] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  // Item 13: the assign/unassign area doubles as an Assigned/Unassigned
+  // filter on the table below it.
+  const [assignmentStatusFilter, setAssignmentStatusFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
+
+  // Which filters are currently applied (shown as chips), and which one (if
+  // any) is currently open for editing — see FilterChip above.
+  const [activeFilters, setActiveFilters] = useState<FilterKey[]>([]);
+  const [editingFilter, setEditingFilter] = useState<FilterKey | null>(null);
+  const [addFilterMenuOpen, setAddFilterMenuOpen] = useState(false);
+  const addFilterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!addFilterMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (addFilterRef.current && !addFilterRef.current.contains(e.target as Node)) setAddFilterMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [addFilterMenuOpen]);
 
   // ── selection + assignment ──────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -206,6 +375,9 @@ const CustomerDetailsListPage: React.FC = () => {
     // Customer Due view — fetched alongside payment history, additive to
     // the existing Payment History modal (see openPaymentHistory below).
     due?: CustomerDueSummary; remaining?: CustomerRemainingAmounts;
+    // AI Customer Intelligence — fetched alongside the above, same
+    // allSettled defensive pattern (see openPaymentHistory below).
+    ai?: CustomerIntelligence;
   } | null>(null);
 
   // same customer. ────────────────────────────────────────────────────
@@ -225,7 +397,7 @@ const CustomerDetailsListPage: React.FC = () => {
 
   // ── View Receipt modal — layered on top of the Payment History modal,
   // opened from a "View Receipt" button on each of its rows. ──────────
-  const [receiptModal, setReceiptModal] = useState<{ transactionId: string; loading: boolean; data?: PaymentReceipt } | null>(null);
+  const [receiptModal, setReceiptModal] = useState<{ transactionId: string; loading: boolean; data?: PaymentReceipt; pendingApproval?: boolean } | null>(null);
 
   useEffect(() => { dispatch(setPageTitle('Customer Details')); }, [dispatch]);
 
@@ -329,6 +501,62 @@ const CustomerDetailsListPage: React.FC = () => {
   const clearAllFilters = () => {
     setCustomerNameFilter(''); setBuildingFilter(''); setWingFilter(''); setFloorFilter(''); setFlatNoFilter('');
     setFromDate(''); setToDate('');
+    setActiveFilters([]); setEditingFilter(null);
+  };
+
+  // ── chip/tag filter bar helpers ─────────────────────────────────────────
+  const addFilter = (key: FilterKey) => {
+    setActiveFilters((prev) => (prev.includes(key) ? prev : [...prev, key]));
+    setEditingFilter(key);
+    setAddFilterMenuOpen(false);
+  };
+  const removeFilter = (key: FilterKey) => {
+    const toRemove = [key, ...(FILTER_DEPENDENTS[key] ?? [])];
+    setActiveFilters((prev) => prev.filter((k) => !toRemove.includes(k)));
+    if (editingFilter && toRemove.includes(editingFilter)) setEditingFilter(null);
+    if (toRemove.includes('customerName')) setCustomerNameFilter('');
+    if (toRemove.includes('building')) setBuildingFilter('');
+    if (toRemove.includes('wing')) setWingFilter('');
+    if (toRemove.includes('floor')) setFloorFilter('');
+    if (toRemove.includes('flatNo')) setFlatNoFilter('');
+    if (toRemove.includes('fromDate')) setFromDate('');
+    if (toRemove.includes('toDate')) setToDate('');
+  };
+  // Prerequisite fields must already have a value before their dependent
+  // field can be added — mirrors the old disabled-select behavior.
+  const filterAvailable = (key: FilterKey): boolean => {
+    if (activeFilters.includes(key)) return false;
+    if (key === 'wing') return !!buildingFilter;
+    if (key === 'floor') return !!wingFilter;
+    if (key === 'flatNo') return !!floorFilter;
+    return true;
+  };
+  const availableFilterKeys = (Object.keys(FILTER_LABELS) as FilterKey[]).filter(filterAvailable);
+
+  // Selecting an exact customer name (not just typing a partial match)
+  // auto-populates the Building/Wing/Floor/Flat No filters from that
+  // customer's own booking, narrowing the whole filter row to their flat
+  // in one action instead of four (item 11's "auto-populate related
+  // details... fast updates without manual actions") — and surfaces each
+  // one as its own chip, since a filter is only ever silently "applied"
+  // if it's visible as a chip.
+  const handleCustomerNameFilterChange = (v: string) => {
+    setCustomerNameFilter(v);
+    const exact = allCustomers.find((c) => c.customer_name === v);
+    if (exact) {
+      setBuildingFilter(exact.building_name || '');
+      setWingFilter(exact.wing_name || '');
+      setFloorFilter('');
+      setFlatNoFilter(exact.flat_no || '');
+      setActiveFilters((prev) => {
+        const next = new Set(prev);
+        next.add('customerName');
+        if (exact.building_name) next.add('building');
+        if (exact.wing_name) next.add('wing');
+        if (exact.flat_no) next.add('flatNo');
+        return Array.from(next);
+      });
+    }
   };
 
   // ── filtered rows (client-side, same pattern as Building/Department/Employee) ──
@@ -340,11 +568,13 @@ const CustomerDetailsListPage: React.FC = () => {
       if (flatNoFilter && c.flat_no !== flatNoFilter) return false;
       if (fromDate && c.booking_date && c.booking_date < fromDate) return false;
       if (toDate && c.booking_date && c.booking_date > toDate) return false;
+      if (assignmentStatusFilter === 'assigned' && !c.assigned_employee_id) return false;
+      if (assignmentStatusFilter === 'unassigned' && c.assigned_employee_id) return false;
       return true;
     });
-  }, [allCustomers, customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate]);
+  }, [allCustomers, customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter]);
 
-  useEffect(() => { setPage(1); }, [customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate]);
+  useEffect(() => { setPage(1); }, [customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / limit));
   const safePage = Math.min(page, totalPages);
@@ -371,7 +601,10 @@ const CustomerDetailsListPage: React.FC = () => {
     return { total, active, inactive, newThisMonth, activePct: total ? ((active / total) * 100).toFixed(2) : '0', inactivePct: total ? ((inactive / total) * 100).toFixed(2) : '0' };
   }, [allCustomers]);
 
-  // ── checkbox selection ───────────────────────────────────────────────
+  // ── checkbox selection — item 13: an inactive customer can't be
+  // selected for assignment at all (its checkbox is disabled in the
+  // table), so these never need to guard against one slipping in via a
+  // stale selection. ──────────────────────────────────────────────────
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -379,11 +612,12 @@ const CustomerDetailsListPage: React.FC = () => {
       return next;
     });
   };
+  const activePageRows = useMemo(() => pageRows.filter((c) => c.status === 'active'), [pageRows]);
   const toggleSelectAllOnPage = () => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      const allSelected = pageRows.every((c) => next.has(c.id));
-      pageRows.forEach((c) => (allSelected ? next.delete(c.id) : next.add(c.id)));
+      const allSelected = activePageRows.length > 0 && activePageRows.every((c) => next.has(c.id));
+      activePageRows.forEach((c) => (allSelected ? next.delete(c.id) : next.add(c.id)));
       return next;
     });
   };
@@ -431,10 +665,11 @@ const CustomerDetailsListPage: React.FC = () => {
       // + the per-type remaining breakdown) is fetched alongside it so the
       // one modal shows both — using allSettled so a due/remaining failure
       // never blocks the existing payment history from rendering.
-      const [historyRes, dueRes, remainingRes] = await Promise.allSettled([
+      const [historyRes, dueRes, remainingRes, aiRes] = await Promise.allSettled([
         fetchCustomerPaymentHistory(c.id),
         fetchCustomerDue(c.id),
         fetchCustomerRemaining(c.id),
+        fetchCustomerIntelligence(c.id),
       ]);
       if (historyRes.status === 'rejected') throw historyRes.reason;
       setInfoModal({
@@ -442,6 +677,7 @@ const CustomerDetailsListPage: React.FC = () => {
         payments: historyRes.value.rows,
         due: dueRes.status === 'fulfilled' ? dueRes.value.data : undefined,
         remaining: remainingRes.status === 'fulfilled' ? remainingRes.value.data : undefined,
+        ai: aiRes.status === 'fulfilled' ? aiRes.value : undefined,
       });
     } catch {
       toast.error('Failed to load payment history.');
@@ -495,14 +731,103 @@ const CustomerDetailsListPage: React.FC = () => {
   };
 
   // ── View Receipt ─────────────────────────────────────────────────────
+  // Legacy blocks receipt/PDF access until an admin approves the payment —
+  // the backend returns 403 for that specific case (admins bypass it
+  // server-side), which is shown here as an inline "pending approval"
+  // state inside the modal rather than treated like any other failure.
   const openReceipt = async (transactionId: string) => {
     setReceiptModal({ transactionId, loading: true });
     try {
       const res = await fetchPaymentReceipt(transactionId);
       setReceiptModal({ transactionId, loading: false, data: res.data });
-    } catch {
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setReceiptModal({ transactionId, loading: false, pendingApproval: true });
+        return;
+      }
       toast.error('Failed to load receipt.');
       setReceiptModal(null);
+    }
+  };
+
+  // ── Download Receipt PDF — client-side (jsPDF), same approach as the
+  // Executive Dashboard's export (dashboardExport.ts). Only reachable once
+  // receiptModal.data exists at all, which itself required the approval
+  // gate above to pass. ───────────────────────────────────────────────────
+  const handleDownloadReceiptPdf = () => {
+    if (!receiptModal?.data) return;
+    const { transaction: tx, customer, paid_emis, future_emis, total_emis, emi_number } = receiptModal.data;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a5' });
+    const marginX = 36;
+    let y = 40;
+
+    doc.setFontSize(15);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Dream Group CRM', marginX, y);
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Payment Receipt', marginX, y + 14);
+    y += 34;
+
+    doc.setFontSize(9.5);
+    const line = (label: string, value: string) => { doc.text(label, marginX, y); doc.setFont('helvetica', 'bold'); doc.text(value, 220, y); doc.setFont('helvetica', 'normal'); y += 15; };
+    line('Receipt No.', tx.receipt_number);
+    line('Date', formatDate(tx.date || tx.created_at));
+    line('Received By', tx.received_by || '—');
+    y += 6;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(customer.customer_name || '—', marginX, y);
+    doc.setFont('helvetica', 'normal');
+    y += 13;
+    doc.setFontSize(8.5);
+    doc.text(`${customer.customer_code}${customer.mobile_number ? ` · ${customer.mobile_number}` : ''}`, marginX, y);
+    y += 20;
+
+    doc.setFontSize(9.5);
+    doc.text(paymentForLabel(tx.payment_type), marginX, y);
+    y += 16;
+    doc.setFontSize(17);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Rs. ${tx.amount.toLocaleString('en-IN')}`, marginX, y);
+    doc.setFont('helvetica', 'normal');
+    y += 18;
+
+    if (tx.payment_type === 'EMIAmount' && emi_number > 0) {
+      doc.setFontSize(8.5);
+      doc.text(`EMI #${emi_number} of ${total_emis} total (${paid_emis} paid, ${future_emis} future)`, marginX, y);
+      y += 18;
+    }
+
+    doc.setFontSize(9);
+    if (tx.mode_of_payment) { line('Mode of Payment', tx.mode_of_payment); }
+    if (tx.cheque_number) { line('Cheque Number', tx.cheque_number); }
+    if (tx.clearance_date) { line('Clearance Date', formatDate(tx.clearance_date)); }
+    if (tx.company) { line('Company', tx.company); }
+    if (tx.payment_tag) { line('Tag', tx.payment_tag); }
+
+    doc.save(`receipt-${tx.receipt_number}.pdf`);
+  };
+
+  // ── Delete Payment (admin-only) — triggers the backend's EMI
+  // recalculation ripple for EMIAmount transactions. Confirm dialog warns
+  // about that specifically rather than using the generic delete-confirm
+  // wording, since this is a bigger blast radius than a normal row delete. ─
+  const handleDeletePayment = async (payment: CustomerPaymentRecord, customer: Customer) => {
+    const isEmi = payment.payment_type === 'EMIAmount';
+    const result = await showAlert.confirm(
+      isEmi
+        ? `This will permanently delete this ₹${payment.amount.toLocaleString('en-IN')} EMI payment and recalculate every other EMI transaction for ${customer.customer_name}.`
+        : `This will permanently delete this ₹${payment.amount.toLocaleString('en-IN')} payment for ${customer.customer_name}.`,
+      'Delete Payment?'
+    );
+    if (!result.isConfirmed) return;
+    try {
+      await deletePayment(payment.id);
+      toast.success('Payment deleted.');
+      openPaymentHistory(customer);
+    } catch {
+      toast.error('Failed to delete payment.');
     }
   };
 
@@ -524,6 +849,48 @@ const CustomerDetailsListPage: React.FC = () => {
     a.download = `customers_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // ── chip/tag filter bar: per-key control + display value ───────────────
+  const renderFilterControl = (key: FilterKey): React.ReactNode => {
+    const collapse = () => setEditingFilter(null);
+    switch (key) {
+      case 'customerName':
+        return <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={handleCustomerNameFilterChange} onCommit={collapse} autoFocus />;
+      case 'building':
+        return (
+          <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter} onCommit={collapse} autoFocus
+            onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFloorFilter(''); setFlatNoFilter(''); }} />
+        );
+      case 'wing':
+        return (
+          <SearchableSelect t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingFilter}
+            disabled={!selectedBuilding || loadingBuildingDetail} onCommit={collapse} autoFocus
+            onChange={(v) => { setWingFilter(v); setFloorFilter(''); setFlatNoFilter(''); }} />
+        );
+      case 'floor':
+        return (
+          <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter} disabled={!selectedWing} onCommit={collapse} autoFocus
+            onChange={(v) => { setFloorFilter(v); setFlatNoFilter(''); }} />
+        );
+      case 'flatNo':
+        return <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} disabled={!selectedFloor} onChange={setFlatNoFilter} labelFor={flatLabelFor} onCommit={collapse} autoFocus />;
+      case 'fromDate':
+        return <input type="date" autoFocus value={fromDate} onClick={openPicker} onFocus={openPicker} onBlur={collapse} onChange={(e) => { setFromDate(e.target.value); collapse(); }} className="cust-date-field" />;
+      case 'toDate':
+        return <input type="date" autoFocus value={toDate} onClick={openPicker} onFocus={openPicker} onBlur={collapse} onChange={(e) => { setToDate(e.target.value); collapse(); }} className="cust-date-field" />;
+    }
+  };
+  const filterDisplayValue = (key: FilterKey): string => {
+    switch (key) {
+      case 'customerName': return customerNameFilter || '—';
+      case 'building': return buildingFilter || '—';
+      case 'wing': return wingFilter || '—';
+      case 'floor': return floorFilter || '—';
+      case 'flatNo': return flatNoFilter || '—';
+      case 'fromDate': return fromDate ? formatDate(fromDate) : '—';
+      case 'toDate': return toDate ? formatDate(toDate) : '—';
+    }
   };
 
   // ── CSS custom properties for CustomerDetails.css — set once here from
@@ -561,51 +928,72 @@ const CustomerDetailsListPage: React.FC = () => {
             gradient bar out to the card's own edges — the Select Flat No
             dropdown sits in this grid's last row and opens downward past
             the card's bottom edge, which `overflow-hidden` here would clip. */}
-        <div className="flex items-center gap-2.5 -m-5 mb-4 px-5 py-3.5 rounded-t-2xl" style={{ background: 'linear-gradient(135deg,#4338ca,#6366f1)' }}>
+        <div className="flex items-center gap-2.5 -m-5 mb-4 px-5 py-3.5 rounded-t-2xl" style={{ background: 'var(--grad-sky)' }}>
           <MdFilterList size={18} style={{ color: '#fff', flexShrink: 0 }} />
           <h3 style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>Search &amp; Filter Customers</h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div>
-            <label className="cust-filter-label">Search Customer Name</label>
-            <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={setCustomerNameFilter} />
+
+        {/* Only applied filters show, each as a small removable chip — click
+            a collapsed chip to edit its value, click its ✕ to remove it
+            entirely. "Add Filter" reveals the fields not yet applied. */}
+        <div className="flex flex-wrap items-start gap-2.5">
+          {activeFilters.map((key) => (
+            <FilterChip
+              key={key} t={t} label={FILTER_LABELS[key]}
+              displayValue={filterDisplayValue(key)}
+              editing={editingFilter === key}
+              onOpen={() => setEditingFilter(key)}
+              onRemove={() => removeFilter(key)}
+            >
+              {renderFilterControl(key)}
+            </FilterChip>
+          ))}
+
+          <div ref={addFilterRef} style={{ position: 'relative' }}>
+            <button
+              type="button" onClick={() => setAddFilterMenuOpen((v) => !v)}
+              disabled={availableFilterKeys.length === 0}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap"
+              style={{
+                background: 'transparent', border: `1px dashed ${t.surfaceBorder}`, color: t.textSecondary,
+                cursor: availableFilterKeys.length === 0 ? 'not-allowed' : 'pointer', opacity: availableFilterKeys.length === 0 ? 0.5 : 1,
+              }}
+            >
+              <MdAdd size={15} /> Add Filter
+            </button>
+            {addFilterMenuOpen && availableFilterKeys.length > 0 && (
+              <div
+                style={{
+                  position: 'absolute', top: '110%', left: 0, zIndex: 30, minWidth: 170,
+                  background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0',
+                }}
+              >
+                {availableFilterKeys.map((key) => (
+                  <button
+                    key={key} type="button" onClick={() => addFilter(key)}
+                    className="w-full text-left px-3.5 py-2 text-sm"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}
+                  >
+                    {FILTER_LABELS[key]}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <div>
-            <label className="cust-filter-label">Search Building Name</label>
-            <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter}
-              onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFloorFilter(''); setFlatNoFilter(''); }} />
-          </div>
-          <div>
-            <label className="cust-filter-label">Select Wing</label>
-            <SearchableSelect t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingFilter}
-              disabled={!selectedBuilding || loadingBuildingDetail}
-              onChange={(v) => { setWingFilter(v); setFloorFilter(''); setFlatNoFilter(''); }} />
-          </div>
-          <div>
-            <label className="cust-filter-label">Select Floor</label>
-            <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter} disabled={!selectedWing}
-              onChange={(v) => { setFloorFilter(v); setFlatNoFilter(''); }} />
-          </div>
-          <div>
-            <label className="cust-filter-label">Select Flat No</label>
-            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} disabled={!selectedFloor} onChange={setFlatNoFilter} labelFor={flatLabelFor} />
-          </div>
-          <div>
-            <label className="cust-filter-label">From Date</label>
-            <input type="date" value={fromDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setFromDate(e.target.value)} className="cust-date-field" />
-          </div>
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="cust-filter-label">To Date</label>
-              <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} className="cust-date-field" />
-            </div>
+
+          {activeFilters.length > 0 && (
             <button
               type="button" onClick={clearAllFilters}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}
-            > Reset Filter
+            > Reset Filters
             </button>
-          </div>
+          )}
+
+          {activeFilters.length === 0 && (
+            <span style={{ fontSize: 11.5, color: t.textSecondary, alignSelf: 'center' }}>No filters applied.</span>
+          )}
         </div>
       </div>
 
@@ -622,7 +1010,7 @@ const CustomerDetailsListPage: React.FC = () => {
             disabled={!assignmentEnabled || !employeeSearch || assigning}
             className="px-5 py-2.5 rounded-xl text-sm font-semibold"
             style={{
-              background: !assignmentEnabled || !employeeSearch || assigning ? t.insetBg : 'linear-gradient(135deg,#4338ca,#4f46e5)',
+              background: !assignmentEnabled || !employeeSearch || assigning ? t.insetBg : 'var(--grad-purple)',
               color: !assignmentEnabled || !employeeSearch || assigning ? t.textSecondary : '#fff',
               border: `1px solid ${!assignmentEnabled || !employeeSearch || assigning ? t.surfaceBorder : 'transparent'}`,
               cursor: !assignmentEnabled || !employeeSearch || assigning ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
@@ -630,12 +1018,42 @@ const CustomerDetailsListPage: React.FC = () => {
           >
             {assigning ? 'Assigning...' : 'Assign to Employee'}
           </button>
+
+          {/* Item 13: this same area doubles as an Assigned/Unassigned
+              filter on the table below — inactive customers are excluded
+              from selection above (their checkbox is disabled), not from
+              this filter, since "inactive but was assigned" is still a
+              meaningful thing to be able to see. */}
+          <div>
+            <label className="cust-filter-label">Assignment</label>
+            <div className="flex items-center rounded-xl p-0.5" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}` }}>
+              {([['all', 'All'], ['assigned', 'Assigned'], ['unassigned', 'Unassigned']] as const).map(([value, label]) => (
+                <button
+                  key={value} type="button" onClick={() => setAssignmentStatusFilter(value)}
+                  className="px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap"
+                  style={{
+                    background: assignmentStatusFilter === value ? 'var(--grad-purple)' : 'transparent',
+                    color: assignmentStatusFilter === value ? '#fff' : t.textSecondary,
+                    border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5">
+          <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
+            title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
+            className="flex items-center justify-center rounded-xl"
+            style={{ width: 40, height: 40, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
+            {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
+          </button>
           <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'linear-gradient(135deg,#4338ca,#4f46e5)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <MdAdd size={18} /> Add Customer
           </button>
           <button type="button" onClick={handleExportCsv}
@@ -654,25 +1072,44 @@ const CustomerDetailsListPage: React.FC = () => {
         <p style={{ fontSize: 10.5, color: t.textSecondary, margin: '0 0 12px' }}>ⓘ Select one or more customers to enable</p>
       )}
 
-      {/* ── Table ─────────────────────────────────────────────────────── */}
+      {/* ── Table / Grid ──────────────────────────────────────────────── */}
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        {view === 'grid' ? (
+          <div className="p-5">
+            {loading ? (
+              <div className="cust-empty-state">Loading customers...</div>
+            ) : pageRows.length === 0 ? (
+              <div className="cust-empty-state">No customers found.</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {pageRows.map((c) => (
+                  <CustomerCard key={c.id} c={c} t={t} isDark={isDark}
+                    onOpenMenu={(e) => {
+                      if (openMenuId === c.id) { setOpenMenuId(null); setMenuPos(null); return; }
+                      const r = e.currentTarget.getBoundingClientRect();
+                      setMenuPos({ top: r.bottom + 4, left: r.left - 96 });
+                      setOpenMenuId(c.id);
+                    }}
+                    menuOpen={openMenuId === c.id} menuPos={menuPos}
+                    onView={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/view/${c.id}`); }}
+                    onEdit={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/edit/${c.id}`); }}
+                    onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1250 }}>
             <thead>
-              <tr style={{ background: t.insetBg }}>
+              <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <th style={{ padding: '12px 14px', width: 40 }}>
-                  <input type="checkbox" checked={pageRows.length > 0 && pageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
+                  <input type="checkbox" title="Select all active customers on this page"
+                    checked={activePageRows.length > 0 && activePageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
-                {['Action', 'Employee Code', 'Employee Name', 'Customer Name', 'Contact Details', 'Project / Flat Details', 'Flat Booking Date', 'Monthly EMI Amount'].map((h) => (
-<<<<<<< HEAD
-<<<<<<< HEAD
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, textTransform: 'camelcase', letterSpacing: '0.03em', color: t.textSecondary, whiteSpace: 'nowrap' }}>
-=======
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12.5, fontWeight: 700, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
->>>>>>> V_14.0
-=======
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
->>>>>>> V_16.0
+                {['Action', 'Customer Code', 'Customer Name', 'Employee Name', 'Contact Details', 'Project & Flat Details', 'Flat Type', 'Flat Area (Sq Ft)', 'Flat Booking Date', 'Monthly EMI Amount'].map((h) => (
+                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
                 ))}
@@ -680,14 +1117,15 @@ const CustomerDetailsListPage: React.FC = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="cust-empty-state">Loading customers...</td></tr>
+                <tr><td colSpan={11} className="cust-empty-state">Loading customers...</td></tr>
               ) : pageRows.length === 0 ? (
-                <tr><td colSpan={9} className="cust-empty-state">No customers found.</td></tr>
+                <tr><td colSpan={11} className="cust-empty-state">No customers found.</td></tr>
               ) : (
                 pageRows.map((c) => (
                   <tr key={c.id} className="cust-divider-top">
                     <td style={{ padding: '12px 14px' }}>
-                      <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)} />
+                      <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)}
+                        disabled={c.status !== 'active'} title={c.status !== 'active' ? "Inactive customers can't be assigned" : undefined} />
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <div className="flex items-center gap-1.5" ref={openMenuId === c.id ? menuRef : undefined}>
@@ -718,26 +1156,33 @@ const CustomerDetailsListPage: React.FC = () => {
                         <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => navigate(`/admin/crm/customer-details/scheme/${c.id}`)}>
                           <MdLoyalty size={15} />
                         </button>
-                        
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                      {c.customer_code || '—'}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                      <div className="flex items-center gap-2">
+                        {c.customer_photo_url ? (
+                          <img src={c.customer_photo_url} alt="" className="rounded-full flex-shrink-0" style={{ width: 30, height: 30, objectFit: 'cover' }} />
+                        ) : (
+                          <div className="flex items-center justify-center rounded-full flex-shrink-0 text-white font-bold" style={{ width: 30, height: 30, fontSize: 11, background: 'var(--grad-purple)' }}>
+                            {(c.customer_name || '—').slice(0, 1).toUpperCase()}
+                          </div>
+                        )}
+                        {c.customer_name}
                       </div>
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <div className="flex items-center gap-2">
                         {c.assigned_employee_photo_url ? (
-                          <img src={c.assigned_employee_photo_url} alt="" className="rounded-full flex-shrink-0" style={{ width: 32, height: 32, objectFit: 'cover' }} />
-                        ) : (
-                          <div className="flex items-center justify-center rounded-full flex-shrink-0 text-white text-xs font-bold" style={{ width: 32, height: 32, background: 'linear-gradient(135deg,#4338ca,#4f46e5)' }}>
-                            {(c.assigned_employee_name || '—').slice(0, 1).toUpperCase()}
+                          <img src={c.assigned_employee_photo_url} alt="" className="rounded-full flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'cover' }} />
+                        ) : c.assigned_employee_name ? (
+                          <div className="flex items-center justify-center rounded-full flex-shrink-0 text-white text-xs font-bold" style={{ width: 28, height: 28, background: 'var(--grad-sky)' }}>
+                            {c.assigned_employee_name.slice(0, 1).toUpperCase()}
                           </div>
-                        )}
-                        <span style={{ fontSize: 11.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000' }}>{c.assigned_employee_code || '—'}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12, color: isDark ? '#ffffff' : '#000000' }}>{c.assigned_employee_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
-                      <div className="flex items-center gap-1.5">
-                        <MdGroups size={15} className="master-row-icon" />
-                        {c.customer_name}
+                        ) : null}
+                        <span style={{ fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{c.assigned_employee_name || '—'}</span>
                       </div>
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
@@ -746,8 +1191,10 @@ const CustomerDetailsListPage: React.FC = () => {
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
                       <div style={{ fontWeight: 700 }}>{c.building_name}</div>
-                      <div>{c.wing_name} Wing, {c.flat_no} ({c.flat_type}{c.area_sqft ? ` - ${c.area_sqft} Sqft` : ''})</div>
+                      <div>{c.wing_name} Wing, {c.flat_no}</div>
                     </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{c.flat_type || '—'}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{c.area_sqft ?? '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{formatDate(c.booking_date)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       {c.monthly_emi != null ? `₹ ${c.monthly_emi.toLocaleString('en-IN')}` : '—'}
@@ -758,6 +1205,7 @@ const CustomerDetailsListPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+        )}
 
         {/* pagination — bottom-center, First/Prev/[numbers]/Next/Last */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 cust-divider-top">
@@ -784,7 +1232,7 @@ const CustomerDetailsListPage: React.FC = () => {
             {pageBtns().map((n) => (
               <button key={n} type="button" onClick={() => setPage(n)}
                 className="px-3 py-1.5 rounded-lg text-sm font-medium"
-                style={{ background: n === safePage ? '#4338ca' : t.insetBg, color: n === safePage ? '#fff' : t.textPrimary, border: `1px solid ${n === safePage ? '#4338ca' : t.surfaceBorder}`, cursor: 'pointer' }}>
+                style={{ background: n === safePage ? '#7c3aed' : t.insetBg, color: n === safePage ? '#fff' : t.textPrimary, border: `1px solid ${n === safePage ? '#7c3aed' : t.surfaceBorder}`, cursor: 'pointer' }}>
                 {n}
               </button>
             ))}
@@ -830,6 +1278,47 @@ const CustomerDetailsListPage: React.FC = () => {
                 <p style={{ color: t.textSecondary, fontSize: 12 }}>Loading...</p>
               ) : (
                 <>
+                  {/* ── 🤖 AI Customer Intelligence — engagement/risk
+                      computed server-side from this customer's own payment
+                      history (see intelligenceService.ts /
+                      customerIntelligence.service.ts). Silently omitted if
+                      the fetch failed (allSettled in openPaymentHistory) —
+                      never shown with fabricated data. ─────────────────── */}
+                  {infoModal.ai && (
+                    <div className="rounded-xl p-3.5 mb-4" style={{ background: isDark ? 'rgba(124,58,237,0.08)' : '#f5f3ff', border: `1px solid ${isDark ? 'rgba(124,58,237,0.3)' : '#ddd6fe'}` }}>
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <span style={{ fontSize: 13 }}>🤖</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>AI Customer Intelligence</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mb-2.5">
+                        <div>
+                          <div style={{ fontSize: 9.5, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }}>Engagement</div>
+                          <div style={{
+                            fontSize: 12, fontWeight: 800,
+                            color: infoModal.ai.engagement === 'HIGH' ? '#16a34a' : infoModal.ai.engagement === 'MEDIUM' ? '#d97706' : '#64748b',
+                          }}>
+                            {infoModal.ai.engagement}
+                          </div>
+                          <div style={{ fontSize: 10, color: t.textSecondary }}>{infoModal.ai.engagement_reason}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 9.5, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }}>Risk</div>
+                          <div style={{
+                            fontSize: 12, fontWeight: 800,
+                            color: infoModal.ai.risk === 'HIGH' ? '#dc2626' : infoModal.ai.risk === 'MEDIUM' ? '#d97706' : '#16a34a',
+                          }}>
+                            {infoModal.ai.risk === 'HIGH' ? '⚠️ HIGH' : infoModal.ai.risk}
+                          </div>
+                          <div style={{ fontSize: 10, color: t.textSecondary }}>{infoModal.ai.risk_reason}</div>
+                        </div>
+                      </div>
+                      <div className="rounded-lg px-2.5 py-2" style={{ background: isDark ? 'rgba(124,58,237,0.12)' : '#fff', border: `1px solid ${isDark ? 'rgba(124,58,237,0.25)' : '#e9d5ff'}` }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: '#7c3aed', marginBottom: 1 }}>{infoModal.ai.recommended_action}</div>
+                        <div style={{ fontSize: 10, color: t.textSecondary }}>{infoModal.ai.recommended_action_reason}</div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* ── Customer Due panel — total_due/remaining_amount +
                       per-type remaining breakdown, additive above the
                       existing payment list. ──────────────────────────── */}
@@ -870,7 +1359,17 @@ const CustomerDetailsListPage: React.FC = () => {
                       {infoModal.payments!.map((p) => (
                         <div key={p.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: t.insetBg }}>
                           <div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: t.textPrimary }}>₹ {p.amount.toLocaleString('en-IN')}</div>
+                            <div className="flex items-center gap-1.5">
+                              <span style={{ fontSize: 12, fontWeight: 600, color: t.textPrimary }}>₹ {p.amount.toLocaleString('en-IN')}</span>
+                              <span
+                                style={{
+                                  fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 999,
+                                  color: p.is_approved ? '#16a34a' : '#d97706',
+                                  background: p.is_approved ? (isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7') : (isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7'),
+                                }}>
+                                {p.is_approved ? 'Approved' : 'Pending'}
+                              </span>
+                            </div>
                             <div style={{ fontSize: 10.5, color: t.textSecondary }}>{formatDate(p.paid_on)}{p.mode ? ` · ${p.mode}` : ''}</div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -880,6 +1379,13 @@ const CustomerDetailsListPage: React.FC = () => {
                               style={{ background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff', border: 'none', color: '#2563eb', cursor: 'pointer' }}>
                               <MdDescription size={13} /> Receipt
                             </button>
+                            {isAdmin && (
+                              <button type="button" title="Delete Payment" onClick={() => handleDeletePayment(p, infoModal.customer)}
+                                className="flex items-center justify-center rounded-lg"
+                                style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
+                                <MdDelete size={13} />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -917,7 +1423,12 @@ const CustomerDetailsListPage: React.FC = () => {
               </button>
             </div>
             <div className="p-5">
-              {receiptModal.loading || !receiptModal.data ? (
+              {receiptModal.pendingApproval ? (
+                <div className="rounded-xl p-4 text-center" style={{ background: isDark ? 'rgba(217,119,6,0.1)' : '#fffbeb', border: `1px solid ${isDark ? 'rgba(217,119,6,0.25)' : '#fde68a'}` }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#d97706', marginBottom: 3 }}>Pending Approval</div>
+                  <div style={{ fontSize: 11, color: t.textSecondary }}>This receipt will be available to view, print, or download once an admin approves the payment.</div>
+                </div>
+              ) : receiptModal.loading || !receiptModal.data ? (
                 <p style={{ color: t.textSecondary, fontSize: 12 }}>{receiptModal.loading ? 'Loading receipt...' : 'Receipt not found.'}</p>
               ) : (
                 <>
@@ -982,6 +1493,11 @@ const CustomerDetailsListPage: React.FC = () => {
               <button type="button" onClick={() => setReceiptModal(null)}
                 className="px-5 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
                 Close
+              </button>
+              <button type="button" onClick={handleDownloadReceiptPdf} disabled={!receiptModal.data}
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: receiptModal.data ? 'pointer' : 'not-allowed' }}>
+                <MdDownload size={16} /> Download PDF
               </button>
               <button type="button" onClick={() => window.print()} disabled={!receiptModal.data}
                 className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold text-white cust-btn-primary">

@@ -1,19 +1,9 @@
 // src/pages/Admin/Masters/Building/BuildingListPage.tsx
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-<<<<<<< HEAD
-  MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh,
-  MdSearch, MdVisibility, MdApartment, MdMoreVert,
-  MdBusiness, MdLayers, MdHome, MdCheckCircle, MdCancel, MdStorefront,
-} from 'react-icons/md';
-import { useAppDispatch, useAppSelector } from '../../../../hooks';
-import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme, AppTheme } from '../../../../styles/theme';
-import { fetchBuildingList, deleteBuilding } from '../../../../services/buildingService';
-=======
   MdAdd, MdDownload, MdRefresh,
   MdSearch, MdApartment,
   MdBusiness, MdLayers, MdHome, MdStorefront,
@@ -22,7 +12,6 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
 import { FetchBuildingList, DeleteBuilding } from '../../../../services/buildingService';
->>>>>>> V_14.0
 import { Building, BuildingListSummary } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
 import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
@@ -34,131 +23,9 @@ import MultiStatCard from '../../../../components/masters/MultiStatCard';
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 // Fixed width for the Actions column — sized for exactly 3 icon buttons
-<<<<<<< HEAD
-// (32px each) + gaps + cell padding, so it never grows/shrinks with the
-// number of other columns in the table. On mobile the 3 buttons collapse
-// into a single 3-dot menu button, so the column shrinks to match.
-const ACTION_COL_WIDTH = 148;
-const ACTION_COL_WIDTH_MOBILE = 64;
-const MOBILE_BREAKPOINT = 640; // Tailwind `sm`
-
-// ── responsive helper — same matchMedia pattern used by the Sidebar ────────
-const useIsMobileTable = (breakpoint: number = MOBILE_BREAKPOINT): boolean => {
-  const [isMobile, setIsMobile] = useState<boolean>(
-    () => typeof window !== 'undefined' && window.innerWidth < breakpoint
-  );
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    setIsMobile(mql.matches);
-    if (mql.addEventListener) mql.addEventListener('change', handler);
-    else mql.addListener(handler); // Safari <14 fallback
-    return () => {
-      if (mql.removeEventListener) mql.removeEventListener('change', handler);
-      else mql.removeListener(handler);
-    };
-  }, [breakpoint]);
-  return isMobile;
-};
-
-// ── mobile Action cell — single 3-dot button that opens a View/Edit/Delete
-// menu. Positioned with `position: fixed` (computed from the button's own
-// bounding rect) rather than `absolute`, so it always escapes the table's
-// scroll container instead of being clipped by it.
-const RowActionMenu: React.FC<{
-  isDark: boolean;
-  t: AppTheme;
-  onView: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}> = ({ isDark, t, onView, onEdit, onDelete }) => {
-  const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  const openMenu = () => {
-    const rect = btnRef.current?.getBoundingClientRect();
-    if (rect) {
-      const menuWidth = 140;
-      setCoords({
-        top: rect.bottom + 4,
-        left: Math.min(Math.max(8, rect.right - menuWidth), window.innerWidth - menuWidth - 8),
-      });
-    }
-    setOpen(true);
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const handleOutside = (e: MouseEvent) => {
-      if (
-        menuRef.current && !menuRef.current.contains(e.target as Node) &&
-        btnRef.current && !btnRef.current.contains(e.target as Node)
-      ) setOpen(false);
-    };
-    const closeOnScroll = () => setOpen(false);
-    document.addEventListener('mousedown', handleOutside);
-    window.addEventListener('scroll', closeOnScroll, true);
-    window.addEventListener('resize', closeOnScroll);
-    return () => {
-      document.removeEventListener('mousedown', handleOutside);
-      window.removeEventListener('scroll', closeOnScroll, true);
-      window.removeEventListener('resize', closeOnScroll);
-    };
-  }, [open]);
-
-  const menuItemStyle: React.CSSProperties = {
-    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-    padding: '9px 12px', fontSize: 13.5, background: 'transparent', border: 'none',
-    cursor: 'pointer', textAlign: 'left', color: t.textPrimary, fontFamily: t.fontFamily,
-  };
-
-  return (
-    <>
-      <button
-        ref={btnRef}
-        type="button"
-        title="Actions"
-        onClick={() => (open ? setOpen(false) : openMenu())}
-        style={{
-          width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          borderRadius: 8, background: 'none',
-          border: `1.5px solid ${isDark ? '#ffffff' : '#000000'}`,
-          color: isDark ? '#ffffff' : '#000000', cursor: 'pointer', flexShrink: 0,
-        }}
-      >
-        <MdMoreVert size={18} />
-      </button>
-      {open && coords && (
-        <div
-          ref={menuRef}
-          style={{
-            position: 'fixed', top: coords.top, left: coords.left, zIndex: 1000, minWidth: 140,
-            background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`,
-            borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', overflow: 'hidden',
-          }}
-        >
-          <button type="button" onClick={() => { setOpen(false); onView(); }} style={menuItemStyle}>
-            <MdVisibility size={16} /> View
-          </button>
-          <button type="button" onClick={() => { setOpen(false); onEdit(); }} style={menuItemStyle}>
-            <MdEdit size={16} /> Edit
-          </button>
-          <button type="button" onClick={() => { setOpen(false); onDelete(); }} style={{ ...menuItemStyle, color: '#dc2626' }}>
-            <MdDelete size={16} /> Delete
-          </button>
-        </div>
-      )}
-    </>
-  );
-};
-=======
 // + gaps + cell padding, so it never grows/shrinks with the number of
 // other columns in the table.
 const ACTION_COL_WIDTH = 96;
->>>>>>> V_14.0
 
 // ── derived helpers ──────────────────────────────────────────────────────────
 const totalFlatsOf = (b: Building): number =>
@@ -178,8 +45,6 @@ const BuildingListPage: React.FC = () => {
   const { mode } = useAppSelector((s) => s.theme);
   const isDark   = mode === 'dark';
   const t        = getTheme(isDark);
-  const isMobile = useIsMobileTable();
-  const actionColWidth = isMobile ? ACTION_COL_WIDTH_MOBILE : ACTION_COL_WIDTH;
 
   const [allBuildings, setAllBuildings] = useState<Building[]>([]);
   const [filtered, setFiltered]         = useState<Building[]>([]);
@@ -309,40 +174,6 @@ const BuildingListPage: React.FC = () => {
   return (
     <div className="master-page">
 
-<<<<<<< HEAD
-      {/* ── Summary cards — counts only, no percentages ─────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-4">
-        {[
-          { label: 'Total Projects',  value: summary?.total_projects  ?? 0, icon: MdBusiness,    color: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)'  : '#eff6ff' },
-          { label: 'Total Buildings', value: summary?.total_buildings ?? allBuildings.length, icon: MdApartment,  color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
-          { label: 'Total Wings',     value: summary?.total_wings     ?? 0, icon: MdLayers,      color: '#0891b2', bg: isDark ? 'rgba(8,145,178,0.12)'  : '#ecfeff' },
-          { label: 'Total Flats',     value: summary?.total_flats     ?? 0, icon: MdHome,        color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)'  : '#fff7ed' },
-          { label: 'Enabled Flats',   value: summary?.enabled_flats   ?? 0, icon: MdCheckCircle, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)'  : '#f0fdf4' },
-          { label: 'Disabled Flats',  value: summary?.disabled_flats  ?? 0, icon: MdCancel,      color: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)'  : '#fef2f2' },
-          { label: 'Total Shops',     value: summary?.total_shops     ?? 0, icon: MdStorefront,  color: '#db2777', bg: isDark ? 'rgba(219,39,119,0.12)' : '#fdf2f8' },
-        ].map((card) => (
-          <div
-            key={card.label}
-            className="flex items-center gap-2.5 px-3 py-3 rounded-xl"
-            style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
-          >
-            <div
-              className="flex items-center justify-center rounded-lg flex-shrink-0"
-              style={{ width: 36, height: 36, background: card.bg }}
-            >
-              <card.icon size={19} style={{ color: card.color }} />
-            </div>
-            <div className="min-w-0">
-              <div style={{ fontSize: 19, fontWeight: 800, color: t.textPrimary, lineHeight: 1.1 }}>
-                {loading ? '—' : card.value}
-              </div>
-              <div style={{ fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                {card.label}
-              </div>
-            </div>
-          </div>
-        ))}
-=======
       {/* ── Summary cards — Total Projects/Buildings/Wings as single-value
           boxes, Flats and Shops as grouped Total/Enabled/Disabled boxes
           (item 4) instead of splitting Enabled/Disabled across separate
@@ -366,7 +197,6 @@ const BuildingListPage: React.FC = () => {
           total={summary?.total_shops ?? 0} enabled={summary?.enabled_shops ?? 0} disabled={summary?.disabled_shops ?? 0}
           loading={loading} labelFontSize={14}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
->>>>>>> V_14.0
       </div>
 
       {/* ── Top bar: Search | Add + Download + Refresh ─────────────────── */}
@@ -408,63 +238,14 @@ const BuildingListPage: React.FC = () => {
                 second row; every other column spans both rows via rowSpan
                 so its bottom border still lines up with the sub-header row. */}
             <thead>
-<<<<<<< HEAD
-              <tr style={{ background: t.tableHeaderBg }}>
-<<<<<<< HEAD
-<<<<<<< HEAD
-                {/* STICKY Actions header — now the first column */}
-                <th style={{
-                  padding: '12px 16px', textAlign: 'center',
-                  width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth,
-                  fontSize: 14, fontWeight: 700, textTransform: 'camelcase',
-                  letterSpacing: '0.05em', color: t.textPrimary,
-                  borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
-                  position: 'sticky', left: 0, zIndex: 2,
-                  background: t.tableHeaderBg,
-                  borderRight: `2px solid ${t.divider}`,
-                  boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
-=======
-                <th className="master-table-actions-th" style={{
-=======
-                <th className="master-table-actions-th" rowSpan={2} style={{
->>>>>>> V_14.0
-=======
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <th className="master-table-actions-th master-table-header-gradient" rowSpan={2} style={{
->>>>>>> V_17.0
                   width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
                   borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
                   borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
->>>>>>> V_14.0
                 }}>
-                  {isMobile ? '#' : 'Actions'}
+                  Actions
                 </th>
-<<<<<<< HEAD
-<<<<<<< HEAD
-                {['ID', 'Project Name', 'Building Name', 'Location', 'Wings', 'Floors', 'Flats', 'Status', 'Created At'].map((h) => (
-                  <th key={h} style={{
-                    padding: '12px 16px', textAlign: 'left',
-                    fontSize: 14, fontWeight: 700, textTransform: 'camelcase',
-                    letterSpacing: '0.05em', color: t.textPrimary,
-                    borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
-                  }}>
-                    {h}
-                  </th>
-                ))}
-=======
-                <SortableTh label="ID" active={sortKey === 'id'} dir={sortDir} onClick={() => toggleSort('id')} style={{ borderBottom: `1px solid ${t.divider}` }} />
-                <SortableTh label="Project Name" active={sortKey === 'project_name'} dir={sortDir} onClick={() => toggleSort('project_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
-                <SortableTh label="Building Name" active={sortKey === 'building_name'} dir={sortDir} onClick={() => toggleSort('building_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
-                <SortableTh label="Location" active={sortKey === 'location'} dir={sortDir} onClick={() => toggleSort('location')} style={{ borderBottom: `1px solid ${t.divider}` }} />
-                <SortableTh label="Wings" active={sortKey === 'wings'} dir={sortDir} onClick={() => toggleSort('wings')} style={{ borderBottom: `1px solid ${t.divider}` }} />
-                <SortableTh label="Floors" active={sortKey === 'floors'} dir={sortDir} onClick={() => toggleSort('floors')} style={{ borderBottom: `1px solid ${t.divider}` }} />
-                <SortableTh label="Flats" active={sortKey === 'flats'} dir={sortDir} onClick={() => toggleSort('flats')} style={{ borderBottom: `1px solid ${t.divider}` }} />
-                <SortableTh label="Shops" active={sortKey === 'shops'} dir={sortDir} onClick={() => toggleSort('shops')} style={{ borderBottom: `1px solid ${t.divider}` }} />
-                <SortableTh label="Parking" active={sortKey === 'parking'} dir={sortDir} onClick={() => toggleSort('parking')} style={{ borderBottom: `1px solid ${t.divider}` }} />
-                <th style={{ borderBottom: `1px solid ${t.divider}` }}>Status</th>
-                <SortableTh label="Created At" active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} style={{ borderBottom: `1px solid ${t.divider}` }} />
->>>>>>> V_14.0
-=======
                 <SortableTh label="ID" rowSpan={2} active={sortKey === 'id'} dir={sortDir} onClick={() => toggleSort('id')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Project Name" rowSpan={2} active={sortKey === 'project_name'} dir={sortDir} onClick={() => toggleSort('project_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Building Name" rowSpan={2} active={sortKey === 'building_name'} dir={sortDir} onClick={() => toggleSort('building_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
@@ -482,7 +263,6 @@ const BuildingListPage: React.FC = () => {
                 <SortableTh label="Total" active={sortKey === 'shops'} dir={sortDir} onClick={() => toggleSort('shops')} style={{ borderBottom: `1px solid ${t.divider}`, textAlign: 'center' }} />
                 <th style={{ borderBottom: `1px solid ${t.divider}`, textAlign: 'center' }}>Enabled</th>
                 <th style={{ borderBottom: `1px solid ${t.divider}`, textAlign: 'center' }}>Disabled</th>
->>>>>>> V_14.0
               </tr>
             </thead>
 
@@ -515,52 +295,6 @@ const BuildingListPage: React.FC = () => {
                       onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}
                     >
-<<<<<<< HEAD
-                      {/* STICKY Actions cell — now the first column */}
-                      <td style={{
-                        padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap',
-                        width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth,
-                        position: 'sticky', left: 0, zIndex: 1,
-                        background: stickyBg,
-                        borderRight: `2px solid ${t.divider}`,
-                        boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
-                      }}>
-                        {isMobile ? (
-                          <div className="flex items-center justify-center">
-                            <RowActionMenu
-                              isDark={isDark}
-                              t={t}
-                              onView={() => navigate(`/admin/masters/building/view/${b.id}`)}
-                              onEdit={() => navigate(`/admin/masters/building/edit/${b.id}`)}
-                              onDelete={() => handleDelete(b)}
-                            />
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => navigate(`/admin/masters/building/view/${b.id}`)}
-                              title="View"
-                              style={iconBtn}
-                            >
-                              <MdVisibility size={17} color={ACTION_ICON_COLOR} />
-                            </button>
-                            <button
-                              onClick={() => navigate(`/admin/masters/building/edit/${b.id}`)}
-                              title="Edit"
-                              style={iconBtn}
-                            >
-                              <MdEdit size={17} color={ACTION_ICON_COLOR} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(b)}
-                              title="Delete"
-                              style={iconBtn}
-                            >
-                              <MdDelete size={17} color={ACTION_ICON_COLOR} />
-                            </button>
-                          </div>
-                        )}
-=======
                       <td className="master-table-actions-td" style={{
                         width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
                         zIndex: 1, background: isDark ? t.surfaceBg : '#ffffff',
@@ -571,7 +305,6 @@ const BuildingListPage: React.FC = () => {
                           onEdit={() => navigate(`/admin/masters/building/edit/${b.id}`)}
                           onDelete={() => handleDelete(b)}
                         />
->>>>>>> V_14.0
                       </td>
                       <td>{b.id}</td>
                       <td>
