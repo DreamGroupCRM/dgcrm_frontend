@@ -72,9 +72,22 @@ export const getFormLabelStyle = (t: AppTheme, overrides?: Partial<React.CSSProp
   ...overrides,
 });
 
-export const FormField: React.FC<{ label: string; t: AppTheme; labelStyle?: React.CSSProperties; children: React.ReactNode }> = ({ label, t, labelStyle, children }) => (
+// `required`/`error` are optional so existing simple 3-prop callers (label/
+// t/children) are unaffected — added when converting CompanyCrudPage.tsx,
+// whose local `Field` already supported both, to this shared component.
+export const FormField: React.FC<{
+  label: string; t: AppTheme; labelStyle?: React.CSSProperties;
+  required?: boolean; error?: string; children: React.ReactNode;
+}> = ({ label, t, labelStyle, required, error, children }) => (
   <div>
-    <label style={labelStyle ?? getFormLabelStyle(t)}>{label}</label>
+    <label style={labelStyle ?? getFormLabelStyle(t)}>
+      {label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
+    </label>
     {children}
+    {error && (
+      <p style={{ color: '#ef4444', fontSize: 12.5, marginTop: 4, fontFamily: t.fontFamily }}>
+        {error}
+      </p>
+    )}
   </div>
 );

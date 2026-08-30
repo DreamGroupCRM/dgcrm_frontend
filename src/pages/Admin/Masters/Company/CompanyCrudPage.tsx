@@ -9,10 +9,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MdArrowBack, MdBusiness, MdClose } from 'react-icons/md';
-import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
 import { AppTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
+import { FormField, getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
 import { showAlert } from '../../../../utils';
 import { companyService, CompanyPayload } from '../../../../services/companyService';
 import { Company } from '../../../../types';
@@ -21,6 +22,9 @@ import { ROUTES, VALIDATION } from '../../../../constants';
 // ── Module-level Field — NEVER define this inside the component ────────────────
 // Defining it inside causes React to create a new component type every render
 // → input unmounts/remounts on every keystroke → cursor disappears.
+// Thin wrapper around the shared FormField (MasterListUI.tsx) — this page's
+// own label style (fontWeight 700, fontSize 12.5, marginBottom 6) is
+// preserved via the override, every call site below is unchanged.
 interface FieldProps {
   label: string;
   required?: boolean;
@@ -30,20 +34,12 @@ interface FieldProps {
 }
 
 const Field: React.FC<FieldProps> = ({ label, required, error, t, children }) => (
-  <div>
-    <label style={{
-      display: 'block', fontWeight: 700, fontSize: 12.5,
-      marginBottom: 6, color: t.textPrimary, fontFamily: t.fontFamily,
-    }}>
-      {label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
-    </label>
+  <FormField
+    label={label} t={t} required={required} error={error}
+    labelStyle={getFormLabelStyle(t, { fontWeight: 700, fontSize: 12.5, marginBottom: 6, color: t.textPrimary })}
+  >
     {children}
-    {error && (
-      <p style={{ color: '#ef4444', fontSize: 12.5, marginTop: 4, fontFamily: t.fontFamily }}>
-        {error}
-      </p>
-    )}
-  </div>
+  </FormField>
 );
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -110,9 +106,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { mode: uiMode } = useAppSelector((s) => s.theme);
-  const isDark = uiMode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   const isView = mode === 'view';
   const isEdit = mode === 'edit';
@@ -248,16 +242,13 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
     }
   };
 
-  const fieldStyle = (hasError?: boolean): React.CSSProperties => ({
-    width: '100%',
+  const fieldStyle = (hasError?: boolean): React.CSSProperties => getFormInputStyle(t, {
     background: isView ? t.insetBg : t.inputBg,
     border: `1px solid ${hasError ? '#ef4444' : t.inputBorder}`,
     borderRadius: 10,
     padding: '10px 14px',
     fontSize: 12.5,
-    color: t.inputText,
     outline: 'none',
-    boxSizing: 'border-box',
     fontFamily: t.fontFamily,
     cursor: isView ? 'not-allowed' : 'text',
     opacity: isView ? 0.85 : 1,
