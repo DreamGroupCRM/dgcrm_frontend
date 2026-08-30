@@ -28,7 +28,7 @@ const errMessage = (e: unknown, fallback: string) => (e as ErrLike)?.response?.d
 
 const BackupDatabasePage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { isDark, t } = useAppearanceTokens();
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [snapshots, setSnapshots] = useState<BackupSnapshot[]>([]);
   const [loading, setLoading] = useState(false);
@@ -102,7 +102,7 @@ const BackupDatabasePage: React.FC = () => {
   const safetyCount = snapshots.filter((s) => s.is_safety_snapshot).length;
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Snapshots" value={snapshots.length} icon={MdStorage} color="#0284c7" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />

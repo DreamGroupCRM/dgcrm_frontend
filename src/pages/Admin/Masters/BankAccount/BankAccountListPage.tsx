@@ -28,7 +28,7 @@ type SortKey = 'id' | 'company_name' | 'name' | 'account_holder_name' | 'account
 const BankAccountListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { isDark, t } = useAppearanceTokens();
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [allBanks, setAllBanks]       = useState<BankAccount[]>([]);
   const [filtered, setFiltered]       = useState<BankAccount[]>([]);
@@ -142,7 +142,7 @@ const BankAccountListPage: React.FC = () => {
   };
 
   return (
-    <div className="master-page">
+    <div className="master-page" style={cssVars}>
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <div className="master-topbar">

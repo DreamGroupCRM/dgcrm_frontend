@@ -31,7 +31,7 @@ type SortKey = 'id' | 'name' | 'email' | 'phone' | 'city' | 'created_at';
 const CompanyListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { isDark, t } = useAppearanceTokens();
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [filtered, setFiltered]   = useState<Company[]>([]);
@@ -138,7 +138,7 @@ const CompanyListPage: React.FC = () => {
   const stickyBg = isDark ? t.surfaceBg : '#ffffff';
 
   return (
-    <div className="master-page">
+    <div className="master-page" style={cssVars}>
 
       <div className="master-topbar">
         <div className="master-search-box master-search-box-accent" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>

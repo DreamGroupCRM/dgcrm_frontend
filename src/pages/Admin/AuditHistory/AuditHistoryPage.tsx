@@ -81,7 +81,7 @@ const ValueDiff: React.FC<{ t: AppTheme; isDark: boolean; oldValues: Record<stri
 
 const AuditHistoryPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { isDark, t } = useAppearanceTokens();
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [rows, setRows] = useState<AuditLogEntry[]>([]);
   const [total, setTotal] = useState(0);
@@ -154,7 +154,7 @@ const AuditHistoryPage: React.FC = () => {
   const [detailEntry, setDetailEntry] = useState<AuditLogEntry | null>(null);
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Events" value={counts.total} icon={MdHistory} color="#7c3aed" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />

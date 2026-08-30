@@ -39,7 +39,7 @@ const departmentCounts = (d: Department) => {
 const DepartmentListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { isDark, t, accent } = useAppearanceTokens();
+  const { isDark, t, accent, cssVars } = useAppearanceTokens();
 
   const [allDepartments, setAllDepartments] = useState<Department[]>([]);
   const [filtered, setFiltered] = useState<Department[]>([]);
@@ -161,7 +161,7 @@ const DepartmentListPage: React.FC = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="master-page">
+    <div className="master-page" style={cssVars}>
 
       {/* ── Top bar: Search (left) | Add + Export + Refresh (right) ────────
           Same layout as every other master (item 3) — previously Add

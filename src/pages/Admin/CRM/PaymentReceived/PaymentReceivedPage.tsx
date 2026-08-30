@@ -38,7 +38,7 @@ const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const role = useAppSelector((s) => s.auth.role);
   const isAdmin = isAdminRole(role);
-  const { isDark, t } = useAppearanceTokens();
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [rows, setRows] = useState<PaymentListRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -147,7 +147,7 @@ const PaymentReceivedPage: React.FC = () => {
   }, [safePage, totalPages]);
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
       <div className="flex items-center gap-3 mb-6">
         <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
           <MdPayments size={22} style={{ color: '#4f46e5' }} />

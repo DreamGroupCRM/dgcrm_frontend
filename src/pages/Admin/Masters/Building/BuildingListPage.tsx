@@ -42,7 +42,7 @@ type SortKey = 'id' | 'project_name' | 'building_name' | 'wings' | 'floors' | 'f
 const BuildingListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { isDark, t } = useAppearanceTokens();
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [allBuildings, setAllBuildings] = useState<Building[]>([]);
   const [filtered, setFiltered]         = useState<Building[]>([]);
@@ -170,7 +170,7 @@ const BuildingListPage: React.FC = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="master-page">
+    <div className="master-page" style={cssVars}>
 
       {/* ── Summary cards — Total Projects/Buildings/Wings as single-value
           boxes, Flats and Shops as grouped Total/Enabled/Disabled boxes
