@@ -209,7 +209,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
         Density
       </div>
       <div style={{ padding: '2px 16px 8px', fontSize: 9.5, color: t.textSecondary, fontStyle: 'italic' }}>
-        Applied to the Leads list only for now — other pages unaffected
+        Applied to table row spacing on most Master/CRM pages; badge/pill sizing is Leads-only for now
       </div>
       <div style={{ padding: '0 16px 4px' }}>
         <select
