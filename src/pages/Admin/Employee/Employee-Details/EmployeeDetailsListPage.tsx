@@ -13,7 +13,7 @@ import {
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FetchEmployeeDetails, DeleteEmployee, SetEmployeeActiveStatus, Employee, EmployeeStatus } from '../../../../services/employeeDetailsService';
 import { formatDate, showAlert } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
@@ -58,9 +58,8 @@ const initials = (first: string, last: string) => `${first?.[0] || ''}${last?.[0
 const EmployeeDetailsListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, accent, cssVars: appearanceCssVars } = useAppearanceTokens();
+  const accentFocus = (appearanceCssVars as Record<string, string>)['--master-accent-focus'];
 
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [filtered, setFiltered] = useState<Employee[]>([]);
@@ -309,7 +308,7 @@ const EmployeeDetailsListPage: React.FC = () => {
               ) : (
                 <div
                   className="flex items-center justify-center rounded-full text-white font-bold"
-                  style={{ width: 48, height: 48, background: 'linear-gradient(135deg,#4338ca,#4f46e5)', fontSize: 13 }}
+                  style={{ width: 48, height: 48, background: `linear-gradient(135deg,${accent},${accentFocus})`, fontSize: 13 }}
                 >
                   {initials(emp.first_name, emp.last_name)}
                 </div>
@@ -554,7 +553,7 @@ const EmployeeDetailsListPage: React.FC = () => {
             {pageBtns().map((n) => (
               <button key={n} type="button" onClick={() => setPage(n)}
                 className="px-3 py-1.5 rounded-lg text-sm font-medium"
-                style={{ background: n === safePage ? '#4338ca' : t.insetBg, color: n === safePage ? '#fff' : t.textPrimary, border: `1px solid ${n === safePage ? '#4338ca' : t.surfaceBorder}`, cursor: 'pointer' }}>
+                style={{ background: n === safePage ? accent : t.insetBg, color: n === safePage ? '#fff' : t.textPrimary, border: `1px solid ${n === safePage ? accent : t.surfaceBorder}`, cursor: 'pointer' }}>
                 {n}
               </button>
             ))}

@@ -10,7 +10,7 @@ import {
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { companyService } from '../../../../services/companyService';
 import { Company } from '../../../../types';
 import { formatDate, showAlert } from '../../../../utils';
@@ -31,9 +31,7 @@ type SortKey = 'id' | 'name' | 'email' | 'phone' | 'city' | 'created_at';
 const CompanyListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark   = mode === 'dark';
-  const t        = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [filtered, setFiltered]   = useState<Company[]>([]);

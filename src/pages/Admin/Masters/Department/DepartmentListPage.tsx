@@ -11,7 +11,7 @@ import {
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FetchDepartmentList, DeleteDepartment, GetDepartmentAssignedEmployees } from '../../../../services/departmentService';
 import { Department } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
@@ -39,9 +39,7 @@ const departmentCounts = (d: Department) => {
 const DepartmentListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, accent } = useAppearanceTokens();
 
   const [allDepartments, setAllDepartments] = useState<Department[]>([]);
   const [filtered, setFiltered] = useState<Department[]>([]);
@@ -289,9 +287,9 @@ const DepartmentListPage: React.FC = () => {
                 onClick={() => setPage(n)}
                 className="px-3 py-1.5 rounded-lg text-sm font-medium"
                 style={{
-                  background: n === safePage ? '#4338ca' : t.insetBg,
+                  background: n === safePage ? accent : t.insetBg,
                   color: n === safePage ? '#fff' : t.textPrimary,
-                  border: `1px solid ${n === safePage ? '#4338ca' : t.surfaceBorder}`, cursor: 'pointer',
+                  border: `1px solid ${n === safePage ? accent : t.surfaceBorder}`, cursor: 'pointer',
                 }}
               >
                 {n}

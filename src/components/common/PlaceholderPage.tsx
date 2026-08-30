@@ -3,9 +3,9 @@
 // ==========================================
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../../hooks';
+import { useAppDispatch } from '../../hooks';
 import { setPageTitle } from '../../redux/slices/uiSlice';
-import { getTheme } from '../../styles/theme';
+import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import { MdConstruction } from 'react-icons/md';
 
 interface PlaceholderPageProps {
@@ -15,9 +15,7 @@ interface PlaceholderPageProps {
 
 const PlaceholderPage: React.FC<PlaceholderPageProps> = ({ title, description }) => {
   const dispatch  = useAppDispatch();
-  const { mode }  = useAppSelector((s) => s.theme);
-  const isDark    = mode === 'dark';
-  const t         = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
   const location  = useLocation();
 
   useEffect(() => { dispatch(setPageTitle(title)); }, [dispatch, title]);

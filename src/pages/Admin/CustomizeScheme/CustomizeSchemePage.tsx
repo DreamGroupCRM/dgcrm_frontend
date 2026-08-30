@@ -33,12 +33,12 @@ import {
   MdPrint, MdAccountBalance, MdExpandMore, MdExpandLess, MdSavings, MdPictureAsPdf,
 } from 'react-icons/md';
 
-import { useAppSelector } from '../../../hooks';
-import { getTheme } from '../../../styles/theme';
+import { AppTheme } from '../../../styles/theme';
+import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { exportSchemePdf } from './schemePdfExport';
 
-type Theme = ReturnType<typeof getTheme>;
+type Theme = AppTheme;
 
 // ── formatting helpers ─────────────────────────────────────────────────────
 const formatINR = (n: number): string => `₹ ${Math.max(0, Math.round(n || 0)).toLocaleString('en-IN')}`;
@@ -156,14 +156,14 @@ const FieldWrap: React.FC<{ t: Theme; label: string; span?: number; className?: 
 // nothing once the count is a small, precisely-typed number, and it was
 // easy to fat-finger the interval fields while dragging.
 const SliderField: React.FC<{
-  t: Theme; label: string; value: number; onChange: (v: number) => void;
+  t: Theme; accent: string; label: string; value: number; onChange: (v: number) => void;
   min?: number; max: number; step?: number; prefix?: string; suffix?: string;
   extra?: React.ReactNode; span?: number; noSlider?: boolean;
   // Optional hard HTML character-count cap on the typed text box — opt-in
   // per field (undefined everywhere except Total EMI Tenure, which needs a
   // 2-digit/max-99 restriction) so no other field's typing behavior changes.
   maxLength?: number;
-}> = ({ t, label, value, onChange, min = 0, max, step = 1, prefix, suffix, extra, span, noSlider, maxLength }) => {
+}> = ({ t, accent, label, value, onChange, min = 0, max, step = 1, prefix, suffix, extra, span, noSlider, maxLength }) => {
   const [dragging, setDragging] = useState(false);
   const sliderMax = Math.max(max, min + step);
   const clamped = Math.min(Math.max(value, min), sliderMax);
@@ -185,7 +185,7 @@ const SliderField: React.FC<{
             onChange={(e) => onChange(parseAmountInput(e.target.value))}
             style={{ border: 'none', outline: 'none', background: 'transparent', padding: '6px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 11, fontFamily: t.fontFamily }}
           />
-          {compact && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 9, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
+          {compact && <span style={{ color: accent, fontWeight: 700, fontSize: 9, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
           {suffix && <span style={{ color: t.textSecondary, flexShrink: 0, whiteSpace: 'nowrap' }}>{suffix}</span>}
         </div>
         {extra}
@@ -200,7 +200,7 @@ const SliderField: React.FC<{
           <div
             style={{
               position: 'absolute', top: -16, left: `${percent}%`, transform: 'translateX(-50%)',
-              background: '#4338ca', color: '#fff', fontSize: 9, fontWeight: 700, lineHeight: 1,
+              background: accent, color: '#fff', fontSize: 9, fontWeight: 700, lineHeight: 1,
               padding: '3px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none',
               visibility: dragging ? 'visible' : 'hidden',
             }}
@@ -213,7 +213,7 @@ const SliderField: React.FC<{
             onMouseDown={() => setDragging(true)} onMouseUp={() => setDragging(false)}
             onTouchStart={() => setDragging(true)} onTouchEnd={() => setDragging(false)}
             onBlur={() => setDragging(false)}
-            style={{ width: '100%', display: 'block', accentColor: '#4338ca', cursor: 'pointer' }}
+            style={{ width: '100%', display: 'block', accentColor: accent, cursor: 'pointer' }}
           />
         </div>
       )}
@@ -233,9 +233,9 @@ const SliderField: React.FC<{
 // here. The amount box widens to fill the row on its own once the date
 // input next to it is gone.
 const NarrowAmountDateField: React.FC<{
-  t: Theme; label: string; amount: number; onAmountChange: (v: number) => void;
+  t: Theme; accent: string; label: string; amount: number; onAmountChange: (v: number) => void;
   date: string; onDateChange: (v: string) => void; hideDate?: boolean;
-}> = ({ t, label, amount, onAmountChange, date, onDateChange, hideDate }) => (
+}> = ({ t, accent, label, amount, onAmountChange, date, onDateChange, hideDate }) => (
   <FieldWrap t={t} label={label} span={hideDate ? 1 : 2}>
     <div className="flex items-center gap-2">
       {/* K/L/Cr shorthand now sits inside this box (after the input, before
@@ -250,7 +250,7 @@ const NarrowAmountDateField: React.FC<{
           onChange={(e) => onAmountChange(parseAmountInput(e.target.value))}
           style={{ border: 'none', outline: 'none', background: 'transparent', padding: '6px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 11, fontFamily: t.fontFamily }}
         />
-        {amount > 0 && <span style={{ color: '#4338ca', fontWeight: 700, fontSize: 9, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(amount)}</span>}
+        {amount > 0 && <span style={{ color: accent, fontWeight: 700, fontSize: 9, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(amount)}</span>}
       </div>
       {/* Fixed, compact width instead of flex:1 — a date value doesn't need
           (and shouldn't stretch to fill) the rest of the row. */}
@@ -411,7 +411,7 @@ const BankComparisonSidebar: React.FC<{
 interface SummaryRow { label: string; amount: number; }
 interface ScheduleRow { sr: number; date: Date | null; label: string; amount: number; }
 
-const SummaryTable: React.FC<{ t: Theme; heading: string; rows: SummaryRow[]; total: number; totalLabel: string }> = ({ t, heading, rows, total, totalLabel }) => (
+const SummaryTable: React.FC<{ t: Theme; accent: string; heading: string; rows: SummaryRow[]; total: number; totalLabel: string }> = ({ t, accent, heading, rows, total, totalLabel }) => (
   <div className="mb-3">
     <div style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary, marginBottom: 6 }}>{heading}</div>
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
@@ -433,7 +433,7 @@ const SummaryTable: React.FC<{ t: Theme; heading: string; rows: SummaryRow[]; to
           ))}
           <tr style={{ borderTop: `1px solid ${t.surfaceBorder}`, background: t.insetBg }}>
             <td colSpan={2} style={{ padding: '7px 10px', fontSize: 11, fontWeight: 700, color: t.textPrimary }}>{totalLabel}</td>
-            <td style={{ padding: '7px 10px', fontSize: 11, fontWeight: 800, color: '#4338ca', textAlign: 'right' }}>{formatINR(total)}</td>
+            <td style={{ padding: '7px 10px', fontSize: 11, fontWeight: 800, color: accent, textAlign: 'right' }}>{formatINR(total)}</td>
           </tr>
         </tbody>
       </table>
@@ -441,7 +441,7 @@ const SummaryTable: React.FC<{ t: Theme; heading: string; rows: SummaryRow[]; to
   </div>
 );
 
-const ScheduleTable: React.FC<{ t: Theme; section: 'A' | 'B'; rows: ScheduleRow[]; total: number; totalLabel: string }> = ({ t, section, rows, total, totalLabel }) => (
+const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; rows: ScheduleRow[]; total: number; totalLabel: string }> = ({ t, accent, section, rows, total, totalLabel }) => (
   <div className="mb-3">
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
@@ -468,16 +468,14 @@ const ScheduleTable: React.FC<{ t: Theme; section: 'A' | 'B'; rows: ScheduleRow[
       </table>
     </div>
     <div style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary, marginTop: 6 }}>
-      {totalLabel} : <span style={{ color: '#4338ca' }}>{formatINR(total)}</span>
+      {totalLabel} : <span style={{ color: accent }}>{formatINR(total)}</span>
     </div>
   </div>
 );
 
 // ─────────────────────────────────────────────────────────────────────────
 const CustomizeSchemePage: React.FC = () => {
-  const { mode: themeMode } = useAppSelector((s) => s.theme);
-  const isDark = themeMode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, accent } = useAppearanceTokens();
 
   const [totalCost, setTotalCost] = useState(0);
 
@@ -704,7 +702,7 @@ const CustomizeSchemePage: React.FC = () => {
                   minmax (was 200px) fits more fields per row on wide screens —
                   matches the "fewer, wider empty rows" complaint. */}
               <div className="grid gap-x-3 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))' }}>
-                <SliderField t={t} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" />
+                <SliderField t={t} accent={accent} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" />
                 {/* Booking Date / Remaining Booking Date / Installment Date
                     inputs are hidden per the Customize Scheme overhaul — the
                     schedule keeps computing off these dates internally
@@ -714,23 +712,23 @@ const CustomizeSchemePage: React.FC = () => {
                     above — per explicit request, the slider row under each
                     box was making the form feel cluttered; the text boxes
                     (still typed/pasted the same way) are what's kept. */}
-                <SliderField t={t} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} accent={accent} label="Booking Amount (₹)" value={bookingAmount} onChange={setBookingAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" noSlider />
                 <NarrowAmountDateField
-                  t={t} label="Remaining Booking Amount" amount={remainingBookingAmount} onAmountChange={setRemainingBookingAmount}
+                  t={t} accent={accent} label="Remaining Booking Amount" amount={remainingBookingAmount} onAmountChange={setRemainingBookingAmount}
                   date={remainingBookingDate} onDateChange={setRemainingBookingDate} hideDate
                 />
-                <SliderField t={t} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" noSlider />
-                <SliderField t={t} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} accent={accent} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} accent={accent} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" noSlider />
                 {/* Max 99 / 2-digit cap (Task 6) — maxLength blocks typing a 3rd
                     digit, and the onChange clamp covers paste/backspace-then-
                     retype edge cases so the stored value can never exceed 99. */}
-                <SliderField t={t} label="Total EMI Tenure Before Possession" value={totalEmiTenure}
+                <SliderField t={t} accent={accent} label="Total EMI Tenure Before Possession" value={totalEmiTenure}
                   onChange={(v) => setTotalEmiTenure(Math.min(99, v))} max={99} step={1} suffix="months" noSlider maxLength={2} />
-                <SliderField t={t} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" noSlider />
-                <SliderField t={t} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" noSlider />
-                <SliderField t={t} label="Booster Interval Before Possession" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" noSlider />
-                <SliderField t={t} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" noSlider />
-                <SliderField t={t} label="Booster Interval After Possession" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" noSlider />
+                <SliderField t={t} accent={accent} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} accent={accent} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} accent={accent} label="Booster Interval Before Possession" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" noSlider />
+                <SliderField t={t} accent={accent} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} accent={accent} label="Booster Interval After Possession" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" noSlider />
               </div>
 
               {costMismatch && (
@@ -752,15 +750,15 @@ const CustomizeSchemePage: React.FC = () => {
       <div className="rounded-2xl mb-4 overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
         <ResultPanelHeader
           icon={<MdCalculate size={15} color="#fff" />} title="EMI Scheme"
-          gradient="linear-gradient(135deg,#4338ca,#6366f1)"
+          gradient={`linear-gradient(135deg,${accent},#6366f1)`}
           subtitle={`Total Cost of Flat: ${formatINR(totalCost)}`}
         />
         <div className="p-4">
-          <SummaryTable t={t} heading="A) Mode of Payment (Before Possession)" rows={computed.summaryA} total={computed.totalA} totalLabel="Total (A) (Before Possession)" />
-          <SummaryTable t={t} heading="B) After Possession" rows={computed.summaryB} total={computed.totalB} totalLabel="Total (B) (After Possession)" />
+          <SummaryTable t={t} accent={accent} heading="A) Mode of Payment (Before Possession)" rows={computed.summaryA} total={computed.totalA} totalLabel="Total (A) (Before Possession)" />
+          <SummaryTable t={t} accent={accent} heading="B) After Possession" rows={computed.summaryB} total={computed.totalB} totalLabel="Total (B) (After Possession)" />
           <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
-            <span style={{ fontSize: 11.5, fontWeight: 800, color: '#4338ca' }}>{formatINR(computed.grandTotal)}</span>
+            <span style={{ fontSize: 11.5, fontWeight: 800, color: accent }}>{formatINR(computed.grandTotal)}</span>
           </div>
         </div>
       </div>
@@ -787,11 +785,11 @@ const CustomizeSchemePage: React.FC = () => {
         </button>
         {showSchedule && (
           <div className="p-4">
-            <ScheduleTable t={t} section="A" rows={computed.beforeRows} total={computed.totalA} totalLabel="(A) Total Before Possession" />
-            <ScheduleTable t={t} section="B" rows={computed.afterRows} total={computed.totalB} totalLabel="(B) Total After Possession" />
+            <ScheduleTable t={t} accent={accent} section="A" rows={computed.beforeRows} total={computed.totalA} totalLabel="(A) Total Before Possession" />
+            <ScheduleTable t={t} accent={accent} section="B" rows={computed.afterRows} total={computed.totalB} totalLabel="(B) Total After Possession" />
             <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
-              <span style={{ fontSize: 11.5, fontWeight: 800, color: '#4338ca' }}>{formatINR(computed.grandTotal)}</span>
+              <span style={{ fontSize: 11.5, fontWeight: 800, color: accent }}>{formatINR(computed.grandTotal)}</span>
             </div>
           </div>
         )}

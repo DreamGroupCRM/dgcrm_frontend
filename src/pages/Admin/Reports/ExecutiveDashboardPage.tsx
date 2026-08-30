@@ -23,7 +23,8 @@ import {
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
-import { getTheme } from '../../../styles/theme';
+import { AppTheme } from '../../../styles/theme';
+import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { getStatGradient } from '../../../components/masters/statGradients';
 import StatCard from '../../../components/masters/StatCard';
 import { formatDate, formatLastLogin } from '../../../utils';
@@ -39,7 +40,7 @@ import {
 } from '../../../services/intelligenceService';
 import { MdAutoAwesome, MdPersonSearch, MdTrendingFlat, MdInsights } from 'react-icons/md';
 
-type Theme = ReturnType<typeof getTheme>;
+type Theme = AppTheme;
 
 const rupee = (n: number): string => `₹ ${Math.round(n).toLocaleString('en-IN')}`;
 const rupeeCompact = (n: number): string => {
@@ -186,9 +187,7 @@ interface FilterOption { id: string; label: string }
 const ExecutiveDashboardPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   useEffect(() => { dispatch(setPageTitle('Executive Dashboard')); }, [dispatch]);
 

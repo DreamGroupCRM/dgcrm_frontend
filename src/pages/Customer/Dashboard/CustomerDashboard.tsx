@@ -19,7 +19,8 @@ import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { logoutThunk } from '../../../redux/thunks/authThunks';
 import { fetchProfileThunk } from '../../../redux/thunks/profileThunks';
 import { ROUTES } from '../../../constants';
-import { getTheme } from '../../../styles/theme';
+import { AppTheme } from '../../../styles/theme';
+import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { CircularProgress } from '@mui/material';
 import {
   MdLogout, MdApartment, MdCall, MdEmail, MdHome, MdCalendarToday, MdCheckCircle,
@@ -34,7 +35,7 @@ import {
   PortalBookingSummary, PortalBookingDetail, PortalPaymentRow, PortalDueGrid,
 } from '../../../services/customerPortalService';
 
-type Theme = ReturnType<typeof getTheme>;
+type Theme = AppTheme;
 
 const rupee = (n: number): string => `₹ ${n.toLocaleString('en-IN')}`;
 
@@ -81,10 +82,8 @@ const Field: React.FC<{ t: Theme; label: string; value: React.ReactNode }> = ({ 
 const CustomerDashboard: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
   const { profile } = useAppSelector((s) => s.profile);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   useEffect(() => { if (!profile) dispatch(fetchProfileThunk()); }, [profile, dispatch]);
 

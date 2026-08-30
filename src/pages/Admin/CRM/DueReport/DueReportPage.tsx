@@ -17,7 +17,8 @@ import {
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { AppTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import {
   fetchCustomerDueGrid, collectPayment, fetchDefaultAmount, PAYMENT_FOR_OPTIONS, DueGridRow, CustomerDueGrid,
@@ -27,7 +28,7 @@ import { companyService } from '../../../../services/companyService';
 import { Customer, Company, PaymentFor, CollectPaymentPayload } from '../../../../types/index';
 import { formatDate } from '../../../../utils';
 
-type Theme = ReturnType<typeof getTheme>;
+type Theme = AppTheme;
 
 // ── Small local searchable dropdown — same "type to filter, click to
 // pick" shape as the one on the Customer List/CRUD pages, kept local
@@ -97,9 +98,7 @@ const rupee = (n: number): string => `₹ ${n.toLocaleString('en-IN')}`;
 
 const DueReportPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);

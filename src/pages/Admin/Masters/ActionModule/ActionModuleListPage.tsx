@@ -11,7 +11,7 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { useAccordion } from '../../../../hooks/useAccordion';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { iconBtnStyle, getAccordionCardStyle, getAccordionHeaderStyle, StatusBadge } from '../../../../components/common/MasterListUI';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
 import { fetchActionMasterList, deleteActionMaster } from '../../../../services/actionMasterService';
@@ -25,9 +25,7 @@ import { formatDate, showAlert } from '../../../../utils';
 const ActionModuleListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   useEffect(() => { dispatch(setPageTitle('Action & Module')); }, [dispatch]);
 

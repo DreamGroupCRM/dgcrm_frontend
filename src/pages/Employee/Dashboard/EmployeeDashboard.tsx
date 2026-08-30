@@ -9,7 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
-import { getTheme } from '../../../styles/theme';
+import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { fetchEmployeeDashboardSummary, EmployeeDashboardSummary } from '../../../services/dashboardService';
 import { MdLeaderboard, MdEventAvailable, MdPayment, MdContactPage } from 'react-icons/md';
 
@@ -32,9 +32,7 @@ const quickActions = [
 
 const EmployeeDashboard: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   const [data, setData] = useState<EmployeeDashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);

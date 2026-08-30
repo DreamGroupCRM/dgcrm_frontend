@@ -12,7 +12,7 @@ import { MdStorage, MdAdd, MdRestore, MdDelete, MdRefresh, MdShield, MdWarning, 
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
-import { getTheme } from '../../../styles/theme';
+import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { formatLastLogin } from '../../../utils';
 import { fetchSnapshots, createSnapshot, restoreSnapshot, deleteSnapshot, BackupSnapshot } from '../../../services/backupService';
@@ -28,9 +28,7 @@ const errMessage = (e: unknown, fallback: string) => (e as ErrLike)?.response?.d
 
 const BackupDatabasePage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   const [snapshots, setSnapshots] = useState<BackupSnapshot[]>([]);
   const [loading, setLoading] = useState(false);

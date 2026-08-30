@@ -7,9 +7,9 @@ import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh,
   MdSearch, MdVisibility,
 } from 'react-icons/md';
-import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { StatusBadge } from '../../../../components/common/MasterListUI';
 import { fetchRoleList, deleteRole } from '../../../../services/roleService';
 import { Role } from '../../../../types/index';
@@ -21,9 +21,7 @@ const ACTION_ICON_COLOR = '#4b5563';
 const RoleListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark   = mode === 'dark';
-  const t        = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   const [allRoles, setAllRoles]     = useState<Role[]>([]);
   const [filtered, setFiltered]     = useState<Role[]>([]);

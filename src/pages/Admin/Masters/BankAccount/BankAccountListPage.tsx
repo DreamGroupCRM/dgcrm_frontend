@@ -8,7 +8,7 @@ import {
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FetchBankAccount, DeleteBankAccount } from '../../../../services/bankAccountService';
 import { BankAccount } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
@@ -28,9 +28,7 @@ type SortKey = 'id' | 'company_name' | 'name' | 'account_holder_name' | 'account
 const BankAccountListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark   = mode === 'dark';
-  const t        = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   const [allBanks, setAllBanks]       = useState<BankAccount[]>([]);
   const [filtered, setFiltered]       = useState<BankAccount[]>([]);

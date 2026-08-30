@@ -14,14 +14,15 @@ import {
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { AppTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import { fetchPaymentList, approvePayment, bulkApprovePayments, paymentForLabel, PaymentListRow } from '../../../../services/paymentService';
 import { isAdminRole } from '../../../../types';
 import { formatLastLogin } from '../../../../utils';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
-type Theme = ReturnType<typeof getTheme>;
+type Theme = AppTheme;
 
 const rupee = (n: number): string => `₹ ${n.toLocaleString('en-IN')}`;
 
@@ -35,11 +36,9 @@ const ApprovalPill: React.FC<{ approved: boolean }> = ({ approved }) => (
 
 const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { mode } = useAppSelector((s) => s.theme);
   const role = useAppSelector((s) => s.auth.role);
   const isAdmin = isAdminRole(role);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   const [rows, setRows] = useState<PaymentListRow[]>([]);
   const [total, setTotal] = useState(0);

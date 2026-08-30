@@ -10,7 +10,8 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
-import { getTheme } from '../../../styles/theme';
+import { AppTheme } from '../../../styles/theme';
+import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { formatDate } from '../../../utils';
 import { fetchDashboardSummary, DashboardSummary } from '../../../services/dashboardService';
 import {
@@ -18,7 +19,7 @@ import {
   MdHome, MdEventAvailable,
 } from 'react-icons/md';
 
-type Theme = ReturnType<typeof getTheme>;
+type Theme = AppTheme;
 
 const rupeeCompact = (n: number): string => {
   const v = Math.round(n);
@@ -38,9 +39,7 @@ const statusMap: Record<string, { bg: string; text: string }> = {
 
 const AdminDashboard: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);

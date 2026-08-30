@@ -14,14 +14,15 @@ import {
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
-import { getTheme } from '../../../styles/theme';
+import { AppTheme } from '../../../styles/theme';
+import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { fetchAuditLogList, fetchAuditEntityTypes, AuditLogEntry } from '../../../services/auditService';
 import { formatLastLogin } from '../../../utils';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 const FILTER_LABEL_STYLE: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 };
-const dateFieldStyle = (t: ReturnType<typeof getTheme>): React.CSSProperties => ({
+const dateFieldStyle = (t: AppTheme): React.CSSProperties => ({
   width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
   borderRadius: 10, padding: '8px 10px', fontSize: 11.5, outline: 'none', colorScheme: 'auto',
 });
@@ -45,7 +46,7 @@ const ActionBadge: React.FC<{ action: string }> = ({ action }) => {
 
 // Old/new value diff — only rows that actually changed are highlighted,
 // so a 40-field entity update doesn't drown the 2 fields that moved.
-const ValueDiff: React.FC<{ t: ReturnType<typeof getTheme>; isDark: boolean; oldValues: Record<string, unknown> | null; newValues: Record<string, unknown> | null }> = ({ t, isDark, oldValues, newValues }) => {
+const ValueDiff: React.FC<{ t: AppTheme; isDark: boolean; oldValues: Record<string, unknown> | null; newValues: Record<string, unknown> | null }> = ({ t, isDark, oldValues, newValues }) => {
   const keys = Array.from(new Set([...Object.keys(oldValues ?? {}), ...Object.keys(newValues ?? {})])).sort();
   if (keys.length === 0) return <p style={{ fontSize: 12, color: t.textSecondary }}>No field-level detail recorded for this entry.</p>;
   const fmt = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v));
@@ -80,9 +81,7 @@ const ValueDiff: React.FC<{ t: ReturnType<typeof getTheme>; isDark: boolean; old
 
 const AuditHistoryPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   const [rows, setRows] = useState<AuditLogEntry[]>([]);
   const [total, setTotal] = useState(0);
