@@ -83,6 +83,18 @@ export interface AppearancePalette {
   // status-change log line) as opposed to a human comment, which uses
   // `accent` instead — see LeadCrudView.tsx's activity timeline.
   systemBorder: string;
+  // Sidebar's active-nav-item highlight + Header's avatar badge — until
+  // this Architecture Review pass, these were fixed in theme.ts's
+  // getTheme(isDark) as a #2563eb-based blue completely independent of
+  // any appearance (the shell every page renders inside never responded
+  // to Appearance at all). Existing's values below are copied verbatim
+  // from theme.ts so nothing visually changes today; the other palettes
+  // reuse each one's own accent/btnPrimaryGradient so a future theme only
+  // needs to fill in these two fields, not touch Sidebar.tsx/Header.tsx.
+  navActiveBg: string; navActiveBgDark: string;
+  navActiveText: string; navActiveTextDark: string;
+  navActiveBorder: string; navActiveBorderDark: string;
+  avatarGradient: string; avatarGradientDark: string;
   families: FamilyColors;
 }
 
@@ -102,6 +114,11 @@ const EXISTING: AppearancePalette = {
   tableHeaderGradientDark: 'linear-gradient(90deg, #0284c7 0%, #38bdf8 50%, #8b5cf6 100%)',
   duplicateIcon: '#dc2626',
   systemBorder: '#a1a1aa',
+  navActiveBg: '#eff6ff', navActiveBgDark: '#1a1a1a',
+  navActiveText: '#2563eb', navActiveTextDark: '#ffffff',
+  navActiveBorder: '#2563eb', navActiveBorderDark: '#333333',
+  avatarGradient: 'linear-gradient(135deg, #1e40af, #3b82f6)',
+  avatarGradientDark: 'linear-gradient(135deg, #1e40af, #3b82f6)',
   families: {
     accentInfo:   { bg: '#e0e7ff', fg: '#4338ca', bgDark: 'rgba(99,102,241,0.18)',  fgDark: '#a5b4fc' },
     info:         { bg: '#dbeafe', fg: '#1d4ed8', bgDark: 'rgba(59,130,246,0.18)',  fgDark: '#93c5fd' },
@@ -130,6 +147,11 @@ const LIGHT_PROFESSIONAL: AppearancePalette = {
   tableHeaderGradientDark: 'linear-gradient(90deg, #1a365d 0%, #2c5282 100%)',
   duplicateIcon: '#9b2c2c',
   systemBorder: '#a0aec0',
+  navActiveBg: '#ebf4ff', navActiveBgDark: 'rgba(99,179,237,0.16)',
+  navActiveText: '#2c5282', navActiveTextDark: '#63b3ed',
+  navActiveBorder: '#2c5282', navActiveBorderDark: '#63b3ed',
+  avatarGradient: 'linear-gradient(135deg, #2c5282, #4a7bab)',
+  avatarGradientDark: 'linear-gradient(135deg, #1a365d, #2c5282)',
   families: {
     accentInfo:   { bg: '#ebf4ff', fg: '#2c5282', bgDark: 'rgba(99,179,237,0.16)',  fgDark: '#90cdf4' },
     info:         { bg: '#e6f0fa', fg: '#2b6cb0', bgDark: 'rgba(66,153,225,0.16)',  fgDark: '#90cdf4' },
@@ -158,6 +180,11 @@ const DARK_PROFESSIONAL: AppearancePalette = {
   tableHeaderGradientDark: 'linear-gradient(90deg, #042f2e 0%, #115e59 100%)',
   duplicateIcon: '#b91c1c',
   systemBorder: '#94a3b8',
+  navActiveBg: '#e6fffa', navActiveBgDark: 'rgba(45,212,191,0.18)',
+  navActiveText: '#0f766e', navActiveTextDark: '#2dd4bf',
+  navActiveBorder: '#0f766e', navActiveBorderDark: '#2dd4bf',
+  avatarGradient: 'linear-gradient(135deg, #134e4a, #0f766e)',
+  avatarGradientDark: 'linear-gradient(135deg, #0f766e, #115e59)',
   families: {
     accentInfo:   { bg: '#e6fffa', fg: '#0f766e', bgDark: 'rgba(45,212,191,0.18)',  fgDark: '#5eead4' },
     info:         { bg: '#e0f2fe', fg: '#0369a1', bgDark: 'rgba(56,189,248,0.18)',  fgDark: '#7dd3fc' },
@@ -186,6 +213,11 @@ const MODERN: AppearancePalette = {
   tableHeaderGradientDark: 'linear-gradient(90deg, #4c1d95 0%, #7c3aed 50%, #be185d 100%)',
   duplicateIcon: '#be123c',
   systemBorder: '#a1a1aa',
+  navActiveBg: '#f3e8ff', navActiveBgDark: 'rgba(167,139,250,0.2)',
+  navActiveText: '#6d28d9', navActiveTextDark: '#a78bfa',
+  navActiveBorder: '#6d28d9', navActiveBorderDark: '#a78bfa',
+  avatarGradient: 'linear-gradient(135deg, #6d28d9, #db2777)',
+  avatarGradientDark: 'linear-gradient(135deg, #7c3aed, #ec4899)',
   families: {
     accentInfo:   { bg: '#f3e8ff', fg: '#6d28d9', bgDark: 'rgba(167,139,250,0.2)',  fgDark: '#d8b4fe' },
     info:         { bg: '#e0e7ff', fg: '#4338ca', bgDark: 'rgba(129,140,248,0.2)', fgDark: '#a5b4fc' },
@@ -213,6 +245,11 @@ const EXECUTIVE: AppearancePalette = {
   tableHeaderGradientDark: 'linear-gradient(90deg, #0f172a 0%, #1e293b 60%, #7a5e20 100%)',
   duplicateIcon: '#7f1d1d',
   systemBorder: '#6b7280',
+  navActiveBg: '#f5f0e0', navActiveBgDark: 'rgba(212,175,97,0.18)',
+  navActiveText: '#92722a', navActiveTextDark: '#d4af61',
+  navActiveBorder: '#92722a', navActiveBorderDark: '#d4af61',
+  avatarGradient: 'linear-gradient(135deg, #1e293b, #92722a)',
+  avatarGradientDark: 'linear-gradient(135deg, #0f172a, #7a5e20)',
   families: {
     accentInfo:   { bg: '#f5f0e0', fg: '#92722a', bgDark: 'rgba(212,175,97,0.18)',  fgDark: '#e6c98a' },
     info:         { bg: '#e2e8f0', fg: '#1e293b', bgDark: 'rgba(148,163,184,0.18)', fgDark: '#cbd5e1' },
@@ -292,6 +329,12 @@ export function useAppearanceTokens() {
     accentHover: isDark ? palette.accentHoverDark : palette.accentHover,
     duplicateIcon: palette.duplicateIcon,
     systemBorder: palette.systemBorder,
+    // Sidebar/Header shell tokens — see AppearancePalette's navActive*/
+    // avatarGradient fields above.
+    navActiveBg: isDark ? palette.navActiveBgDark : palette.navActiveBg,
+    navActiveText: isDark ? palette.navActiveTextDark : palette.navActiveText,
+    navActiveBorder: isDark ? palette.navActiveBorderDark : palette.navActiveBorder,
+    avatarGradient: isDark ? palette.avatarGradientDark : palette.avatarGradient,
     scale,
     family,
     cssVars: cssVars as unknown as CSSProperties,

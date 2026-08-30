@@ -11,6 +11,7 @@ import { clearProfile } from '../../redux/slices/profileSlice';
 import { showAlert, getInitials, homeRouteForRole } from '../../utils';
 import { SOCIAL_LINKS, ROUTES } from '../../constants';
 import { getTheme } from '../../styles/theme';
+import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import {
   setAppearance, setDensity, APPEARANCE_OPTIONS, DENSITY_OPTIONS,
   AppearanceId, DensityId,
@@ -71,11 +72,8 @@ const IconBtn: React.FC<{
 const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   const logoImg  = '/src/assets/images/favicon_logo.png';
   const dispatch = useAppDispatch();
-  const { mode }       = useAppSelector((s) => s.theme);
   const { user, role } = useAppSelector((s) => s.auth);
-  const { appearance, density } = useAppSelector((s) => s.appearance);
-  const isDark         = mode === 'dark';
-  const t              = getTheme(isDark);
+  const { isDark, t, appearance, density, avatarGradient } = useAppearanceTokens();
   const navigate       = useNavigate();
 
   const dashboardRoute = homeRouteForRole(role);
@@ -191,7 +189,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
         Appearance
       </div>
       <div style={{ padding: '2px 16px 8px', fontSize: 9.5, color: t.textSecondary, fontStyle: 'italic' }}>
-        Applied to the Leads list only (pilot) — other pages unaffected
+        Applied to navigation, header, and most Master/CRM pages — full rollout in progress
       </div>
       <div style={{ padding: '0 16px 8px' }}>
         <select
@@ -211,7 +209,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
         Density
       </div>
       <div style={{ padding: '2px 16px 8px', fontSize: 9.5, color: t.textSecondary, fontStyle: 'italic' }}>
-        Applied to the Leads list only (pilot) — other pages unaffected
+        Applied to the Leads list only for now — other pages unaffected
       </div>
       <div style={{ padding: '0 16px 4px' }}>
         <select
@@ -424,7 +422,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
           onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
         >
           <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-            style={{ background: t.avatarGradient }}>
+            style={{ background: avatarGradient }}>
             {getInitials(user?.email || 'DG')}
           </div>
           <div className="hidden md:block text-left">

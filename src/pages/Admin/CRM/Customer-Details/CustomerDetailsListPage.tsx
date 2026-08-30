@@ -1103,7 +1103,7 @@ const CustomerDetailsListPage: React.FC = () => {
             )}
           </div>
         ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div className="master-table-scroll">
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1250 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>

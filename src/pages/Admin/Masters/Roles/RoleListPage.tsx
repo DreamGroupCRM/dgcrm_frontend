@@ -10,6 +10,7 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { getTheme } from '../../../../styles/theme';
+import { StatusBadge } from '../../../../components/common/MasterListUI';
 import { fetchRoleList, deleteRole } from '../../../../services/roleService';
 import { Role } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
@@ -122,22 +123,7 @@ const RoleListPage: React.FC = () => {
   const stickyBg = isDark ? t.surfaceBg : '#ffffff';
 
   const statusBadge = (isActive: boolean) => (
-    <span style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      padding: '2px 10px',
-      borderRadius: 20,
-      fontSize: 12.5,
-      fontWeight: 500,
-      background: isActive
-        ? isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7'
-        : isDark ? 'rgba(239,68,68,0.12)'  : '#fee2e2',
-      color: isActive
-        ? isDark ? '#4ade80' : '#16a34a'
-        : isDark ? '#f87171' : '#dc2626',
-    }}>
-      {isActive ? 'Active' : 'Inactive'}
-    </span>
+    <StatusBadge isActive={isActive} t={t} isDark={isDark} fontSize={12.5} />
   );
 
   return (

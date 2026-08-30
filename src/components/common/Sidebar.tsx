@@ -8,7 +8,8 @@ import { useAppDispatch, useAppSelector } from '../../hooks';
 import { toggleSidebar } from '../../redux/slices/uiSlice';
 import { ROUTES } from '../../constants';
 import { useNavigate } from 'react-router-dom';
-import { getTheme } from '../../styles/theme';
+import { useAppearanceTokens } from '../../styles/appearanceTokens';
+import { AppTheme } from '../../styles/theme';
 import { BaseRole, isAdminRole } from '../../types';
 import { homeRouteForRole, roleLabelFor } from '../../utils';
 
@@ -136,12 +137,18 @@ const employeeNavItems: NavItem[] = [
 ];
 
 // ── NavItemComponent ───────────────────────────────────────────────────────
+// `t` and the nav-active-state colors are computed once in the Sidebar shell
+// (via useAppearanceTokens()) and passed down, rather than each item
+// recomputing its own — also means a new appearance's nav highlight only
+// ever needs new values in appearanceTokens.ts's palettes, not an edit here.
 const NavItemComponent: React.FC<{
   item: NavItem;
   collapsed: boolean;
-  isDark: boolean;
-}> = ({ item, collapsed, isDark }) => {
-  const t = getTheme(isDark);
+  t: AppTheme;
+  navActiveBg: string;
+  navActiveText: string;
+  navActiveBorder: string;
+}> = ({ item, collapsed, t, navActiveBg, navActiveText, navActiveBorder }) => {
   const location = useLocation();
   const [open, setOpen] = useState(() =>
     !!item.children?.some((c) => c.path && location.pathname.startsWith(c.path))
@@ -157,8 +164,8 @@ const NavItemComponent: React.FC<{
           title={collapsed ? item.label : undefined}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150"
           style={{
-            background: open ? t.sidebarActiveBg : hovered ? t.sidebarHoverBg : 'transparent',
-            color: open ? t.sidebarActiveText : hovered ? t.sidebarHoverText : t.sidebarText,
+            background: open ? navActiveBg : hovered ? t.sidebarHoverBg : 'transparent',
+            color: open ? navActiveText : hovered ? t.sidebarHoverText : t.sidebarText,
             fontFamily: t.fontFamily, border: 'none', cursor: 'pointer',
           }}
           onMouseEnter={() => setHovered(true)}
@@ -180,7 +187,8 @@ const NavItemComponent: React.FC<{
         {!collapsed && open && (
           <div className="ml-4 mt-0.5 space-y-0.5 pl-3" style={{ borderLeft: `1px solid ${t.sidebarBorder}` }}>
             {item.children.map((child) => (
-              <NavItemComponent key={child.path} item={child} collapsed={false} isDark={isDark} />
+              <NavItemComponent key={child.path} item={child} collapsed={false} t={t}
+                navActiveBg={navActiveBg} navActiveText={navActiveText} navActiveBorder={navActiveBorder} />
             ))}
           </div>
         )}
@@ -194,10 +202,10 @@ const NavItemComponent: React.FC<{
       title={collapsed ? item.label : undefined}
       className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 no-underline"
       style={({ isActive }) => ({
-        background: isActive ? t.sidebarActiveBg : 'transparent',
-        color: isActive ? t.sidebarActiveText : t.sidebarText,
+        background: isActive ? navActiveBg : 'transparent',
+        color: isActive ? navActiveText : t.sidebarText,
         fontFamily: t.fontFamily, fontWeight: isActive ? 600 : 400,
-        borderLeft: isActive ? `3px solid ${t.sidebarActiveBorder}` : '3px solid transparent',
+        borderLeft: isActive ? `3px solid ${navActiveBorder}` : '3px solid transparent',
       })}
       onMouseEnter={(e) => {
         const el = e.currentTarget as HTMLElement;
@@ -236,11 +244,9 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
   const dispatch = useAppDispatch();
   const { sidebarCollapsed } = useAppSelector((s) => s.ui);
   const { role } = useAppSelector((s) => s.auth);
-  const { mode } = useAppSelector((s) => s.theme);
   const location = useLocation();
 
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, navActiveBg, navActiveText, navActiveBorder } = useAppearanceTokens();
   const roleLabel = roleLabelFor(role);
   const dashboardRoute = homeRouteForRole(role);
 
@@ -347,7 +353,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
         {navItems.map((item, i) => (
-          <NavItemComponent key={i} item={item} collapsed={collapsed} isDark={isDark} />
+          <NavItemComponent key={i} item={item} collapsed={collapsed} t={t}
+            navActiveBg={navActiveBg} navActiveText={navActiveText} navActiveBorder={navActiveBorder} />
         ))}
       </nav>
 

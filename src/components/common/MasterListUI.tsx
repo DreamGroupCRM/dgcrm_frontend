@@ -36,10 +36,13 @@ export const getAccordionHeaderStyle = (t: AppTheme, isOpen: boolean): React.CSS
   borderBottom: isOpen ? `1px solid ${t.divider}` : 'none',
 });
 
-export const StatusBadge: React.FC<{ isActive: boolean; t: AppTheme; isDark: boolean }> = ({ isActive, t: _t, isDark }) => (
+// `fontSize` defaults to the original 10.5px so existing callers are
+// unaffected — added when deduping RoleListPage.tsx's near-identical local
+// `statusBadge`, whose only real difference was its 12.5px text.
+export const StatusBadge: React.FC<{ isActive: boolean; t: AppTheme; isDark: boolean; fontSize?: number }> = ({ isActive, t: _t, isDark, fontSize = 10.5 }) => (
   <span style={{
     display: 'inline-flex', alignItems: 'center',
-    padding: '2px 10px', borderRadius: 20, fontSize: 10.5, fontWeight: 500,
+    padding: '2px 10px', borderRadius: 20, fontSize, fontWeight: 500,
     background: isActive
       ? isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7'
       : isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2',
