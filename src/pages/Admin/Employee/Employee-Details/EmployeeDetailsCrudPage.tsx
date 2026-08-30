@@ -9,8 +9,8 @@ import {
   MdGroups, MdInfoOutline, MdDescription, MdCheckCircle, MdOpenInNew,
 } from 'react-icons/md';
 
-import { useAppSelector } from '../../../../hooks';
-import { getTheme } from '../../../../styles/theme';
+import { AppTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { formatDate } from '../../../../utils';
 import {
   ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
@@ -36,7 +36,7 @@ const VIEW_STATUS_STYLES: Record<string, { bg: string; color: string; label: str
 
 type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
-type Theme = ReturnType<typeof getTheme>;
+type Theme = AppTheme;
 
 const COUNTRY_CODES = ['+91', '+1', '+44', '+61', '+971'];
 const WORKING_HOURS_OPTIONS = ['8', '9', '10'];
@@ -345,7 +345,7 @@ const DocumentCard: React.FC<{ t: Theme; label: string; url?: string | null }> =
         className="w-full flex items-center justify-center overflow-hidden"
         style={{
           height: 120,
-          background: isImage ? t.insetBg : url ? 'linear-gradient(135deg,#0284c7,#7c3aed)' : t.insetBg,
+          background: isImage ? t.insetBg : url ? 'var(--master-btn-primary-gradient, linear-gradient(135deg,#0284c7,#7c3aed))' : t.insetBg,
         }}
       >
         {isImage && url ? (
@@ -384,9 +384,8 @@ const DocumentCard: React.FC<{ t: Theme; label: string; url?: string | null }> =
 const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { mode: themeMode } = useAppSelector((s) => s.theme);
-  const isDark = themeMode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, accent, cssVars: appearanceCssVars } = useAppearanceTokens();
+  const accentFocus = (appearanceCssVars as Record<string, string>)['--master-accent-focus'];
   const isView = mode === 'view';
 
   const [fetching, setFetching] = useState(mode !== 'add');
@@ -816,9 +815,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   // ── CSS custom properties for EmployeeDetails.css — set once here from
-  // this page's own getTheme(isDark) values, consumed by the emp-* classes
-  // used throughout this page's form fields/labels/grid below. ──────────
+  // this page's own theme values, consumed by the emp-* classes used
+  // throughout this page's form fields/labels/grid below. Also spreads
+  // in the appearance system's shared vars for consistency with the
+  // other pages (this page's own accent literals below are converted
+  // directly via accent/accentHover instead, since they're inline, not
+  // read from a CSS class). ─────────────────────────────────────────────
   const cssVars = {
+    ...appearanceCssVars,
     '--emp-field-bg': t.inputBg, '--emp-field-border': t.inputBorder, '--emp-field-text': t.inputText,
     '--emp-inset-bg': t.insetBg, '--emp-text-primary': t.textPrimary, '--emp-text-secondary': t.textSecondary,
     '--emp-surface-border': t.surfaceBorder, '--emp-divider': t.divider,
@@ -867,7 +871,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           {existingUrls.profile_photo ? (
             <img src={existingUrls.profile_photo} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover' }} />
           ) : (
-            <div className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ width: 56, height: 56, background: 'linear-gradient(135deg,#4338ca,#4f46e5)', fontSize: 18 }}>
+            <div className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ width: 56, height: 56, background: `linear-gradient(135deg,${accent},${accentFocus})`, fontSize: 18 }}>
               {(form.first_name[0] || '')}{(form.last_name[0] || '')}
             </div>
           )}
@@ -1277,7 +1281,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             disabled={!isFormValid || saving}
             className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
             style={{
-              background: !isFormValid || saving ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)',
+              background: !isFormValid || saving ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentFocus})`,
               border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.8 : 1,
             }}
           >
