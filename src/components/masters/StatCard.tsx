@@ -6,9 +6,15 @@
 // (.master-stat-card/.master-stat-icon/.master-stat-label/-value); only
 // the per-card accent color/icon/value stay as props since those
 // legitimately differ card to card.
+//
+// Flat card (surfaceBg + border), a small tinted icon chip, and dark
+// value/label text — not a saturated gradient fill with white text. Reads
+// as a restrained enterprise KPI tile instead of a bright marketing card;
+// the per-card color still carries meaning (people=blue, danger=red, ...)
+// via the icon chip alone, which is enough to differentiate without the
+// whole tile competing for attention.
 import React from 'react';
 import { IconType } from 'react-icons';
-import { getStatGradient } from './statGradients';
 import { useAppearanceTokens } from '../../styles/appearanceTokens';
 
 interface StatCardProps {
@@ -33,20 +39,21 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({
-  label, value, icon: Icon, color, surfaceBorder, loading, compact, labelFontSize,
+  label, value, icon: Icon, color, surfaceBg, surfaceBorder, textPrimary, textSecondary, loading, compact, labelFontSize,
 }) => {
-  const { tintGradient } = useAppearanceTokens();
+  const { tintColor } = useAppearanceTokens();
+  const iconColor = tintColor(color);
   return (
   <div
-    className={`master-stat-card master-stat-card-gradient${compact ? ' master-stat-card-compact' : ''}`}
-    style={{ background: getStatGradient(color, tintGradient), border: `1px solid ${surfaceBorder}` }}
+    className={`master-stat-card${compact ? ' master-stat-card-compact' : ''}`}
+    style={{ background: surfaceBg, border: `1px solid ${surfaceBorder}` }}
   >
-    <div className="master-stat-icon" style={{ background: 'rgba(255,255,255,0.22)' }}>
-      <Icon size={compact ? 15 : 19} style={{ color: '#fff' }} />
+    <div className="master-stat-icon" style={{ background: `${iconColor}17` }}>
+      <Icon size={compact ? 15 : 19} style={{ color: iconColor }} />
     </div>
     <div className="master-stat-body">
-      <div className="master-stat-label master-stat-label-gradient" style={labelFontSize ? { fontSize: labelFontSize } : undefined}>{label}</div>
-      <div className="master-stat-value master-stat-value-gradient">{loading ? '—' : value}</div>
+      <div className="master-stat-label" style={{ color: textSecondary, ...(labelFontSize ? { fontSize: labelFontSize } : undefined) }}>{label}</div>
+      <div className="master-stat-value" style={{ color: textPrimary }}>{loading ? '—' : value}</div>
     </div>
   </div>
   );

@@ -142,8 +142,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   const dropdownStyle: React.CSSProperties = {
     position  : 'absolute', top: '110%', right: 0, zIndex: 9999,
     background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`,
-    borderRadius: 12, padding: '8px 0', minWidth: 200,
-    boxShadow : '0 8px 24px rgba(0,0,0,0.12)',
+    borderRadius: 8, padding: '8px 0', minWidth: 200,
+    boxShadow : '0 4px 16px rgba(0,0,0,0.10)',
   };
 
   const dropdownItemStyle: React.CSSProperties = {

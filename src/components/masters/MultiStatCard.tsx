@@ -5,9 +5,11 @@
 // and Shops boxes: Total, Enabled, Disabled) instead of 3 separate
 // single-value StatCards. Same icon/label sizing as StatCard (compact
 // variant) — only the body swaps a single value for a 3-up row.
+//
+// Flat card, matching StatCard's treatment — see that file's header for
+// why (restrained enterprise tile instead of a saturated gradient fill).
 import React from 'react';
 import { IconType } from 'react-icons';
-import { getStatGradient } from './statGradients';
 import { useAppearanceTokens } from '../../styles/appearanceTokens';
 
 interface MultiStatCardProps {
@@ -30,31 +32,34 @@ interface MultiStatCardProps {
 
 const MultiStatCard: React.FC<MultiStatCardProps> = ({
   label, icon: Icon, color, total, enabled, disabled,
-  surfaceBorder, loading, labelFontSize,
+  surfaceBg, surfaceBorder, textPrimary, textSecondary, loading, labelFontSize,
 }) => {
-  const { tintGradient } = useAppearanceTokens();
+  const { tintColor, isDark } = useAppearanceTokens();
+  const iconColor = tintColor(color);
+  const successColor = isDark ? '#4ade80' : '#15803d';
+  const dangerColor = isDark ? '#f87171' : '#b91c1c';
   return (
   <div
-    className="master-stat-card master-stat-card-compact master-stat-card-multi master-stat-card-gradient"
-    style={{ background: getStatGradient(color, tintGradient), border: `1px solid ${surfaceBorder}` }}
+    className="master-stat-card master-stat-card-compact master-stat-card-multi"
+    style={{ background: surfaceBg, border: `1px solid ${surfaceBorder}` }}
   >
-    <div className="master-stat-icon" style={{ background: 'rgba(255,255,255,0.22)' }}>
-      <Icon size={15} style={{ color: '#fff' }} />
+    <div className="master-stat-icon" style={{ background: `${iconColor}17` }}>
+      <Icon size={15} style={{ color: iconColor }} />
     </div>
     <div className="master-stat-body-multi">
-      <div className="master-stat-label master-stat-label-gradient" style={labelFontSize ? { fontSize: labelFontSize } : undefined}>{label}</div>
+      <div className="master-stat-label" style={{ color: textSecondary, ...(labelFontSize ? { fontSize: labelFontSize } : undefined) }}>{label}</div>
       <div className="master-stat-multi-row">
         <div className="master-stat-multi-item">
-          <span className="master-stat-multi-value master-stat-value-gradient">{loading ? '—' : total}</span>
-          <span className="master-stat-multi-sublabel master-stat-label-gradient">Total</span>
+          <span className="master-stat-multi-value" style={{ color: textPrimary }}>{loading ? '—' : total}</span>
+          <span className="master-stat-multi-sublabel" style={{ color: textSecondary }}>Total</span>
         </div>
         <div className="master-stat-multi-item">
-          <span className="master-stat-multi-value" style={{ color: '#86efac' }}>{loading ? '—' : enabled}</span>
-          <span className="master-stat-multi-sublabel master-stat-label-gradient">Enabled</span>
+          <span className="master-stat-multi-value" style={{ color: successColor }}>{loading ? '—' : enabled}</span>
+          <span className="master-stat-multi-sublabel" style={{ color: textSecondary }}>Enabled</span>
         </div>
         <div className="master-stat-multi-item">
-          <span className="master-stat-multi-value" style={{ color: '#fca5a5' }}>{loading ? '—' : disabled}</span>
-          <span className="master-stat-multi-sublabel master-stat-label-gradient">Disabled</span>
+          <span className="master-stat-multi-value" style={{ color: dangerColor }}>{loading ? '—' : disabled}</span>
+          <span className="master-stat-multi-sublabel" style={{ color: textSecondary }}>Disabled</span>
         </div>
       </div>
     </div>
