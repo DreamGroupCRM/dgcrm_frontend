@@ -1,5 +1,13 @@
 // src/components/common/MasterListUI.tsx
-// Shared presentational bits for every Master list page's accordion + table.
+// Shared presentational bits for every Master/Crud page's accordion,
+// table, and form fields. getFormInputStyle/getFormLabelStyle/FormField
+// were pulled out of LeadCrudView.tsx (where they were a local,
+// Lead-only copy of the same input/label styling every other Crud page in
+// this app also reinvents for itself) so a future page can import them
+// directly instead of duplicating the pattern again — the exact
+// "hardcoding into common place" ask this file exists to serve. Values
+// are copied verbatim from LeadCrudView's original locals, so adopting
+// them changes nothing about how Leads' own form already looked.
 
 import React from 'react';
 import { AppTheme } from '../../styles/theme';
@@ -41,4 +49,21 @@ export const StatusBadge: React.FC<{ isActive: boolean; t: AppTheme; isDark: boo
   }}>
     {isActive ? 'Active' : 'Inactive'}
   </span>
+);
+
+// ── Form fields — shared input/label styling for any Crud-style page ────
+export const getFormInputStyle = (t: AppTheme): React.CSSProperties => ({
+  width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 13,
+  background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
+});
+
+export const getFormLabelStyle = (t: AppTheme): React.CSSProperties => ({
+  display: 'block', fontSize: 11.5, fontWeight: 600, color: t.textSecondary, marginBottom: 4,
+});
+
+export const FormField: React.FC<{ label: string; t: AppTheme; children: React.ReactNode }> = ({ label, t, children }) => (
+  <div>
+    <label style={getFormLabelStyle(t)}>{label}</label>
+    {children}
+  </div>
 );

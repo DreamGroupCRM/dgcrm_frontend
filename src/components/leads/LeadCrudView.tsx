@@ -9,9 +9,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MdSave, MdArrowBack, MdReply, MdSend, MdPersonAdd } from 'react-icons/md';
 
-import { useAppSelector } from '../../hooks';
-import { getTheme } from '../../styles/theme';
-import { getAccordionCardStyle, getAccordionHeaderStyle } from '../../components/common/MasterListUI';
+import { useAppearanceTokens } from '../../styles/appearanceTokens';
+import { getAccordionCardStyle, getAccordionHeaderStyle, getFormInputStyle, FormField } from '../../components/common/MasterListUI';
 import {
   fetchLeadById, createLead, updateLead, assignLead, fetchLeadActivities, addLeadComment,
 } from '../../services/leadService';
@@ -36,29 +35,12 @@ const EMPTY_FORM: CreateLeadPayload = {
   status: 'new', project_id: '', cp_firm_name: '', cp_name: '', cp_validity: '', channel_partner_id: '',
 };
 
-const inputStyle = (t: ReturnType<typeof getTheme>): React.CSSProperties => ({
-  width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 13,
-  background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
-});
-const labelStyle = (t: ReturnType<typeof getTheme>): React.CSSProperties => ({
-  display: 'block', fontSize: 11.5, fontWeight: 600, color: t.textSecondary, marginBottom: 4,
-});
-
-const Field: React.FC<{ label: string; t: ReturnType<typeof getTheme>; children: React.ReactNode }> = ({ label, t, children }) => (
-  <div>
-    <label style={labelStyle(t)}>{label}</label>
-    {children}
-  </div>
-);
-
 const toDateOnly = (iso: string | null | undefined): string => (iso ? String(iso).slice(0, 10) : '');
 
 const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { mode: themeMode } = useAppSelector((s) => s.theme);
-  const isDark = themeMode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, accent, duplicateIcon, systemBorder, cssVars } = useAppearanceTokens();
   const isView = mode === 'view';
   const isAdd = mode === 'add';
 
@@ -208,7 +190,7 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
   const gridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, padding: 16 };
 
   return (
-    <div className="master-page" style={{ fontFamily: t.fontFamily }}>
+    <div className="master-page" style={{ ...cssVars, fontFamily: t.fontFamily }}>
       <div className="flex items-center gap-3" style={{ marginBottom: 16 }}>
         <button type="button" onClick={() => navigate(basePath)} className="master-btn-icon"
           style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
@@ -221,7 +203,7 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
           {!isAdd && lead && (
             <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
               <LeadStatusBadge status={lead.status} isDark={isDark} />
-              {lead.is_duplicate && <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 600 }}>Possible duplicate</span>}
+              {lead.is_duplicate && <span style={{ fontSize: 11, color: duplicateIcon, fontWeight: 600 }}>Possible duplicate</span>}
             </div>
           )}
         </div>
@@ -231,71 +213,71 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
         <div style={cardStyle}>
           <div style={headerStyle}><span style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary }}>Basic Info</span></div>
           <div style={gridStyle}>
-            <Field label="Name *" t={t}><input required disabled={isView} value={form.name} onChange={(e) => set('name', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="Mobile Number" t={t}><input disabled={isView} value={form.mobile_number ?? ''} onChange={(e) => set('mobile_number', e.target.value)} style={inputStyle(t)} placeholder="10 digits" /></Field>
-            <Field label="WhatsApp Number" t={t}><input disabled={isView} value={form.whatsapp_number ?? ''} onChange={(e) => set('whatsapp_number', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="Alternate Number" t={t}><input disabled={isView} value={form.alternate_number ?? ''} onChange={(e) => set('alternate_number', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="Email" t={t}><input type="email" disabled={isView} value={form.email ?? ''} onChange={(e) => set('email', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="Occupation" t={t}><input disabled={isView} value={form.occupation ?? ''} onChange={(e) => set('occupation', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="Company Name" t={t}><input disabled={isView} value={form.company_name ?? ''} onChange={(e) => set('company_name', e.target.value)} style={inputStyle(t)} /></Field>
+            <FormField label="Name *" t={t}><input required disabled={isView} value={form.name} onChange={(e) => set('name', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Mobile Number" t={t}><input disabled={isView} value={form.mobile_number ?? ''} onChange={(e) => set('mobile_number', e.target.value)} style={getFormInputStyle(t)} placeholder="10 digits" /></FormField>
+            <FormField label="WhatsApp Number" t={t}><input disabled={isView} value={form.whatsapp_number ?? ''} onChange={(e) => set('whatsapp_number', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Alternate Number" t={t}><input disabled={isView} value={form.alternate_number ?? ''} onChange={(e) => set('alternate_number', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Email" t={t}><input type="email" disabled={isView} value={form.email ?? ''} onChange={(e) => set('email', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Occupation" t={t}><input disabled={isView} value={form.occupation ?? ''} onChange={(e) => set('occupation', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Company Name" t={t}><input disabled={isView} value={form.company_name ?? ''} onChange={(e) => set('company_name', e.target.value)} style={getFormInputStyle(t)} /></FormField>
           </div>
         </div>
 
         <div style={cardStyle}>
           <div style={headerStyle}><span style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary }}>Address</span></div>
           <div style={gridStyle}>
-            <Field label="Address" t={t}><input disabled={isView} value={form.address ?? ''} onChange={(e) => set('address', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="City" t={t}><input disabled={isView} value={form.city ?? ''} onChange={(e) => set('city', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="State" t={t}><input disabled={isView} value={form.state ?? ''} onChange={(e) => set('state', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="Pincode" t={t}><input disabled={isView} value={form.pincode ?? ''} onChange={(e) => set('pincode', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="Current Residence" t={t}><input disabled={isView} value={form.current_residence ?? ''} onChange={(e) => set('current_residence', e.target.value)} style={inputStyle(t)} /></Field>
+            <FormField label="Address" t={t}><input disabled={isView} value={form.address ?? ''} onChange={(e) => set('address', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="City" t={t}><input disabled={isView} value={form.city ?? ''} onChange={(e) => set('city', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="State" t={t}><input disabled={isView} value={form.state ?? ''} onChange={(e) => set('state', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Pincode" t={t}><input disabled={isView} value={form.pincode ?? ''} onChange={(e) => set('pincode', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Current Residence" t={t}><input disabled={isView} value={form.current_residence ?? ''} onChange={(e) => set('current_residence', e.target.value)} style={getFormInputStyle(t)} /></FormField>
           </div>
         </div>
 
         <div style={cardStyle}>
           <div style={headerStyle}><span style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary }}>Requirement & Pipeline</span></div>
           <div style={gridStyle}>
-            <Field label="Source" t={t}>
-              <select disabled={isView} value={form.source ?? 'other'} onChange={(e) => set('source', e.target.value)} style={inputStyle(t)}>
+            <FormField label="Source" t={t}>
+              <select disabled={isView} value={form.source ?? 'other'} onChange={(e) => set('source', e.target.value)} style={getFormInputStyle(t)}>
                 {['website', 'facebook', 'referral', 'walk-in', 'channel-partner', 'other'].map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
-            </Field>
-            <Field label="Temperature" t={t}>
-              <select disabled={isView} value={form.category ?? 'cold'} onChange={(e) => set('category', e.target.value)} style={inputStyle(t)}>
+            </FormField>
+            <FormField label="Temperature" t={t}>
+              <select disabled={isView} value={form.category ?? 'cold'} onChange={(e) => set('category', e.target.value)} style={getFormInputStyle(t)}>
                 {['hot', 'warm', 'cold'].map((c) => <option key={c} value={c}>{c[0].toUpperCase() + c.slice(1)}</option>)}
               </select>
-            </Field>
-            <Field label="Pipeline Status" t={t}>
-              <select disabled={isView || isAdd} value={form.status ?? 'new'} onChange={(e) => set('status', e.target.value as LeadStatus)} style={inputStyle(t)}>
+            </FormField>
+            <FormField label="Pipeline Status" t={t}>
+              <select disabled={isView || isAdd} value={form.status ?? 'new'} onChange={(e) => set('status', e.target.value as LeadStatus)} style={getFormInputStyle(t)}>
                 {LEAD_STATUSES.map((s) => <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>)}
               </select>
-            </Field>
-            <Field label="Sub-category" t={t}><input disabled={isView} value={form.sub_category ?? ''} onChange={(e) => set('sub_category', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="Budget (₹)" t={t}><input type="number" disabled={isView} value={form.budget ?? ''} onChange={(e) => set('budget', e.target.value === '' ? null : Number(e.target.value))} style={inputStyle(t)} /></Field>
-            <Field label="Deal Amount (₹)" t={t}><input type="number" disabled={isView} value={form.deal_amount ?? ''} onChange={(e) => set('deal_amount', e.target.value === '' ? null : Number(e.target.value))} style={inputStyle(t)} /></Field>
-            <Field label="Looking For" t={t}><input disabled={isView} value={form.looking_for ?? ''} onChange={(e) => set('looking_for', e.target.value)} style={inputStyle(t)} placeholder="e.g. 2BHK" /></Field>
-            <Field label="Carpet Size" t={t}><input disabled={isView} value={form.carpet_size ?? ''} onChange={(e) => set('carpet_size', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="How Will Fund" t={t}><input disabled={isView} value={form.how_will_fund ?? ''} onChange={(e) => set('how_will_fund', e.target.value)} style={inputStyle(t)} placeholder="e.g. Home Loan" /></Field>
-            <Field label="Purpose of Buying" t={t}><input disabled={isView} value={form.purpose_buying ?? ''} onChange={(e) => set('purpose_buying', e.target.value)} style={inputStyle(t)} placeholder="Self-use / Investment" /></Field>
-            <Field label="How Did You Know" t={t}><input disabled={isView} value={form.how_did_you_know ?? ''} onChange={(e) => set('how_did_you_know', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="Preferred Call Time" t={t}><input disabled={isView} value={form.preferred_call_time ?? ''} onChange={(e) => set('preferred_call_time', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="Next Call / Site Visit Date" t={t}><input type="date" disabled={isView} value={toDateOnly(form.next_call_scheduled_at)} onChange={(e) => set('next_call_scheduled_at', e.target.value)} style={inputStyle(t)} /></Field>
+            </FormField>
+            <FormField label="Sub-category" t={t}><input disabled={isView} value={form.sub_category ?? ''} onChange={(e) => set('sub_category', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Budget (₹)" t={t}><input type="number" disabled={isView} value={form.budget ?? ''} onChange={(e) => set('budget', e.target.value === '' ? null : Number(e.target.value))} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Deal Amount (₹)" t={t}><input type="number" disabled={isView} value={form.deal_amount ?? ''} onChange={(e) => set('deal_amount', e.target.value === '' ? null : Number(e.target.value))} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Looking For" t={t}><input disabled={isView} value={form.looking_for ?? ''} onChange={(e) => set('looking_for', e.target.value)} style={getFormInputStyle(t)} placeholder="e.g. 2BHK" /></FormField>
+            <FormField label="Carpet Size" t={t}><input disabled={isView} value={form.carpet_size ?? ''} onChange={(e) => set('carpet_size', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="How Will Fund" t={t}><input disabled={isView} value={form.how_will_fund ?? ''} onChange={(e) => set('how_will_fund', e.target.value)} style={getFormInputStyle(t)} placeholder="e.g. Home Loan" /></FormField>
+            <FormField label="Purpose of Buying" t={t}><input disabled={isView} value={form.purpose_buying ?? ''} onChange={(e) => set('purpose_buying', e.target.value)} style={getFormInputStyle(t)} placeholder="Self-use / Investment" /></FormField>
+            <FormField label="How Did You Know" t={t}><input disabled={isView} value={form.how_did_you_know ?? ''} onChange={(e) => set('how_did_you_know', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Preferred Call Time" t={t}><input disabled={isView} value={form.preferred_call_time ?? ''} onChange={(e) => set('preferred_call_time', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Next Call / Site Visit Date" t={t}><input type="date" disabled={isView} value={toDateOnly(form.next_call_scheduled_at)} onChange={(e) => set('next_call_scheduled_at', e.target.value)} style={getFormInputStyle(t)} /></FormField>
           </div>
         </div>
 
         <div style={cardStyle}>
           <div style={headerStyle}><span style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary }}>Channel Partner (if any)</span></div>
           <div style={gridStyle}>
-            <Field label="CP Firm Name" t={t}><input disabled={isView} value={form.cp_firm_name ?? ''} onChange={(e) => set('cp_firm_name', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="CP Name" t={t}><input disabled={isView} value={form.cp_name ?? ''} onChange={(e) => set('cp_name', e.target.value)} style={inputStyle(t)} /></Field>
-            <Field label="CP Validity" t={t}><input type="date" disabled={isView} value={toDateOnly(form.cp_validity)} onChange={(e) => set('cp_validity', e.target.value)} style={inputStyle(t)} /></Field>
+            <FormField label="CP Firm Name" t={t}><input disabled={isView} value={form.cp_firm_name ?? ''} onChange={(e) => set('cp_firm_name', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="CP Name" t={t}><input disabled={isView} value={form.cp_name ?? ''} onChange={(e) => set('cp_name', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="CP Validity" t={t}><input type="date" disabled={isView} value={toDateOnly(form.cp_validity)} onChange={(e) => set('cp_validity', e.target.value)} style={getFormInputStyle(t)} /></FormField>
           </div>
         </div>
 
         <div style={cardStyle}>
           <div style={headerStyle}><span style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary }}>Remark</span></div>
           <div style={{ padding: 16 }}>
-            <textarea disabled={isView} value={form.remark ?? ''} onChange={(e) => set('remark', e.target.value)} rows={3} style={{ ...inputStyle(t), resize: 'vertical' as const }} />
+            <textarea disabled={isView} value={form.remark ?? ''} onChange={(e) => set('remark', e.target.value)} rows={3} style={{ ...getFormInputStyle(t), resize: 'vertical' as const }} />
           </div>
         </div>
 
@@ -324,8 +306,8 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
                   return (
                     <label key={e.id} className="flex items-center gap-1.5" style={{
                       padding: '5px 10px', borderRadius: 16, fontSize: 12, cursor: 'pointer',
-                      background: checked ? '#4338ca' : t.insetBg, color: checked ? '#fff' : t.textPrimary,
-                      border: `1px solid ${checked ? '#4338ca' : t.surfaceBorder}`,
+                      background: checked ? accent : t.insetBg, color: checked ? '#fff' : t.textPrimary,
+                      border: `1px solid ${checked ? accent : t.surfaceBorder}`,
                     }}>
                       <input type="checkbox" checked={checked} style={{ display: 'none' }}
                         onChange={() => setSelectedEmployeeIds((prev) => checked ? prev.filter((id2) => id2 !== e.id) : [...prev, e.id])} />
@@ -350,7 +332,7 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder={replyTo ? `Replying to "${replyTo.remark.slice(0, 40)}..."` : 'Add a comment...'}
-                  style={{ ...inputStyle(t), flex: 1 }}
+                  style={{ ...getFormInputStyle(t), flex: 1 }}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handlePostComment(); } }}
                 />
                 {replyTo && (
@@ -369,7 +351,7 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {threaded.map((a) => (
-                    <div key={a.id} style={{ borderLeft: `2px solid ${a.action === 'status_change' ? '#a1a1aa' : '#4338ca'}`, paddingLeft: 12 }}>
+                    <div key={a.id} style={{ borderLeft: `2px solid ${a.action === 'status_change' ? systemBorder : accent}`, paddingLeft: 12 }}>
                       <div style={{ fontSize: 12.5, color: t.textPrimary }}>
                         {a.action === 'status_change' ? (
                           <em style={{ color: t.textSecondary }}>{a.remark}</em>
@@ -383,7 +365,7 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
                         <span>{formatDate(a.action_date)}</span>
                         {a.action === 'comment' && (
                           <button type="button" onClick={() => setReplyTo(a)} className="flex items-center gap-1"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4338ca', padding: 0 }}>
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: accent, padding: 0 }}>
                             <MdReply size={13} /> Reply
                           </button>
                         )}
