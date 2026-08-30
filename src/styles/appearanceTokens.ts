@@ -165,29 +165,29 @@ const EXISTING: AppearancePalette = {
   },
 };
 
-// ── 'light-professional' — restrained corporate steel-blue. Lower
-// saturation than 'existing' across the board; reads as understated/
-// enterprise rather than product-marketing bright. ──────────────────────
+// ── 'light-professional' — cool ocean blue-to-teal. Still restrained/
+// enterprise, but a smooth adjacent-hue gradient (blue into cyan) reads
+// cleaner and more "designed" than a flat single-hue steel-blue. ────────
 const LIGHT_PROFESSIONAL: AppearancePalette = {
   label: 'Light Professional',
-  accent: '#2c5282', accentDark: '#63b3ed',
-  accentHover: '#234876', accentHoverDark: '#90cdf4',
-  accentFocus: '#2b6cb0', accentFocusDark: '#63b3ed',
-  btnPrimaryGradient: 'linear-gradient(135deg, #2c5282, #4a7bab)',
-  btnPrimaryGradientDark: 'linear-gradient(135deg, #1a365d, #2c5282)',
-  tableHeaderGradient: 'linear-gradient(90deg, #2c5282 0%, #4a7bab 100%)',
-  tableHeaderGradientDark: 'linear-gradient(90deg, #1a365d 0%, #2c5282 100%)',
+  accent: '#0369a1', accentDark: '#38bdf8',
+  accentHover: '#075985', accentHoverDark: '#7dd3fc',
+  accentFocus: '#0284c7', accentFocusDark: '#38bdf8',
+  btnPrimaryGradient: 'linear-gradient(135deg, #0369a1, #0891b2)',
+  btnPrimaryGradientDark: 'linear-gradient(135deg, #075985, #0e7490)',
+  tableHeaderGradient: 'linear-gradient(90deg, #0369a1 0%, #0891b2 100%)',
+  tableHeaderGradientDark: 'linear-gradient(90deg, #075985 0%, #0e7490 100%)',
   duplicateIcon: '#9b2c2c',
   systemBorder: '#a0aec0',
-  navActiveBg: '#ebf4ff', navActiveBgDark: 'rgba(99,179,237,0.16)',
-  navActiveText: '#2c5282', navActiveTextDark: '#63b3ed',
-  navActiveBorder: '#2c5282', navActiveBorderDark: '#63b3ed',
-  avatarGradient: 'linear-gradient(135deg, #2c5282, #4a7bab)',
-  avatarGradientDark: 'linear-gradient(135deg, #1a365d, #2c5282)',
+  navActiveBg: '#e6f6fb', navActiveBgDark: 'rgba(56,189,248,0.16)',
+  navActiveText: '#0369a1', navActiveTextDark: '#38bdf8',
+  navActiveBorder: '#0369a1', navActiveBorderDark: '#38bdf8',
+  avatarGradient: 'linear-gradient(135deg, #0369a1, #0891b2)',
+  avatarGradientDark: 'linear-gradient(135deg, #075985, #0e7490)',
   families: {
-    accentInfo:   { bg: '#ebf4ff', fg: '#2c5282', bgDark: 'rgba(99,179,237,0.16)',  fgDark: '#90cdf4' },
-    info:         { bg: '#e6f0fa', fg: '#2b6cb0', bgDark: 'rgba(66,153,225,0.16)',  fgDark: '#90cdf4' },
-    infoSky:      { bg: '#e6fffa', fg: '#0987a0', bgDark: 'rgba(56,178,172,0.16)',  fgDark: '#81e6d9' },
+    accentInfo:   { bg: '#e6f6fb', fg: '#0369a1', bgDark: 'rgba(56,189,248,0.16)',  fgDark: '#7dd3fc' },
+    info:         { bg: '#e6f0fa', fg: '#0284c7', bgDark: 'rgba(56,189,248,0.16)',  fgDark: '#7dd3fc' },
+    infoSky:      { bg: '#e6fffa', fg: '#0987a0', bgDark: 'rgba(45,212,191,0.16)',  fgDark: '#5eead4' },
     warning:      { bg: '#fffbea', fg: '#975a16', bgDark: 'rgba(214,158,46,0.16)',  fgDark: '#f6e05e' },
     warningAmber: { bg: '#fff5e6', fg: '#9a5b13', bgDark: 'rgba(221,142,42,0.16)',  fgDark: '#fbd38d' },
     neutral:      { bg: '#f0f2f5', fg: '#4a5568', bgDark: 'rgba(160,174,192,0.16)', fgDark: '#cbd5e0' },
@@ -198,27 +198,29 @@ const LIGHT_PROFESSIONAL: AppearancePalette = {
   },
 };
 
-// ── 'dark-professional' — deep teal/slate identity. Not "forced dark
+// ── 'dark-professional' — deep emerald/jade identity. Not "forced dark
 // mode" (see file header) — a moodier, higher-contrast accent family that
-// happens to read especially well once the user is also in dark mode. ───
+// happens to read especially well once the user is also in dark mode. A
+// touch more saturated than the old flat teal so the gradient doesn't
+// read muddy on the table header band. ──────────────────────────────────
 const DARK_PROFESSIONAL: AppearancePalette = {
   label: 'Dark Professional',
-  accent: '#0f766e', accentDark: '#2dd4bf',
-  accentHover: '#0d5f58', accentHoverDark: '#5eead4',
-  accentFocus: '#0f766e', accentFocusDark: '#2dd4bf',
-  btnPrimaryGradient: 'linear-gradient(135deg, #134e4a, #0f766e)',
-  btnPrimaryGradientDark: 'linear-gradient(135deg, #0f766e, #115e59)',
-  tableHeaderGradient: 'linear-gradient(90deg, #134e4a 0%, #0f766e 100%)',
-  tableHeaderGradientDark: 'linear-gradient(90deg, #042f2e 0%, #115e59 100%)',
+  accent: '#047857', accentDark: '#34d399',
+  accentHover: '#065f46', accentHoverDark: '#6ee7b7',
+  accentFocus: '#059669', accentFocusDark: '#34d399',
+  btnPrimaryGradient: 'linear-gradient(135deg, #065f46, #047857)',
+  btnPrimaryGradientDark: 'linear-gradient(135deg, #064e3b, #059669)',
+  tableHeaderGradient: 'linear-gradient(90deg, #065f46 0%, #047857 100%)',
+  tableHeaderGradientDark: 'linear-gradient(90deg, #022c22 0%, #065f46 100%)',
   duplicateIcon: '#b91c1c',
   systemBorder: '#94a3b8',
-  navActiveBg: '#e6fffa', navActiveBgDark: 'rgba(45,212,191,0.18)',
-  navActiveText: '#0f766e', navActiveTextDark: '#2dd4bf',
-  navActiveBorder: '#0f766e', navActiveBorderDark: '#2dd4bf',
-  avatarGradient: 'linear-gradient(135deg, #134e4a, #0f766e)',
-  avatarGradientDark: 'linear-gradient(135deg, #0f766e, #115e59)',
+  navActiveBg: '#e6fdf3', navActiveBgDark: 'rgba(52,211,153,0.18)',
+  navActiveText: '#047857', navActiveTextDark: '#34d399',
+  navActiveBorder: '#047857', navActiveBorderDark: '#34d399',
+  avatarGradient: 'linear-gradient(135deg, #065f46, #047857)',
+  avatarGradientDark: 'linear-gradient(135deg, #064e3b, #059669)',
   families: {
-    accentInfo:   { bg: '#e6fffa', fg: '#0f766e', bgDark: 'rgba(45,212,191,0.18)',  fgDark: '#5eead4' },
+    accentInfo:   { bg: '#e6fdf3', fg: '#047857', bgDark: 'rgba(52,211,153,0.18)',  fgDark: '#6ee7b7' },
     info:         { bg: '#e0f2fe', fg: '#0369a1', bgDark: 'rgba(56,189,248,0.18)',  fgDark: '#7dd3fc' },
     infoSky:      { bg: '#ecfeff', fg: '#0e7490', bgDark: 'rgba(34,211,238,0.18)',  fgDark: '#67e8f9' },
     warning:      { bg: '#fefce8', fg: '#a16207', bgDark: 'rgba(234,179,8,0.18)',   fgDark: '#fde047' },
@@ -264,26 +266,30 @@ const MODERN: AppearancePalette = {
   },
 };
 
-// ── 'executive' — deep navy + bronze/gold. Premium/boardroom feel;
+// ── 'executive' — warm bronze/copper into gold. The original navy+gold
+// combination clashed (cool blue against warm gold has no bridging hue,
+// so the gradient's middle read as muddy grey-brown) — this version stays
+// in one warm family throughout (charcoal → bronze → gold) so the
+// transition reads rich rather than dull. Still a premium/boardroom feel;
 // jewel-tone status colors instead of pastels. ──────────────────────────
 const EXECUTIVE: AppearancePalette = {
   label: 'Executive',
-  accent: '#92722a', accentDark: '#d4af61',
-  accentHover: '#7a5e20', accentHoverDark: '#e6c98a',
-  accentFocus: '#92722a', accentFocusDark: '#d4af61',
-  btnPrimaryGradient: 'linear-gradient(135deg, #1e293b, #92722a)',
-  btnPrimaryGradientDark: 'linear-gradient(135deg, #0f172a, #7a5e20)',
-  tableHeaderGradient: 'linear-gradient(90deg, #1e293b 0%, #334155 60%, #92722a 100%)',
-  tableHeaderGradientDark: 'linear-gradient(90deg, #0f172a 0%, #1e293b 60%, #7a5e20 100%)',
+  accent: '#b45309', accentDark: '#f59e0b',
+  accentHover: '#92400e', accentHoverDark: '#fbbf24',
+  accentFocus: '#b45309', accentFocusDark: '#f59e0b',
+  btnPrimaryGradient: 'linear-gradient(135deg, #292524, #b45309)',
+  btnPrimaryGradientDark: 'linear-gradient(135deg, #1c1917, #92400e)',
+  tableHeaderGradient: 'linear-gradient(90deg, #292524 0%, #78350f 55%, #b45309 100%)',
+  tableHeaderGradientDark: 'linear-gradient(90deg, #1c1917 0%, #57330a 55%, #92400e 100%)',
   duplicateIcon: '#7f1d1d',
   systemBorder: '#6b7280',
-  navActiveBg: '#f5f0e0', navActiveBgDark: 'rgba(212,175,97,0.18)',
-  navActiveText: '#92722a', navActiveTextDark: '#d4af61',
-  navActiveBorder: '#92722a', navActiveBorderDark: '#d4af61',
-  avatarGradient: 'linear-gradient(135deg, #1e293b, #92722a)',
-  avatarGradientDark: 'linear-gradient(135deg, #0f172a, #7a5e20)',
+  navActiveBg: '#fdf1e0', navActiveBgDark: 'rgba(245,158,11,0.18)',
+  navActiveText: '#b45309', navActiveTextDark: '#f59e0b',
+  navActiveBorder: '#b45309', navActiveBorderDark: '#f59e0b',
+  avatarGradient: 'linear-gradient(135deg, #292524, #b45309)',
+  avatarGradientDark: 'linear-gradient(135deg, #1c1917, #92400e)',
   families: {
-    accentInfo:   { bg: '#f5f0e0', fg: '#92722a', bgDark: 'rgba(212,175,97,0.18)',  fgDark: '#e6c98a' },
+    accentInfo:   { bg: '#fdf1e0', fg: '#b45309', bgDark: 'rgba(245,158,11,0.18)',  fgDark: '#fbbf24' },
     info:         { bg: '#e2e8f0', fg: '#1e293b', bgDark: 'rgba(148,163,184,0.18)', fgDark: '#cbd5e1' },
     infoSky:      { bg: '#e0f2fe', fg: '#075985', bgDark: 'rgba(56,189,248,0.16)',  fgDark: '#7dd3fc' },
     warning:      { bg: '#fef3c7', fg: '#854d0e', bgDark: 'rgba(202,138,4,0.18)',   fgDark: '#facc15' },
