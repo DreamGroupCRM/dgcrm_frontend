@@ -388,7 +388,7 @@ const SeriesConfigCard: React.FC<{
           type="button"
           onClick={onApply}
           className="flex-1 text-xs font-semibold rounded-lg text-white"
-          style={{ background: accent, border: 'none', cursor: 'pointer', padding: '7px 0' }}
+          style={{ background: `linear-gradient(135deg,${accent},${accentHover})`, border: 'none', cursor: 'pointer', padding: '7px 0' }}
         >
           OK
         </button>
@@ -971,7 +971,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
               disabled={wings.length === 0}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
               style={{
-                background: wings.length === 0 ? '#9ca3af' : accent,
+                background: wings.length === 0 ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
                 border: 'none', cursor: wings.length === 0 ? 'not-allowed' : 'pointer',
               }}
             >
@@ -1093,7 +1093,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                         disabled={activeWing.floors.length === 0}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
                         style={{
-                          background: activeWing.floors.length === 0 ? '#9ca3af' : accent,
+                          background: activeWing.floors.length === 0 ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
                           border: 'none', cursor: activeWing.floors.length === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                         }}
                       >
@@ -1242,7 +1242,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                   disabled={!shopCountInput || parseInt(shopCountInput, 10) <= 0}
                   className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
                   style={{
-                    background: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? '#9ca3af' : accent,
+                    background: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
                     border: 'none', cursor: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                   }}
                 >
@@ -1418,7 +1418,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             disabled={!isFormValid || saving}
             className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
             style={{
-              background: !isFormValid || saving ? '#9ca3af' : accent,
+              background: !isFormValid || saving ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
               border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.8 : 1,
             }}

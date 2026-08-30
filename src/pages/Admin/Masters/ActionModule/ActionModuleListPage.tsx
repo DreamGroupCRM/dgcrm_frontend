@@ -197,7 +197,7 @@ const ActionModuleListPage: React.FC = () => {
           <div className="flex items-center gap-2" style={{ flex: '0 0 auto' }}>
             <button onClick={() => navigate('/admin/masters/module/add')}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-              style={{ background: '#d97706', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ background: 'linear-gradient(135deg,#d97706,#f59e0b)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <MdAdd size={18} /> Add Module
             </button>
             <button onClick={exportModuleCSV} title="Export CSV" className="p-2 rounded-xl"
@@ -276,7 +276,7 @@ const ActionModuleListPage: React.FC = () => {
           <div className="flex items-center gap-2" style={{ flex: '0 0 auto' }}>
             <button onClick={() => navigate('/admin/masters/action/add')}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-              style={{ background: '#1d4ed8', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ background: 'linear-gradient(135deg,#1d4ed8,#2563eb)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <MdAdd size={18} /> Add Action
             </button>
             <button onClick={exportActionCSV} title="Export CSV" className="p-2 rounded-xl"

@@ -354,7 +354,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                     disabled={!newDesignationName.trim()}
                     className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
                     style={{
-                      background: !newDesignationName.trim() ? '#9ca3af' : accent,
+                      background: !newDesignationName.trim() ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
                       border: 'none', cursor: !newDesignationName.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                     }}
                   >
@@ -529,7 +529,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
             disabled={!isFormValid || saving}
             className="flex items-center gap-1.5 px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
             style={{
-              background: !isFormValid || saving ? '#9ca3af' : accent,
+              background: !isFormValid || saving ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
               border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.8 : 1,
             }}

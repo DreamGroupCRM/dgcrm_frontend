@@ -241,7 +241,7 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
             <Box
               sx={{
                 width: 36, height: 36, borderRadius: 2,
-                background: '#2563eb',
+                background: 'linear-gradient(135deg,#3b82f6,#2563eb)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
@@ -316,12 +316,16 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
               onClick={handleSubmit}
               disabled={!isFormValid || saving}
               sx={{
-                background: isFormValid && !saving ? '#2563eb' : undefined,
+                background: isFormValid && !saving
+                  ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                  : undefined,
                 borderRadius: 2, textTransform: 'none', fontWeight: 600,
                 px: 3, py: 1.1, fontSize: '0.875rem',
-                boxShadow: 'none',
+                boxShadow: isFormValid ? '0 4px 14px rgba(59,130,246,0.35)' : 'none',
                 '&:hover': {
-                  background: isFormValid ? '#1d4ed8' : undefined,
+                  background: isFormValid
+                    ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)'
+                    : undefined,
                 },
                 '&.Mui-disabled': {
                   background: isDark ? '#2a2a3e' : '#e2e8f0',

@@ -583,7 +583,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
               style={{
                 background: !isMandatoryValid || saving
                   ? '#6b7280'
-                  : '#1d4ed8',
+                  : 'linear-gradient(135deg,#1d4ed8,#2563eb)',
                 border: 'none',
                 cursor: !isMandatoryValid || saving ? 'not-allowed' : 'pointer',
                 opacity: saving ? 0.7 : 1,

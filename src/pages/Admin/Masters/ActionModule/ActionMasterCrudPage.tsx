@@ -190,7 +190,7 @@ const ActionMasterCrudPage: React.FC<Props> = ({ mode }) => {
               disabled={!isMandatoryValid || saving}
               className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
               style={{
-                background: !isMandatoryValid || saving ? '#6b7280' : '#1d4ed8',
+                background: !isMandatoryValid || saving ? '#6b7280' : 'linear-gradient(135deg,#1d4ed8,#2563eb)',
                 border : 'none',
                 cursor : !isMandatoryValid || saving ? 'not-allowed' : 'pointer',
                 opacity: saving ? 0.7 : 1,

@@ -7,15 +7,14 @@
 // the per-card accent color/icon/value stay as props since those
 // legitimately differ card to card.
 //
-// Flat card (surfaceBg + border), a small tinted icon chip, and dark
-// value/label text — not a saturated gradient fill with white text. Reads
-// as a restrained enterprise KPI tile instead of a bright marketing card;
-// the per-card color still carries meaning (people=blue, danger=red, ...)
-// via the icon chip alone, which is enough to differentiate without the
-// whole tile competing for attention.
+// Saturated gradient fill (see statGradients.ts) with white icon/label/
+// value text — the per-card color picks which gradient, tinted toward the
+// active appearance's accent via tintGradient so the palette still reads
+// as "on brand" for every Appearance choice.
 import React from 'react';
 import { IconType } from 'react-icons';
 import { useAppearanceTokens } from '../../styles/appearanceTokens';
+import { getStatGradient } from './statGradients';
 
 interface StatCardProps {
   label: string;
@@ -39,21 +38,20 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({
-  label, value, icon: Icon, color, surfaceBg, surfaceBorder, textPrimary, textSecondary, loading, compact, labelFontSize,
+  label, value, icon: Icon, color, surfaceBorder, loading, compact, labelFontSize,
 }) => {
-  const { tintColor } = useAppearanceTokens();
-  const iconColor = tintColor(color);
+  const { tintGradient } = useAppearanceTokens();
   return (
   <div
-    className={`master-stat-card${compact ? ' master-stat-card-compact' : ''}`}
-    style={{ background: surfaceBg, border: `1px solid ${surfaceBorder}` }}
+    className={`master-stat-card master-stat-card-gradient${compact ? ' master-stat-card-compact' : ''}`}
+    style={{ background: getStatGradient(color, tintGradient), border: `1px solid ${surfaceBorder}` }}
   >
-    <div className="master-stat-icon" style={{ background: `${iconColor}17` }}>
-      <Icon size={compact ? 15 : 19} style={{ color: iconColor }} />
+    <div className="master-stat-icon" style={{ background: 'rgba(255,255,255,0.22)' }}>
+      <Icon size={compact ? 15 : 19} style={{ color: '#fff' }} />
     </div>
     <div className="master-stat-body">
-      <div className="master-stat-label" style={{ color: textSecondary, ...(labelFontSize ? { fontSize: labelFontSize } : undefined) }}>{label}</div>
-      <div className="master-stat-value" style={{ color: textPrimary }}>{loading ? '—' : value}</div>
+      <div className="master-stat-label master-stat-label-gradient" style={labelFontSize ? { fontSize: labelFontSize } : undefined}>{label}</div>
+      <div className="master-stat-value master-stat-value-gradient">{loading ? '—' : value}</div>
     </div>
   </div>
   );

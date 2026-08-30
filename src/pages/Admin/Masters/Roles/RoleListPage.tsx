@@ -156,7 +156,7 @@ const RoleListPage: React.FC = () => {
             onClick={() => navigate('/admin/masters/roles/add')}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
             style={{
-              background: '#1d4ed8',
+              background: 'linear-gradient(135deg,#1d4ed8,#2563eb)',
               border: 'none', cursor: 'pointer',
             }}
           >

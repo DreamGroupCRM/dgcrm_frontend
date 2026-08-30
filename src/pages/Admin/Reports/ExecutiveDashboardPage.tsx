@@ -25,6 +25,7 @@ import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../styles/theme';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
+import { getStatGradient } from '../../../components/masters/statGradients';
 import StatCard from '../../../components/masters/StatCard';
 import { formatDate, formatLastLogin } from '../../../utils';
 import {
@@ -388,11 +389,11 @@ const ExecutiveDashboardPage: React.FC = () => {
           service, nothing fabricated. Independent load/error state from
           the rest of this page (see the effect above) so a failure here
           can never take down the Executive Dashboard around it. ──────── */}
-      <div className="rounded-lg overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, marginBottom: 18 }}>
-        <div className="flex items-center gap-2 px-5 py-3" style={{ background: t.insetBg, borderBottom: `1px solid ${t.divider}` }}>
-          <MdAutoAwesome size={16} color={t.textSecondary} />
-          <h2 style={{ fontSize: 13.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>DGCRM Intelligence</h2>
-          <span style={{ fontSize: 10.5, color: t.textMuted, marginLeft: 4 }}>Lead scoring, priorities and patterns — computed from your own CRM data</span>
+      <div className="rounded-2xl overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${isDark ? 'rgba(124,58,237,0.35)' : '#ddd6fe'}`, boxShadow: isDark ? 'none' : '0 4px 16px rgba(124,58,237,0.08)', marginBottom: 18 }}>
+        <div className="flex items-center gap-2 px-5 py-3.5" style={{ background: 'linear-gradient(135deg,#4c1d95,#7c3aed,#a855f7)' }}>
+          <MdAutoAwesome size={18} color="#fff" />
+          <h2 style={{ fontSize: 15, fontWeight: 800, color: '#fff', margin: 0 }}>DGCRM Intelligence</h2>
+          <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.85)', marginLeft: 4 }}>Lead scoring, priorities and patterns — computed from your own CRM data</span>
         </div>
         <div className="p-4">
           {aiLoading ? (
@@ -538,17 +539,17 @@ const ExecutiveDashboardPage: React.FC = () => {
         <SectionCard t={t} title="Payment Overview" icon={MdPayments}>
           {loading ? <Skeleton t={t} height={140} /> : !data ? <EmptyState t={t} text="No data." /> : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div style={{ background: isDark ? 'rgba(34,197,94,0.1)' : '#f0fdf4', border: `1px solid ${isDark ? 'rgba(34,197,94,0.25)' : '#bbf7d0'}`, borderRadius: 8, padding: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: t.textSecondary }}>Total Received</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: isDark ? '#4ade80' : '#15803d' }}>{rupee(data.payment_overview.total_received)}</div>
+              <div style={{ background: getStatGradient('#16a34a'), borderRadius: 12, padding: 16, color: '#fff' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.9 }}>Total Received</div>
+                <div style={{ fontSize: 20, fontWeight: 800 }}>{rupee(data.payment_overview.total_received)}</div>
               </div>
-              <div style={{ background: isDark ? 'rgba(245,158,11,0.1)' : '#fffbeb', border: `1px solid ${isDark ? 'rgba(245,158,11,0.25)' : '#fde68a'}`, borderRadius: 8, padding: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: t.textSecondary }}>Pending Approval ({data.payment_overview.pending_approval_count})</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: isDark ? '#fbbf24' : '#b45309' }}>{rupee(data.payment_overview.pending_approval)}</div>
+              <div style={{ background: getStatGradient('#ea580c'), borderRadius: 12, padding: 16, color: '#fff' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.9 }}>Pending Approval ({data.payment_overview.pending_approval_count})</div>
+                <div style={{ fontSize: 20, fontWeight: 800 }}>{rupee(data.payment_overview.pending_approval)}</div>
               </div>
-              <div style={{ background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', border: `1px solid ${isDark ? 'rgba(239,68,68,0.25)' : '#fecaca'}`, borderRadius: 8, padding: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: t.textSecondary }}>Overdue</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: isDark ? '#f87171' : '#b91c1c' }}>{rupee(data.payment_overview.overdue)}</div>
+              <div style={{ background: getStatGradient('#dc2626'), borderRadius: 12, padding: 16, color: '#fff' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.9 }}>Overdue</div>
+                <div style={{ fontSize: 20, fontWeight: 800 }}>{rupee(data.payment_overview.overdue)}</div>
               </div>
             </div>
           )}
