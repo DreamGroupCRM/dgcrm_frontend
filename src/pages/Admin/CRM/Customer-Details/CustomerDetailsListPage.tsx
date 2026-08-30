@@ -16,7 +16,8 @@ import {
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { AppTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory } from '../../../../services/customerDetailsService';
 import {
@@ -33,7 +34,7 @@ import jsPDF from 'jspdf';
 import { formatDate, showAlert } from '../../../../utils';
 import './CustomerDetails.css';
 
-type Theme = ReturnType<typeof getTheme>;
+type Theme = AppTheme;
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 // ── SearchableSelect — module scope (not inside the page component), so
@@ -317,9 +318,7 @@ const CustomerCard: React.FC<{
 const CustomerDetailsListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, cssVars: appearanceCssVars } = useAppearanceTokens();
   const role = useAppSelector((s) => s.auth.role);
   const isAdmin = isAdminRole(role);
 
@@ -894,9 +893,13 @@ const CustomerDetailsListPage: React.FC = () => {
   };
 
   // ── CSS custom properties for CustomerDetails.css — set once here from
-  // this page's own getTheme(isDark) values, consumed by the cust-* classes
-  // used throughout this page's filters/table/modals below. ─────────────
+  // this page's own theme values, consumed by the cust-* classes used
+  // throughout this page's filters/table/modals below. Also spreads in
+  // the appearance system's shared vars so .cust-btn-primary (Add
+  // Customer) responds to appearance switching like every other primary
+  // CTA — see CustomerDetailsCrudPage.tsx for the same change. ──────────
   const cssVars = {
+    ...appearanceCssVars,
     '--cust-field-bg': t.inputBg, '--cust-field-border': t.inputBorder, '--cust-field-text': t.inputText,
     '--cust-inset-bg': t.insetBg, '--cust-text-primary': t.textPrimary, '--cust-text-secondary': t.textSecondary,
     '--cust-surface-bg': t.surfaceBg, '--cust-surface-border': t.surfaceBorder, '--cust-divider': t.divider,

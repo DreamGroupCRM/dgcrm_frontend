@@ -11,8 +11,8 @@ import {
 } from 'react-icons/md';
 import { FaWhatsapp } from 'react-icons/fa';
 
-import { useAppSelector } from '../../../../hooks';
-import { getTheme } from '../../../../styles/theme';
+import { AppTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import {
   fetchCustomerFullDetails,
   createCustomerWithDetails,
@@ -28,7 +28,7 @@ import './CustomerDetails.css';
 
 type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
-type Theme = ReturnType<typeof getTheme>;
+type Theme = AppTheme;
 
 // A file field can be: a freshly-picked File (about to be uploaded), an
 // existing URL string (already on the server, from Edit/View's fetch), or
@@ -540,9 +540,7 @@ const CustomerPreviewModal: React.FC<{ data: PreviewData; onClose: () => void }>
 const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { mode: themeMode } = useAppSelector((s) => s.theme);
-  const isDark = themeMode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, cssVars: appearanceCssVars } = useAppearanceTokens();
   const isView = mode === 'view';
 
   const [fetching, setFetching] = useState(mode !== 'add');
@@ -932,9 +930,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   // ── CSS custom properties for CustomerDetails.css — set once here from
-  // this page's own getTheme(isDark) values, consumed by the cust-* classes
-  // used throughout this page's form fields/labels/footer below. ────────
+  // this page's own theme values, consumed by the cust-* classes used
+  // throughout this page's form fields/labels/footer below. Also spreads
+  // in the appearance system's shared vars (--master-accent etc.) so
+  // .cust-btn-primary's gradient — previously a static #4338ca/#4f46e5
+  // literal that happens to equal the Existing appearance's own accent/
+  // accentFocus — responds to appearance switching like every other
+  // primary CTA, with zero change to today's Existing/Current look. ────
   const cssVars = {
+    ...appearanceCssVars,
     '--cust-field-bg': t.inputBg, '--cust-field-border': t.inputBorder, '--cust-field-text': t.inputText,
     '--cust-inset-bg': t.insetBg, '--cust-text-primary': t.textPrimary, '--cust-text-secondary': t.textSecondary,
     '--cust-surface-bg': t.surfaceBg, '--cust-surface-border': t.surfaceBorder, '--cust-divider': t.divider,
