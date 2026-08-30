@@ -75,17 +75,20 @@ export const getFormLabelStyle = (t: AppTheme, overrides?: Partial<React.CSSProp
 // `required`/`error` are optional so existing simple 3-prop callers (label/
 // t/children) are unaffected — added when converting CompanyCrudPage.tsx,
 // whose local `Field` already supported both, to this shared component.
+// `errorStyle` similarly defaults to Company's 12.5px so it's a no-op for
+// every caller that doesn't pass it — added for BankAccountCrudPage.tsx,
+// whose original error text was 11.5px.
 export const FormField: React.FC<{
   label: string; t: AppTheme; labelStyle?: React.CSSProperties;
-  required?: boolean; error?: string; children: React.ReactNode;
-}> = ({ label, t, labelStyle, required, error, children }) => (
+  required?: boolean; error?: string; errorStyle?: React.CSSProperties; children: React.ReactNode;
+}> = ({ label, t, labelStyle, required, error, errorStyle, children }) => (
   <div>
     <label style={labelStyle ?? getFormLabelStyle(t)}>
       {label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
     </label>
     {children}
     {error && (
-      <p style={{ color: '#ef4444', fontSize: 12.5, marginTop: 4, fontFamily: t.fontFamily }}>
+      <p style={errorStyle ?? { color: '#ef4444', fontSize: 12.5, marginTop: 4, fontFamily: t.fontFamily }}>
         {error}
       </p>
     )}
