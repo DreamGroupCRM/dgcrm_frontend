@@ -9,9 +9,9 @@ import {
   MdAdd, MdDownload, MdUpload, MdRefresh, MdSearch, MdPerson, MdContentCopy,
 } from 'react-icons/md';
 
-import { useAppDispatch, useAppSelector } from '../../hooks';
+import { useAppDispatch } from '../../hooks';
 import { setPageTitle } from '../../redux/slices/uiSlice';
-import { getTheme } from '../../styles/theme';
+import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import {
   fetchLeadList, fetchLeadStatusCounts, deleteLead, exportLeadsCSV, importLeadsCSV,
 } from '../../services/leadService';
@@ -38,9 +38,7 @@ const CATEGORY_OPTIONS = ['hot', 'warm', 'cold'];
 const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, accent, scale, cssVars, duplicateIcon } = useAppearanceTokens();
   const isAdmin = portal === 'admin';
 
   useEffect(() => { dispatch(setPageTitle('Leads')); }, [dispatch]);
@@ -163,13 +161,20 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
 
   const pillStyle = (active: boolean): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: '6px 12px', borderRadius: 20, fontSize: 11.5, fontWeight: 600,
-    cursor: 'pointer', whiteSpace: 'nowrap', border: `1px solid ${active ? '#4338ca' : t.surfaceBorder}`,
-    background: active ? '#4338ca' : t.insetBg, color: active ? '#fff' : t.textPrimary,
+    padding: `${scale.pillPaddingY}px ${scale.pillPaddingX}px`, borderRadius: 20, fontSize: scale.fontSizeSm, fontWeight: 600,
+    cursor: 'pointer', whiteSpace: 'nowrap', border: `1px solid ${active ? accent : t.surfaceBorder}`,
+    background: active ? accent : t.insetBg, color: active ? '#fff' : t.textPrimary,
   });
 
   return (
-    <div className="master-page">
+    // cssVars (from useAppearanceTokens) are set here, on this page's own
+    // root element only — CSS custom properties cascade to descendants,
+    // so .master-btn-primary / .master-search-box-accent / .master-table
+    // (all shared classes used by every other list page too) pick up the
+    // selected appearance/density ONLY inside this subtree. No other page
+    // sets these variables, so they keep resolving to master.css's
+    // unchanged :root-fallback defaults — i.e. today's exact look.
+    <div className="master-page" style={cssVars}>
       <div className="master-topbar">
         <div className="master-search-box master-search-box-accent" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
           <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
@@ -279,7 +284,7 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
                         <MdPerson size={16} className="master-row-icon" />
                         <span style={{ fontWeight: 700 }}>{l.name}</span>
                         {l.is_duplicate && (
-                          <span title="Possible duplicate lead" style={{ color: '#dc2626', display: 'inline-flex' }}>
+                          <span title="Possible duplicate lead" style={{ color: duplicateIcon, display: 'inline-flex' }}>
                             <MdContentCopy size={13} />
                           </span>
                         )}
@@ -326,9 +331,9 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
               <button key={n} type="button" onClick={() => setPage(n)}
                 className="px-3 py-1.5 rounded-lg text-sm font-medium"
                 style={{
-                  background: n === safePage ? '#4338ca' : t.insetBg,
+                  background: n === safePage ? accent : t.insetBg,
                   color: n === safePage ? '#fff' : t.textPrimary,
-                  border: `1px solid ${n === safePage ? '#4338ca' : t.surfaceBorder}`, cursor: 'pointer',
+                  border: `1px solid ${n === safePage ? accent : t.surfaceBorder}`, cursor: 'pointer',
                 }}>
                 {n}
               </button>

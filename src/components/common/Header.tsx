@@ -187,8 +187,11 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
 
       <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
 
-      <div style={{ padding: '4px 16px 4px', fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+      <div style={{ padding: '4px 16px 0', fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
         Appearance
+      </div>
+      <div style={{ padding: '2px 16px 8px', fontSize: 9.5, color: t.textSecondary, fontStyle: 'italic' }}>
+        Applied to the Leads list only (pilot) — other pages unaffected
       </div>
       <div style={{ padding: '0 16px 8px' }}>
         <select
@@ -204,8 +207,11 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
         </select>
       </div>
 
-      <div style={{ padding: '4px 16px 4px', fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+      <div style={{ padding: '4px 16px 0', fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
         Density
+      </div>
+      <div style={{ padding: '2px 16px 8px', fontSize: 9.5, color: t.textSecondary, fontStyle: 'italic' }}>
+        Applied to the Leads list only (pilot) — other pages unaffected
       </div>
       <div style={{ padding: '0 16px 4px' }}>
         <select

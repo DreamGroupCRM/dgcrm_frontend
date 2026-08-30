@@ -27,19 +27,25 @@ import { STORAGE_KEYS } from '../../constants';
 export type AppearanceId = 'existing' | 'light-professional' | 'dark-professional' | 'modern' | 'executive';
 export type DensityId = 'existing' | 'compact' | 'standard' | 'spacious';
 
+// Phase 4 pilot: real (Leads-list-only) implementations now exist for all
+// 5 appearances and 4 densities — see src/styles/appearanceTokens.ts. Every
+// other page in the app doesn't read that file yet, so it keeps rendering
+// through master.css's unchanged :root defaults regardless of what's
+// selected here — see the "(Leads pilot)" caption in Header.tsx's
+// Settings panel, which exists specifically so this isn't misleading.
 export const APPEARANCE_OPTIONS: { id: AppearanceId; label: string; implemented: boolean }[] = [
   { id: 'existing', label: 'Existing / Current', implemented: true },
-  { id: 'light-professional', label: 'Light Professional', implemented: false },
-  { id: 'dark-professional', label: 'Dark Professional', implemented: false },
-  { id: 'modern', label: 'Modern', implemented: false },
-  { id: 'executive', label: 'Executive', implemented: false },
+  { id: 'light-professional', label: 'Light Professional', implemented: true },
+  { id: 'dark-professional', label: 'Dark Professional', implemented: true },
+  { id: 'modern', label: 'Modern', implemented: true },
+  { id: 'executive', label: 'Executive', implemented: true },
 ];
 
 export const DENSITY_OPTIONS: { id: DensityId; label: string; implemented: boolean }[] = [
   { id: 'existing', label: 'Existing / Current', implemented: true },
-  { id: 'compact', label: 'Compact', implemented: false },
-  { id: 'standard', label: 'Standard', implemented: false },
-  { id: 'spacious', label: 'Spacious', implemented: false },
+  { id: 'compact', label: 'Compact', implemented: true },
+  { id: 'standard', label: 'Standard', implemented: true },
+  { id: 'spacious', label: 'Spacious', implemented: true },
 ];
 
 interface AppearanceState {
