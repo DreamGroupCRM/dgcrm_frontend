@@ -52,18 +52,29 @@ export const StatusBadge: React.FC<{ isActive: boolean; t: AppTheme; isDark: boo
 );
 
 // ── Form fields — shared input/label styling for any Crud-style page ────
-export const getFormInputStyle = (t: AppTheme): React.CSSProperties => ({
+// Different pages currently use different exact padding/font-size/radius
+// for their inputs (Department: 10px 14px @ 12.5px; Lead: 9px 12px @ 13px;
+// etc.) — that's each page's existing, deliberate visual choice, not
+// something to silently unify. `overrides` lets a page keep its own exact
+// current numbers while still centralizing the actual pattern (the border/
+// background/color construction from theme tokens, repeated identically
+// across ~10 files before this) in one place. Omitting overrides keeps
+// today's defaults (Lead's original values), so existing callers are
+// unaffected.
+export const getFormInputStyle = (t: AppTheme, overrides?: Partial<React.CSSProperties>): React.CSSProperties => ({
   width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 13,
   background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
+  ...overrides,
 });
 
-export const getFormLabelStyle = (t: AppTheme): React.CSSProperties => ({
+export const getFormLabelStyle = (t: AppTheme, overrides?: Partial<React.CSSProperties>): React.CSSProperties => ({
   display: 'block', fontSize: 11.5, fontWeight: 600, color: t.textSecondary, marginBottom: 4,
+  ...overrides,
 });
 
-export const FormField: React.FC<{ label: string; t: AppTheme; children: React.ReactNode }> = ({ label, t, children }) => (
+export const FormField: React.FC<{ label: string; t: AppTheme; labelStyle?: React.CSSProperties; children: React.ReactNode }> = ({ label, t, labelStyle, children }) => (
   <div>
-    <label style={getFormLabelStyle(t)}>{label}</label>
+    <label style={labelStyle ?? getFormLabelStyle(t)}>{label}</label>
     {children}
   </div>
 );
