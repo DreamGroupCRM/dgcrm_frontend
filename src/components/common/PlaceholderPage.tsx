@@ -50,9 +50,7 @@ const PlaceholderPage: React.FC<PlaceholderPageProps> = ({ title, description })
       <div
         className="mt-6 px-4 py-2 rounded-xl text-sm font-semibold text-white"
         style={{
-          background: isDark
-            ? 'linear-gradient(135deg, #1e3a5f, #2563eb)'
-            : 'linear-gradient(135deg, #1d4ed8, #2563eb)',
+          background: isDark ? '#1e3a5f' : '#1d4ed8',
           fontFamily: t.fontFamily,
         }}
       >

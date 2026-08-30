@@ -357,14 +357,14 @@ const BankComparisonSidebar: React.FC<{
     <div className="rounded-2xl overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 4px 16px rgba(0,0,0,0.07)' }}>
       <ResultPanelHeader
         icon={<MdAccountBalance size={15} color="#fff" />} title="Bank Loan vs. Our Plan"
-        gradient="linear-gradient(135deg,#b91c1c,#dc2626)"
+        gradient="#b91c1c"
         subtitle={`${LOAN_TENURE_YEARS}yr @ ${LOAN_INTEREST_RATE}%`}
       />
       <div className="p-3.5">
         <button type="button" onClick={onGeneratePdf} disabled={pdfDisabled}
           title="Generate a Bank Loan vs. Interest-Free Model comparison PDF from the Flat Cost above"
           className="print-hide flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl text-xs font-bold text-white mb-3.5"
-          style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: 'none', cursor: pdfDisabled ? 'not-allowed' : 'pointer', opacity: pdfDisabled ? 0.55 : 1 }}>
+          style={{ background: '#b91c1c', border: 'none', cursor: pdfDisabled ? 'not-allowed' : 'pointer', opacity: pdfDisabled ? 0.55 : 1 }}>
           <MdPictureAsPdf size={15} /> {generatingPdf ? 'Generating...' : 'Generate PDF'}
         </button>
 
@@ -683,7 +683,7 @@ const CustomizeSchemePage: React.FC = () => {
           >
             <ResultPanelHeader
               icon={<MdPayments size={15} color="#fff" />} title="Payment Details"
-              gradient="linear-gradient(135deg,#059669,#10b981,#0d9488)"
+              gradient="#059669"
               // "Remaining" now lives ONLY in the top KPI row (SchemeSummaryRow)
               // — kept out of this panel's own header so it isn't shown twice.
               subtitle={totalCost > 0 ? `Total Cost of Flat: ${formatINR(totalCost)}` : 'Enter the scheme inputs below'}
@@ -750,7 +750,7 @@ const CustomizeSchemePage: React.FC = () => {
       <div className="rounded-2xl mb-4 overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
         <ResultPanelHeader
           icon={<MdCalculate size={15} color="#fff" />} title="EMI Scheme"
-          gradient={`linear-gradient(135deg,${accent},#6366f1)`}
+          gradient={accent}
           subtitle={`Total Cost of Flat: ${formatINR(totalCost)}`}
         />
         <div className="p-4">
@@ -774,7 +774,7 @@ const CustomizeSchemePage: React.FC = () => {
         >
           <ResultPanelHeader
             icon={<MdListAlt size={15} color="#fff" />} title="EMI Schedule"
-            gradient="linear-gradient(135deg,#059669,#10b981)"
+            gradient="#059669"
             subtitle={
               <span className="flex items-center gap-1.5">
                 {`${computed.tenure} + ${computed.afterCount} months`}

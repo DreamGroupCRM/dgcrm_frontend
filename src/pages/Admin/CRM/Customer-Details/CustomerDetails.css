@@ -328,7 +328,7 @@
    literals as the var() fallback, so a page that doesn't spread the
    appearance system's cssVars still renders identically. */
 .cust-btn-primary {
-  background: linear-gradient(135deg, var(--master-accent, #4338ca), var(--master-accent-focus, #4f46e5));
+  background: var(--master-accent, #4338ca);
   border: none;
   cursor: pointer;
   color: #fff;

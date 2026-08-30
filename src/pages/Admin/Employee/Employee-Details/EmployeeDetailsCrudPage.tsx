@@ -345,7 +345,7 @@ const DocumentCard: React.FC<{ t: Theme; label: string; url?: string | null }> =
         className="w-full flex items-center justify-center overflow-hidden"
         style={{
           height: 120,
-          background: isImage ? t.insetBg : url ? 'var(--master-btn-primary-gradient, linear-gradient(135deg,#0284c7,#7c3aed))' : t.insetBg,
+          background: isImage ? t.insetBg : url ? 'var(--master-btn-primary-gradient, #4338ca)' : t.insetBg,
         }}
       >
         {isImage && url ? (
@@ -1281,7 +1281,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             disabled={!isFormValid || saving}
             className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
             style={{
-              background: !isFormValid || saving ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentFocus})`,
+              background: !isFormValid || saving ? '#9ca3af' : accent,
               border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.8 : 1,
             }}
           >

@@ -145,9 +145,7 @@ const ProfileModal: React.FC = () => {
         <div
           className="flex-shrink-0 relative px-5 pt-5 pb-4 text-center"
           style={{
-            background: isDark
-              ? 'linear-gradient(135deg, #0f172a, #1e293b)'
-              : 'linear-gradient(135deg, #1e3a5f, #2563eb)',
+            background: isDark ? '#0f172a' : '#1e3a5f',
           }}
         >
           <button
@@ -318,7 +316,7 @@ const ProfileModal: React.FC = () => {
                       type="submit"
                       disabled={pwdSaving}
                       className="w-full py-2 rounded-xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                      style={{ background: 'linear-gradient(135deg,#1d4ed8,#2563eb)', border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
+                      style={{ background: '#1d4ed8', border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
                     >
                       {pwdSaving ? (<><CircularProgress size={16} sx={{ color: 'white' }} /> Updating...</>) : 'Update Password'}
                     </button>
