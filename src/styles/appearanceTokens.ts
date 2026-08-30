@@ -1,6 +1,6 @@
 // src/styles/appearanceTokens.ts
 // ==========================================
-// DREAM GROUP CRM — APPEARANCE PALETTES & DENSITY SCALES (Phase 4 pilot)
+// DREAM GROUP CRM — APPEARANCE PALETTES (Phase 4 pilot)
 // ==========================================
 // Common file every page's "look" should read from instead of hardcoding
 // hex/px literals inline — the exact gap Phase 1 flagged (~660 hardcoded
@@ -34,7 +34,7 @@
 import type { CSSProperties } from 'react';
 import { useAppSelector } from '../hooks';
 import { getTheme } from './theme';
-import { AppearanceId, DensityId } from '../redux/slices/appearanceSlice';
+import { AppearanceId } from '../redux/slices/appearanceSlice';
 
 // ── Color tinting — lets category-colored elements (Dashboard/Reports stat
 // boxes: blue=people, red=overdue, green=good, etc.) shift toward the
@@ -310,25 +310,6 @@ export const APPEARANCE_PALETTES: Record<AppearanceId, AppearancePalette> = {
   executive: EXECUTIVE,
 };
 
-// ── Density scales — spacing/type-size values every page's own inline
-// literals should read from instead of hardcoding, plus the shared
-// .master-table cell padding via CSS variable (see master.css). Values
-// for 'existing' are copied verbatim from what was previously hardcoded. ──
-export interface DensityScale {
-  label: string;
-  pillPaddingY: number; pillPaddingX: number;
-  cellPadding: string; // 'Ypx Xpx', matches --master-cell-padding
-  fontSizeSm: number; fontSizeBase: number;
-  rowGap: number;
-}
-
-export const DENSITY_SCALES: Record<DensityId, DensityScale> = {
-  existing: { label: 'Existing / Current', pillPaddingY: 6, pillPaddingX: 12, cellPadding: '12px 16px', fontSizeSm: 11.5, fontSizeBase: 12.5, rowGap: 8 },
-  compact: { label: 'Compact', pillPaddingY: 3, pillPaddingX: 8, cellPadding: '6px 10px', fontSizeSm: 10.5, fontSizeBase: 11.5, rowGap: 5 },
-  standard: { label: 'Standard', pillPaddingY: 5, pillPaddingX: 11, cellPadding: '10px 14px', fontSizeSm: 11.5, fontSizeBase: 12, rowGap: 7 },
-  spacious: { label: 'Spacious', pillPaddingY: 8, pillPaddingX: 16, cellPadding: '16px 20px', fontSizeSm: 12.5, fontSizeBase: 13.5, rowGap: 12 },
-};
-
 // ── The CSS custom property names master.css's shared classes read.
 // Keep this list and master.css's :root block in sync. ──────────────────
 export interface AppearanceCssVars {
@@ -336,16 +317,14 @@ export interface AppearanceCssVars {
   '--master-accent-focus': string;
   '--master-btn-primary-gradient': string;
   '--grad-table-header': string;
-  '--master-cell-padding': string;
 }
 
 export function useAppearanceTokens() {
-  const { appearance, density } = useAppSelector((s) => s.appearance);
+  const { appearance } = useAppSelector((s) => s.appearance);
   const { mode } = useAppSelector((s) => s.theme);
   const isDark = mode === 'dark';
 
   const palette = APPEARANCE_PALETTES[appearance] ?? APPEARANCE_PALETTES.existing;
-  const scale = DENSITY_SCALES[density] ?? DENSITY_SCALES.existing;
   const t = getTheme(isDark);
 
   const cssVars: AppearanceCssVars = {
@@ -353,7 +332,6 @@ export function useAppearanceTokens() {
     '--master-accent-focus': isDark ? palette.accentFocusDark : palette.accentFocus,
     '--master-btn-primary-gradient': isDark ? palette.btnPrimaryGradientDark : palette.btnPrimaryGradient,
     '--grad-table-header': isDark ? palette.tableHeaderGradientDark : palette.tableHeaderGradient,
-    '--master-cell-padding': scale.cellPadding,
   };
 
   const family = (f: StatusFamily) => {
@@ -362,7 +340,7 @@ export function useAppearanceTokens() {
   };
 
   return {
-    appearance, density, isDark, t,
+    appearance, isDark, t,
     accent: isDark ? palette.accentDark : palette.accent,
     accentHover: isDark ? palette.accentHoverDark : palette.accentHover,
     duplicateIcon: palette.duplicateIcon,
@@ -373,7 +351,6 @@ export function useAppearanceTokens() {
     navActiveText: isDark ? palette.navActiveTextDark : palette.navActiveText,
     navActiveBorder: isDark ? palette.navActiveBorderDark : palette.navActiveBorder,
     avatarGradient: isDark ? palette.avatarGradientDark : palette.avatarGradient,
-    scale,
     family,
     // tintColor/tintGradient: shift a category color (or a two-stop
     // gradient string) toward this appearance's accent. 'existing' is a

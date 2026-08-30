@@ -13,8 +13,8 @@ import { SOCIAL_LINKS, ROUTES } from '../../constants';
 import { getTheme } from '../../styles/theme';
 import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import {
-  setAppearance, setDensity, APPEARANCE_OPTIONS, DENSITY_OPTIONS,
-  AppearanceId, DensityId,
+  setAppearance, APPEARANCE_OPTIONS,
+  AppearanceId,
 } from '../../redux/slices/appearanceSlice';
 
 import { FiSun, FiMoon, FiMoreVertical, FiSettings } from 'react-icons/fi';
@@ -73,7 +73,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   const logoImg  = '/src/assets/images/favicon_logo.png';
   const dispatch = useAppDispatch();
   const { user, role } = useAppSelector((s) => s.auth);
-  const { isDark, t, appearance, density, avatarGradient } = useAppearanceTokens();
+  const { isDark, t, appearance, avatarGradient } = useAppearanceTokens();
   const navigate       = useNavigate();
 
   const dashboardRoute = homeRouteForRole(role);
@@ -153,13 +153,13 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
     background: 'transparent', border: 'none', width: '100%', textAlign: 'left',
   };
 
-  // ── Appearance / Density selects — Phase 2-3 infrastructure only. Every
-  // option besides 'existing' is rendered `disabled` with a "Coming soon"
-  // suffix: the redux state and full option list already exist (so a later
-  // pass can light these up without another state-shape change), but no
-  // page reads `appearance`/`density` yet, so offering them as if they
-  // worked would be misleading. Selecting is a no-op visually today by
-  // design — 'existing' is the only real, selectable value. ─────────────
+  // ── Appearance select — Phase 2-3 infrastructure only. Every option
+  // besides 'existing' is rendered `disabled` with a "Coming soon" suffix:
+  // the redux state and full option list already exist (so a later pass
+  // can light these up without another state-shape change), but no page
+  // reads `appearance` yet, so offering them as if they worked would be
+  // misleading. Selecting is a no-op visually today by design — 'existing'
+  // is the only real, selectable value. ───────────────────────────────────
   const appearanceSelectStyle: React.CSSProperties = {
     width: '100%', marginTop: 4, padding: '6px 8px', borderRadius: 8, fontSize: 12,
     background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
@@ -195,23 +195,6 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
           style={appearanceSelectStyle}
         >
           {APPEARANCE_OPTIONS.map((o) => (
-            <option key={o.id} value={o.id} disabled={!o.implemented}>
-              {o.label}{!o.implemented ? ' (Coming soon)' : ''}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div style={{ padding: '4px 16px 0', fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-        Density
-      </div>
-      <div style={{ padding: '2px 16px 4px' }}>
-        <select
-          value={density}
-          onChange={(e) => dispatch(setDensity(e.target.value as DensityId))}
-          style={appearanceSelectStyle}
-        >
-          {DENSITY_OPTIONS.map((o) => (
             <option key={o.id} value={o.id} disabled={!o.implemented}>
               {o.label}{!o.implemented ? ' (Coming soon)' : ''}
             </option>

@@ -16,11 +16,10 @@ export const STORAGE_KEYS = {
   ROLE: 'dgcrm_role',
   // Appearance system (V_18.0, Phase 2-3) — separate from THEME above on
   // purpose: THEME drives the existing light/dark `getTheme(isDark)` call
-  // sites and must stay untouched; these are new, additive state that (for
-  // now) only ever resolves to 'existing', so no rendering path reads them
+  // sites and must stay untouched; this is new, additive state that (for
+  // now) only ever resolves to 'existing', so no rendering path reads it
   // yet. See src/redux/slices/appearanceSlice.ts.
   APPEARANCE: 'dgcrm_appearance',
-  DENSITY: 'dgcrm_density',
 } as const;
 
 // All app routes in one place — used by routers, sidebar links, and redirects.

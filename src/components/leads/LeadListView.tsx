@@ -38,7 +38,7 @@ const CATEGORY_OPTIONS = ['hot', 'warm', 'cold'];
 const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { isDark, t, accent, scale, cssVars, duplicateIcon } = useAppearanceTokens();
+  const { isDark, t, accent, cssVars, duplicateIcon } = useAppearanceTokens();
   const isAdmin = portal === 'admin';
 
   useEffect(() => { dispatch(setPageTitle('Leads')); }, [dispatch]);
@@ -161,7 +161,7 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
 
   const pillStyle = (active: boolean): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: `${scale.pillPaddingY}px ${scale.pillPaddingX}px`, borderRadius: 20, fontSize: scale.fontSizeSm, fontWeight: 600,
+    padding: '6px 12px', borderRadius: 20, fontSize: 11.5, fontWeight: 600,
     cursor: 'pointer', whiteSpace: 'nowrap', border: `1px solid ${active ? accent : t.surfaceBorder}`,
     background: active ? accent : t.insetBg, color: active ? '#fff' : t.textPrimary,
   });
@@ -171,9 +171,9 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
     // root element only — CSS custom properties cascade to descendants,
     // so .master-btn-primary / .master-search-box-accent / .master-table
     // (all shared classes used by every other list page too) pick up the
-    // selected appearance/density ONLY inside this subtree. No other page
-    // sets these variables, so they keep resolving to master.css's
-    // unchanged :root-fallback defaults — i.e. today's exact look.
+    // selected appearance ONLY inside this subtree. No other page sets
+    // these variables, so they keep resolving to master.css's unchanged
+    // :root-fallback defaults — i.e. today's exact look.
     <div className="master-page" style={cssVars}>
       <div className="master-topbar">
         <div className="master-search-box master-search-box-accent" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>
