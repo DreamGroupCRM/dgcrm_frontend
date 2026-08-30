@@ -36,6 +36,38 @@ import { useAppSelector } from '../hooks';
 import { getTheme } from './theme';
 import { AppearanceId, DensityId } from '../redux/slices/appearanceSlice';
 
+// ── Color tinting — lets category-colored elements (Dashboard/Reports stat
+// boxes: blue=people, red=overdue, green=good, etc.) shift toward the
+// active appearance's accent instead of staying one fixed rainbow for
+// every palette, while keeping each box's own distinct hue (not fully
+// replaced by the accent). 'existing' mixes at ratio 0, so its output is
+// byte-identical to the literal it was given — zero regression. ─────────
+const TINT_RATIO = 0.32;
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const n = parseInt(full, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  const c = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+  return `#${c(r)}${c(g)}${c(b)}`;
+}
+
+function mixHex(base: string, accent: string, ratio: number): string {
+  if (ratio <= 0) return base;
+  const [br, bg, bb] = hexToRgb(base);
+  const [ar, ag, ab] = hexToRgb(accent);
+  return rgbToHex(br + (ar - br) * ratio, bg + (ag - bg) * ratio, bb + (ab - bb) * ratio);
+}
+
+function tintGradientCss(gradient: string, accent: string, ratio: number): string {
+  if (ratio <= 0) return gradient;
+  return gradient.replace(/#[0-9a-fA-F]{3,6}/g, (hex) => mixHex(hex, accent, ratio));
+}
+
 // ── Status "family" — the semantic bucket a badge-style status belongs to,
 // independent of which literal appearance is active. Lead statuses map to
 // families once; each appearance then only needs to color 10 families
@@ -337,6 +369,11 @@ export function useAppearanceTokens() {
     avatarGradient: isDark ? palette.avatarGradientDark : palette.avatarGradient,
     scale,
     family,
+    // tintColor/tintGradient: shift a category color (or a two-stop
+    // gradient string) toward this appearance's accent. 'existing' is a
+    // no-op ratio, so every current caller's output is unchanged there.
+    tintColor: (hex: string) => mixHex(hex, isDark ? palette.accentDark : palette.accent, appearance === 'existing' ? 0 : TINT_RATIO),
+    tintGradient: (gradient: string) => tintGradientCss(gradient, isDark ? palette.accentDark : palette.accent, appearance === 'existing' ? 0 : TINT_RATIO),
     cssVars: cssVars as unknown as CSSProperties,
   };
 }

@@ -9,6 +9,7 @@
 import React from 'react';
 import { IconType } from 'react-icons';
 import { getStatGradient } from './statGradients';
+import { useAppearanceTokens } from '../../styles/appearanceTokens';
 
 interface StatCardProps {
   label: string;
@@ -33,10 +34,12 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({
   label, value, icon: Icon, color, surfaceBorder, loading, compact, labelFontSize,
-}) => (
+}) => {
+  const { tintGradient } = useAppearanceTokens();
+  return (
   <div
     className={`master-stat-card master-stat-card-gradient${compact ? ' master-stat-card-compact' : ''}`}
-    style={{ background: getStatGradient(color), border: `1px solid ${surfaceBorder}` }}
+    style={{ background: getStatGradient(color, tintGradient), border: `1px solid ${surfaceBorder}` }}
   >
     <div className="master-stat-icon" style={{ background: 'rgba(255,255,255,0.22)' }}>
       <Icon size={compact ? 15 : 19} style={{ color: '#fff' }} />
@@ -46,6 +49,7 @@ const StatCard: React.FC<StatCardProps> = ({
       <div className="master-stat-value master-stat-value-gradient">{loading ? '—' : value}</div>
     </div>
   </div>
-);
+  );
+};
 
 export default StatCard;

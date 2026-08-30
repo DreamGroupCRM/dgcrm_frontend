@@ -8,6 +8,7 @@
 import React from 'react';
 import { IconType } from 'react-icons';
 import { getStatGradient } from './statGradients';
+import { useAppearanceTokens } from '../../styles/appearanceTokens';
 
 interface MultiStatCardProps {
   label: string;
@@ -30,10 +31,12 @@ interface MultiStatCardProps {
 const MultiStatCard: React.FC<MultiStatCardProps> = ({
   label, icon: Icon, color, total, enabled, disabled,
   surfaceBorder, loading, labelFontSize,
-}) => (
+}) => {
+  const { tintGradient } = useAppearanceTokens();
+  return (
   <div
     className="master-stat-card master-stat-card-compact master-stat-card-multi master-stat-card-gradient"
-    style={{ background: getStatGradient(color), border: `1px solid ${surfaceBorder}` }}
+    style={{ background: getStatGradient(color, tintGradient), border: `1px solid ${surfaceBorder}` }}
   >
     <div className="master-stat-icon" style={{ background: 'rgba(255,255,255,0.22)' }}>
       <Icon size={15} style={{ color: '#fff' }} />
@@ -56,6 +59,7 @@ const MultiStatCard: React.FC<MultiStatCardProps> = ({
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export default MultiStatCard;

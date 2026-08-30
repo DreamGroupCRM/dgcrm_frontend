@@ -39,7 +39,7 @@ const statusMap: Record<string, { bg: string; text: string }> = {
 
 const AdminDashboard: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { isDark, t } = useAppearanceTokens();
+  const { isDark, t, tintColor } = useAppearanceTokens();
 
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,15 +63,15 @@ const AdminDashboard: React.FC = () => {
   // Real subtext only where a genuine second number exists — no fabricated
   // "+2 this month" style deltas (no history is tracked for these totals).
   const cards: CardDef[] = totals ? [
-    { label: 'Total Employees', value: String(totals.employees), icon: <MdPeople />, color: '#3b82f6' },
-    { label: 'Active Leads', value: String(totals.leads), icon: <MdLeaderboard />, color: '#22c55e',
+    { label: 'Total Employees', value: String(totals.employees), icon: <MdPeople />, color: tintColor('#3b82f6') },
+    { label: 'Active Leads', value: String(totals.leads), icon: <MdLeaderboard />, color: tintColor('#22c55e'),
       caption: `${totals.hot_leads} hot` },
-    { label: 'Payment Due', value: rupeeCompact(totals.payment_due), icon: <MdPayment />, color: '#ef4444',
+    { label: 'Payment Due', value: rupeeCompact(totals.payment_due), icon: <MdPayment />, color: tintColor('#ef4444'),
       caption: 'Outstanding across all customers' },
-    { label: 'Payment Received', value: rupeeCompact(totals.payment_received), icon: <MdAttachMoney />, color: '#10b981',
+    { label: 'Payment Received', value: rupeeCompact(totals.payment_received), icon: <MdAttachMoney />, color: tintColor('#10b981'),
       caption: 'All-time total' },
-    { label: 'Total Customers', value: String(totals.customers), icon: <MdHome />, color: '#8b5cf6' },
-    { label: 'Today Attendance', value: `${totals.attendance_present_today}/${totals.attendance_total_active}`, icon: <MdEventAvailable />, color: '#f97316',
+    { label: 'Total Customers', value: String(totals.customers), icon: <MdHome />, color: tintColor('#8b5cf6') },
+    { label: 'Today Attendance', value: `${totals.attendance_present_today}/${totals.attendance_total_active}`, icon: <MdEventAvailable />, color: tintColor('#f97316'),
       caption: totals.attendance_total_active > 0
         ? `${Math.round((totals.attendance_present_today / totals.attendance_total_active) * 100)}% present`
         : 'No active employees' },

@@ -187,7 +187,7 @@ interface FilterOption { id: string; label: string }
 const ExecutiveDashboardPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { isDark, t } = useAppearanceTokens();
+  const { isDark, t, tintColor } = useAppearanceTokens();
 
   useEffect(() => { dispatch(setPageTitle('Executive Dashboard')); }, [dispatch]);
 
@@ -327,9 +327,9 @@ const ExecutiveDashboardPage: React.FC = () => {
               <button key={k} type="button" onClick={() => setPreset(k)}
                 className="px-2.5 py-1.5 rounded-lg text-xs font-semibold"
                 style={{
-                  background: preset === k ? '#2563eb' : t.insetBg,
+                  background: preset === k ? tintColor('#2563eb') : t.insetBg,
                   color: preset === k ? '#fff' : t.textSecondary,
-                  border: `1px solid ${preset === k ? '#2563eb' : t.surfaceBorder}`, cursor: 'pointer',
+                  border: `1px solid ${preset === k ? tintColor('#2563eb') : t.surfaceBorder}`, cursor: 'pointer',
                 }}>
                 {PRESET_LABELS[k]}
               </button>

@@ -32,7 +32,7 @@ const quickActions = [
 
 const EmployeeDashboard: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { isDark, t } = useAppearanceTokens();
+  const { isDark, t, tintColor } = useAppearanceTokens();
 
   const [data, setData] = useState<EmployeeDashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,16 +55,16 @@ const EmployeeDashboard: React.FC = () => {
   }, []);
 
   const cards: CardDef[] = data ? [
-    { label: 'My Leads', value: String(data.my_leads), icon: <MdLeaderboard />, color: '#22c55e', caption: 'Assigned to you' },
+    { label: 'My Leads', value: String(data.my_leads), icon: <MdLeaderboard />, color: tintColor('#22c55e'), caption: 'Assigned to you' },
     {
       label: 'Attendance %',
       value: data.attendance.percent === null ? '—' : `${data.attendance.percent}%`,
-      icon: <MdEventAvailable />, color: '#3b82f6',
+      icon: <MdEventAvailable />, color: tintColor('#3b82f6'),
       caption: data.attendance.percent === null ? 'No attendance recorded this month' : `${data.attendance.present_days}/${data.attendance.marked_days} days this month`,
     },
-    { label: 'Payments Due', value: rupeeCompact(data.payments_due), icon: <MdPayment />, color: '#ef4444',
+    { label: 'Payments Due', value: rupeeCompact(data.payments_due), icon: <MdPayment />, color: tintColor('#ef4444'),
       caption: `${data.payments_due_customer_count} of your customers` },
-    { label: 'My Customers', value: String(data.my_customers), icon: <MdContactPage />, color: '#8b5cf6', caption: 'Assigned to you' },
+    { label: 'My Customers', value: String(data.my_customers), icon: <MdContactPage />, color: tintColor('#8b5cf6'), caption: 'Assigned to you' },
   ] : [];
 
   return (
@@ -117,7 +117,7 @@ const EmployeeDashboard: React.FC = () => {
             <button
               key={action.label}
               className="rounded-xl p-4 flex flex-col items-center gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg text-white"
-              style={{ background: action.color, border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
+              style={{ background: tintColor(action.color), border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
             >
               {action.icon}
               <span className="text-xs font-semibold text-center">{action.label}</span>
