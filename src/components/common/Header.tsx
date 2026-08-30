@@ -11,6 +11,10 @@ import { clearProfile } from '../../redux/slices/profileSlice';
 import { showAlert, getInitials, homeRouteForRole } from '../../utils';
 import { SOCIAL_LINKS, ROUTES } from '../../constants';
 import { getTheme } from '../../styles/theme';
+import {
+  setAppearance, setDensity, APPEARANCE_OPTIONS, DENSITY_OPTIONS,
+  AppearanceId, DensityId,
+} from '../../redux/slices/appearanceSlice';
 
 import { FiSun, FiMoon, FiMoreVertical, FiSettings } from 'react-icons/fi';
 import { AiOutlineInstagram, AiOutlineWhatsApp } from 'react-icons/ai';
@@ -69,6 +73,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   const dispatch = useAppDispatch();
   const { mode }       = useAppSelector((s) => s.theme);
   const { user, role } = useAppSelector((s) => s.auth);
+  const { appearance, density } = useAppSelector((s) => s.appearance);
   const isDark         = mode === 'dark';
   const t              = getTheme(isDark);
   const navigate       = useNavigate();
@@ -150,21 +155,72 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
     background: 'transparent', border: 'none', width: '100%', textAlign: 'left',
   };
 
+  // ── Appearance / Density selects — Phase 2-3 infrastructure only. Every
+  // option besides 'existing' is rendered `disabled` with a "Coming soon"
+  // suffix: the redux state and full option list already exist (so a later
+  // pass can light these up without another state-shape change), but no
+  // page reads `appearance`/`density` yet, so offering them as if they
+  // worked would be misleading. Selecting is a no-op visually today by
+  // design — 'existing' is the only real, selectable value. ─────────────
+  const appearanceSelectStyle: React.CSSProperties = {
+    width: '100%', marginTop: 4, padding: '6px 8px', borderRadius: 8, fontSize: 12,
+    background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
+    fontFamily: t.fontFamily,
+  };
+
   // ── Settings Panel content (reused in both desktop and mobile) ─────────
   const SettingsMenuContent = () => (
-    <button
-      type="button"
-      style={dropdownItemStyle}
-      onClick={toggleMaster}
-      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.hoverBg)}
-      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
-    >
-      {masterEnabled
-        ? <MdCheckBox size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
-        : <MdCheckBoxOutlineBlank size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
-      }
-      Enable Master
-    </button>
+    <>
+      <button
+        type="button"
+        style={dropdownItemStyle}
+        onClick={toggleMaster}
+        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.hoverBg)}
+        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+      >
+        {masterEnabled
+          ? <MdCheckBox size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
+          : <MdCheckBoxOutlineBlank size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
+        }
+        Enable Master
+      </button>
+
+      <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
+
+      <div style={{ padding: '4px 16px 4px', fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        Appearance
+      </div>
+      <div style={{ padding: '0 16px 8px' }}>
+        <select
+          value={appearance}
+          onChange={(e) => dispatch(setAppearance(e.target.value as AppearanceId))}
+          style={appearanceSelectStyle}
+        >
+          {APPEARANCE_OPTIONS.map((o) => (
+            <option key={o.id} value={o.id} disabled={!o.implemented}>
+              {o.label}{!o.implemented ? ' (Coming soon)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ padding: '4px 16px 4px', fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        Density
+      </div>
+      <div style={{ padding: '0 16px 4px' }}>
+        <select
+          value={density}
+          onChange={(e) => dispatch(setDensity(e.target.value as DensityId))}
+          style={appearanceSelectStyle}
+        >
+          {DENSITY_OPTIONS.map((o) => (
+            <option key={o.id} value={o.id} disabled={!o.implemented}>
+              {o.label}{!o.implemented ? ' (Coming soon)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
   );
 
   return (
