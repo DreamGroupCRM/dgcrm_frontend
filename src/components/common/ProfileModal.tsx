@@ -6,7 +6,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks';
 import { closeProfileModal } from '../../redux/slices/profileSlice';
 import { fetchProfileThunk } from '../../redux/thunks/profileThunks';
 import { getInitials, formatLastLogin, showAlert } from '../../utils';
-import { getTheme } from '../../styles/theme';
+import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import { authService } from '../../services/authService';
 import { CircularProgress, InputAdornment, IconButton, TextField } from '@mui/material';
 import { Visibility, VisibilityOff, Lock } from '@mui/icons-material';
@@ -24,9 +24,7 @@ const MIN_NEW_PASSWORD_LENGTH = 6;
 const ProfileModal: React.FC = () => {
   const dispatch = useAppDispatch();
   const { profileModalOpen, profile, loading, error } = useAppSelector((s) => s.profile);
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark   = mode === 'dark';
-  const t        = getTheme(isDark);
+  const { isDark, t, avatarGradient } = useAppearanceTokens();
 
   // ── Change Password (inline, collapsible section) ──
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -186,7 +184,7 @@ const ProfileModal: React.FC = () => {
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-xl font-bold shadow-lg"
             style={{
-              background: t.avatarGradient,
+              background: avatarGradient,
               border    : `3px solid ${t.surfaceBg}`,
             }}
           >

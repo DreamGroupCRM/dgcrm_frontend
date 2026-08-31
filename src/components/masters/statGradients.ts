@@ -18,4 +18,10 @@ const GRADIENTS: Record<string, string> = {
 };
 const DEFAULT_GRADIENT = 'linear-gradient(135deg,#4338ca,#6366f1)';
 
-export const getStatGradient = (color: string): string => GRADIENTS[color] ?? DEFAULT_GRADIENT;
+// Optional `tint` (useAppearanceTokens()'s tintGradient) lets the caller's
+// active appearance shift this card's hue toward its accent, while keeping
+// the card's own distinct color family — omitted, this is unchanged.
+export const getStatGradient = (color: string, tint?: (gradient: string) => string): string => {
+  const gradient = GRADIENTS[color] ?? DEFAULT_GRADIENT;
+  return tint ? tint(gradient) : gradient;
+};

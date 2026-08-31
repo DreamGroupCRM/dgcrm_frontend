@@ -649,6 +649,13 @@ export interface CustomerListFilters {
   flat_no?       : string;
   from_date?     : string;
   to_date?       : string;
+  // Resolved ids — unlike building_name/wing/flat_no above (display names
+  // the backend can't filter by directly), these map straight onto the
+  // backend's own building_id/wing_id/flat_id/assignment_status params.
+  building_id?      : string;
+  wing_id?          : string;
+  flat_id?          : string;
+  assignment_status?: 'assigned' | 'unassigned';
 }
 
 export interface CustomerListResponse {
@@ -1014,4 +1021,141 @@ export interface DefaultAmountData {
 export interface DefaultAmountResponse {
   success: boolean;
   data   : DefaultAmountData;
+}
+
+// ─── Lead (V_18.0) ──────────────────────────────────────────────────────
+// Pipeline lifecycle status — see database/2026-08-29-leads-pipeline-
+// status.sql on the backend for why this replaces legacy's ~15 separate
+// views with one status column. Hot/Cold lives on `category` below, not
+// here; duplicates use is_duplicate, not a status value.
+export type LeadStatus =
+  | 'new' | 'follow_up' | 'call_back' | 'ringing' | 'switched_off' | 'wrong_number'
+  | 'not_interested' | 'site_visit_scheduled' | 'visited' | 'not_booked' | 'booked' | 'cancelled';
+
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  new: 'New',
+  follow_up: 'Follow-up',
+  call_back: 'Call Back',
+  ringing: 'Ringing',
+  switched_off: 'Switched Off',
+  wrong_number: 'Wrong Number',
+  not_interested: 'Not Interested',
+  site_visit_scheduled: 'Site Visit Scheduled',
+  visited: 'Visited',
+  not_booked: 'Not Booked',
+  booked: 'Booked',
+  cancelled: 'Cancelled',
+};
+
+export const LEAD_STATUSES = Object.keys(LEAD_STATUS_LABELS) as LeadStatus[];
+
+export interface Lead {
+  id: string;
+  name: string;
+  mobile_number: string;
+  whatsapp_number: string;
+  alternate_number: string;
+  email: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  occupation: string;
+  company_name: string;
+  source: string;
+  category: string; // temperature — hot/warm/cold
+  sub_category: string;
+  budget: number | null;
+  deal_amount: number | null;
+  looking_for: string;
+  carpet_size: string;
+  how_will_fund: string;
+  current_residence: string;
+  purpose_buying: string;
+  how_did_you_know: string;
+  preferred_call_time: string;
+  next_call_scheduled_at: string;
+  initial_comment: string;
+  remark: string;
+  status: LeadStatus;
+  is_duplicate: boolean;
+  duplicate_of_lead_id: string | null;
+  project_id: string;
+  project_name: string;
+  cp_firm_name: string;
+  cp_name: string;
+  cp_validity: string;
+  channel_partner_id: string;
+  imported_from_csv: boolean;
+  assigned_to: string; // comma-joined employee names, from the list endpoint's join
+  assigned_employees: { id: string; name: string }[]; // from the single-lead endpoint's join
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadListFilters {
+  search?: string;
+  category?: string;
+  source?: string;
+  status?: LeadStatus | '';
+  project_id?: string;
+  employee_id?: string;
+  is_duplicate?: boolean;
+  sort?: 'name' | 'mobile_number' | 'status' | 'category' | 'budget' | 'created_at';
+  sort_dir?: 'asc' | 'desc';
+}
+
+export interface LeadListResponse {
+  success: boolean;
+  rows: Lead[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface LeadSingleResponse {
+  success: boolean;
+  data: Lead;
+}
+
+export interface LeadStatusCountsResponse {
+  success: boolean;
+  data: Partial<Record<LeadStatus, number>>;
+  duplicateCount: number;
+}
+
+// A comment is a lead_activities row with action='comment'; a reply sets
+// parent_id to the comment it replies to. System entries (action=
+// 'status_change') never set parent_id — see leads.service.ts on the backend.
+export interface LeadActivity {
+  id: string;
+  lead_id: string;
+  employee_id: string | null;
+  employee_name: string | null;
+  action: string;
+  remark: string;
+  parent_id: string | null;
+  action_date: string;
+}
+
+export interface LeadActivitiesResponse {
+  success: boolean;
+  data: LeadActivity[];
+}
+
+export interface CreateLeadPayload extends Partial<Omit<Lead, 'id' | 'assigned_to' | 'assigned_employees' | 'project_name' | 'is_duplicate' | 'duplicate_of_lead_id' | 'is_active' | 'created_at' | 'updated_at' | 'imported_from_csv'>> {
+  name: string;
+}
+
+export type UpdateLeadPayload = Partial<CreateLeadPayload>;
+
+export interface LeadImportResult {
+  success: boolean;
+  message: string;
+  batch_id: string;
+  total: number;
+  success_count: number;
+  failed_count: number;
+  errors: { row: number; error: string }[];
 }

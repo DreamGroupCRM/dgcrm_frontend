@@ -19,6 +19,9 @@ import CustomerDetailsListPage from '../pages/Admin/CRM/Customer-Details/Custome
 import CustomerDetailsCrudPage from '../pages/Admin/CRM/Customer-Details/CustomerDetailsCrudPage';
 import CustomerSchemeViewPage from '../pages/Admin/CRM/Customer-Details/CustomerSchemeViewPage';
 
+import LeadListPage from '../pages/Admin/CRM/Leads/LeadListPage';
+import LeadCrudPage from '../pages/Admin/CRM/Leads/LeadCrudPage';
+
 import RoleListPage from '../pages/Admin/Masters/Roles/RoleListPage';
 import RoleCrudPage from '../pages/Admin/Masters/Roles/RoleCrudPage';
 
@@ -51,6 +54,11 @@ const ExecutiveDashboardPage = lazy(() => import('../pages/Admin/Reports/Executi
 // database snapshot/restore. User Management — new Super Admin lobby page.
 const BackupDatabasePage = lazy(() => import('../pages/Admin/Backup/BackupDatabasePage'));
 const UserManagementPage = lazy(() => import('../pages/Admin/UserManagement/UserManagementPage'));
+// Pending Approvals — shared delete-request review queue (see
+// pendingApprovals module in dgcrm_backend). Admin/superadmin, same as
+// Audit History below — no extra ProtectedRoute needed, the parent
+// route already restricts this whole subtree to admin/superadmin.
+const PendingApprovalsPage = lazy(() => import('../pages/Admin/PendingApprovals/PendingApprovalsPage'));
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
@@ -113,10 +121,14 @@ const AdminRoutes: React.FC = () => (
       <Route path="crm/customer-details/scheme/:id" element={<CustomerSchemeViewPage />} />
       <Route path="crm/payment-dues" element={<DueReportPage />} />
       <Route path="crm/payment-received" element={<PaymentReceivedPage />} />
-      <Route path="crm/leads" element={<PlaceholderPage title="Leads" />} />
+      <Route path="crm/leads" element={<LeadListPage />} />
+      <Route path="crm/leads/add" element={<LeadCrudPage mode="add" />} />
+      <Route path="crm/leads/view/:id" element={<LeadCrudPage mode="view" />} />
+      <Route path="crm/leads/edit/:id" element={<LeadCrudPage mode="edit" />} />
 
       <Route path="reports/executive-dashboard" element={<ExecutiveDashboardPage />} />
       <Route path="audit-history" element={<AuditHistoryPage />} />
+      <Route path="pending-approvals" element={<PendingApprovalsPage />} />
       <Route path="customize-scheme" element={<CustomizeSchemePage />} />
 
       {/* SuperAdmin-only — see Sidebar.tsx / backend's requireSuperAdmin */}

@@ -4,9 +4,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MdArrowBack } from 'react-icons/md';
-import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme, AppTheme } from '../../../../styles/theme';
+import { AppTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
+import { FormField, getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
 import { showAlert } from '../../../../utils';
 import {
   ViewBankAccount,
@@ -27,20 +29,13 @@ interface FieldProps {
 }
 
 const Field: React.FC<FieldProps> = ({ label, required, error, t, children }) => (
-  <div>
-    <label style={{
-      display: 'block', fontWeight: 700, fontSize: 12.5,
-      marginBottom: 6, color: t.textPrimary, fontFamily: t.fontFamily,
-    }}>
-      {label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
-    </label>
+  <FormField
+    label={label} t={t} required={required} error={error}
+    labelStyle={getFormLabelStyle(t, { fontWeight: 700, fontSize: 12.5, marginBottom: 6, color: t.textPrimary })}
+    errorStyle={{ color: '#ef4444', fontSize: 11.5, marginTop: 4, fontFamily: t.fontFamily }}
+  >
     {children}
-    {error && (
-      <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4, fontFamily: t.fontFamily }}>
-        {error}
-      </p>
-    )}
-  </div>
+  </FormField>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,9 +89,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
   const dispatch         = useAppDispatch();
   const navigate         = useNavigate();
   const { id }           = useParams<{ id: string }>();
-  const { mode: uiMode } = useAppSelector((s) => s.theme);
-  const isDark           = uiMode === 'dark';
-  const t                = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   const isView = mode === 'view';
   const isEdit = mode === 'edit';
@@ -242,23 +235,19 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
   };
 
   // ── styles ─────────────────────────────────────────────────────────────
-  const fieldStyle = (hasError?: boolean): React.CSSProperties => ({
-    width       : '100%',
+  const fieldStyle = (hasError?: boolean): React.CSSProperties => getFormInputStyle(t, {
     background  : isView ? t.insetBg : t.inputBg,
     border      : `1px solid ${hasError ? '#ef4444' : t.inputBorder}`,
     borderRadius: 10,
     padding     : '10px 14px',
     fontSize    : 14,
-    color       : t.inputText,
     outline     : 'none',
-    boxSizing   : 'border-box',
     fontFamily  : t.fontFamily,
     cursor      : isView ? 'not-allowed' : 'text',
     opacity     : isView ? 0.85 : 1,
   });
 
-  const selectStyle = (hasError?: boolean): React.CSSProperties => ({
-    width             : '100%',
+  const selectStyle = (hasError?: boolean): React.CSSProperties => getFormInputStyle(t, {
     background        : isView ? t.insetBg : t.inputBg,
     border            : `1px solid ${hasError ? '#ef4444' : t.inputBorder}`,
     borderRadius      : 10,
@@ -266,7 +255,6 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
     fontSize          : 14,
     color             : form.company_id ? t.inputText : t.textSecondary,
     outline           : 'none',
-    boxSizing         : 'border-box' as const,
     fontFamily        : t.fontFamily,
     cursor            : isView ? 'not-allowed' : 'pointer',
     opacity           : isView ? 0.85 : 1,

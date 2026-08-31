@@ -8,8 +8,8 @@ import {
   MdApartment, MdArrowBack, MdSave, MdAdd, MdDelete, MdEdit, MdCheck, MdClose,
 } from 'react-icons/md';
 
-import { useAppSelector } from '../../../../hooks';
-import { getTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
+import { getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
 import { showAlert } from '../../../../utils';
 import { Designation, CreateDepartmentPayload } from '../../../../types/index';
 import { ViewDepartment, CreateDepartment, UpdateDepartment } from '../../../../services/departmentService';
@@ -67,9 +67,7 @@ const StatusPill: React.FC<{ active: boolean }> = ({ active }) => (
 const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { mode: themeMode } = useAppSelector((s) => s.theme);
-  const isDark = themeMode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, accent, accentHover } = useAppearanceTokens();
 
   const isView = mode === 'view';
 
@@ -239,15 +237,14 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
     }
   };
 
-  // ── shared field styles ──────────────────────────────────────────────────
-  const labelStyle: React.CSSProperties = {
-    display: 'block', fontSize: 12, fontWeight: 600, color: t.textPrimary, marginBottom: 6,
-  };
-  const fieldStyle: React.CSSProperties = {
-    width: '100%', background: isView ? t.insetBg : t.inputBg,
-    border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '10px 14px',
-    fontSize: 12.5, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
-  };
+  // ── shared field styles (src/components/common/MasterListUI.tsx) — this
+  // page's own padding/radius/font-size preserved via overrides, only the
+  // repeated border/background/color construction is now centralized. ────
+  const labelStyle = getFormLabelStyle(t, { fontSize: 12, color: t.textPrimary, marginBottom: 6 });
+  const fieldStyle = getFormInputStyle(t, {
+    background: isView ? t.insetBg : t.inputBg, borderRadius: 10, padding: '10px 14px',
+    fontSize: 12.5, outline: 'none', fontFamily: t.fontFamily,
+  });
 
   if (fetching) {
     return (
@@ -269,7 +266,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
           <div className="flex items-center gap-2.5 mb-4">
             <span
               className="flex items-center justify-center rounded-full text-white text-xs font-bold flex-shrink-0"
-              style={{ width: 24, height: 24, background: '#4338ca' }}
+              style={{ width: 24, height: 24, background: accent }}
             >
               1
             </span>
@@ -330,7 +327,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
             <div className="flex items-center gap-2.5 mb-4">
               <span
                 className="flex items-center justify-center rounded-full text-white text-xs font-bold flex-shrink-0"
-                style={{ width: 24, height: 24, background: '#4338ca' }}
+                style={{ width: 24, height: 24, background: accent }}
               >
                 2
               </span>
@@ -357,7 +354,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                     disabled={!newDesignationName.trim()}
                     className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
                     style={{
-                      background: !newDesignationName.trim() ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)',
+                      background: !newDesignationName.trim() ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
                       border: 'none', cursor: !newDesignationName.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                     }}
                   >
@@ -532,7 +529,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
             disabled={!isFormValid || saving}
             className="flex items-center gap-1.5 px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
             style={{
-              background: !isFormValid || saving ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)',
+              background: !isFormValid || saving ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
               border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.8 : 1,
             }}

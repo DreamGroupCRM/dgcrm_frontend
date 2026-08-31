@@ -11,7 +11,7 @@ import {
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FetchDepartmentList, DeleteDepartment, GetDepartmentAssignedEmployees } from '../../../../services/departmentService';
 import { Department } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
@@ -39,9 +39,7 @@ const departmentCounts = (d: Department) => {
 const DepartmentListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, accent, cssVars } = useAppearanceTokens();
 
   const [allDepartments, setAllDepartments] = useState<Department[]>([]);
   const [filtered, setFiltered] = useState<Department[]>([]);
@@ -85,7 +83,10 @@ const DepartmentListPage: React.FC = () => {
 
   // Default sort: newest first (item 5) — a newly-added department appears
   // at the top of the table until the user picks a different column.
-  const getSortValue = (d: Department, key: SortKey): string | number => {
+  // useCallback (stable identity) so useSortedRows's own useMemo actually
+  // memoizes instead of re-sorting on every render (see BuildingListPage
+  // for the fuller explanation of this pattern).
+  const getSortValue = useCallback((d: Department, key: SortKey): string | number => {
     const c = departmentCounts(d);
     switch (key) {
       case 'id': return Number(d.id);
@@ -95,7 +96,7 @@ const DepartmentListPage: React.FC = () => {
       case 'disabled': return c.disabled;
       case 'created_at': return d.created_at || '';
     }
-  };
+  }, []);
   const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<Department, SortKey>(filtered, getSortValue, 'created_at', 'desc');
 
   // ── pagination — same pattern as the rest of the Masters section ──────
@@ -163,7 +164,7 @@ const DepartmentListPage: React.FC = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="master-page">
+    <div className="master-page" style={cssVars}>
 
       {/* ── Top bar: Search (left) | Add + Export + Refresh (right) ────────
           Same layout as every other master (item 3) — previously Add
@@ -289,9 +290,9 @@ const DepartmentListPage: React.FC = () => {
                 onClick={() => setPage(n)}
                 className="px-3 py-1.5 rounded-lg text-sm font-medium"
                 style={{
-                  background: n === safePage ? '#4338ca' : t.insetBg,
+                  background: n === safePage ? accent : t.insetBg,
                   color: n === safePage ? '#fff' : t.textPrimary,
-                  border: `1px solid ${n === safePage ? '#4338ca' : t.surfaceBorder}`, cursor: 'pointer',
+                  border: `1px solid ${n === safePage ? accent : t.surfaceBorder}`, cursor: 'pointer',
                 }}
               >
                 {n}

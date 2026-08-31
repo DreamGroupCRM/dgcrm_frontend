@@ -9,9 +9,11 @@ import {
   MdApartment, MdAdd, MdClose, MdCheckCircle, MdFiberManualRecord,
   MdArrowBack, MdSave, MdLayers, MdChevronRight, MdExpandMore,
 } from 'react-icons/md';
-import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme, AppTheme } from '../../../../styles/theme';
+import { AppTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
+import { getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
 import { useAccordion } from '../../../../hooks/useAccordion';
 import { showAlert } from '../../../../utils';
 import {
@@ -128,10 +130,10 @@ const makeWing = (id: string): WingRow => ({
 // ─────────────────────────────────────────────────────────────────────────────
 // Small presentational helpers
 // ─────────────────────────────────────────────────────────────────────────────
-const StepBadge: React.FC<{ n: number }> = ({ n }) => (
+const StepBadge: React.FC<{ n: number; accent: string }> = ({ n, accent }) => (
   <div style={{
     width: 28, height: 28, borderRadius: '50%',
-    background: '#4338ca', color: '#fff',
+    background: accent, color: '#fff',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     fontSize: 12.5, fontWeight: 700, flexShrink: 0,
   }}>
@@ -339,23 +341,21 @@ const FloorAccordionItem: React.FC<{
 // already-saved flat data.
 const SeriesConfigCard: React.FC<{
   t: AppTheme;
+  accent: string;
+  accentHover: string;
   seriesNumber: number;
   draft: { flat_type: string; area_sqft: string };
   onChangeDraft: (patch: Partial<{ flat_type: string; area_sqft: string }>) => void;
   onApply: () => void;
   onCancel: () => void;
-}> = ({ t, seriesNumber, draft, onChangeDraft, onApply, onCancel }) => {
-  const fieldStyleLocal: React.CSSProperties = {
-    width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`,
-    borderRadius: 8, padding: '7px 10px', fontSize: 11.5, color: t.inputText,
-    outline: 'none', fontFamily: t.fontFamily,
-  };
+}> = ({ t, accent, accentHover, seriesNumber, draft, onChangeDraft, onApply, onCancel }) => {
+  const fieldStyleLocal = getFormInputStyle(t, { borderRadius: 8, padding: '7px 10px', fontSize: 11.5, outline: 'none' });
   return (
     <div
       className="w-full"
       style={{ border: `1px solid ${t.surfaceBorder}`, borderRadius: 12, padding: 14, background: t.subtleBg }}
     >
-      <div style={{ fontWeight: 700, fontSize: 12, color: '#4338ca', marginBottom: 8 }}>
+      <div style={{ fontWeight: 700, fontSize: 12, color: accent, marginBottom: 8 }}>
         Series-{String(seriesNumber).padStart(2, '0')}
       </div>
 
@@ -388,7 +388,7 @@ const SeriesConfigCard: React.FC<{
           type="button"
           onClick={onApply}
           className="flex-1 text-xs font-semibold rounded-lg text-white"
-          style={{ background: 'linear-gradient(135deg,#4338ca,#4f46e5)', border: 'none', cursor: 'pointer', padding: '7px 0' }}
+          style={{ background: `linear-gradient(135deg,${accent},${accentHover})`, border: 'none', cursor: 'pointer', padding: '7px 0' }}
         >
           OK
         </button>
@@ -412,9 +412,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { mode: uiMode } = useAppSelector((s) => s.theme);
-  const isDark = uiMode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, accent, accentHover } = useAppearanceTokens();
 
   const isView = mode === 'view';
   const isEdit = mode === 'edit';
@@ -833,19 +831,16 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
     }
   };
 
-  // ── shared field styles ──────────────────────────────────────────────────
-  const fieldStyle: React.CSSProperties = {
-    width: '100%', background: isView ? t.insetBg : t.inputBg,
-    border: `1px solid ${t.inputBorder}`, borderRadius: 10,
-    padding: '10px 14px', fontSize: 12.5, color: t.inputText,
+  // ── shared field styles (src/components/common/MasterListUI.tsx) — this
+  // page's own padding/radius/font-size preserved via overrides. ──────────
+  const fieldStyle = getFormInputStyle(t, {
+    background: isView ? t.insetBg : t.inputBg, borderRadius: 10,
+    padding: '10px 14px', fontSize: 12.5,
     outline: 'none', boxSizing: 'border-box', fontFamily: t.fontFamily,
     cursor: isView ? 'not-allowed' : 'text', opacity: isView ? 0.85 : 1,
-  };
+  });
 
-  const labelStyle: React.CSSProperties = {
-    display: 'block', fontWeight: 600, fontSize: 12,
-    marginBottom: 6, color: t.textPrimary, fontFamily: t.fontFamily,
-  };
+  const labelStyle = getFormLabelStyle(t, { fontWeight: 600, fontSize: 12, marginBottom: 6, color: t.textPrimary, fontFamily: t.fontFamily });
 
   if (fetching) {
     return (
@@ -861,7 +856,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Step 1: Project Details ─────────────────────────────────────── */}
       <SectionCard t={t}>
         <div className="flex items-center gap-2.5 mb-1">
-          <StepBadge n={1} />
+          <StepBadge n={1} accent={accent} />
           <div>
             <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Project Details</h2>
           </div>
@@ -901,7 +896,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       <SectionCard t={t}>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
           <div className="flex items-center gap-2.5">
-            <StepBadge n={2} />
+            <StepBadge n={2} accent={accent} />
             <div>
               <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Wings</h2>
               <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Add or remove wings in this building</p>
@@ -951,7 +946,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold"
               style={{
                 border: `1.5px dashed ${isDark ? '#3b3ba0' : '#a5b4fc'}`,
-                color: '#4338ca', background: 'transparent', cursor: 'pointer',
+                color: accent, background: 'transparent', cursor: 'pointer',
               }}
             >
               <MdAdd size={18} /> Add Wing
@@ -964,7 +959,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       <SectionCard t={t}>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
           <div className="flex items-center gap-2.5">
-            <StepBadge n={3} />
+            <StepBadge n={3} accent={accent} />
             <div>
               <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Floors in Each Wing</h2>
               <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Enter number of floors in each wing and choose counting type</p>
@@ -976,7 +971,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
               disabled={wings.length === 0}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
               style={{
-                background: wings.length === 0 ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)',
+                background: wings.length === 0 ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
                 border: 'none', cursor: wings.length === 0 ? 'not-allowed' : 'pointer',
               }}
             >
@@ -1031,7 +1026,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Step 4: Flats on Each Floor ──────────────────────────────────── */}
       <SectionCard t={t}>
         <div className="flex items-center gap-2.5 mb-4">
-          <StepBadge n={4} />
+          <StepBadge n={4} accent={accent} />
           <div>
             <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Flats on Each Floor</h2>
             <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Select a wing, enter flats count and manage flat details</p>
@@ -1047,14 +1042,14 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 onClick={() => setActiveWingId(w.id)}
                 style={{
                   textAlign: 'left', padding: '10px 14px', borderRadius: 10,
-                  border: `1px solid ${w.id === activeWingId ? '#4338ca' : t.surfaceBorder}`,
+                  border: `1px solid ${w.id === activeWingId ? accent : t.surfaceBorder}`,
                   background: w.id === activeWingId
                     ? isDark ? 'rgba(67,56,202,0.15)' : '#eef2ff'
                     : t.subtleBg,
                   cursor: 'pointer', minWidth: 140, flexShrink: 0,
                 }}
               >
-                <div style={{ fontWeight: 700, fontSize: 12.5, color: w.id === activeWingId ? '#4338ca' : t.textPrimary }}>
+                <div style={{ fontWeight: 700, fontSize: 12.5, color: w.id === activeWingId ? accent : t.textPrimary }}>
                   {w.name ? `${w.name} wing` : `Wing ${idx + 1}`}
                 </div>
                 <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2 }}>
@@ -1077,7 +1072,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3" style={{ padding: '14px 16px', background: t.insetBg, borderBottom: `1px solid ${t.divider}` }}>
                   <div>
-                    <span style={{ fontWeight: 700, color: '#4338ca', fontSize: 13 }}>
+                    <span style={{ fontWeight: 700, color: accent, fontSize: 13 }}>
                       {activeWing.name ? `${activeWing.name} wing` : 'Wing'}
                     </span>
                     <span style={{ fontSize: 11, color: t.textSecondary, marginLeft: 8 }}>
@@ -1098,7 +1093,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                         disabled={activeWing.floors.length === 0}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
                         style={{
-                          background: activeWing.floors.length === 0 ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)',
+                          background: activeWing.floors.length === 0 ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
                           border: 'none', cursor: activeWing.floors.length === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                         }}
                       >
@@ -1134,6 +1129,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                         <SeriesConfigCard
                           key={seriesNumber}
                           t={t}
+                          accent={accent}
+                          accentHover={accentHover}
                           seriesNumber={seriesNumber}
                           draft={getSeriesDraft(seriesNumber)}
                           onChangeDraft={(patch) => updateSeriesDraft(seriesNumber, patch)}
@@ -1166,7 +1163,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                         cursor: 'pointer', padding: '12px 16px', fontFamily: t.fontFamily,
                       }}
                     >
-                      <span style={{ fontWeight: 700, fontSize: 13, color: '#4338ca' }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: accent }}>
                         All Floors ({activeWing.floors.length})
                       </span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: t.textSecondary, fontSize: 11.5, fontWeight: 600 }}>
@@ -1197,7 +1194,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Step 5: Shop Details ─────────────────────────────────────────── */}
       <SectionCard t={t}>
         <div className="flex items-center gap-2.5 mb-4">
-          <StepBadge n={5} />
+          <StepBadge n={5} accent={accent} />
           <div>
             <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Shop Details</h2>
             <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Does this building have shops?</p>
@@ -1245,7 +1242,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                   disabled={!shopCountInput || parseInt(shopCountInput, 10) <= 0}
                   className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
                   style={{
-                    background: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)',
+                    background: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
                     border: 'none', cursor: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                   }}
                 >
@@ -1336,7 +1333,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Step 6: Parking ──────────────────────────────────────────────── */}
       <SectionCard t={t}>
         <div className="flex items-center gap-2.5 mb-4">
-          <StepBadge n={6} />
+          <StepBadge n={6} accent={accent} />
           <div>
             <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Parking</h2>
             <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Does this building have parking?</p>
@@ -1421,7 +1418,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             disabled={!isFormValid || saving}
             className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
             style={{
-              background: !isFormValid || saving ? '#9ca3af' : 'linear-gradient(135deg,#4338ca,#4f46e5)',
+              background: !isFormValid || saving ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
               border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.8 : 1,
             }}

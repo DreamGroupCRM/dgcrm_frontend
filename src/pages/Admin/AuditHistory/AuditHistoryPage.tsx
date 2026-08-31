@@ -13,15 +13,17 @@ import {
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
+import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
-import { getTheme } from '../../../styles/theme';
+import { AppTheme } from '../../../styles/theme';
+import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { fetchAuditLogList, fetchAuditEntityTypes, AuditLogEntry } from '../../../services/auditService';
 import { formatLastLogin } from '../../../utils';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 const FILTER_LABEL_STYLE: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 };
-const dateFieldStyle = (t: ReturnType<typeof getTheme>): React.CSSProperties => ({
+const dateFieldStyle = (t: AppTheme): React.CSSProperties => ({
   width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
   borderRadius: 10, padding: '8px 10px', fontSize: 11.5, outline: 'none', colorScheme: 'auto',
 });
@@ -45,7 +47,7 @@ const ActionBadge: React.FC<{ action: string }> = ({ action }) => {
 
 // Old/new value diff — only rows that actually changed are highlighted,
 // so a 40-field entity update doesn't drown the 2 fields that moved.
-const ValueDiff: React.FC<{ t: ReturnType<typeof getTheme>; isDark: boolean; oldValues: Record<string, unknown> | null; newValues: Record<string, unknown> | null }> = ({ t, isDark, oldValues, newValues }) => {
+const ValueDiff: React.FC<{ t: AppTheme; isDark: boolean; oldValues: Record<string, unknown> | null; newValues: Record<string, unknown> | null }> = ({ t, isDark, oldValues, newValues }) => {
   const keys = Array.from(new Set([...Object.keys(oldValues ?? {}), ...Object.keys(newValues ?? {})])).sort();
   if (keys.length === 0) return <p style={{ fontSize: 12, color: t.textSecondary }}>No field-level detail recorded for this entry.</p>;
   const fmt = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v));
@@ -80,9 +82,7 @@ const ValueDiff: React.FC<{ t: ReturnType<typeof getTheme>; isDark: boolean; old
 
 const AuditHistoryPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [rows, setRows] = useState<AuditLogEntry[]>([]);
   const [total, setTotal] = useState(0);
@@ -96,6 +96,11 @@ const AuditHistoryPage: React.FC = () => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [search, setSearch] = useState('');
+  // Debounced so typing a search term doesn't fire a real backend request
+  // on every keystroke — this page is server-paginated/-filtered (unlike
+  // most other list pages, which filter an already-fetched batch in
+  // memory), so every keystroke here was a real network round trip.
+  const debouncedSearch = useDebouncedValue(search, 400);
 
   // Lightweight per-action counts for the KPI row — limit=1 so each call
   // only needs the response's `total`, not the actual rows.
@@ -125,7 +130,7 @@ const AuditHistoryPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await fetchAuditLogList(page, limit, {
-        entity_type: entityTypeFilter, action: actionFilter, date_from: fromDate, date_to: toDate, search,
+        entity_type: entityTypeFilter, action: actionFilter, date_from: fromDate, date_to: toDate, search: debouncedSearch,
       });
       if (res.success) { setRows(res.rows ?? []); setTotal(res.total ?? 0); }
       else toast.error('Failed to fetch audit history.');
@@ -134,11 +139,11 @@ const AuditHistoryPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, entityTypeFilter, actionFilter, fromDate, toDate, search]);
+  }, [page, limit, entityTypeFilter, actionFilter, fromDate, toDate, debouncedSearch]);
 
   useEffect(() => { fetchCounts(); }, [fetchCounts]);
   useEffect(() => { fetchRows(); }, [fetchRows]);
-  useEffect(() => { setPage(1); }, [entityTypeFilter, actionFilter, fromDate, toDate, search]);
+  useEffect(() => { setPage(1); }, [entityTypeFilter, actionFilter, fromDate, toDate, debouncedSearch]);
 
   const clearFilters = () => { setEntityTypeFilter(''); setActionFilter(''); setFromDate(''); setToDate(''); setSearch(''); };
 
@@ -155,7 +160,7 @@ const AuditHistoryPage: React.FC = () => {
   const [detailEntry, setDetailEntry] = useState<AuditLogEntry | null>(null);
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Events" value={counts.total} icon={MdHistory} color="#7c3aed" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />

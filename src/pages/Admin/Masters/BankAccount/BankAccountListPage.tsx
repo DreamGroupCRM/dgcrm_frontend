@@ -8,7 +8,7 @@ import {
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FetchBankAccount, DeleteBankAccount } from '../../../../services/bankAccountService';
 import { BankAccount } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
@@ -28,9 +28,7 @@ type SortKey = 'id' | 'company_name' | 'name' | 'account_holder_name' | 'account
 const BankAccountListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark   = mode === 'dark';
-  const t        = getTheme(isDark);
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [allBanks, setAllBanks]       = useState<BankAccount[]>([]);
   const [filtered, setFiltered]       = useState<BankAccount[]>([]);
@@ -79,7 +77,10 @@ const BankAccountListPage: React.FC = () => {
 
   // Default sort: newest first (item 5) — a newly-added bank account
   // appears at the top of the table until the user picks a different column.
-  const getSortValue = (b: BankAccount, key: SortKey): string | number => {
+  // useCallback (stable identity) so useSortedRows's own useMemo actually
+  // memoizes instead of re-sorting on every render (see BuildingListPage
+  // for the fuller explanation of this pattern).
+  const getSortValue = useCallback((b: BankAccount, key: SortKey): string | number => {
     switch (key) {
       case 'id': return Number(b.id);
       case 'company_name': return (b.company_name ?? '').toLowerCase();
@@ -88,7 +89,7 @@ const BankAccountListPage: React.FC = () => {
       case 'account_number': return b.account_number ?? '';
       case 'created_at': return b.created_at || '';
     }
-  };
+  }, []);
   const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<BankAccount, SortKey>(filtered, getSortValue, 'created_at', 'desc');
 
   const handleDelete = async (bank: BankAccount) => {
@@ -144,7 +145,7 @@ const BankAccountListPage: React.FC = () => {
   };
 
   return (
-    <div className="master-page">
+    <div className="master-page" style={cssVars}>
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <div className="master-topbar">

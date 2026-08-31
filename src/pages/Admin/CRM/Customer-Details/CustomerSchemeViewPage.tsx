@@ -17,12 +17,12 @@ import {
   MdEmail, MdChat, MdLocationOn, MdBadge,
 } from 'react-icons/md';
 
-import { useAppSelector } from '../../../../hooks';
-import { getTheme } from '../../../../styles/theme';
+import { AppTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { fetchCustomerScheme } from '../../../../services/customerDetailsService';
 import { CustomerSchemeData, CustomerSchemeSummaryRow, CustomerScheduleRow } from '../../../../types/index';
 
-type Theme = ReturnType<typeof getTheme>;
+type Theme = AppTheme;
 
 const FOOTER_HEIGHT = 76;
 
@@ -74,7 +74,7 @@ const InfoField: React.FC<{ t: Theme; icon: React.ReactNode; label: string; valu
   </div>
 );
 
-const SummaryTable: React.FC<{ t: Theme; heading: string; rows: CustomerSchemeSummaryRow[]; total: number; totalLabel: string }> = ({ t, heading, rows, total, totalLabel }) => (
+const SummaryTable: React.FC<{ t: Theme; accent: string; heading: string; rows: CustomerSchemeSummaryRow[]; total: number; totalLabel: string }> = ({ t, accent, heading, rows, total, totalLabel }) => (
   <div className="mb-5">
     <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>{heading}</div>
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
@@ -96,7 +96,7 @@ const SummaryTable: React.FC<{ t: Theme; heading: string; rows: CustomerSchemeSu
           ))}
           <tr style={{ borderTop: `1px solid ${t.surfaceBorder}`, background: t.insetBg }}>
             <td colSpan={2} style={{ padding: '9px 12px', fontSize: 12, fontWeight: 700, color: t.textPrimary }}>{totalLabel}</td>
-            <td style={{ padding: '9px 12px', fontSize: 12, fontWeight: 800, color: '#4338ca', textAlign: 'right' }}>{formatINR(total)}</td>
+            <td style={{ padding: '9px 12px', fontSize: 12, fontWeight: 800, color: accent, textAlign: 'right' }}>{formatINR(total)}</td>
           </tr>
         </tbody>
       </table>
@@ -104,7 +104,7 @@ const SummaryTable: React.FC<{ t: Theme; heading: string; rows: CustomerSchemeSu
   </div>
 );
 
-const ScheduleTable: React.FC<{ t: Theme; section: 'A' | 'B'; rows: CustomerScheduleRow[]; total: number; totalLabel: string }> = ({ t, section, rows, total, totalLabel }) => (
+const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; rows: CustomerScheduleRow[]; total: number; totalLabel: string }> = ({ t, accent, section, rows, total, totalLabel }) => (
   <div className="mb-5">
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
@@ -131,7 +131,7 @@ const ScheduleTable: React.FC<{ t: Theme; section: 'A' | 'B'; rows: CustomerSche
       </table>
     </div>
     <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginTop: 8 }}>
-      {totalLabel} : <span style={{ color: '#4338ca' }}>{formatINR(total)}</span>
+      {totalLabel} : <span style={{ color: accent }}>{formatINR(total)}</span>
     </div>
   </div>
 );
@@ -140,9 +140,7 @@ const ScheduleTable: React.FC<{ t: Theme; section: 'A' | 'B'; rows: CustomerSche
 const CustomerSchemeViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { mode: themeMode } = useAppSelector((s) => s.theme);
-  const isDark = themeMode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, accent } = useAppearanceTokens();
 
   const [data, setData] = useState<CustomerSchemeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -279,11 +277,11 @@ const CustomerSchemeViewPage: React.FC = () => {
           subtitle={`Total Cost of Flat: ${formatINR(c.flat_amount)}`}
         />
         <div className="p-5 sm:p-6">
-          <SummaryTable t={t} heading="A) Mode of Payment (Before Possession)" rows={data.summaryA} total={data.totalA} totalLabel="Total (A) (Before Possession)" />
-          <SummaryTable t={t} heading="B) After Possession" rows={data.summaryB} total={data.totalB} totalLabel="Total (B) (After Possession)" />
+          <SummaryTable t={t} accent={accent} heading="A) Mode of Payment (Before Possession)" rows={data.summaryA} total={data.totalA} totalLabel="Total (A) (Before Possession)" />
+          <SummaryTable t={t} accent={accent} heading="B) After Possession" rows={data.summaryB} total={data.totalB} totalLabel="Total (B) (After Possession)" />
           <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
             <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: '#4338ca' }}>{formatINR(data.grandTotal)}</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: accent }}>{formatINR(data.grandTotal)}</span>
           </div>
         </div>
       </SectionCard>
@@ -296,11 +294,11 @@ const CustomerSchemeViewPage: React.FC = () => {
           subtitle={`Schedule ${formatINR(c.flat_amount)}`}
         />
         <div className="p-5 sm:p-6">
-          <ScheduleTable t={t} section="A" rows={data.scheduleA} total={data.totalA} totalLabel="(A) Total Before Possession" />
-          <ScheduleTable t={t} section="B" rows={data.scheduleB} total={data.totalB} totalLabel="(B) Total After Possession" />
+          <ScheduleTable t={t} accent={accent} section="A" rows={data.scheduleA} total={data.totalA} totalLabel="(A) Total Before Possession" />
+          <ScheduleTable t={t} accent={accent} section="B" rows={data.scheduleB} total={data.totalB} totalLabel="(B) Total After Possession" />
           <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
             <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: '#4338ca' }}>{formatINR(data.grandTotal)}</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: accent }}>{formatINR(data.grandTotal)}</span>
           </div>
         </div>
       </SectionCard>

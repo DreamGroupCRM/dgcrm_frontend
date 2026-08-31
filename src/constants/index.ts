@@ -14,6 +14,12 @@ export const STORAGE_KEYS = {
   PERMISSIONS: 'dgcrm_permissions',
   THEME: 'dgcrm_theme',
   ROLE: 'dgcrm_role',
+  // Appearance system (V_18.0, Phase 2-3) — separate from THEME above on
+  // purpose: THEME drives the existing light/dark `getTheme(isDark)` call
+  // sites and must stay untouched; this is new, additive state that (for
+  // now) only ever resolves to 'existing', so no rendering path reads it
+  // yet. See src/redux/slices/appearanceSlice.ts.
+  APPEARANCE: 'dgcrm_appearance',
 } as const;
 
 // All app routes in one place — used by routers, sidebar links, and redirects.
@@ -51,6 +57,7 @@ export const ROUTES = {
     CUSTOMIZE_SCHEME: '/admin/customize-scheme',
     BACKUP_DATABASE: '/admin/backup-database',
     EXECUTIVE_DASHBOARD: '/admin/reports/executive-dashboard',
+    PENDING_APPROVALS: '/admin/pending-approvals',
 
     // Super Admin lobby (superadmin-only, see Sidebar.tsx)
     USER_MANAGEMENT: '/admin/user-management',

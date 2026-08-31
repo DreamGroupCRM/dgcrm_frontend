@@ -132,6 +132,12 @@ const normalizeEmployee = (raw: Record<string, unknown>): Employee => ({
   joining_date: raw.joining_date ? String(raw.joining_date).slice(0, 10) : '',
 });
 
+export interface EmployeeListSummary {
+  total_employees   : number;
+  active_employees  : number;
+  inactive_employees: number;
+}
+
 export interface EmployeeListResponse {
   success : boolean;
   message?: string;
@@ -139,6 +145,15 @@ export interface EmployeeListResponse {
   total   : number;
   page    : number;
   limit   : number;
+  summary?: EmployeeListSummary;
+}
+
+export interface EmployeeListExtraFilters {
+  department? : string;
+  designation?: string;
+  status?     : string;
+  location?   : string;
+  sort?       : 'newest' | 'oldest' | 'name';
 }
 
 export interface EmployeeSingleResponse {
@@ -309,7 +324,7 @@ const toBackendEmployeeFormData = (formData: FormData): FormData => {
 };
 
 // ── Fetch list of all employees ─────────────────────────────────────────────
-/** GET /api/employees?page=1&limit=10&search=... */
+/** GET /api/employees?page=1&limit=10&search=...&department=...&designation=...&status=...&location=...&sort=... */
 export const FetchEmployeeDetails = async (
   page: number,
   limit: number,
@@ -318,11 +333,20 @@ export const FetchEmployeeDetails = async (
   // employee") pass true to keep excluding deactivated staff — the List
   // page itself omits this so deactivated-but-not-deleted employees still
   // show (rendered grayed out) instead of silently vanishing.
-  activeOnly?: boolean
+  activeOnly?: boolean,
+  // The List page's Department/Designation/Status/Location filters and
+  // sort — optional and additive so every existing positional call (the
+  // 4-arg assignment-picker/dropdown callers above) keeps working unchanged.
+  extraFilters?: EmployeeListExtraFilters
 ): Promise<EmployeeListResponse> => {
   const params: Record<string, string | number | boolean> = { page, limit };
   if (search && search.trim()) params.search = search.trim();
   if (activeOnly) params.active_only = true;
+  if (extraFilters?.department) params.department = extraFilters.department;
+  if (extraFilters?.designation) params.designation = extraFilters.designation;
+  if (extraFilters?.status) params.status = extraFilters.status;
+  if (extraFilters?.location) params.location = extraFilters.location;
+  if (extraFilters?.sort) params.sort = extraFilters.sort;
   const res = await axiosInstance.get('/employees', {
     params,
     headers: { [API_NAME_HEADER]: 'FetchEmployeeDetails' },
@@ -334,6 +358,7 @@ export const FetchEmployeeDetails = async (
     total: res.data.total,
     page: res.data.page,
     limit: res.data.limit,
+    summary: res.data.summary,
   };
 };
 

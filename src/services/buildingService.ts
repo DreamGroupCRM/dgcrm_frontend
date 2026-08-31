@@ -206,12 +206,16 @@ function toWizardPayload(payload: CreateBuildingPayload) {
   };
 }
 
+export type BuildingSortKey = 'id' | 'project_name' | 'building_name' | 'wings' | 'floors' | 'flats' | 'shops' | 'parking' | 'created_at';
+
 // ── Fetch list of all buildings ─────────────────────────────────────────────
-/** GET /api/buildings?is_active=true&page=1&limit=10 */
+/** GET /api/buildings?is_active=true&page=1&limit=10&search=...&sort=...&sort_dir=... */
 export const FetchBuildingList = async (
   page: number,
   limit: number,
-  search?: string
+  search?: string,
+  sort?: BuildingSortKey,
+  sortDir?: 'asc' | 'desc'
 ): Promise<BuildingListResponse> => {
   const params: Record<string, string | number | boolean> = {
     is_active: true,
@@ -221,40 +225,29 @@ export const FetchBuildingList = async (
   if (search && search.trim()) {
     params.search = search.trim();
   }
+  if (sort) params.sort = sort;
+  if (sortDir) params.sort_dir = sortDir;
   const res = await axiosInstance.get('/buildings', {
     params,
     headers: { [API_NAME_HEADER]: 'FetchBuildingList' },
   });
-  console.log('[buildingService] FetchBuildingList response:', res.data);
 
   const rawRows = (res.data.rows as BuildingListRow[]) || [];
 
-  // Summary cards roll up counts across whatever rows this call returned.
-  // BuildingListPage calls this with limit=1000 to get "all" buildings for
-  // its client-side search/pagination, so in practice this covers every
-  // building — same pre-existing assumption the rest of this page already
-  // makes. `total_buildings` uses the server's own `total` instead of
-  // rows.length so it stays correct even past that cap.
-  const enabledFlats = rawRows.reduce((sum, r) => sum + (r.enabled_flat_count || 0), 0);
-  const disabledFlats = rawRows.reduce((sum, r) => sum + (r.disabled_flat_count || 0), 0);
-  const enabledShops = rawRows.reduce((sum, r) => sum + (r.enabled_shop_count || 0), 0);
-  const disabledShops = rawRows.reduce((sum, r) => sum + (r.disabled_shop_count || 0), 0);
-
-  const summary: BuildingListSummary = {
-    total_projects : new Set(rawRows.map((r) => r.project).filter((p): p is string => !!p)).size,
-    total_buildings: res.data.total ?? rawRows.length,
-    total_wings    : rawRows.reduce((sum, r) => sum + (r.wing_count || 0), 0),
-    total_flats    : rawRows.reduce((sum, r) => sum + (r.flat_count || 0), 0),
-    enabled_flats  : enabledFlats,
-    disabled_flats : disabledFlats,
-    total_shops    : rawRows.reduce((sum, r) => sum + (r.shop_count || 0), 0),
-    enabled_shops  : enabledShops,
-    disabled_shops : disabledShops,
-    // Combined units — flats + shops together, per the list page's summary
-    // cards (V_14.0).
-    enabled_units  : enabledFlats + enabledShops,
-    disabled_units : disabledFlats + disabledShops,
+  // Company-wide aggregate — the backend now computes this itself
+  // (building.repository.ts's getBuildingListSummary), unfiltered by the
+  // caller's search box, same scope this used to approximate by reducing
+  // over a limit=1000 "get everything" fetch before real pagination
+  // existed here. Falls back to an empty summary only if an older backend
+  // response happens not to include one.
+  const summary: BuildingListSummary = res.data.summary ?? {
+    total_projects: 0, total_buildings: res.data.total ?? rawRows.length, total_wings: 0,
+    total_flats: 0, enabled_flats: 0, disabled_flats: 0,
+    total_shops: 0, enabled_shops: 0, disabled_shops: 0,
+    enabled_units: 0, disabled_units: 0,
   };
+  summary.enabled_units = summary.enabled_flats + summary.enabled_shops;
+  summary.disabled_units = summary.disabled_flats + summary.disabled_shops;
 
   return {
     success: res.data.success,

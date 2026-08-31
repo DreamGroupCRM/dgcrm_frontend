@@ -11,6 +11,11 @@ import { clearProfile } from '../../redux/slices/profileSlice';
 import { showAlert, getInitials, homeRouteForRole } from '../../utils';
 import { SOCIAL_LINKS, ROUTES } from '../../constants';
 import { getTheme } from '../../styles/theme';
+import { useAppearanceTokens } from '../../styles/appearanceTokens';
+import {
+  setAppearance, APPEARANCE_OPTIONS,
+  AppearanceId,
+} from '../../redux/slices/appearanceSlice';
 
 import { FiSun, FiMoon, FiMoreVertical, FiSettings } from 'react-icons/fi';
 import { AiOutlineInstagram, AiOutlineWhatsApp } from 'react-icons/ai';
@@ -67,10 +72,8 @@ const IconBtn: React.FC<{
 const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   const logoImg  = '/src/assets/images/favicon_logo.png';
   const dispatch = useAppDispatch();
-  const { mode }       = useAppSelector((s) => s.theme);
   const { user, role } = useAppSelector((s) => s.auth);
-  const isDark         = mode === 'dark';
-  const t              = getTheme(isDark);
+  const { isDark, t, appearance, avatarGradient } = useAppearanceTokens();
   const navigate       = useNavigate();
 
   const dashboardRoute = homeRouteForRole(role);
@@ -139,8 +142,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   const dropdownStyle: React.CSSProperties = {
     position  : 'absolute', top: '110%', right: 0, zIndex: 9999,
     background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`,
-    borderRadius: 12, padding: '8px 0', minWidth: 200,
-    boxShadow : '0 8px 24px rgba(0,0,0,0.12)',
+    borderRadius: 8, padding: '8px 0', minWidth: 200,
+    boxShadow : '0 4px 16px rgba(0,0,0,0.10)',
   };
 
   const dropdownItemStyle: React.CSSProperties = {
@@ -150,21 +153,55 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
     background: 'transparent', border: 'none', width: '100%', textAlign: 'left',
   };
 
+  // ── Appearance select — Phase 2-3 infrastructure only. Every option
+  // besides 'existing' is rendered `disabled` with a "Coming soon" suffix:
+  // the redux state and full option list already exist (so a later pass
+  // can light these up without another state-shape change), but no page
+  // reads `appearance` yet, so offering them as if they worked would be
+  // misleading. Selecting is a no-op visually today by design — 'existing'
+  // is the only real, selectable value. ───────────────────────────────────
+  const appearanceSelectStyle: React.CSSProperties = {
+    width: '100%', marginTop: 4, padding: '6px 8px', borderRadius: 8, fontSize: 12,
+    background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
+    fontFamily: t.fontFamily,
+  };
+
   // ── Settings Panel content (reused in both desktop and mobile) ─────────
   const SettingsMenuContent = () => (
-    <button
-      type="button"
-      style={dropdownItemStyle}
-      onClick={toggleMaster}
-      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.hoverBg)}
-      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
-    >
-      {masterEnabled
-        ? <MdCheckBox size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
-        : <MdCheckBoxOutlineBlank size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
-      }
-      Enable Master
-    </button>
+    <>
+      <button
+        type="button"
+        style={dropdownItemStyle}
+        onClick={toggleMaster}
+        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.hoverBg)}
+        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+      >
+        {masterEnabled
+          ? <MdCheckBox size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
+          : <MdCheckBoxOutlineBlank size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
+        }
+        Enable Master
+      </button>
+
+      <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
+
+      <div style={{ padding: '4px 16px 0', fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        Appearance
+      </div>
+      <div style={{ padding: '2px 16px 8px' }}>
+        <select
+          value={appearance}
+          onChange={(e) => dispatch(setAppearance(e.target.value as AppearanceId))}
+          style={appearanceSelectStyle}
+        >
+          {APPEARANCE_OPTIONS.map((o) => (
+            <option key={o.id} value={o.id} disabled={!o.implemented}>
+              {o.label}{!o.implemented ? ' (Coming soon)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
   );
 
   return (
@@ -362,7 +399,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
           onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
         >
           <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-            style={{ background: t.avatarGradient }}>
+            style={{ background: avatarGradient }}>
             {getInitials(user?.email || 'DG')}
           </div>
           <div className="hidden md:block text-left">

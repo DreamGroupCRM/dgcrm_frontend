@@ -13,15 +13,17 @@ import {
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { AppTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import { fetchPaymentList, approvePayment, bulkApprovePayments, paymentForLabel, PaymentListRow } from '../../../../services/paymentService';
 import { isAdminRole } from '../../../../types';
 import { formatLastLogin } from '../../../../utils';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
-type Theme = ReturnType<typeof getTheme>;
+type Theme = AppTheme;
 
 const rupee = (n: number): string => `₹ ${n.toLocaleString('en-IN')}`;
 
@@ -35,11 +37,9 @@ const ApprovalPill: React.FC<{ approved: boolean }> = ({ approved }) => (
 
 const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { mode } = useAppSelector((s) => s.theme);
   const role = useAppSelector((s) => s.auth.role);
   const isAdmin = isAdminRole(role);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [rows, setRows] = useState<PaymentListRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -47,6 +47,9 @@ const PaymentReceivedPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [search, setSearch] = useState('');
+  // Debounced so typing a search term doesn't fire a real backend request
+  // on every keystroke — this page is server-paginated/-filtered.
+  const debouncedSearch = useDebouncedValue(search, 400);
   const [approvalFilter, setApprovalFilter] = useState<'all' | 'approved' | 'pending'>('all');
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -74,7 +77,7 @@ const PaymentReceivedPage: React.FC = () => {
     try {
       const res = await fetchPaymentList(page, limit, {
         approval: approvalFilter === 'all' ? undefined : approvalFilter,
-        search,
+        search: debouncedSearch,
       });
       if (res.success) { setRows(res.rows); setTotal(res.total); }
       else toast.error('Failed to fetch payments.');
@@ -83,11 +86,11 @@ const PaymentReceivedPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, approvalFilter, search]);
+  }, [page, limit, approvalFilter, debouncedSearch]);
 
   useEffect(() => { fetchCounts(); }, [fetchCounts]);
   useEffect(() => { fetchRows(); }, [fetchRows]);
-  useEffect(() => { setPage(1); }, [approvalFilter, search]);
+  useEffect(() => { setPage(1); }, [approvalFilter, debouncedSearch]);
   // Selection is page-scoped (like the Customer List's own row selection) —
   // clear it whenever the visible rows change under it (new page, filter,
   // search, refresh) so a stale id can't get bulk-approved by surprise.
@@ -148,7 +151,7 @@ const PaymentReceivedPage: React.FC = () => {
   }, [safePage, totalPages]);
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
       <div className="flex items-center gap-3 mb-6">
         <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
           <MdPayments size={22} style={{ color: '#4f46e5' }} />
@@ -200,7 +203,7 @@ const PaymentReceivedPage: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        <div className="master-table-scroll">
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>

@@ -12,7 +12,7 @@ import { MdPeople, MdCheckCircle, MdCancel, MdDelete, MdRefresh, MdKey, MdClose,
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
-import { getTheme } from '../../../styles/theme';
+import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { showAlert, formatLastLogin } from '../../../utils';
 import { fetchUsers, setUserActiveStatus, deleteUser, adminSetPassword, UserManagementRow } from '../../../services/userManagementService';
@@ -24,10 +24,8 @@ const ROLE_LABEL: Record<string, string> = { superadmin: 'Super Admin', admin: '
 
 const UserManagementPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { mode } = useAppSelector((s) => s.theme);
   const { user: currentUser } = useAppSelector((s) => s.auth);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [rows, setRows] = useState<UserManagementRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -103,7 +101,7 @@ const UserManagementPage: React.FC = () => {
   const lockedCount = rows.filter((r) => r.is_locked).length;
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Users" value={rows.length} icon={MdPeople} color="#0284c7" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />

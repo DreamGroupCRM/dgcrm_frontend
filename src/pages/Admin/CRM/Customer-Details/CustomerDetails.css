@@ -319,9 +319,16 @@
 /* Primary gradient footer button (Collect Payment / Print) — both call
    sites already pass the exact same condition to `disabled` as they used
    to pass to the background/cursor ternary, so a real :disabled selector
-   reproduces the old look with no inline conditional needed. */
+   reproduces the old look with no inline conditional needed.
+   The gradient's two stops were a static #4338ca/#4f46e5 literal that
+   happens to equal the Existing appearance's own accent/accentFocus
+   tokens exactly (light and dark alike, since this button never had a
+   dark-mode override) — read from the shared --master-accent/
+   --master-accent-focus vars (see appearanceTokens.ts) with those same
+   literals as the var() fallback, so a page that doesn't spread the
+   appearance system's cssVars still renders identically. */
 .cust-btn-primary {
-  background: linear-gradient(135deg, #4338ca, #4f46e5);
+  background: linear-gradient(135deg, var(--master-accent, #4338ca), var(--master-accent-focus, #4f46e5));
   border: none;
   cursor: pointer;
   color: #fff;

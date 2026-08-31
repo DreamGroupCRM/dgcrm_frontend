@@ -6,8 +6,14 @@
 // (.master-stat-card/.master-stat-icon/.master-stat-label/-value); only
 // the per-card accent color/icon/value stay as props since those
 // legitimately differ card to card.
+//
+// Saturated gradient fill (see statGradients.ts) with white icon/label/
+// value text — the per-card color picks which gradient, tinted toward the
+// active appearance's accent via tintGradient so the palette still reads
+// as "on brand" for every Appearance choice.
 import React from 'react';
 import { IconType } from 'react-icons';
+import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import { getStatGradient } from './statGradients';
 
 interface StatCardProps {
@@ -33,10 +39,12 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({
   label, value, icon: Icon, color, surfaceBorder, loading, compact, labelFontSize,
-}) => (
+}) => {
+  const { tintGradient } = useAppearanceTokens();
+  return (
   <div
     className={`master-stat-card master-stat-card-gradient${compact ? ' master-stat-card-compact' : ''}`}
-    style={{ background: getStatGradient(color), border: `1px solid ${surfaceBorder}` }}
+    style={{ background: getStatGradient(color, tintGradient), border: `1px solid ${surfaceBorder}` }}
   >
     <div className="master-stat-icon" style={{ background: 'rgba(255,255,255,0.22)' }}>
       <Icon size={compact ? 15 : 19} style={{ color: '#fff' }} />
@@ -46,6 +54,7 @@ const StatCard: React.FC<StatCardProps> = ({
       <div className="master-stat-value master-stat-value-gradient">{loading ? '—' : value}</div>
     </div>
   </div>
-);
+  );
+};
 
 export default StatCard;

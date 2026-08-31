@@ -10,7 +10,7 @@ import {
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { companyService } from '../../../../services/companyService';
 import { Company } from '../../../../types';
 import { formatDate, showAlert } from '../../../../utils';
@@ -31,9 +31,7 @@ type SortKey = 'id' | 'name' | 'email' | 'phone' | 'city' | 'created_at';
 const CompanyListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark   = mode === 'dark';
-  const t        = getTheme(isDark);
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [filtered, setFiltered]   = useState<Company[]>([]);
@@ -74,7 +72,10 @@ const CompanyListPage: React.FC = () => {
 
   // Default sort: newest first (item 5) — a newly-added company appears at
   // the top of the table until the user picks a different column.
-  const getSortValue = (c: Company, key: SortKey): string | number => {
+  // useCallback (stable identity) so useSortedRows's own useMemo actually
+  // memoizes instead of re-sorting on every render (see BuildingListPage
+  // for the fuller explanation of this pattern).
+  const getSortValue = useCallback((c: Company, key: SortKey): string | number => {
     switch (key) {
       case 'id': return Number(c.id);
       case 'name': return c.name?.toLowerCase() || '';
@@ -83,7 +84,7 @@ const CompanyListPage: React.FC = () => {
       case 'city': return c.city?.toLowerCase() || '';
       case 'created_at': return c.created_at || '';
     }
-  };
+  }, []);
   const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<Company, SortKey>(filtered, getSortValue, 'created_at', 'desc');
 
   const handleDelete = async (company: Company) => {
@@ -140,7 +141,7 @@ const CompanyListPage: React.FC = () => {
   const stickyBg = isDark ? t.surfaceBg : '#ffffff';
 
   return (
-    <div className="master-page">
+    <div className="master-page" style={cssVars}>
 
       <div className="master-topbar">
         <div className="master-search-box master-search-box-accent" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}>

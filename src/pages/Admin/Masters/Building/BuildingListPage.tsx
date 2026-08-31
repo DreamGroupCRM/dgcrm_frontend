@@ -9,14 +9,14 @@ import {
   MdBusiness, MdLayers, MdHome, MdStorefront,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
-import { FetchBuildingList, DeleteBuilding } from '../../../../services/buildingService';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
+import { FetchBuildingList, DeleteBuilding, BuildingSortKey } from '../../../../services/buildingService';
 import { Building, BuildingListSummary } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
 import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
-import SortableTh from '../../../../components/masters/SortableTh';
-import { useSortedRows } from '../../../../components/masters/useSortedRows';
+import SortableTh, { SortDir } from '../../../../components/masters/SortableTh';
 import StatCard from '../../../../components/masters/StatCard';
 import MultiStatCard from '../../../../components/masters/MultiStatCard';
 
@@ -37,32 +37,47 @@ const totalFlatsOf = (b: Building): number =>
 const totalFloorsOf = (b: Building): number =>
   (b.wings ?? []).reduce((sum, w) => sum + (w.floors?.length ?? 0), 0);
 
-type SortKey = 'id' | 'project_name' | 'building_name' | 'wings' | 'floors' | 'flats' | 'shops' | 'parking' | 'created_at';
-
 const BuildingListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark   = mode === 'dark';
-  const t        = getTheme(isDark);
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
+  // allBuildings now holds ONLY the current server page — previously this
+  // held up to 1000 rows fetched once, with search AND sort both done
+  // client-side (the sort/count columns, computed server-side per row
+  // already, were re-sorted again in the browser). Past 1000 buildings,
+  // rows silently never appeared anywhere on the page — a correctness bug,
+  // not just a performance one.
   const [allBuildings, setAllBuildings] = useState<Building[]>([]);
-  const [filtered, setFiltered]         = useState<Building[]>([]);
+  const [total, setTotal]               = useState(0);
   const [summary, setSummary]           = useState<BuildingListSummary | null>(null);
   const [search, setSearch]             = useState('');
+  // This is now a real server-side search (see fetchBuildings below), so —
+  // same reasoning as every other server-filtered list page this pass
+  // touched — debounce it rather than firing a network request on every
+  // keystroke.
+  const debouncedSearch = useDebouncedValue(search, 400);
+  const [sortKey, setSortKey] = useState<BuildingSortKey>('created_at');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [loading, setLoading]           = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const [page, setPage]                 = useState(1);
   const [limit, setLimit]               = useState(5);
 
   useEffect(() => { dispatch(setPageTitle('Building')); }, [dispatch]);
 
-  // ── fetch ALL once — client-side search, no API call on keypress ──────────
+  // Real server pagination, search, and sort (see building.repository.ts's
+  // findBuildingList) — summary is a company-wide aggregate independent of
+  // the search box, matching this page's prior behavior (an unfiltered
+  // one-off 1000-row fetch), fetched alongside the paginated list in one
+  // round trip.
   const fetchBuildings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await FetchBuildingList(1, 1000);
+      const res = await FetchBuildingList(page, limit, debouncedSearch, sortKey, sortDir);
       if (res.success) {
         setAllBuildings(res.rows ?? []);
+        setTotal(res.total ?? 0);
         setSummary(res.summary ?? null);
       } else {
         toast.error('Failed to Fetch Buildings');
@@ -72,39 +87,21 @@ const BuildingListPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, limit, debouncedSearch, sortKey, sortDir]);
 
   useEffect(() => { fetchBuildings(); }, [fetchBuildings]);
+  // A search narrowing the result set out from under an already-deep page
+  // number would otherwise land on an empty or out-of-range page.
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
 
-  // ── instant client-side filter on every keypress — zero API calls ─────────
-  // Building Name only (per spec — no Project/Location matching, to keep
-  // this a single, predictable search field rather than a fuzzy multi-field one).
-  useEffect(() => {
-    const q = search.trim().toLowerCase();
-    setFiltered(
-      q
-        ? allBuildings.filter((b) => b.building_name?.toLowerCase().includes(q))
-        : allBuildings
-    );
-    setPage(1);
-  }, [search, allBuildings]);
-
-  // Default sort: newest first (item 5) — a newly-added building appears at
-  // the top of the table until the user picks a different column.
-  const getSortValue = (b: Building, key: SortKey): string | number => {
-    switch (key) {
-      case 'id': return Number(b.id);
-      case 'project_name': return b.project_name?.toLowerCase() || '';
-      case 'building_name': return b.building_name?.toLowerCase() || '';
-      case 'wings': return b.wings?.length ?? 0;
-      case 'floors': return totalFloorsOf(b);
-      case 'flats': return totalFlatsOf(b);
-      case 'shops': return b.shop_count ?? 0;
-      case 'parking': return b.parking_count ?? 0;
-      case 'created_at': return b.created_at || '';
+  const toggleSort = (key: BuildingSortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
     }
   };
-  const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<Building, SortKey>(filtered, getSortValue, 'created_at', 'desc');
 
   // ── delete ──────────────────────────────────────────────────────────────
   const handleDelete = async (building: Building) => {
@@ -127,43 +124,58 @@ const BuildingListPage: React.FC = () => {
   };
 
   // ── export CSV ─────────────────────────────────────────────────────────
-  const exportCSV = () => {
-    if (sorted.length === 0) { toast.info('No data to Export'); return; }
-    const headers = [
-      'ID', 'Project Name', 'Building Name', 'Location',
-      'No. of Wings', 'No. of Floors', 'No. of Flats', 'No. of Shops', 'Parking',
-      'Status', 'Created At', 'Updated At',
-    ];
-    const rows = sorted.map((b) => [
-      b.id,
-      `"${b.project_name}"`,
-      `"${b.building_name}"`,
-      `"${b.location}"`,
-      b.wings?.length ?? 0,
-      totalFloorsOf(b),
-      totalFlatsOf(b),
-      b.shop_count ?? 0,
-      b.parking_count ?? 0,
-      b.is_active ? 'Active' : 'Inactive',
-      formatDate(b.created_at),
-      formatDate(b.updated_at || ''),
-    ]);
-    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    const a   = Object.assign(document.createElement('a'), { href: url, download: 'buildings.csv' });
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Building List CSV Exported Successfully', { autoClose: 1000 });
+  // allBuildings is only the current page now, so export does its own
+  // one-off fetch honoring the same search box and sort (at a higher
+  // limit) rather than reading in-memory state — same pattern as the
+  // Customer/Employee list pages' export fix. Capped at 5000 for the same
+  // reason: large enough that a real company's search result is very
+  // unlikely to exceed it, without a dedicated unpaginated backend export
+  // endpoint for this pass.
+  const exportCSV = async () => {
+    setExportingCsv(true);
+    try {
+      const res = await FetchBuildingList(1, 5000, debouncedSearch, sortKey, sortDir);
+      const exportRows = res.rows ?? [];
+      if (exportRows.length === 0) { toast.info('No data to Export'); return; }
+      const headers = [
+        'ID', 'Project Name', 'Building Name', 'Location',
+        'No. of Wings', 'No. of Floors', 'No. of Flats', 'No. of Shops', 'Parking',
+        'Status', 'Created At', 'Updated At',
+      ];
+      const rows = exportRows.map((b) => [
+        b.id,
+        `"${b.project_name}"`,
+        `"${b.building_name}"`,
+        `"${b.location}"`,
+        b.wings?.length ?? 0,
+        totalFloorsOf(b),
+        totalFlatsOf(b),
+        b.shop_count ?? 0,
+        b.parking_count ?? 0,
+        b.is_active ? 'Active' : 'Inactive',
+        formatDate(b.created_at),
+        formatDate(b.updated_at || ''),
+      ]);
+      const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+      const a   = Object.assign(document.createElement('a'), { href: url, download: 'buildings.csv' });
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Building List CSV Exported Successfully', { autoClose: 1000 });
+    } catch {
+      toast.error('Failed to export buildings. Please try again.');
+    } finally {
+      setExportingCsv(false);
+    }
   };
 
-  // ── pagination (client-side) ─────────────────────────────────────────────
-  const totalFiltered = sorted.length;
-  const totalPages    = Math.max(1, Math.ceil(totalFiltered / limit));
+  // ── pagination (server-side) ─────────────────────────────────────────────
+  const totalPages    = Math.max(1, Math.ceil(total / limit));
   const safePage      = Math.min(page, totalPages);
   const startIdx      = (safePage - 1) * limit;
-  const pageRows      = sorted.slice(startIdx, startIdx + limit);
-  const showingFrom   = totalFiltered === 0 ? 0 : startIdx + 1;
-  const showingTo     = Math.min(startIdx + limit, totalFiltered);
+  const pageRows      = allBuildings;
+  const showingFrom   = total === 0 ? 0 : startIdx + 1;
+  const showingTo     = Math.min(startIdx + limit, total);
 
   const pageBtns = () => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
@@ -172,7 +184,7 @@ const BuildingListPage: React.FC = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="master-page">
+    <div className="master-page" style={cssVars}>
 
       {/* ── Summary cards — Total Projects/Buildings/Wings as single-value
           boxes, Flats and Shops as grouped Total/Enabled/Disabled boxes
@@ -217,8 +229,9 @@ const BuildingListPage: React.FC = () => {
           <button onClick={() => navigate('/admin/masters/building/add')} className="master-btn-primary">
             <MdAdd size={18} /> Add Building
           </button>
-          <button onClick={exportCSV} title="Export CSV" className="master-btn-icon"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
+          <button onClick={exportCSV} title="Export CSV" className="master-btn-icon" disabled={exportingCsv}
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary,
+              opacity: exportingCsv ? 0.6 : 1, cursor: exportingCsv ? 'not-allowed' : 'pointer' }}>
             <MdDownload size={18} />
           </button>
           <button onClick={fetchBuildings} title="Refresh" className="master-btn-icon"
@@ -360,7 +373,7 @@ const BuildingListPage: React.FC = () => {
           </div>
 
           <span style={{ fontSize: 11.5, color: t.textPrimary }}>
-            Showing {showingFrom}–{showingTo} of {totalFiltered}
+            Showing {showingFrom}–{showingTo} of {total}
           </span>
 
           <div className="flex items-center gap-1">

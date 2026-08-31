@@ -7,7 +7,7 @@ import { toast } from 'react-toastify';
 import { MdGridOn, MdRefresh, MdDoneAll } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { getTheme } from '../../../../styles/theme';
+import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { getAccordionCardStyle, getAccordionHeaderStyle } from '../../../../components/common/MasterListUI';
 import {
   fetchMappingMatrix, mapModuleAction, unmapModuleAction, mapAllActionsForModule,
@@ -18,9 +18,7 @@ const EMPTY_MATRIX: MappingMatrix = { modules: [], actions: [], mappings: [] };
 
 const ModuleMappingPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { mode } = useAppSelector((s) => s.theme);
-  const isDark = mode === 'dark';
-  const t = getTheme(isDark);
+  const { isDark, t } = useAppearanceTokens();
 
   useEffect(() => { dispatch(setPageTitle('Module Mapping')); }, [dispatch]);
 
