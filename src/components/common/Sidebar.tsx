@@ -20,7 +20,7 @@ import {
   MdApartment, MdAccountBalance, MdAccountTree,
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
   MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
-  MdAdminPanelSettings, MdManageAccounts,
+  MdAdminPanelSettings, MdManageAccounts, MdPendingActions,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -111,6 +111,11 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
   },
 
   { label: 'Audit History', path: ROUTES.ADMIN.AUDIT_HISTORY, icon: <MdHistory /> },
+  // Admin/superadmin (requireAdmin server-side, not requireSuperAdmin) —
+  // the whole point is a regular Admin reviews delete requests an
+  // employee couldn't complete themselves, so this is visible to both,
+  // unlike the Super Admin lobby group below.
+  { label: 'Pending Approvals', path: ROUTES.ADMIN.PENDING_APPROVALS, icon: <MdPendingActions /> },
   { label: 'Customize Scheme', path: ROUTES.ADMIN.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
 
   // Super Admin lobby — Backup Database moved in here (was previously

@@ -54,6 +54,11 @@ const ExecutiveDashboardPage = lazy(() => import('../pages/Admin/Reports/Executi
 // database snapshot/restore. User Management — new Super Admin lobby page.
 const BackupDatabasePage = lazy(() => import('../pages/Admin/Backup/BackupDatabasePage'));
 const UserManagementPage = lazy(() => import('../pages/Admin/UserManagement/UserManagementPage'));
+// Pending Approvals — shared delete-request review queue (see
+// pendingApprovals module in dgcrm_backend). Admin/superadmin, same as
+// Audit History below — no extra ProtectedRoute needed, the parent
+// route already restricts this whole subtree to admin/superadmin.
+const PendingApprovalsPage = lazy(() => import('../pages/Admin/PendingApprovals/PendingApprovalsPage'));
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
@@ -123,6 +128,7 @@ const AdminRoutes: React.FC = () => (
 
       <Route path="reports/executive-dashboard" element={<ExecutiveDashboardPage />} />
       <Route path="audit-history" element={<AuditHistoryPage />} />
+      <Route path="pending-approvals" element={<PendingApprovalsPage />} />
       <Route path="customize-scheme" element={<CustomizeSchemePage />} />
 
       {/* SuperAdmin-only — see Sidebar.tsx / backend's requireSuperAdmin */}

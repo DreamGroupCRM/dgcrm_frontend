@@ -57,6 +57,7 @@ export const ROUTES = {
     CUSTOMIZE_SCHEME: '/admin/customize-scheme',
     BACKUP_DATABASE: '/admin/backup-database',
     EXECUTIVE_DASHBOARD: '/admin/reports/executive-dashboard',
+    PENDING_APPROVALS: '/admin/pending-approvals',
 
     // Super Admin lobby (superadmin-only, see Sidebar.tsx)
     USER_MANAGEMENT: '/admin/user-management',
