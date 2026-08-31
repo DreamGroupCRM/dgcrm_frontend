@@ -332,12 +332,19 @@ const CustomerDetailsListPage: React.FC = () => {
   // server-side count driving pagination now.
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [total, setTotal] = useState(0);
-  // A separate, deliberately-unfiltered directory (capped at 1000, same
-  // limitation this whole page had before) used ONLY for the customer-name
-  // autocomplete and the "select a name -> auto-fill Building/Wing/Flat"
-  // convenience (handleCustomerNameFilterChange below) — decoupled from
-  // allCustomers so those two features keep working exactly as before
-  // without reintroducing the >1000 bug into the actual table/pagination.
+  // A small, server-searched result set (top 25, matching whatever's
+  // currently typed into the customer-name field) used ONLY for the
+  // customer-name autocomplete and the "select a name -> auto-fill
+  // Building/Wing/Flat" convenience (handleCustomerNameFilterChange below)
+  // — decoupled from allCustomers so those two features keep working
+  // independent of the real table/pagination. Previously this was a single
+  // unfiltered fetch of up to 1000 customers on mount — harmless with a
+  // few hundred customers, but a real per-load cost (and still an
+  // eventual correctness cap) once a company has tens of thousands. Since
+  // selecting a suggestion only ever picks from what's currently rendered
+  // in the dropdown, and the dropdown only ever renders what's in this
+  // array, narrowing it to a live search has no effect on either feature's
+  // correctness — see the fetch effect below.
   const [customerDirectory, setCustomerDirectory] = useState<Customer[]>([]);
   const [summary, setSummary] = useState<CustomerListSummary>({ total_customers: 0, active_customers: 0, inactive_customers: 0, new_this_month: 0 });
   const [loading, setLoading] = useState(false);
@@ -440,17 +447,25 @@ const CustomerDetailsListPage: React.FC = () => {
         }
       } catch { /* dropdown just stays empty if this fails */ }
     })();
+  }, []);
+
+  // Customer-name autocomplete — a small server search (top 25) that
+  // re-runs as the user types, instead of one unfiltered fetch of up to
+  // 1000 rows on mount. Keyed on the same debounced value that drives the
+  // main table's own name filter, so both settle together; an empty query
+  // still returns a small "most recent" batch so the field isn't empty the
+  // moment it's focused. See customerDirectory's own declaration for why
+  // narrowing this is safe for the auto-populate feature too.
+  useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
-        // Unfiltered, fetched once — powers ONLY the name-autocomplete and
-        // auto-populate-from-selected-name convenience below, decoupled
-        // from the real (now paginated) customer list — see
-        // customerDirectory's own declaration for why.
-        const res = await fetchAllCustomerDetails(1, 1000);
-        if (res.success) setCustomerDirectory(res.rows ?? []);
-      } catch { /* autocomplete just stays empty if this fails */ }
+        const res = await fetchAllCustomerDetails(1, 25, { customer_name: debouncedCustomerNameFilter || undefined });
+        if (!cancelled && res.success) setCustomerDirectory(res.rows ?? []);
+      } catch { /* autocomplete just stays at its last results if this fails */ }
     })();
-  }, []);
+    return () => { cancelled = true; };
+  }, [debouncedCustomerNameFilter]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
