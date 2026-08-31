@@ -1102,6 +1102,8 @@ export interface LeadListFilters {
   project_id?: string;
   employee_id?: string;
   is_duplicate?: boolean;
+  sort?: 'name' | 'mobile_number' | 'status' | 'category' | 'budget' | 'created_at';
+  sort_dir?: 'asc' | 'desc';
 }
 
 export interface LeadListResponse {
@@ -1120,6 +1122,7 @@ export interface LeadSingleResponse {
 export interface LeadStatusCountsResponse {
   success: boolean;
   data: Partial<Record<LeadStatus, number>>;
+  duplicateCount: number;
 }
 
 // A comment is a lead_activities row with action='comment'; a reply sets

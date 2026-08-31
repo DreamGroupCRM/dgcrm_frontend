@@ -2,7 +2,7 @@
 // Shared Leads list — used by both the Admin (full company view, employee
 // filter, CSV import) and Employee (auto-scoped to own assigned leads by
 // the backend, see leads.service.ts's resolveEmployeeScope) portals.
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -20,8 +20,7 @@ import { FetchEmployeeDetails } from '../../services/employeeDetailsService';
 import { Lead, LeadStatus, LEAD_STATUSES, LEAD_STATUS_LABELS } from '../../types/index';
 import { formatDate, showAlert } from '../../utils';
 import MasterIconButtons from '../../components/masters/MasterIconButtons';
-import SortableTh from '../../components/masters/SortableTh';
-import { useSortedRows } from '../../components/masters/useSortedRows';
+import SortableTh, { SortDir } from '../../components/masters/SortableTh';
 import LeadStatusBadge from './LeadStatusBadge';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -46,10 +45,15 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
 
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [statusCounts, setStatusCounts] = useState<Partial<Record<LeadStatus, number>>>({});
-  const [totalAll, setTotalAll] = useState(0);
+  const [duplicateCount, setDuplicateCount] = useState(0);
+  // Also drives the "All" pill's count — matches the pre-migration behavior,
+  // where the same fetch's total already fed both the pill and (via the
+  // capped-1000 row count) pagination, so this stays scoped to whatever
+  // non-status filters (search/category/employee) are currently active.
+  const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   // Debounced so typing a search term doesn't fire a real backend request
-  // (fetching up to 1000 rows) on every keystroke.
+  // on every keystroke.
   const debouncedSearch = useDebouncedValue(search, 400);
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all' | 'duplicate'>('all');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -58,6 +62,8 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
+  const [sortKey, setSortKey] = useState<SortKey>('created_at');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -65,31 +71,45 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
     setLoading(true);
     try {
       const [listRes, countsRes] = await Promise.all([
-        fetchLeadList(1, 1000, {
+        fetchLeadList(page, limit, {
           search: debouncedSearch.trim() || undefined,
           category: categoryFilter || undefined,
           employee_id: isAdmin ? (employeeFilter || undefined) : undefined,
           status: statusFilter !== 'all' && statusFilter !== 'duplicate' ? statusFilter : undefined,
           is_duplicate: statusFilter === 'duplicate' ? true : undefined,
+          sort: sortKey,
+          sort_dir: sortDir,
         }),
         fetchLeadStatusCounts(),
       ]);
       if (listRes.success) {
         setAllLeads(listRes.rows ?? []);
-        setTotalAll(listRes.total ?? 0);
+        setTotal(listRes.total ?? 0);
       } else {
         toast.error('Failed to fetch leads');
       }
-      if (countsRes.success) setStatusCounts(countsRes.data ?? {});
+      if (countsRes.success) {
+        setStatusCounts(countsRes.data ?? {});
+        setDuplicateCount(countsRes.duplicateCount ?? 0);
+      }
     } catch {
       toast.error('Failed to fetch leads. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, categoryFilter, employeeFilter, statusFilter, isAdmin]);
+  }, [page, limit, debouncedSearch, categoryFilter, employeeFilter, statusFilter, sortKey, sortDir, isAdmin]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
   useEffect(() => { setPage(1); }, [debouncedSearch, categoryFilter, employeeFilter, statusFilter]);
+
+  const toggleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
 
   // Employee filter dropdown — admin only.
   useEffect(() => {
@@ -99,26 +119,9 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
       .catch(() => { /* dropdown staying empty is a harmless degrade */ });
   }, [isAdmin]);
 
-  // useCallback (stable identity) so useSortedRows's own useMemo actually
-  // memoizes — an inline function here would get a new identity every
-  // render, defeating that memo and re-sorting on every render instead of
-  // only when the rows or sort key/direction actually change.
-  const getSortValue = useCallback((l: Lead, key: SortKey): string | number => {
-    switch (key) {
-      case 'name': return l.name?.toLowerCase() || '';
-      case 'mobile_number': return l.mobile_number || '';
-      case 'status': return l.status || '';
-      case 'category': return l.category || '';
-      case 'budget': return l.budget ?? 0;
-      case 'created_at': return l.created_at || '';
-    }
-  }, []);
-  const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<Lead, SortKey>(allLeads, getSortValue, 'created_at', 'desc');
-
-  const totalFiltered = sorted.length;
-  const totalPages = Math.max(1, Math.ceil(totalFiltered / limit));
+  const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
-  const pageRows = sorted.slice((safePage - 1) * limit, safePage * limit);
+  const pageRows = allLeads;
 
   const pageBtns = () => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
@@ -164,8 +167,6 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
       setImporting(false);
     }
   };
-
-  const duplicateCount = useMemo(() => allLeads.filter((l) => l.is_duplicate).length, [allLeads]);
 
   const pillStyle = (active: boolean): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -237,7 +238,7 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
       {/* ── Pipeline status pill bar ─────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '0 0 16px' }}>
         <div style={pillStyle(statusFilter === 'all')} onClick={() => setStatusFilter('all')}>
-          All <span style={{ opacity: 0.75 }}>({totalAll})</span>
+          All <span style={{ opacity: 0.75 }}>({total})</span>
         </div>
         {LEAD_STATUSES.map((s) => (
           <div key={s} style={pillStyle(statusFilter === s)} onClick={() => setStatusFilter(s)}>
@@ -326,7 +327,7 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
           </div>
 
           <div style={{ fontSize: 11.5, color: t.textSecondary }}>
-            Showing {totalFiltered === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, totalFiltered)} of {totalFiltered}
+            Showing {total === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, total)} of {total}
           </div>
 
           <div className="flex items-center gap-1.5">
