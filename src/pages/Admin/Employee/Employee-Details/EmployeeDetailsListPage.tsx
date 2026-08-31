@@ -1,7 +1,7 @@
 // ==========================================
 // DREAM GROUP CRM - EMPLOYEE LIST PAGE
 // ==========================================
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, NavigateFunction } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -12,10 +12,11 @@ import {
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { AppTheme } from '../../../../styles/theme';
-import { FetchEmployeeDetails, DeleteEmployee, SetEmployeeActiveStatus, Employee, EmployeeStatus } from '../../../../services/employeeDetailsService';
+import { FetchEmployeeDetails, DeleteEmployee, SetEmployeeActiveStatus, Employee, EmployeeStatus, EmployeeListSummary } from '../../../../services/employeeDetailsService';
 import { formatDate, showAlert } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
 import './EmployeeDetails.css';
@@ -180,16 +181,28 @@ const EmployeeDetailsListPage: React.FC = () => {
   const { isDark, t, accent, cssVars: appearanceCssVars } = useAppearanceTokens();
   const accentFocus = (appearanceCssVars as Record<string, string>)['--master-accent-focus'];
 
+  // allEmployees now holds ONLY the current server page — previously this
+  // held up to 1000 rows fetched once (with a SEPARATE, entirely unused set
+  // of departmentFilter/designationFilter/statusFilter/locationFilter/
+  // sortBy state driving a client-side filter effect that no control on
+  // this page ever actually set — search was the only filter with a real
+  // input box). Past 1000 employees, rows silently never appeared anywhere
+  // on the page at all — a correctness bug, not just a performance one.
+  // The dead filter/sort state is removed here rather than carried forward
+  // unused; the backend (employees.repository.ts's getEmployeeList) already
+  // gained real department/designation/status/location/sort support as
+  // part of this same pass, ready for a future filter UI to use.
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
-  const [filtered, setFiltered] = useState<Employee[]>([]);
+  const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState<EmployeeListSummary>({ total_employees: 0, active_employees: 0, inactive_employees: 0 });
   const [search, setSearch] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('All Departments');
-  const [designationFilter, setDesignationFilter] = useState('All Designations');
-  const [statusFilter, setStatusFilter] = useState('All Status');
-  const [locationFilter, setLocationFilter] = useState('All Locations');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
+  // This is now a real server-side search (see fetchEmployees below), so —
+  // same reasoning as Audit History/Leads/Customer — debounce it rather
+  // than firing a network request on every keystroke.
+  const debouncedSearch = useDebouncedValue(search, 400);
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -197,12 +210,19 @@ const EmployeeDetailsListPage: React.FC = () => {
 
   useEffect(() => { dispatch(setPageTitle('Employees')); }, [dispatch]);
 
+  // Real server pagination + search (see employees.repository.ts's
+  // getEmployeeList) — summary is a company-wide aggregate independent of
+  // the search box, matching this page's prior behavior (an unfiltered
+  // one-off 1000-row fetch), fetched alongside the paginated list in one
+  // round trip.
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await FetchEmployeeDetails(1, 1000);
+      const res = await FetchEmployeeDetails(page, limit, debouncedSearch);
       if (res.success) {
         setAllEmployees(res.rows ?? []);
+        setTotal(res.total ?? 0);
+        if (res.summary) setSummary(res.summary);
       } else {
         toast.error('Failed to Fetch Employees');
       }
@@ -211,9 +231,12 @@ const EmployeeDetailsListPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, limit, debouncedSearch]);
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
+  // A search narrowing the result set out from under an already-deep page
+  // number would otherwise land on an empty or out-of-range page.
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
 
   // close the row action menu on outside click
   useEffect(() => {
@@ -224,60 +247,9 @@ const EmployeeDetailsListPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── derived filter option lists ─────────────────────────────────────────
-  const departmentOptions = useMemo(
-    () => Array.from(new Set(allEmployees.flatMap((e) => e.department_names || []))).sort(),
-    [allEmployees]
-  );
-  const designationOptions = useMemo(
-    () => Array.from(new Set(allEmployees.flatMap((e) => e.designation_names || []))).sort(),
-    [allEmployees]
-  );
-  const locationOptions = useMemo(
-    () => Array.from(new Set(allEmployees.map((e) => cityStateFromAddress(e.address)))).sort(),
-    [allEmployees]
-  );
-
-  // ── summary cards ────────────────────────────────────────────────────
-  const summary = useMemo(() => {
-    const total = allEmployees.length;
-    const active = allEmployees.filter((e) => e.status === 'active').length;
-    const onLeave = allEmployees.filter((e) => e.status === 'on_leave').length;
-    const inactive = allEmployees.filter((e) => e.status === 'inactive').length;
-    const pct = (n: number) => (total === 0 ? '0' : ((n / total) * 100).toFixed(2));
-    return { total, active, onLeave, inactive, activePct: pct(active), onLeavePct: pct(onLeave), inactivePct: pct(inactive) };
-  }, [allEmployees]);
-
-  // ── search (employee name OR employee ID) + filters + sort ─────────────
-  useEffect(() => {
-    const q = search.trim().toLowerCase();
-    let rows = [...allEmployees];
-
-    if (q) {
-      rows = rows.filter((e) =>
-        `${e.first_name} ${e.last_name}`.toLowerCase().includes(q) ||
-        e.employee_code?.toLowerCase().includes(q)
-      );
-    }
-    if (departmentFilter !== 'All Departments') rows = rows.filter((e) => e.department_names?.includes(departmentFilter));
-    if (designationFilter !== 'All Designations') rows = rows.filter((e) => e.designation_names?.includes(designationFilter));
-    if (statusFilter !== 'All Status') rows = rows.filter((e) => STATUS_STYLES[e.status]?.label === statusFilter);
-    if (locationFilter !== 'All Locations') rows = rows.filter((e) => cityStateFromAddress(e.address) === locationFilter);
-
-    rows.sort((a, b) => {
-      if (sortBy === 'name') return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`);
-      const at = new Date(a.created_at).getTime();
-      const bt = new Date(b.created_at).getTime();
-      return sortBy === 'newest' ? bt - at : at - bt;
-    });
-
-    setFiltered(rows);
-    setPage(1);
-  }, [search, departmentFilter, designationFilter, statusFilter, locationFilter, sortBy, allEmployees]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / limit));
+  const pageRows = allEmployees;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((safePage - 1) * limit, safePage * limit);
 
   const pageBtns = () => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
@@ -322,25 +294,40 @@ const EmployeeDetailsListPage: React.FC = () => {
     }
   };
 
-  const handleExportCsv = () => {
-    if (filtered.length === 0) {
-      toast.error('No employees to export.');
-      return;
+  // allEmployees is only the current page now, so export does its own
+  // one-off fetch honoring the same search box (at a higher limit) rather
+  // than reading in-memory state — same pattern as the Customer list page's
+  // export fix. Capped at 5000 for the same reason: large enough that a
+  // real company's search result is very unlikely to exceed it, without a
+  // dedicated unpaginated backend export endpoint for this pass.
+  const handleExportCsv = async () => {
+    setExportingCsv(true);
+    try {
+      const res = await FetchEmployeeDetails(1, 5000, debouncedSearch);
+      const exportRows = res.rows ?? [];
+      if (exportRows.length === 0) {
+        toast.error('No employees to export.');
+        return;
+      }
+      const header = ['Employee Code', 'Name', 'Email', 'Mobile', 'Department', 'Designation', 'Status', 'Joined On'];
+      const rows = exportRows.map((e) => [
+        e.employee_code, `${e.first_name} ${e.last_name}`, e.email, e.mobile_number,
+        (e.department_names || []).join('; '), (e.designation_names || []).join('; '),
+        STATUS_STYLES[e.status]?.label || e.status, formatDate(e.joining_date),
+      ]);
+      const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `employees_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Failed to export employees. Please try again.');
+    } finally {
+      setExportingCsv(false);
     }
-    const header = ['Employee Code', 'Name', 'Email', 'Mobile', 'Department', 'Designation', 'Status', 'Joined On'];
-    const rows = filtered.map((e) => [
-      e.employee_code, `${e.first_name} ${e.last_name}`, e.email, e.mobile_number,
-      (e.department_names || []).join('; '), (e.designation_names || []).join('; '),
-      STATUS_STYLES[e.status]?.label || e.status, formatDate(e.joining_date),
-    ]);
-    const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `employees_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   // ── CSS custom properties for EmployeeDetails.css — set once here from
@@ -406,9 +393,9 @@ const EmployeeDetailsListPage: React.FC = () => {
           class's default label size). ──────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         {[
-          { label: 'Total Employees', value: summary.total, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
-          { label: 'Active Employees', value: summary.active, icon: MdLayers, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
-          { label: 'Inactive Employees', value: summary.inactive, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
+          { label: 'Total Employees', value: summary.total_employees, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
+          { label: 'Active Employees', value: summary.active_employees, icon: MdLayers, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
+          { label: 'Inactive Employees', value: summary.inactive_employees, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
         ].map((card) => (
           <StatCard key={card.label} {...card} loading={loading} compact labelFontSize={14}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
@@ -442,8 +429,8 @@ const EmployeeDetailsListPage: React.FC = () => {
           <button type="button" onClick={() => navigate('/admin/employee/employee-details/add')} className="master-btn-primary">
             <MdAdd size={18} /> Add Employee
           </button>
-          <button type="button" onClick={handleExportCsv} title="Export CSV" className="master-btn-icon"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
+          <button type="button" onClick={handleExportCsv} disabled={exportingCsv} title="Export CSV" className="master-btn-icon"
+            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1 }}>
             <MdDownload size={18} />
           </button>
           <button type="button" onClick={fetchEmployees} title="Refresh" className="master-btn-icon"
@@ -563,7 +550,7 @@ const EmployeeDetailsListPage: React.FC = () => {
             </select>
           </div>
           <div style={{ fontSize: 11.5, color: t.textSecondary }}>
-            Showing {filtered.length === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, filtered.length)} of {filtered.length} employees
+            Showing {total === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, total)} of {total} employees
           </div>
           <div className="flex items-center gap-1.5">
             <button type="button" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}
