@@ -649,6 +649,13 @@ export interface CustomerListFilters {
   flat_no?       : string;
   from_date?     : string;
   to_date?       : string;
+  // Resolved ids — unlike building_name/wing/flat_no above (display names
+  // the backend can't filter by directly), these map straight onto the
+  // backend's own building_id/wing_id/flat_id/assignment_status params.
+  building_id?      : string;
+  wing_id?          : string;
+  flat_id?          : string;
+  assignment_status?: 'assigned' | 'unassigned';
 }
 
 export interface CustomerListResponse {

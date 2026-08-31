@@ -354,7 +354,7 @@ const toBackendCustomerFormData = (formData: FormData): FormData => {
 };
 
 // ── Fetch list of all customers (with optional filters) ────────────────────
-/** GET /api/customers?page=1&limit=10&name=...&date_from=...&date_to=... (+ building_name/wing/flat_no, kept but not translated — see CustomerListFilters note below) */
+/** GET /api/customers?page=1&limit=10&name=...&date_from=...&date_to=...&building_id=...&wing_id=...&flat_id=...&assignment_status=... */
 export const fetchAllCustomerDetails = async (
   page: number,
   limit: number,
@@ -362,13 +362,14 @@ export const fetchAllCustomerDetails = async (
 ): Promise<CustomerListResponse> => {
   const params: Record<string, string | number> = { page, limit };
   if (filters) {
-    // customer_name/from_date/to_date map cleanly to the backend's
-    // name/date_from/date_to. building_name/wing/flat_no are left as-is:
-    // the backend filters those by id (building_id/wing_id/flat_id), and
-    // this filters object only carries display names, not ids — resolving
-    // name -> id needs the Building list this service doesn't have here.
-    // Harmless either way: GET /customers has no query-schema validation,
-    // so an unrecognized param is just ignored server-side.
+    // customer_name/from_date/to_date map to the backend's name/date_from/
+    // date_to; building_id/wing_id/flat_id/assignment_status already share
+    // the backend's own param names, so they pass through unchanged.
+    // building_name/wing/flat_no (display names, not ids) are deliberately
+    // NOT in this map — the backend can only filter buildings/wings/flats
+    // by id, so callers resolve a selected name to its id (via the
+    // Building list/detail they already have) before calling this, rather
+    // than sending a name the backend would silently ignore.
     const RENAME: Record<string, string> = { customer_name: 'name', from_date: 'date_from', to_date: 'date_to' };
     Object.entries(filters).forEach(([key, value]) => {
       if (value && String(value).trim()) params[RENAME[key] ?? key] = value;

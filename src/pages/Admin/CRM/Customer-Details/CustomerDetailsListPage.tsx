@@ -15,6 +15,7 @@ import {
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
@@ -27,7 +28,7 @@ import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingSe
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import { fetchCustomerIntelligence, CustomerIntelligence } from '../../../../services/intelligenceService';
 import {
-  Customer, Building, CustomerPaymentRecord,
+  Customer, Building, CustomerPaymentRecord, CustomerListSummary, CustomerListFilters,
   PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload, isAdminRole,
 } from '../../../../types/index';
 import jsPDF from 'jspdf';
@@ -322,8 +323,25 @@ const CustomerDetailsListPage: React.FC = () => {
   const role = useAppSelector((s) => s.auth.role);
   const isAdmin = isAdminRole(role);
 
+  // allCustomers now holds ONLY the current server page (see fetchCustomers
+  // below) — previously this held up to 1000 rows fetched once, with
+  // filtering/pagination done client-side in memory. Past 1000 customers
+  // that was a real correctness bug (rows past the cutoff silently never
+  // appeared anywhere on this page, not just a performance issue), not
+  // just something worth optimizing — see `total` below for the real
+  // server-side count driving pagination now.
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
+  const [total, setTotal] = useState(0);
+  // A separate, deliberately-unfiltered directory (capped at 1000, same
+  // limitation this whole page had before) used ONLY for the customer-name
+  // autocomplete and the "select a name -> auto-fill Building/Wing/Flat"
+  // convenience (handleCustomerNameFilterChange below) — decoupled from
+  // allCustomers so those two features keep working exactly as before
+  // without reintroducing the >1000 bug into the actual table/pagination.
+  const [customerDirectory, setCustomerDirectory] = useState<Customer[]>([]);
+  const [summary, setSummary] = useState<CustomerListSummary>({ total_customers: 0, active_customers: 0, inactive_customers: 0, new_this_month: 0 });
   const [loading, setLoading] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [view, setView] = useState<'grid' | 'list'>('list');
@@ -333,6 +351,10 @@ const CustomerDetailsListPage: React.FC = () => {
 
   // ── filters ──────────────────────────────────────────────────────────
   const [customerNameFilter, setCustomerNameFilter] = useState('');
+  // This is now a real server-side search (see fetchCustomers below), so —
+  // same reasoning as Audit History/Leads — debounce it rather than firing
+  // a network request on every keystroke.
+  const debouncedCustomerNameFilter = useDebouncedValue(customerNameFilter, 400);
   const [buildingFilter, setBuildingFilter] = useState('');
   const [wingFilter, setWingFilter] = useState('');
   const [floorFilter, setFloorFilter] = useState('');
@@ -401,21 +423,6 @@ const CustomerDetailsListPage: React.FC = () => {
   useEffect(() => { dispatch(setPageTitle('Customer Details')); }, [dispatch]);
 
   // ── fetch everything this page needs ────────────────────────────────
-  const fetchCustomers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetchAllCustomerDetails(1, 1000);
-      if (res.success) setAllCustomers(res.rows ?? []);
-      else toast.error('Failed to Fetch Customers');
-    } catch {
-      toast.error('Failed to fetch customers. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
-
   useEffect(() => {
     (async () => {
       try {
@@ -432,6 +439,16 @@ const CustomerDetailsListPage: React.FC = () => {
           setEmployees((res.rows ?? []).map((e) => ({ id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})` })));
         }
       } catch { /* dropdown just stays empty if this fails */ }
+    })();
+    (async () => {
+      try {
+        // Unfiltered, fetched once — powers ONLY the name-autocomplete and
+        // auto-populate-from-selected-name convenience below, decoupled
+        // from the real (now paginated) customer list — see
+        // customerDirectory's own declaration for why.
+        const res = await fetchAllCustomerDetails(1, 1000);
+        if (res.success) setCustomerDirectory(res.rows ?? []);
+      } catch { /* autocomplete just stays empty if this fails */ }
     })();
   }, []);
 
@@ -484,6 +501,43 @@ const CustomerDetailsListPage: React.FC = () => {
   const floorLabelOptions = useMemo(() => (selectedWing ? Array.from(new Set(selectedWing.floors.map((f) => f.label))) : []), [selectedWing]);
   const selectedFloor = useMemo(() => selectedWing?.floors.find((f) => f.label === floorFilter), [selectedWing, floorFilter]);
   const flatsInScope = useMemo(() => selectedFloor?.flats ?? [], [selectedFloor]);
+
+  // ── fetch the customer list itself ──────────────────────────────────
+  // Shared by fetchCustomers (below) and handleExportCsv — both need the
+  // SAME current-filter-chips-as-backend-params translation, building/
+  // wing/flat resolved to ids (selectedBuilding/selectedWing/selectedFloor
+  // above) since the backend can only filter those by id, never by
+  // display name.
+  const buildActiveFilters = (): CustomerListFilters => ({
+    customer_name: debouncedCustomerNameFilter,
+    building_id: selectedBuilding?.id,
+    wing_id: selectedWing?.id,
+    flat_id: selectedFloor?.flats.find((fl) => fl.flat_no === flatNoFilter)?.id,
+    from_date: fromDate,
+    to_date: toDate,
+    assignment_status: assignmentStatusFilter === 'all' ? undefined : assignmentStatusFilter,
+  });
+
+  // Real server pagination + filtering (see customer.repository.ts's
+  // findCustomerList).
+  const fetchCustomers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetchAllCustomerDetails(page, limit, buildActiveFilters());
+      if (res.success) {
+        setAllCustomers(res.rows ?? []);
+        setTotal(res.total ?? 0);
+        if (res.summary) setSummary(res.summary);
+      } else toast.error('Failed to Fetch Customers');
+    } catch {
+      toast.error('Failed to fetch customers. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, limit, debouncedCustomerNameFilter, selectedBuilding?.id, selectedWing?.id, flatNoFilter, selectedFloor, fromDate, toDate, assignmentStatusFilter]);
+
+  useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
   const flatNoOptions = useMemo(() => Array.from(new Set(flatsInScope.map((fl) => fl.flat_no))), [flatsInScope]);
   // "A-101" -> "A-101 · 2 BHK · 850 Sqft" for the Flat No dropdown's option
   // text — filtering/selection still work off the bare flat_no.
@@ -494,7 +548,7 @@ const CustomerDetailsListPage: React.FC = () => {
     return parts.join(' · ');
   };
 
-  const customerNameOptions = useMemo(() => Array.from(new Set(allCustomers.map((c) => c.customer_name))), [allCustomers]);
+  const customerNameOptions = useMemo(() => Array.from(new Set(customerDirectory.map((c) => c.customer_name))), [customerDirectory]);
   const employeeOptions = useMemo(() => employees.map((e) => e.label), [employees]);
 
   const clearAllFilters = () => {
@@ -541,7 +595,7 @@ const CustomerDetailsListPage: React.FC = () => {
   // if it's visible as a chip.
   const handleCustomerNameFilterChange = (v: string) => {
     setCustomerNameFilter(v);
-    const exact = allCustomers.find((c) => c.customer_name === v);
+    const exact = customerDirectory.find((c) => c.customer_name === v);
     if (exact) {
       setBuildingFilter(exact.building_name || '');
       setWingFilter(exact.wing_name || '');
@@ -558,26 +612,17 @@ const CustomerDetailsListPage: React.FC = () => {
     }
   };
 
-  // ── filtered rows (client-side, same pattern as Building/Department/Employee) ──
-  const filtered = useMemo(() => {
-    return allCustomers.filter((c) => {
-      if (customerNameFilter && !c.customer_name?.toLowerCase().includes(customerNameFilter.toLowerCase())) return false;
-      if (buildingFilter && c.building_name !== buildingFilter) return false;
-      if (wingFilter && c.wing_name !== wingFilter) return false;
-      if (flatNoFilter && c.flat_no !== flatNoFilter) return false;
-      if (fromDate && c.booking_date && c.booking_date < fromDate) return false;
-      if (toDate && c.booking_date && c.booking_date > toDate) return false;
-      if (assignmentStatusFilter === 'assigned' && !c.assigned_employee_id) return false;
-      if (assignmentStatusFilter === 'unassigned' && c.assigned_employee_id) return false;
-      return true;
-    });
-  }, [allCustomers, customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter]);
+  // allCustomers IS the current page now — the server already applied
+  // every filter above (see fetchCustomers) and returned exactly this
+  // page's rows, so there's no client-side filtering or slicing left to
+  // do here. Resetting to page 1 on filter change still matters — a
+  // filter narrowing the result set out from under an already-deep page
+  // number would otherwise land on an empty or out-of-range page.
+  useEffect(() => { setPage(1); }, [debouncedCustomerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter]);
 
-  useEffect(() => { setPage(1); }, [customerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / limit));
+  const pageRows = allCustomers;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((safePage - 1) * limit, safePage * limit);
 
   const pageBtns = () => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
@@ -586,19 +631,6 @@ const CustomerDetailsListPage: React.FC = () => {
     for (let i = start; i <= end; i++) arr.push(i);
     return arr;
   };
-
-  // ── summary cards ────────────────────────────────────────────────────
-  const summary = useMemo(() => {
-    const total = allCustomers.length;
-    const active = allCustomers.filter((c) => c.status === 'active').length;
-    const inactive = allCustomers.filter((c) => c.status === 'inactive').length;
-    const now = new Date();
-    const newThisMonth = allCustomers.filter((c) => {
-      const d = new Date(c.created_at);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    }).length;
-    return { total, active, inactive, newThisMonth, activePct: total ? ((active / total) * 100).toFixed(2) : '0', inactivePct: total ? ((inactive / total) * 100).toFixed(2) : '0' };
-  }, [allCustomers]);
 
   // ── checkbox selection — item 13: an inactive customer can't be
   // selected for assignment at all (its checkbox is disabled in the
@@ -830,24 +862,41 @@ const CustomerDetailsListPage: React.FC = () => {
     }
   };
 
-  const handleExportCsv = () => {
-    if (filtered.length === 0) {
-      toast.error('No customers to export.');
-      return;
+  // allCustomers is only the current page now, so export can no longer
+  // just read it off state — it does its own one-off fetch honoring the
+  // SAME active filter chips (buildActiveFilters) but a high limit, so
+  // the export still covers every filtered customer, not just the page
+  // on screen. Capped at 5000: large enough that a real company's
+  // filtered result set is very unlikely to exceed it, without needing a
+  // dedicated unpaginated backend export endpoint (the way Leads has) for
+  // this pass — a good candidate for one if this cap is ever actually hit.
+  const handleExportCsv = async () => {
+    setExportingCsv(true);
+    try {
+      const res = await fetchAllCustomerDetails(1, 5000, buildActiveFilters());
+      const exportRows = res.rows ?? [];
+      if (exportRows.length === 0) {
+        toast.error('No customers to export.');
+        return;
+      }
+      const header = ['Employee Code', 'Employee Name', 'Customer Name', 'Mobile', 'Email', 'Building', 'Wing', 'Flat No', 'Flat Type', 'Area (Sq Ft)', 'Booking Date', 'Monthly EMI'];
+      const rows = exportRows.map((c) => [
+        c.assigned_employee_code || '', c.assigned_employee_name || '', c.customer_name, c.mobile_number, c.email,
+        c.building_name, c.wing_name, c.flat_no, c.flat_type, c.area_sqft ?? '', formatDate(c.booking_date), c.monthly_emi ?? '',
+      ]);
+      const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `customers_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Failed to export customers. Please try again.');
+    } finally {
+      setExportingCsv(false);
     }
-    const header = ['Employee Code', 'Employee Name', 'Customer Name', 'Mobile', 'Email', 'Building', 'Wing', 'Flat No', 'Flat Type', 'Area (Sq Ft)', 'Booking Date', 'Monthly EMI'];
-    const rows = filtered.map((c) => [
-      c.assigned_employee_code || '', c.assigned_employee_name || '', c.customer_name, c.mobile_number, c.email,
-      c.building_name, c.wing_name, c.flat_no, c.flat_type, c.area_sqft ?? '', formatDate(c.booking_date), c.monthly_emi ?? '',
-    ]);
-    const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `customers_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   // ── chip/tag filter bar: per-key control + display value ───────────────
@@ -915,10 +964,10 @@ const CustomerDetailsListPage: React.FC = () => {
           hand-tuned card markups drifting apart. ──────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'Total Customers', value: summary.total, icon: MdGroups, color: '#7c3aed' },
-          { label: 'Active Customers', value: summary.active, icon: MdCheckCircle, color: '#16a34a' },
-          { label: 'New Customers This Month', value: summary.newThisMonth, icon: MdPersonAddAlt1, color: '#ea580c' },
-          { label: 'Inactive Customers', value: summary.inactive, icon: MdPersonOff, color: '#dc2626' },
+          { label: 'Total Customers', value: summary.total_customers, icon: MdGroups, color: '#7c3aed' },
+          { label: 'Active Customers', value: summary.active_customers, icon: MdCheckCircle, color: '#16a34a' },
+          { label: 'New Customers This Month', value: summary.new_this_month, icon: MdPersonAddAlt1, color: '#ea580c' },
+          { label: 'Inactive Customers', value: summary.inactive_customers, icon: MdPersonOff, color: '#dc2626' },
         ].map((card) => (
           <StatCard key={card.label} {...card} bg="" loading={loading} compact labelFontSize={14}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
@@ -1059,10 +1108,10 @@ const CustomerDetailsListPage: React.FC = () => {
             style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <MdAdd size={18} /> Add Customer
           </button>
-          <button type="button" onClick={handleExportCsv}
+          <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
-            <MdDownload size={17} /> Export CSV
+            style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1 }}>
+            <MdDownload size={17} /> {exportingCsv ? 'Exporting…' : 'Export CSV'}
           </button>
           <button type="button" onClick={fetchCustomers} title="Refresh"
             className="flex items-center justify-center rounded-xl"
@@ -1220,7 +1269,7 @@ const CustomerDetailsListPage: React.FC = () => {
             </select>
           </div>
           <div style={{ fontSize: 11, color: t.textSecondary }}>
-            Showing {filtered.length === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, filtered.length)} of {filtered.length}
+            Showing {total === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, total)} of {total}
           </div>
           <div className="flex-1 flex items-center justify-center gap-1.5">
             <button type="button" disabled={safePage <= 1} onClick={() => setPage(1)}
