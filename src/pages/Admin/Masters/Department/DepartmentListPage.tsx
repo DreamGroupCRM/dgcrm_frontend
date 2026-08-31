@@ -83,7 +83,10 @@ const DepartmentListPage: React.FC = () => {
 
   // Default sort: newest first (item 5) — a newly-added department appears
   // at the top of the table until the user picks a different column.
-  const getSortValue = (d: Department, key: SortKey): string | number => {
+  // useCallback (stable identity) so useSortedRows's own useMemo actually
+  // memoizes instead of re-sorting on every render (see BuildingListPage
+  // for the fuller explanation of this pattern).
+  const getSortValue = useCallback((d: Department, key: SortKey): string | number => {
     const c = departmentCounts(d);
     switch (key) {
       case 'id': return Number(d.id);
@@ -93,7 +96,7 @@ const DepartmentListPage: React.FC = () => {
       case 'disabled': return c.disabled;
       case 'created_at': return d.created_at || '';
     }
-  };
+  }, []);
   const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<Department, SortKey>(filtered, getSortValue, 'created_at', 'desc');
 
   // ── pagination — same pattern as the rest of the Masters section ──────

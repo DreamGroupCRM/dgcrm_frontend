@@ -2,7 +2,7 @@
 // Shared Leads list — used by both the Admin (full company view, employee
 // filter, CSV import) and Employee (auto-scoped to own assigned leads by
 // the backend, see leads.service.ts's resolveEmployeeScope) portals.
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -10,6 +10,7 @@ import {
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../hooks';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import {
@@ -47,6 +48,9 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
   const [statusCounts, setStatusCounts] = useState<Partial<Record<LeadStatus, number>>>({});
   const [totalAll, setTotalAll] = useState(0);
   const [search, setSearch] = useState('');
+  // Debounced so typing a search term doesn't fire a real backend request
+  // (fetching up to 1000 rows) on every keystroke.
+  const debouncedSearch = useDebouncedValue(search, 400);
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all' | 'duplicate'>('all');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('');
@@ -62,7 +66,7 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
     try {
       const [listRes, countsRes] = await Promise.all([
         fetchLeadList(1, 1000, {
-          search: search.trim() || undefined,
+          search: debouncedSearch.trim() || undefined,
           category: categoryFilter || undefined,
           employee_id: isAdmin ? (employeeFilter || undefined) : undefined,
           status: statusFilter !== 'all' && statusFilter !== 'duplicate' ? statusFilter : undefined,
@@ -82,10 +86,10 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
     } finally {
       setLoading(false);
     }
-  }, [search, categoryFilter, employeeFilter, statusFilter, isAdmin]);
+  }, [debouncedSearch, categoryFilter, employeeFilter, statusFilter, isAdmin]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
-  useEffect(() => { setPage(1); }, [search, categoryFilter, employeeFilter, statusFilter]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, categoryFilter, employeeFilter, statusFilter]);
 
   // Employee filter dropdown — admin only.
   useEffect(() => {
@@ -95,7 +99,11 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
       .catch(() => { /* dropdown staying empty is a harmless degrade */ });
   }, [isAdmin]);
 
-  const getSortValue = (l: Lead, key: SortKey): string | number => {
+  // useCallback (stable identity) so useSortedRows's own useMemo actually
+  // memoizes — an inline function here would get a new identity every
+  // render, defeating that memo and re-sorting on every render instead of
+  // only when the rows or sort key/direction actually change.
+  const getSortValue = useCallback((l: Lead, key: SortKey): string | number => {
     switch (key) {
       case 'name': return l.name?.toLowerCase() || '';
       case 'mobile_number': return l.mobile_number || '';
@@ -104,7 +112,7 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
       case 'budget': return l.budget ?? 0;
       case 'created_at': return l.created_at || '';
     }
-  };
+  }, []);
   const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<Lead, SortKey>(allLeads, getSortValue, 'created_at', 'desc');
 
   const totalFiltered = sorted.length;
@@ -157,7 +165,7 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
     }
   };
 
-  const duplicateCount = allLeads.filter((l) => l.is_duplicate).length;
+  const duplicateCount = useMemo(() => allLeads.filter((l) => l.is_duplicate).length, [allLeads]);
 
   const pillStyle = (active: boolean): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 6,

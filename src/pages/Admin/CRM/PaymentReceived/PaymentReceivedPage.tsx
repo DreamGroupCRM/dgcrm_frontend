@@ -13,6 +13,7 @@ import {
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
@@ -46,6 +47,9 @@ const PaymentReceivedPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [search, setSearch] = useState('');
+  // Debounced so typing a search term doesn't fire a real backend request
+  // on every keystroke — this page is server-paginated/-filtered.
+  const debouncedSearch = useDebouncedValue(search, 400);
   const [approvalFilter, setApprovalFilter] = useState<'all' | 'approved' | 'pending'>('all');
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -73,7 +77,7 @@ const PaymentReceivedPage: React.FC = () => {
     try {
       const res = await fetchPaymentList(page, limit, {
         approval: approvalFilter === 'all' ? undefined : approvalFilter,
-        search,
+        search: debouncedSearch,
       });
       if (res.success) { setRows(res.rows); setTotal(res.total); }
       else toast.error('Failed to fetch payments.');
@@ -82,11 +86,11 @@ const PaymentReceivedPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, approvalFilter, search]);
+  }, [page, limit, approvalFilter, debouncedSearch]);
 
   useEffect(() => { fetchCounts(); }, [fetchCounts]);
   useEffect(() => { fetchRows(); }, [fetchRows]);
-  useEffect(() => { setPage(1); }, [approvalFilter, search]);
+  useEffect(() => { setPage(1); }, [approvalFilter, debouncedSearch]);
   // Selection is page-scoped (like the Customer List's own row selection) —
   // clear it whenever the visible rows change under it (new page, filter,
   // search, refresh) so a stale id can't get bulk-approved by surprise.

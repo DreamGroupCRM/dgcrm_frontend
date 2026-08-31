@@ -77,7 +77,10 @@ const BankAccountListPage: React.FC = () => {
 
   // Default sort: newest first (item 5) — a newly-added bank account
   // appears at the top of the table until the user picks a different column.
-  const getSortValue = (b: BankAccount, key: SortKey): string | number => {
+  // useCallback (stable identity) so useSortedRows's own useMemo actually
+  // memoizes instead of re-sorting on every render (see BuildingListPage
+  // for the fuller explanation of this pattern).
+  const getSortValue = useCallback((b: BankAccount, key: SortKey): string | number => {
     switch (key) {
       case 'id': return Number(b.id);
       case 'company_name': return (b.company_name ?? '').toLowerCase();
@@ -86,7 +89,7 @@ const BankAccountListPage: React.FC = () => {
       case 'account_number': return b.account_number ?? '';
       case 'created_at': return b.created_at || '';
     }
-  };
+  }, []);
   const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<BankAccount, SortKey>(filtered, getSortValue, 'created_at', 'desc');
 
   const handleDelete = async (bank: BankAccount) => {

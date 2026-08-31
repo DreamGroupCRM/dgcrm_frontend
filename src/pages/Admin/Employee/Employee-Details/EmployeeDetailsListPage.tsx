@@ -2,7 +2,7 @@
 // DREAM GROUP CRM - EMPLOYEE LIST PAGE
 // ==========================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, NavigateFunction } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh, MdSearch, MdVisibility,
@@ -14,10 +14,13 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
+import { AppTheme } from '../../../../styles/theme';
 import { FetchEmployeeDetails, DeleteEmployee, SetEmployeeActiveStatus, Employee, EmployeeStatus } from '../../../../services/employeeDetailsService';
 import { formatDate, showAlert } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
 import './EmployeeDetails.css';
+
+type Theme = AppTheme;
 
 // Age in years + months from a 'YYYY-MM-DD' date_of_birth — same "derive
 // from existing data, no schema change" approach as cityStateFromAddress
@@ -54,6 +57,122 @@ const STATUS_STYLES: Record<EmployeeStatus, { bg: string; color: string; label: 
 };
 
 const initials = (first: string, last: string) => `${first?.[0] || ''}${last?.[0] || ''}`.toUpperCase();
+
+// ── Grid card — module scope (not defined inside the page component) so
+// React sees the same component type across renders. Defining a component
+// inside another component's render body creates a brand-new type on
+// every render, which forces React to unmount and remount every visible
+// card instead of reconciling it — the single most expensive rendering
+// behavior on this page, since a keystroke in the search box or toggling
+// one row's menu re-rendered (and thus remounted) all 100 cards on the
+// page. CustomerDetailsListPage's CustomerCard already uses this same
+// module-scope pattern. ─────────────────────────────────────────────────
+const EmployeeCard: React.FC<{
+  emp: Employee; t: Theme; isDark: boolean; accent: string; accentFocus: string;
+  navigate: NavigateFunction; renderActionMenu: (emp: Employee) => React.ReactNode;
+}> = ({ emp, t, isDark, accent, accentFocus, navigate, renderActionMenu }) => {
+  const status = STATUS_STYLES[emp.status] || STATUS_STYLES.active;
+  // Deactivated (is_active=false, but not deleted — a deleted employee
+  // never reaches this list at all) — whole card reads as "grayed out"
+  // rather than disappearing, so it stays visible and its row menu
+  // (including Activate, to undo this) stays reachable.
+  const isInactive = !emp.is_active;
+  return (
+    <div
+      className="rounded-2xl p-4"
+      style={{
+        background: isInactive ? (isDark ? '#1a1a1e' : '#f1f5f9') : t.surfaceBg,
+        border: `1px solid ${t.surfaceBorder}`,
+        opacity: isInactive ? 0.6 : 1,
+        filter: isInactive ? 'grayscale(55%)' : 'none',
+        transition: 'opacity 0.15s, filter 0.15s, background 0.15s',
+      }}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Status badge lives under the photo (small, out of the name's
+              way) rather than beside the name — at card width, a badge
+              next to the name was eating enough space to truncate names
+              like "Sohel" down to "Soh…". */}
+          <div className="flex flex-col items-center flex-shrink-0" style={{ gap: 4 }}>
+            {emp.profile_photo_url ? (
+              <img src={emp.profile_photo_url} alt="" className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
+            ) : (
+              <div
+                className="flex items-center justify-center rounded-full text-white font-bold"
+                style={{ width: 48, height: 48, background: `linear-gradient(135deg,${accent},${accentFocus})`, fontSize: 13 }}
+              >
+                {initials(emp.first_name, emp.last_name)}
+              </div>
+            )}
+            <span
+              className="inline-flex items-center gap-1 px-1.5 rounded-full font-semibold"
+              style={{ background: status.bg, color: status.color, fontSize: 10, lineHeight: '14px', whiteSpace: 'nowrap' }}
+            >
+              <span className="w-1 h-1 rounded-full bg-current" /> {status.label}
+            </span>
+          </div>
+          <div className="min-w-0">
+            {/* Wraps onto a 2nd line instead of truncating with "…" — at
+                card width, a single-line ellipsis was cutting "Sohel" down
+                to "Soh…"; wrapping keeps the full name readable. */}
+            <div style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary, lineHeight: 1.25, wordBreak: 'break-word' }}>
+              {emp.first_name} {emp.last_name}
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(`/admin/employee/employee-details/view/${emp.id}`)}
+              style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#4f46e5', fontSize: 11, fontWeight: 600 }}
+            >
+              {emp.employee_code}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* 3-dot menu — the card itself is not clickable; only this button
+              exposes View/Edit/Delete, as a vertical dropdown beneath the
+              button (matching the reference design). Positioned within the
+              button's own relative wrapper (not the whole card) so it
+              can't get clipped by the card's edge in the grid's
+              rightmost columns. */}
+          {renderActionMenu(emp)}
+        </div>
+      </div>
+
+      {(() => {
+        // Department/Designation deliberately not shown on the profile
+        // card (removed per request) — still available via the Department/
+        // Designation filter dropdowns and the employee's own View page.
+        const age = ageFromDob(emp.date_of_birth);
+        return age != null ? (
+          <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 11.5, color: t.textSecondary, marginBottom: 8 }}>
+            <span>{age}</span>
+          </div>
+        ) : null;
+      })()}
+
+      <div className="space-y-1.5" style={{ fontSize: 11, color: t.textSecondary }}>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <MdEmail size={14} className="flex-shrink-0" />
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.email}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <MdPhone size={14} className="flex-shrink-0" />
+          {emp.mobile_country_code} {emp.mobile_number}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <MdLocationOn size={14} className="flex-shrink-0" />
+          {cityStateFromAddress(emp.address)}
+        </div>
+      </div>
+
+      <div style={{ fontSize: 10, color: t.textSecondary, marginTop: 10, paddingTop: 8, borderTop: `1px solid ${t.divider}` }}>
+        Joined on {formatDate(emp.joining_date)}
+      </div>
+    </div>
+  );
+};
 
 const EmployeeDetailsListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -277,111 +396,6 @@ const EmployeeDetailsListPage: React.FC = () => {
     </div>
   );
 
-  // ── card ─────────────────────────────────────────────────────────────
-  const EmployeeCard: React.FC<{ emp: Employee }> = ({ emp }) => {
-    const status = STATUS_STYLES[emp.status] || STATUS_STYLES.active;
-    // Deactivated (is_active=false, but not deleted — a deleted employee
-    // never reaches this list at all) — whole card reads as "grayed out"
-    // rather than disappearing, so it stays visible and its row menu
-    // (including Activate, to undo this) stays reachable.
-    const isInactive = !emp.is_active;
-    return (
-      <div
-        className="rounded-2xl p-4"
-        style={{
-          background: isInactive ? (isDark ? '#1a1a1e' : '#f1f5f9') : t.surfaceBg,
-          border: `1px solid ${t.surfaceBorder}`,
-          opacity: isInactive ? 0.6 : 1,
-          filter: isInactive ? 'grayscale(55%)' : 'none',
-          transition: 'opacity 0.15s, filter 0.15s, background 0.15s',
-        }}
-      >
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Status badge lives under the photo (small, out of the name's
-                way) rather than beside the name — at card width, a badge
-                next to the name was eating enough space to truncate names
-                like "Sohel" down to "Soh…". */}
-            <div className="flex flex-col items-center flex-shrink-0" style={{ gap: 4 }}>
-              {emp.profile_photo_url ? (
-                <img src={emp.profile_photo_url} alt="" className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
-              ) : (
-                <div
-                  className="flex items-center justify-center rounded-full text-white font-bold"
-                  style={{ width: 48, height: 48, background: `linear-gradient(135deg,${accent},${accentFocus})`, fontSize: 13 }}
-                >
-                  {initials(emp.first_name, emp.last_name)}
-                </div>
-              )}
-              <span
-                className="inline-flex items-center gap-1 px-1.5 rounded-full font-semibold"
-                style={{ background: status.bg, color: status.color, fontSize: 10, lineHeight: '14px', whiteSpace: 'nowrap' }}
-              >
-                <span className="w-1 h-1 rounded-full bg-current" /> {status.label}
-              </span>
-            </div>
-            <div className="min-w-0">
-              {/* Wraps onto a 2nd line instead of truncating with "…" — at
-                  card width, a single-line ellipsis was cutting "Sohel" down
-                  to "Soh…"; wrapping keeps the full name readable. */}
-              <div style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary, lineHeight: 1.25, wordBreak: 'break-word' }}>
-                {emp.first_name} {emp.last_name}
-              </div>
-              <button
-                type="button"
-                onClick={() => navigate(`/admin/employee/employee-details/view/${emp.id}`)}
-                style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#4f46e5', fontSize: 11, fontWeight: 600 }}
-              >
-                {emp.employee_code}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {/* 3-dot menu — the card itself is not clickable; only this button
-                exposes View/Edit/Delete, as a vertical dropdown beneath the
-                button (matching the reference design). Positioned within the
-                button's own relative wrapper (not the whole card) so it
-                can't get clipped by the card's edge in the grid's
-                rightmost columns. */}
-            {renderActionMenu(emp)}
-          </div>
-        </div>
-
-        {(() => {
-          // Department/Designation deliberately not shown on the profile
-          // card (removed per request) — still available via the Department/
-          // Designation filter dropdowns and the employee's own View page.
-          const age = ageFromDob(emp.date_of_birth);
-          return age != null ? (
-            <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 11.5, color: t.textSecondary, marginBottom: 8 }}>
-              <span>{age}</span>
-            </div>
-          ) : null;
-        })()}
-
-        <div className="space-y-1.5" style={{ fontSize: 11, color: t.textSecondary }}>
-          <div className="flex items-center gap-1.5 min-w-0">
-            <MdEmail size={14} className="flex-shrink-0" />
-            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.email}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <MdPhone size={14} className="flex-shrink-0" />
-            {emp.mobile_country_code} {emp.mobile_number}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <MdLocationOn size={14} className="flex-shrink-0" />
-            {cityStateFromAddress(emp.address)}
-          </div>
-        </div>
-
-        <div style={{ fontSize: 10, color: t.textSecondary, marginTop: 10, paddingTop: 8, borderTop: `1px solid ${t.divider}` }}>
-          Joined on {formatDate(emp.joining_date)}
-        </div>
-      </div>
-    );
-  };
-
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="master-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
@@ -450,7 +464,13 @@ const EmployeeDetailsListPage: React.FC = () => {
               <div className="emp-empty-state">No employees found.</div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                {pageRows.map((emp, idx) => <EmployeeCard key={emp.id || emp.employee_code || idx} emp={emp} />)}
+                {pageRows.map((emp, idx) => (
+                  <EmployeeCard
+                    key={emp.id || emp.employee_code || idx}
+                    emp={emp} t={t} isDark={isDark} accent={accent} accentFocus={accentFocus}
+                    navigate={navigate} renderActionMenu={renderActionMenu}
+                  />
+                ))}
               </div>
             )}
           </div>

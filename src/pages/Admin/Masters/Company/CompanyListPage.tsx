@@ -72,7 +72,10 @@ const CompanyListPage: React.FC = () => {
 
   // Default sort: newest first (item 5) — a newly-added company appears at
   // the top of the table until the user picks a different column.
-  const getSortValue = (c: Company, key: SortKey): string | number => {
+  // useCallback (stable identity) so useSortedRows's own useMemo actually
+  // memoizes instead of re-sorting on every render (see BuildingListPage
+  // for the fuller explanation of this pattern).
+  const getSortValue = useCallback((c: Company, key: SortKey): string | number => {
     switch (key) {
       case 'id': return Number(c.id);
       case 'name': return c.name?.toLowerCase() || '';
@@ -81,7 +84,7 @@ const CompanyListPage: React.FC = () => {
       case 'city': return c.city?.toLowerCase() || '';
       case 'created_at': return c.created_at || '';
     }
-  };
+  }, []);
   const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<Company, SortKey>(filtered, getSortValue, 'created_at', 'desc');
 
   const handleDelete = async (company: Company) => {

@@ -89,7 +89,12 @@ const BuildingListPage: React.FC = () => {
 
   // Default sort: newest first (item 5) — a newly-added building appears at
   // the top of the table until the user picks a different column.
-  const getSortValue = (b: Building, key: SortKey): string | number => {
+  // useCallback (stable identity) so useSortedRows's own useMemo actually
+  // memoizes — an inline function here would get a new identity every
+  // render, forcing a full re-sort (including totalFloorsOf/totalFlatsOf's
+  // nested reduce over wings->floors->flats for every row) on every render,
+  // not just when the rows or sort key/direction actually change.
+  const getSortValue = useCallback((b: Building, key: SortKey): string | number => {
     switch (key) {
       case 'id': return Number(b.id);
       case 'project_name': return b.project_name?.toLowerCase() || '';
@@ -101,7 +106,7 @@ const BuildingListPage: React.FC = () => {
       case 'parking': return b.parking_count ?? 0;
       case 'created_at': return b.created_at || '';
     }
-  };
+  }, []);
   const { sorted, sortKey, sortDir, toggleSort } = useSortedRows<Building, SortKey>(filtered, getSortValue, 'created_at', 'desc');
 
   // ── delete ──────────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import {
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
+import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../styles/theme';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
@@ -95,6 +96,11 @@ const AuditHistoryPage: React.FC = () => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [search, setSearch] = useState('');
+  // Debounced so typing a search term doesn't fire a real backend request
+  // on every keystroke — this page is server-paginated/-filtered (unlike
+  // most other list pages, which filter an already-fetched batch in
+  // memory), so every keystroke here was a real network round trip.
+  const debouncedSearch = useDebouncedValue(search, 400);
 
   // Lightweight per-action counts for the KPI row — limit=1 so each call
   // only needs the response's `total`, not the actual rows.
@@ -124,7 +130,7 @@ const AuditHistoryPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await fetchAuditLogList(page, limit, {
-        entity_type: entityTypeFilter, action: actionFilter, date_from: fromDate, date_to: toDate, search,
+        entity_type: entityTypeFilter, action: actionFilter, date_from: fromDate, date_to: toDate, search: debouncedSearch,
       });
       if (res.success) { setRows(res.rows ?? []); setTotal(res.total ?? 0); }
       else toast.error('Failed to fetch audit history.');
@@ -133,11 +139,11 @@ const AuditHistoryPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, entityTypeFilter, actionFilter, fromDate, toDate, search]);
+  }, [page, limit, entityTypeFilter, actionFilter, fromDate, toDate, debouncedSearch]);
 
   useEffect(() => { fetchCounts(); }, [fetchCounts]);
   useEffect(() => { fetchRows(); }, [fetchRows]);
-  useEffect(() => { setPage(1); }, [entityTypeFilter, actionFilter, fromDate, toDate, search]);
+  useEffect(() => { setPage(1); }, [entityTypeFilter, actionFilter, fromDate, toDate, debouncedSearch]);
 
   const clearFilters = () => { setEntityTypeFilter(''); setActionFilter(''); setFromDate(''); setToDate(''); setSearch(''); };
 
