@@ -41,6 +41,12 @@ type FileValue = File | string | null;
 const COUNTRY_CODE_FLAGS: Record<string, string> = {
   '+91': '🇮🇳', '+1': '🇺🇸', '+44': '🇬🇧', '+61': '🇦🇺', '+971': '🇦🇪', '+65': '🇸🇬',
 };
+// Country name alongside the flag/code above — the phone dropdown used to
+// show only "🇮🇳 +91", with no way to tell India apart from another +91
+// territory at a glance.
+const COUNTRY_CODE_NAMES: Record<string, string> = {
+  '+91': 'India', '+1': 'USA', '+44': 'UK', '+61': 'Australia', '+971': 'UAE', '+65': 'Singapore',
+};
 const COUNTRY_CODES = Object.keys(COUNTRY_CODE_FLAGS);
 const FOOTER_HEIGHT = 76;
 
@@ -256,22 +262,33 @@ const SearchableSelect: React.FC<{
 };
 
 // A country-code prefixed phone input — the "+91 | 9876543210" combo used
-// for Mobile Number and WhatsApp Number.
+// for Mobile Number and WhatsApp Number. `onAdd`, when passed (only the
+// primary Mobile Number field passes it), renders a compact "+" button that
+// appends a blank row to the Secondary Mobile Numbers list below — it does
+// not add a whole new UI, just a shortcut into the list that's already there.
 const PhoneField: React.FC<{
   t: Theme; isView?: boolean; icon?: React.ReactNode;
   code: string; onCodeChange: (v: string) => void;
   number: string; onNumberChange: (v: string) => void;
-}> = ({ t, isView, icon, code, onCodeChange, number, onNumberChange }) => (
+  onAdd?: () => void;
+}> = ({ t, isView, icon, code, onCodeChange, number, onNumberChange, onAdd }) => (
   <div className={`flex items-center gap-2 ${fieldClassName(!!isView)}`} style={{ padding: '0 8px 0 12px' }}>
     {icon}
     <select value={code} disabled={isView} onChange={(e) => onCodeChange(e.target.value)}
-      style={{ border: 'none', outline: 'none', background: 'transparent', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily, padding: '9px 2px' }}>
-      {COUNTRY_CODES.map((c) => <option key={c} value={c}>{COUNTRY_CODE_FLAGS[c]} {c}</option>)}
+      style={{ border: 'none', outline: 'none', background: 'transparent', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily, padding: '9px 2px', flexShrink: 0 }}>
+      {COUNTRY_CODES.map((c) => <option key={c} value={c}>{COUNTRY_CODE_FLAGS[c]} {COUNTRY_CODE_NAMES[c]} ({c})</option>)}
     </select>
     <span style={{ width: 1, height: 18, background: t.inputBorder, flexShrink: 0 }} />
     <input type="tel" placeholder="Enter number" value={number} readOnly={isView} disabled={isView}
       onChange={(e) => onNumberChange(e.target.value.replace(/[^\d]/g, ''))}
-      style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
+      style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
+    {onAdd && !isView && (
+      <button type="button" onClick={onAdd} title="Add another mobile number"
+        className="flex items-center justify-center rounded-lg flex-shrink-0"
+        style={{ width: 22, height: 22, background: t.insetBg, border: `1px solid ${t.inputBorder}`, color: '#0284c7', cursor: 'pointer' }}>
+        <MdAdd size={14} />
+      </button>
+    )}
   </div>
 );
 
@@ -773,6 +790,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     }).finally(() => setOcrRunning(null));
   };
 
+  // Remaining Booking Amount/Date and the 4 Booster fields were hard-required
+  // here even though the backend treats every one of them as optional —
+  // pay_after_booking/pay_after_booking_date (CreateCustomerSchema's names
+  // for the first two) are .optional().nullable(), and annual_amount/
+  // annual_amount1/annual_amount_every_months/annual_amount2_every_months
+  // (the 4 booster fields) are likewise optional (the interval pair even
+  // carries .default(0), so omitting them just defaults to 0 server-side).
+  // That mismatch unconditionally blocked Customer Creation client-side on
+  // a form the backend would have happily accepted.
   const isFormValid =
     firstName.trim() !== '' && middleName.trim() !== '' && lastName.trim() !== '' && !!customerPhoto &&
     email.trim() !== '' && mobileNumber.trim() !== '' && whatsappNumber.trim() !== '' &&
@@ -781,11 +807,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     companyName.trim() !== '' && projectName.trim() !== '' &&
     (wantsParking === 'no' || parkingNo.trim() !== '') &&
     totalCost.trim() !== '' && bookingDate !== '' && bookingAmount.trim() !== '' &&
-    remainingBookingAmount.trim() !== '' && remainingBookingDate !== '' && possessionAmount.trim() !== '' &&
+    possessionAmount.trim() !== '' &&
     installmentDate !== '' && monthlyEmiBeforePossession.trim() !== '' && monthlyEmiAfterPossession.trim() !== '' &&
     totalEmiTenure.trim() !== '' &&
-    boosterAmountBeforePossession.trim() !== '' && boosterAmountAfterPossession.trim() !== '' &&
-    boosterIntervalBeforePossession.trim() !== '' && boosterIntervalAfterPossession.trim() !== '' &&
     !!applicationForm && !!declarationForm && !!allotmentLetter;
 
   const handlePreview = () => setPreviewOpen(true);
@@ -1133,11 +1157,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
         </div>
 
-        {/* Row 2 of 3 — Contact + ID proofs */}
+        {/* Row 2 of 3 — WhatsApp + ID proofs (each number immediately
+            followed by its own upload field, no field between them) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          <Field t={t} label="Mobile Number" required>
-            <PhoneField t={t} isView={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber} />
-          </Field>
           <Field t={t} label="WhatsApp Number" required>
             <PhoneField t={t} isView={isView} icon={<FaWhatsapp size={15} style={{ color: '#25D366', flexShrink: 0 }} />}
               code={whatsappCountryCode} onCodeChange={setWhatsappCountryCode} number={whatsappNumber} onNumberChange={setWhatsappNumber} />
@@ -1154,11 +1176,51 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView}
               onChange={(e) => setPancardNumber(e.target.value.toUpperCase())} className={fieldClass} />
           </Field>
+          <Field t={t} label="Upload Pancard Photo" required>
+            <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange} />
+            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
+          </Field>
         </div>
 
-        {/* Secondary Mobile Numbers — item 6: primary stays above, "+" adds
-            more here, each independently removable. */}
-        <div className="mb-4">
+        {/* Row 3 of 3 — DOB, alternate contact, address, then Mobile Number
+            last (item: "Move Mobile Number Field at the last of Customer
+            detail section") — placed right before Secondary Mobile Numbers
+            below, since its own "+" button feeds that list. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+          <Field t={t} label="Date of Birth" required>
+            <div className="flex items-center gap-2">
+              <input type="date" value={dateOfBirth} readOnly={isView} disabled={isView}
+                onClick={openPicker} onFocus={openPicker} onChange={(e) => setDateOfBirth(e.target.value)} className={fieldClass} />
+              {age && (
+                <div className="rounded-xl px-2 py-2 flex-shrink-0" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
+                  <p style={{ fontSize: 9, color: t.textSecondary, margin: 0, fontWeight: 600 }}>Age</p>
+                  <p style={{ fontSize: 10.5, color: '#0284c7', margin: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>{age.years}y {age.months}m</p>
+                </div>
+              )}
+            </div>
+          </Field>
+          <Field t={t} label="Alternate Contact Name">
+            <input type="text" placeholder="Enter full name" value={alternatePersonName} readOnly={isView} disabled={isView}
+              onChange={(e) => setAlternatePersonName(e.target.value)} className={fieldClass} />
+          </Field>
+          <Field t={t} label="Alternate Contact Mobile">
+            <input type="tel" placeholder="Enter mobile number" value={alternatePersonMobile} readOnly={isView} disabled={isView}
+              onChange={(e) => setAlternatePersonMobile(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
+          </Field>
+          <Field t={t} label="Address" required>
+            <textarea placeholder="Enter address" value={address} readOnly={isView} disabled={isView} rows={2}
+              onChange={(e) => setAddress(e.target.value)} className={fieldClass} style={{ resize: 'vertical' }} />
+          </Field>
+          <Field t={t} label="Mobile Number" required>
+            <PhoneField t={t} isView={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber}
+              onAdd={addSecondaryNumber} />
+          </Field>
+        </div>
+
+        {/* Secondary Mobile Numbers — item 6: primary Mobile Number above
+            (its own "+" adds a row here too), each row independently
+            removable. */}
+        <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="cust-label" style={{ marginBottom: 0 }}>Secondary Mobile Numbers</label>
             {!isView && (
@@ -1192,38 +1254,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             </div>
           )}
         </div>
-
-        {/* Row 3 of 3 — remaining ID proof, DOB, address, alternate contact */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <Field t={t} label="Upload Pancard Photo" required>
-            <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange} />
-            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
-          </Field>
-          <Field t={t} label="Date of Birth" required>
-            <div className="flex items-center gap-2">
-              <input type="date" value={dateOfBirth} readOnly={isView} disabled={isView}
-                onClick={openPicker} onFocus={openPicker} onChange={(e) => setDateOfBirth(e.target.value)} className={fieldClass} />
-              {age && (
-                <div className="rounded-xl px-2 py-2 flex-shrink-0" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
-                  <p style={{ fontSize: 9, color: t.textSecondary, margin: 0, fontWeight: 600 }}>Age</p>
-                  <p style={{ fontSize: 10.5, color: '#0284c7', margin: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>{age.years}y {age.months}m</p>
-                </div>
-              )}
-            </div>
-          </Field>
-          <Field t={t} label="Alternate Contact Name">
-            <input type="text" placeholder="Enter full name" value={alternatePersonName} readOnly={isView} disabled={isView}
-              onChange={(e) => setAlternatePersonName(e.target.value)} className={fieldClass} />
-          </Field>
-          <Field t={t} label="Alternate Contact Mobile">
-            <input type="tel" placeholder="Enter mobile number" value={alternatePersonMobile} readOnly={isView} disabled={isView}
-              onChange={(e) => setAlternatePersonMobile(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
-          </Field>
-          <Field t={t} label="Address" required>
-            <textarea placeholder="Enter address" value={address} readOnly={isView} disabled={isView} rows={2}
-              onChange={(e) => setAddress(e.target.value)} className={fieldClass} style={{ resize: 'vertical' }} />
-          </Field>
-        </div>
       </div>
 
       {/* ── Property Booking Details ─────────────────────────────────── */}
@@ -1240,12 +1270,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <SearchableSelect t={t} placeholder="Select project" options={projectNameOptions} value={projectName} disabled={isView}
               onChange={(v) => { setProjectName(v); setBuildingName(''); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
           </Field>
-          <Field t={t} label="Location">
-            <input type="text" readOnly value={location || '—'} className="cust-field cust-field-view" />
-          </Field>
           <Field t={t} label="Building Name">
             <SearchableSelect t={t} placeholder="Select building" options={buildingNameOptions} value={buildingName} disabled={isView}
               onChange={(v) => { setBuildingName(v); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
+          </Field>
+          <Field t={t} label="Location">
+            <input type="text" readOnly value={location || '—'} className="cust-field cust-field-view" />
           </Field>
           <Field t={t} label="Wing">
             <SearchableSelect
@@ -1309,7 +1339,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Booking Amount (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter booking amount" value={bookingAmount} onChange={setBookingAmount} />
           </Field>
-          <Field t={t} label="Remaining Booking Amount & Date" required>
+          <Field t={t} label="Remaining Booking Amount & Date">
             <div className="flex items-center gap-2">
               <AmountField t={t} isView={isView} placeholder="Amount" value={remainingBookingAmount} onChange={setRemainingBookingAmount} />
               <input type="date" value={remainingBookingDate} readOnly={isView} disabled={isView}
@@ -1339,20 +1369,20 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 edge cases so the stored value can never exceed 99. */}
             <NumberField t={t} isView={isView} placeholder="e.g. 60" value={totalEmiTenure} onChange={setTotalEmiTenure} max={99} maxLength={2} />
           </Field>
-          <Field t={t} label="Booster Amount Before Possession (₹)" required>
+          <Field t={t} label="Booster Amount Before Possession (₹)">
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} />
           </Field>
         </div>
 
         {/* Row 3 of 3 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
-          <Field t={t} label="Booster Amount After Possession (₹)" required>
+          <Field t={t} label="Booster Amount After Possession (₹)">
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} />
           </Field>
-          <Field t={t} label="Booster Interval Before Possession (Months)" required>
+          <Field t={t} label="Booster Interval Before Possession (Months)">
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} />
           </Field>
-          <Field t={t} label="Booster Interval After Possession (Months)" required>
+          <Field t={t} label="Booster Interval After Possession (Months)">
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} />
           </Field>
         </div>

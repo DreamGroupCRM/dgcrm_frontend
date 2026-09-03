@@ -37,6 +37,16 @@ const EMPTY_FORM: CreateLeadPayload = {
 
 const toDateOnly = (iso: string | null | undefined): string => (iso ? String(iso).slice(0, 10) : '');
 
+// Indian comma grouping while typing — same pattern as
+// CustomerDetailsCrudPage.tsx's formatAmountDisplay, adapted for Budget/
+// Deal Amount's number|null underlying type (Customer's own amount fields
+// are plain strings; these two aren't).
+const formatAmountDisplay = (n: number | null | undefined): string => (n == null ? '' : n.toLocaleString('en-IN', { maximumFractionDigits: 2 }));
+const parseAmountInput = (raw: string): number | null => {
+  const digits = raw.replace(/[^\d.]/g, '');
+  return digits === '' ? null : Number(digits);
+};
+
 const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -253,8 +263,8 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
               </select>
             </FormField>
             <FormField label="Sub-category" t={t}><input disabled={isView} value={form.sub_category ?? ''} onChange={(e) => set('sub_category', e.target.value)} style={getFormInputStyle(t)} /></FormField>
-            <FormField label="Budget (₹)" t={t}><input type="number" disabled={isView} value={form.budget ?? ''} onChange={(e) => set('budget', e.target.value === '' ? null : Number(e.target.value))} style={getFormInputStyle(t)} /></FormField>
-            <FormField label="Deal Amount (₹)" t={t}><input type="number" disabled={isView} value={form.deal_amount ?? ''} onChange={(e) => set('deal_amount', e.target.value === '' ? null : Number(e.target.value))} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Budget (₹)" t={t}><input type="text" inputMode="decimal" disabled={isView} value={formatAmountDisplay(form.budget)} onChange={(e) => set('budget', parseAmountInput(e.target.value))} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Deal Amount (₹)" t={t}><input type="text" inputMode="decimal" disabled={isView} value={formatAmountDisplay(form.deal_amount)} onChange={(e) => set('deal_amount', parseAmountInput(e.target.value))} style={getFormInputStyle(t)} /></FormField>
             <FormField label="Looking For" t={t}><input disabled={isView} value={form.looking_for ?? ''} onChange={(e) => set('looking_for', e.target.value)} style={getFormInputStyle(t)} placeholder="e.g. 2BHK" /></FormField>
             <FormField label="Carpet Size" t={t}><input disabled={isView} value={form.carpet_size ?? ''} onChange={(e) => set('carpet_size', e.target.value)} style={getFormInputStyle(t)} /></FormField>
             <FormField label="How Will Fund" t={t}><input disabled={isView} value={form.how_will_fund ?? ''} onChange={(e) => set('how_will_fund', e.target.value)} style={getFormInputStyle(t)} placeholder="e.g. Home Loan" /></FormField>

@@ -467,12 +467,21 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           setLocationVal(b.location || '');
           setBuildingName(b.building_name || '');
           setIsActive(b.is_active ?? true);
-          const loadedWings: WingRow[] = (b.wings || []).map((w, wi) => ({
+          const loadedWings: WingRow[] = (b.wings || []).map((w, wi) => {
+            // "Enter number of flats on each floor" is a generator-count
+            // helper (used by "Generate Flats" below), not persisted data —
+            // it was always reset to '' on Edit even though the flats
+            // table right below it loads correctly, leaving it blank
+            // despite real data existing. Backfill it from the first
+            // floor's actual flat count, same idea as loadedShops'
+            // shopCountInput just below.
+            const firstFloorFlatCount = w.floors?.[0]?.flats?.length ?? 0;
+            return {
             id: w.id || simpleId('wing', wi + 1),
             name: w.name || '',
             no_of_floors: String(w.no_of_floors ?? ''),
             with_ground_floor: !!w.with_ground_floor,
-            flatsPerFloorInput: '',
+            flatsPerFloorInput: firstFloorFlatCount ? String(firstFloorFlatCount) : '',
             floors: (w.floors || []).map((f, fi) => ({
               id: f.id || simpleId('floor', fi + 1),
               label: f.label,
@@ -485,7 +494,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 is_active: fl.is_active ?? true,
               })),
             })),
-          }));
+            };
+          });
           setWings(loadedWings);
           setActiveWingId(loadedWings[0]?.id || '');
 
