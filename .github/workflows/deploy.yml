@@ -17,10 +17,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build Production Bundle
         run: npm run build
@@ -31,12 +30,11 @@ jobs:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
-          sudo apt-get update && sudo apt-get install -y sshpass
-          # Package dist into a single tar archive for fast atomic transfer
-          tar -C dist -czf frontend_dist.tar.gz .
+          # Package dist into /tmp to avoid file change collision
+          tar -C dist -czf /tmp/frontend_dist.tar.gz .
           # Upload archive to server
-          sshpass -e scp -o StrictHostKeyChecking=no frontend_dist.tar.gz ${SERVER_USER}@${SERVER_HOST}:C:/inetpub/vhosts/Dreamgroup.co.in/frontend_dist.tar.gz
-          # Extract and clean up on Windows Server
+          sshpass -e scp -o StrictHostKeyChecking=no /tmp/frontend_dist.tar.gz ${SERVER_USER}@${SERVER_HOST}:C:/inetpub/vhosts/Dreamgroup.co.in/frontend_dist.tar.gz
+          # Extract on Windows Server and clean up
           sshpass -e ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_HOST} "powershell -ExecutionPolicy Bypass -Command \"tar -xzf C:\inetpub\vhosts\Dreamgroup.co.in\frontend_dist.tar.gz -C C:\inetpub\vhosts\Dreamgroup.co.in\httpdocs; Remove-Item C:\inetpub\vhosts\Dreamgroup.co.in\frontend_dist.tar.gz -Force\""
 
       - name: Verify Live Deployment
