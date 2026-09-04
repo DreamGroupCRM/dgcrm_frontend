@@ -96,6 +96,16 @@ const StatusPill: React.FC<{ status: string }> = ({ status }) => {
 
 const rupee = (n: number): string => `₹ ${n.toLocaleString('en-IN')}`;
 
+// Indian comma grouping while typing — same pattern as
+// CustomerDetailsCrudPage.tsx's/EmployeeDetailsCrudPage.tsx's own
+// formatAmountDisplay, applied here to the Collect Payment amount field
+// (a plain numeric string in this page's state, same as those).
+const formatAmountDisplay = (v: string): string => {
+  if (!v) return '';
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : v;
+};
+
 const DueReportPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { isDark, t, cssVars } = useAppearanceTokens();
@@ -395,7 +405,7 @@ const DueReportPage: React.FC = () => {
                 <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>
                   Amount (₹) *{apSuggestLoading ? ' (suggesting...)' : ''}
                 </label>
-                <input type="text" inputMode="numeric" value={apAmount} onChange={(e) => setApAmount(e.target.value.replace(/[^\d]/g, ''))} placeholder="Enter amount"
+                <input type="text" inputMode="numeric" value={formatAmountDisplay(apAmount)} onChange={(e) => setApAmount(e.target.value.replace(/[^\d]/g, ''))} placeholder="Enter amount"
                   style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }} />
               </div>
               {apPaymentFor === 'EMIAmount' && (
@@ -431,7 +441,7 @@ const DueReportPage: React.FC = () => {
               {apShowMaintenance ? (
                 <div>
                   <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>Maintenance (₹)</label>
-                  <input type="text" inputMode="numeric" value={apMaintenance} onChange={(e) => setApMaintenance(e.target.value.replace(/[^\d]/g, ''))} placeholder="Optional"
+                  <input type="text" inputMode="numeric" value={formatAmountDisplay(apMaintenance)} onChange={(e) => setApMaintenance(e.target.value.replace(/[^\d]/g, ''))} placeholder="Optional"
                     style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }} />
                 </div>
               ) : (

@@ -45,11 +45,13 @@ export const ROUTES = {
     // Employee
     EMPLOYEE_DETAILS: '/admin/employee/employee-details',
     ATTENDANCE: '/admin/employee/attendance',
+    LEAVES: '/admin/employee/leaves',
 
     // CRM
     CUSTOMER_DETAILS: '/admin/crm/customer-details',
     LEADS: '/admin/crm/leads',
     PAYMENT_RECEIVED: '/admin/crm/payment-received',
+    PAYMENT_APPROVALS: '/admin/crm/payment-approvals',
     PAYMENT_DUES: '/admin/crm/payment-dues',
 
     // Standalone
@@ -58,6 +60,7 @@ export const ROUTES = {
     BACKUP_DATABASE: '/admin/backup-database',
     EXECUTIVE_DASHBOARD: '/admin/reports/executive-dashboard',
     PENDING_APPROVALS: '/admin/pending-approvals',
+    CHANGE_REQUESTS: '/admin/change-requests',
 
     // Super Admin lobby (superadmin-only, see Sidebar.tsx)
     USER_MANAGEMENT: '/admin/user-management',
@@ -71,6 +74,7 @@ export const ROUTES = {
     PAYMENT_RECEIVED: '/employee/payment-received',
     PAYMENT_DUES: '/employee/payment-dues',
     ATTENDANCE: '/employee/attendance',
+    LEAVES: '/employee/leaves',
   },
 
   // Customer First Login — dedicated portal, separate from the staff LOGIN

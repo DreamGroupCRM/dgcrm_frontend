@@ -47,3 +47,24 @@ export const deleteUser = async (id: number): Promise<void> => {
 export const adminSetPassword = async (id: number, new_password: string): Promise<void> => {
   await axiosInstance.post(`/user-management/users/${id}/set-password`, { new_password });
 };
+
+export interface CreateAdminPayload {
+  first_name: string;
+  last_name?: string;
+  email: string;
+  phone?: string;
+}
+
+export interface CreateAdminResult {
+  id: number;
+  email: string;
+  temp_password: string;
+}
+
+/** POST /api/user-management/users/admin — Super Admin quick action. base_role
+ * is always 'admin' server-side; a random temp password is generated and
+ * returned exactly once (must_change_password forces reset on first login). */
+export const createAdmin = async (payload: CreateAdminPayload): Promise<CreateAdminResult> => {
+  const res = await axiosInstance.post('/user-management/users/admin', payload);
+  return res.data.data;
+};

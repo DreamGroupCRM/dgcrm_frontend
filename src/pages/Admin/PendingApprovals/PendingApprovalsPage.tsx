@@ -1,13 +1,15 @@
 // ==========================================
 // DREAM GROUP CRM - PENDING APPROVALS PAGE
 // ==========================================
-// One shared review queue for delete requests across the 9 modules whose
+// One shared review queue for delete requests across the modules whose
 // DELETE route used to be reachable by any authenticated employee with no
 // admin gate (see pendingApprovalsService.ts / modules/pendingApprovals/
 // in dgcrm_backend). A non-admin's delete now marks the record
 // pending_delete instead of removing it — hidden from its own module's
 // list, data preserved — until an admin Approves (permanently deletes) or
 // Rejects (restores) it here. Admin/superadmin only, enforced server-side.
+// V_21.0 added Lead to this same queue (previously permission-gated with
+// no review step at all).
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { MdPendingActions, MdCheckCircle, MdCancel, MdRefresh } from 'react-icons/md';
@@ -35,6 +37,7 @@ const MODULE_LABEL: Record<PendingApprovalEntityType, string> = {
   product: 'Product',
   gstInvoice: 'GST Invoice',
   channelPartner: 'Channel Partner',
+  lead: 'Lead',
 };
 
 const rowKey = (r: PendingApprovalRow) => `${r.entity_type}:${r.id}`;

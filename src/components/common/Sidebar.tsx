@@ -21,7 +21,7 @@ import {
   MdApartment, MdAccountBalance, MdAccountTree,
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
   MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
-  MdAdminPanelSettings, MdManageAccounts, MdPendingActions,
+  MdAdminPanelSettings, MdManageAccounts, MdPendingActions, MdBeachAccess,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -98,6 +98,7 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
     children: [
       { label: 'Employee Details', path: ROUTES.ADMIN.EMPLOYEE_DETAILS, icon: <MdPersonAdd /> },
       { label: 'Attendance', path: ROUTES.ADMIN.ATTENDANCE, icon: <MdEventAvailable /> },
+      { label: 'Leave Requests', path: ROUTES.ADMIN.LEAVES, icon: <MdBeachAccess /> },
     ],
   },
 
@@ -107,6 +108,7 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
       { label: 'Customer Details', path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage /> },
       { label: 'Payment Dues', path: ROUTES.ADMIN.PAYMENT_DUES, icon: <MdPayment /> },
       { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
+      { label: 'Payment Approvals', path: ROUTES.ADMIN.PAYMENT_APPROVALS, icon: <MdPendingActions /> },
       { label: 'Leads', path: ROUTES.ADMIN.LEADS, icon: <MdLeaderboard /> },
     ],
   },
@@ -117,6 +119,7 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
   // employee couldn't complete themselves, so this is visible to both,
   // unlike the Super Admin lobby group below.
   { label: 'Pending Approvals', path: ROUTES.ADMIN.PENDING_APPROVALS, icon: <MdPendingActions /> },
+  { label: 'Change Requests', path: ROUTES.ADMIN.CHANGE_REQUESTS, icon: <MdPendingActions /> },
   { label: 'Customize Scheme', path: ROUTES.ADMIN.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
 
   // Super Admin lobby — Backup Database moved in here (was previously
@@ -140,6 +143,7 @@ const employeeNavItems: NavItem[] = [
   { label: 'Payment Received', path: ROUTES.EMPLOYEE.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
   { label: 'Payment Dues', path: ROUTES.EMPLOYEE.PAYMENT_DUES, icon: <MdPayment /> },
   { label: 'Attendance', path: ROUTES.EMPLOYEE.ATTENDANCE, icon: <MdEventAvailable /> },
+  { label: 'Leave', path: ROUTES.EMPLOYEE.LEAVES, icon: <MdBeachAccess /> },
 ];
 
 // ── NavItemComponent ───────────────────────────────────────────────────────

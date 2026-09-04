@@ -13,6 +13,7 @@ import {
   LeadListFilters,
   LeadListResponse,
   LeadSingleResponse,
+  LeadCreateResponse,
   LeadStatusCountsResponse,
   LeadActivitiesResponse,
   LeadActivity,
@@ -72,10 +73,14 @@ function sanitizeLeadPayload<T extends Partial<CreateLeadPayload>>(payload: T): 
 }
 
 // ── Create new lead ──────────────────────────────────────────────────────
+// Admin/superadmin gets the Lead back immediately; anyone else's request
+// is queued for admin review (see ChangeRequestsPage) and comes back as
+// `{ pending: true }` with no `data` — callers must check `pending` before
+// touching `res.data`.
 /** POST /api/leads */
-export const createLead = async (payload: CreateLeadPayload): Promise<LeadSingleResponse> => {
+export const createLead = async (payload: CreateLeadPayload): Promise<LeadCreateResponse> => {
   const res = await axiosInstance.post('/leads', sanitizeLeadPayload(payload));
-  return res.data as LeadSingleResponse;
+  return res.data as LeadCreateResponse;
 };
 
 // ── Update existing lead (also used for a pure status change) ───────────

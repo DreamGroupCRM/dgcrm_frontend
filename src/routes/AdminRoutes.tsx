@@ -48,6 +48,14 @@ import CustomizeSchemePage from '../pages/Admin/CustomizeScheme/CustomizeSchemeP
 import AuditHistoryPage from '../pages/Admin/AuditHistory/AuditHistoryPage';
 // Payment Received — replaces its former PlaceholderPage (item 16).
 import PaymentReceivedPage from '../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage';
+// Payment Approvals — dedicated review queue split out of Payment Received
+// (V_21.0, see that page's own header comment).
+const PaymentApprovalsPage = lazy(() => import('../pages/Admin/CRM/PaymentApprovals/PaymentApprovalsPage'));
+// Attendance — replaces its former PlaceholderPage, backed by the existing
+// working attendance API (V_21.0).
+const AttendancePage = lazy(() => import('../pages/Admin/Employee/Attendance/AttendancePage'));
+// Leave Requests — first real frontend for the leave module (V_21.0).
+const LeaveApprovalsPage = lazy(() => import('../pages/Admin/Employee/Leaves/LeaveApprovalsPage'));
 // Executive Dashboard — new "Reports" sidebar entry.
 const ExecutiveDashboardPage = lazy(() => import('../pages/Admin/Reports/ExecutiveDashboardPage'));
 // Backup Database — replaces its former PlaceholderPage with real whole-
@@ -59,6 +67,9 @@ const UserManagementPage = lazy(() => import('../pages/Admin/UserManagement/User
 // Audit History below — no extra ProtectedRoute needed, the parent
 // route already restricts this whole subtree to admin/superadmin.
 const PendingApprovalsPage = lazy(() => import('../pages/Admin/PendingApprovals/PendingApprovalsPage'));
+// Change Requests — Create/Edit proposal review queue (see changeRequests
+// module in dgcrm_backend). Admin/superadmin, same as Pending Approvals.
+const ChangeRequestsPage = lazy(() => import('../pages/Admin/ChangeRequests/ChangeRequestsPage'));
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
@@ -112,7 +123,8 @@ const AdminRoutes: React.FC = () => (
       <Route path="employee/employee-details/add" element={<EmployeeDetailsCrudPage mode="add" />} />
       <Route path="employee/employee-details/view/:id" element={<EmployeeDetailsCrudPage mode="view" />} />
       <Route path="employee/employee-details/edit/:id" element={<EmployeeDetailsCrudPage mode="edit" />} />
-      <Route path="employee/attendance" element={<PlaceholderPage title="Attendance" />} />
+      <Route path="employee/attendance" element={<AttendancePage />} />
+      <Route path="employee/leaves" element={<LeaveApprovalsPage />} />
 
       <Route path="crm/customer-details" element={<CustomerDetailsListPage />} />
       <Route path="crm/customer-details/add" element={<CustomerDetailsCrudPage mode="add" />} />
@@ -121,6 +133,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="crm/customer-details/scheme/:id" element={<CustomerSchemeViewPage />} />
       <Route path="crm/payment-dues" element={<DueReportPage />} />
       <Route path="crm/payment-received" element={<PaymentReceivedPage />} />
+      <Route path="crm/payment-approvals" element={<PaymentApprovalsPage />} />
       <Route path="crm/leads" element={<LeadListPage />} />
       <Route path="crm/leads/add" element={<LeadCrudPage mode="add" />} />
       <Route path="crm/leads/view/:id" element={<LeadCrudPage mode="view" />} />
@@ -129,6 +142,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="reports/executive-dashboard" element={<ExecutiveDashboardPage />} />
       <Route path="audit-history" element={<AuditHistoryPage />} />
       <Route path="pending-approvals" element={<PendingApprovalsPage />} />
+      <Route path="change-requests" element={<ChangeRequestsPage />} />
       <Route path="customize-scheme" element={<CustomizeSchemePage />} />
 
       {/* SuperAdmin-only — see Sidebar.tsx / backend's requireSuperAdmin */}

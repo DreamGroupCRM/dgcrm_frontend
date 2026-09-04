@@ -49,6 +49,7 @@ import {
   CustomerListResponse,
   CustomerListFilters,
   CustomerSingleResponse,
+  CustomerCreateEditResponse,
   CustomerDeleteResponse,
   CreateCustomerPayload,
   UpdateCustomerPayload,
@@ -451,21 +452,27 @@ export const updateCustomer = async (id: string, payload: UpdateCustomerPayload)
 // Declaration Form, Allotment Letter) travels in one FormData body, since
 // createCustomer()/updateCustomer() above only send plain JSON and can't
 // carry files.
+// Admin/superadmin gets the Customer back immediately; anyone else's
+// submission is queued for admin review (see ChangeRequestsPage) and comes
+// back as `{ pending: true }` with no `data` — callers must check
+// `pending` before touching the response's `data`.
 /** POST /api/customers (multipart/form-data) */
-export const createCustomerWithDetails = async (formData: FormData): Promise<CustomerSingleResponse> => {
+export const createCustomerWithDetails = async (formData: FormData): Promise<CustomerCreateEditResponse> => {
   const res = await axiosInstance.post('/customers', toBackendCustomerFormData(formData), {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return { success: res.data.success, message: res.data.message, data: mapCustomerRow(res.data.data as BackendCustomer) };
+  if (res.data.pending) return { success: res.data.success, pending: true, message: res.data.message };
+  return { success: res.data.success, pending: false, message: res.data.message, data: mapCustomerRow(res.data.data as BackendCustomer) };
 };
 
 // ── Update existing customer — full Create-Customer form, multipart/form-data ─
 /** PUT /api/customers/:id (multipart/form-data) */
-export const updateCustomerWithDetails = async (id: string, formData: FormData): Promise<CustomerSingleResponse> => {
+export const updateCustomerWithDetails = async (id: string, formData: FormData): Promise<CustomerCreateEditResponse> => {
   const res = await axiosInstance.put(`/customers/${id}`, toBackendCustomerFormData(formData), {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return { success: res.data.success, message: res.data.message, data: mapCustomerRow(res.data.data as BackendCustomer) };
+  if (res.data.pending) return { success: res.data.success, pending: true, message: res.data.message };
+  return { success: res.data.success, pending: false, message: res.data.message, data: mapCustomerRow(res.data.data as BackendCustomer) };
 };
 
 // ── Delete customer ──────────────────────────────────────────────────────────

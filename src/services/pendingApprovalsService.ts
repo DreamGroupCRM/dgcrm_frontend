@@ -3,15 +3,15 @@
 // DGCRM — PENDING DELETE APPROVALS SERVICE
 // ==========================================
 // Talks to /api/pending-approvals/* (see modules/pendingApprovals/ in
-// dgcrm_backend). One merged queue across the 9 modules whose delete is
+// dgcrm_backend). One merged queue across the modules whose delete is
 // now request-and-review for non-admins (performaInvoice, channelSalesDar,
 // supplier, bookingLetter, toCollect, toPay, product, gstInvoice,
-// channelPartner) — admin/superadmin only, enforced server-side.
+// channelPartner, lead) — admin/superadmin only, enforced server-side.
 import axiosInstance from './axiosConfig';
 
 export type PendingApprovalEntityType =
   | 'performaInvoice' | 'channelSalesDar' | 'supplier' | 'bookingLetter'
-  | 'toCollect' | 'toPay' | 'product' | 'gstInvoice' | 'channelPartner';
+  | 'toCollect' | 'toPay' | 'product' | 'gstInvoice' | 'channelPartner' | 'lead';
 
 export interface PendingApprovalRow {
   entity_type: PendingApprovalEntityType;

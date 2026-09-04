@@ -15,13 +15,12 @@ import { formatDate } from '../../../../utils';
 import {
   ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
   fetchEmployeePermissions, FetchEmployeeDetails,
-  FetchVisibleEmployees, AssignVisibleEmployees, SetEmployeeRole,
+  FetchVisibleEmployees, AssignVisibleEmployees,
   EmployeeFormValues, EmployeeFileValues, EmployeeStatus,
 } from '../../../../services/employeeDetailsService';
 import { FetchDepartmentList } from '../../../../services/departmentService';
 import { fetchDesignationList } from '../../../../services/designationService';
 import { fetchMappingMatrix } from '../../../../services/moduleActionService';
-import { fetchAssignableRoles } from '../../../../services/roleService';
 import './EmployeeDetails.css';
 
 // Employee Status badge colors for View mode — same palette as
@@ -38,6 +37,12 @@ type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
 type Theme = AppTheme;
 
+// Same emoji mapping CustomerDetailsCrudPage.tsx's PhoneField uses — "+1" is
+// shared by US/Canada; the US flag is the conventional default for that
+// dial code.
+const COUNTRY_CODE_FLAGS: Record<string, string> = {
+  '+91': '🇮🇳', '+1': '🇺🇸', '+44': '🇬🇧', '+61': '🇦🇺', '+971': '🇦🇪',
+};
 const COUNTRY_CODES = ['+91', '+1', '+44', '+61', '+971'];
 const WORKING_HOURS_OPTIONS = ['8', '9', '10'];
 const HOLIDAYS_OPTIONS = ['Sunday Only', 'Alternate Saturdays + Sunday', 'All Saturdays + Sunday', 'Custom / As per Company Policy'];
@@ -89,6 +94,15 @@ const emptyForm: EmployeeFormValues = {
 // come in via the --emp-* CSS vars set on the page's outer wrapper below.
 const fieldClassName = (isView: boolean) => (isView ? 'emp-field emp-field-view' : 'emp-field');
 
+// Indian comma grouping while typing — same pattern/logic as
+// CustomerDetailsCrudPage.tsx's formatAmountDisplay, applied here to
+// Salary (a plain numeric string in this page's state, same as there).
+const formatAmountDisplay = (v: string): string => {
+  if (!v) return '';
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : v;
+};
+
 // ── Helper components — ALL defined at module scope (outside the page
 // component) rather than inside it. This is the fix for the "cursor
 // disappears after one keystroke" bug: when a component is declared
@@ -136,8 +150,8 @@ const PhoneField: React.FC<{
 }> = ({ t, isView, label, required, code, number, onCode, onNumber }) => (
   <Field t={t} label={label} required={required}>
     <div className="flex gap-2">
-      <select value={code} disabled={isView} onChange={(e) => onCode(e.target.value)} className={fieldClassName(isView)} style={{ width: 80, cursor: isView ? 'default' : 'pointer' }}>
-        {COUNTRY_CODES.map((c) => <option key={c} value={c}>{c}</option>)}
+      <select value={code} disabled={isView} onChange={(e) => onCode(e.target.value)} className={fieldClassName(isView)} style={{ width: 88, cursor: isView ? 'default' : 'pointer' }}>
+        {COUNTRY_CODES.map((c) => <option key={c} value={c}>{COUNTRY_CODE_FLAGS[c]} {c}</option>)}
       </select>
       <input
         type="tel" placeholder="Enter mobile number" value={number} readOnly={isView} disabled={isView}
@@ -415,14 +429,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [visibleEmployeeIds, setVisibleEmployeeIds] = useState<number[]>([]);
   const [loadingVisibleEmployees, setLoadingVisibleEmployees] = useState(true);
 
-  // User Management — Role. Lives outside `form` (like visibleEmployeeIds
-  // above) since role_id is saved through its own endpoint (SetEmployeeRole),
-  // not the main Employee create/update payload — see
-  // employeeDetailsService.ts's comment on why.
-  const [roleOptions, setRoleOptions] = useState<IdOption[]>([]);
-  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
-  const [loadingRoles, setLoadingRoles] = useState(true);
-
   const set = <K extends keyof EmployeeFormValues>(key: K, value: EmployeeFormValues[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -512,23 +518,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         toast.error('Failed to load designations.');
       } finally {
         setLoadingDesignations(false);
-      }
-    })();
-  }, []);
-
-  // ── Role dropdown options — needed in every mode. Uses the plain
-  //    admin-usable /masters/roles dropdown, not the SuperAdmin-only Role
-  //    Master screen's /role endpoint (roleService.fetchRoleList) — see
-  //    fetchAssignableRoles's own comment. ─────────────────────────────
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetchAssignableRoles();
-        if (res.success) setRoleOptions((res.data || []).map((r) => ({ value: Number(r.id), label: r.name })));
-      } catch {
-        toast.error('Failed to load roles.');
-      } finally {
-        setLoadingRoles(false);
       }
     })();
   }, []);
@@ -625,7 +614,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             status: e.status || 'active',
             is_active: e.is_active,
           });
-          setSelectedRoleId(e.role_id != null ? Number(e.role_id) : null);
           setExistingUrls({
             profile_photo: e.profile_photo_url, aadhar_card: e.aadhar_card_url, pan_card: e.pan_card_url,
             resume: e.resume_url, appointment_letter: e.appointment_letter_url, passbook_photo: e.passbook_photo_url,
@@ -750,7 +738,13 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     if (!files.passbook_photo && !existingUrls.passbook_photo) return 'Please upload the Bank Passbook Photo.';
     if (form.department_ids.length === 0) return 'Please assign at least one Department.';
     if (form.designation_ids.length === 0) return 'Please assign at least one Designation.';
-    if (form.module_action_ids.length === 0) return 'Please assign at least one Action/Module.';
+    // Actions/Modules is deliberately NOT required here — the backend
+    // itself treats it as fully optional (employees.service.ts's
+    // createEmployee/updateEmployee only assigns permissions when the
+    // array is non-empty, never requires it), and on a fresh install
+    // before an admin has defined any modules/actions this checklist can
+    // legitimately be empty. Requiring it here used to make Employee
+    // Creation impossible on a fresh install.
     return null;
   };
 
@@ -773,26 +767,15 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         targetId = created.data?.id != null ? String(created.data.id) : undefined;
         toast.success('Employee created successfully.');
       }
-      // Visible-employees assignment and Role both save through their own
-      // endpoints (neither is part of the Employee payload) — always sent,
-      // including an empty Visible Employees selection, so unchecking
-      // everyone on Edit actually clears it rather than leaving the
-      // previous assignment in place. The two calls are independent of each
-      // other, so they run in parallel (Promise.allSettled — each still
-      // gets its own error toast regardless of how the other one turns
-      // out) instead of one waiting on the other to finish first; this used
-      // to add two full sequential round-trips after the main save before
-      // the page would navigate away.
+      // Visible-employees assignment saves through its own endpoint (not
+      // part of the Employee payload) — always sent, including an empty
+      // selection, so unchecking everyone on Edit actually clears it
+      // rather than leaving the previous assignment in place.
       if (targetId) {
-        const [visibleResult, roleResult] = await Promise.allSettled([
-          AssignVisibleEmployees(targetId, visibleEmployeeIds),
-          SetEmployeeRole(targetId, selectedRoleId),
-        ]);
-        if (visibleResult.status === 'rejected') {
+        try {
+          await AssignVisibleEmployees(targetId, visibleEmployeeIds);
+        } catch {
           toast.error('Employee saved, but failed to update the Visible Employees assignment.');
-        }
-        if (roleResult.status === 'rejected') {
-          toast.error('Employee saved, but failed to update the Role assignment.');
         }
       }
       navigate('/admin/employee/employee-details');
@@ -836,7 +819,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // — same markup, same behavior, same positioning.
   if (isView) {
     const statusStyle = VIEW_STATUS_STYLES[form.status] || VIEW_STATUS_STYLES.active;
-    const roleLabel = roleOptions.find((r) => r.value === selectedRoleId)?.label || 'No role assigned';
     const deptLabels = departmentOptions.filter((d) => form.department_ids.includes(d.value)).map((d) => d.label);
     const desigLabels = designationOptions.filter((d) => form.designation_ids.includes(d.value)).map((d) => d.label);
     const visibleLabels = visibleEmployeeOptions.filter((e) => visibleEmployeeIds.includes(e.value)).map((e) => e.label);
@@ -909,7 +891,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <ViewValue label="Check Out" value={form.check_out_time} />
               <ViewValue label="Holidays" value={form.holidays} />
               <ViewValue label="Salary" value={form.salary ? `₹ ${Number(form.salary).toLocaleString('en-IN')}` : ''} />
-              <ViewValue label="Role" value={roleLabel} />
             </div>
           </div>
         </div>
@@ -1142,7 +1123,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <div className={`flex items-center gap-2 ${fieldClass}`} style={{ padding: '0 12px' }}>
               <span style={{ color: t.textSecondary }}>₹</span>
               <input
-                type="number" placeholder="Enter salary" value={form.salary} readOnly={isView} disabled={isView}
+                type="text" inputMode="decimal" placeholder="Enter salary" value={formatAmountDisplay(form.salary)} readOnly={isView} disabled={isView}
                 onChange={(e) => set('salary', e.target.value.replace(/[^\d.]/g, ''))}
                 style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }}
               />
@@ -1155,16 +1136,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Employee Status" required>
             <select value={form.status} disabled={isView} onChange={(e) => set('status', e.target.value as EmployeeStatus)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </Field>
-          <Field t={t} label="Role">
-            <select
-              value={selectedRoleId ?? ''} disabled={isView || loadingRoles}
-              onChange={(e) => setSelectedRoleId(e.target.value ? Number(e.target.value) : null)}
-              className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}
-            >
-              <option value="">{loadingRoles ? 'Loading roles...' : 'No role assigned'}</option>
-              {roleOptions.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </Field>
         </div>
@@ -1235,7 +1206,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
 
         <div className="mb-5">
-          <label className="emp-label">Assign Actions & Modules<span className="emp-required"> *</span></label>
+          <label className="emp-label">Assign Actions & Modules</label>
           <div className="emp-module-panel">
             <ModuleActionGrid
               t={t} isView={isView} grid={moduleGrid}

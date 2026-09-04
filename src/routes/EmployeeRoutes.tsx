@@ -11,6 +11,11 @@ const EmployeeDashboard = lazy(() => import('../pages/Employee/Dashboard/Employe
 const PlaceholderPage = lazy(() => import('../components/common/PlaceholderPage'));
 const LeadListPage = lazy(() => import('../pages/Employee/Leads/LeadListPage'));
 const LeadCrudPage = lazy(() => import('../pages/Employee/Leads/LeadCrudPage'));
+// Attendance — replaces its former PlaceholderPage, backed by the existing
+// working attendance API, self-scoped (V_21.0).
+const AttendancePage = lazy(() => import('../pages/Employee/Attendance/AttendancePage'));
+// Leave — first real frontend for the leave module, self-scoped (V_21.0).
+const LeavePage = lazy(() => import('../pages/Employee/Leaves/LeavePage'));
 
 const EmployeeRoutes: React.FC = () => (
   <Routes>
@@ -30,7 +35,8 @@ const EmployeeRoutes: React.FC = () => (
       <Route path="leads/edit/:id" element={<LeadCrudPage mode="edit" />} />
       <Route path="payment-received" element={<PlaceholderPage title="Payment Received" />} />
       <Route path="payment-dues" element={<PlaceholderPage title="Payment Dues" />} />
-      <Route path="attendance" element={<PlaceholderPage title="Attendance" />} />
+      <Route path="attendance" element={<AttendancePage />} />
+      <Route path="leaves" element={<LeavePage />} />
     </Route>
   </Routes>
 );

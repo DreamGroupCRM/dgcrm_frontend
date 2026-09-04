@@ -8,14 +8,17 @@
 // activate/deactivate/delete). SuperAdmin-only, enforced server-side.
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { MdPeople, MdCheckCircle, MdCancel, MdDelete, MdRefresh, MdKey, MdClose, MdLock } from 'react-icons/md';
+import { MdPeople, MdCheckCircle, MdCancel, MdDelete, MdRefresh, MdKey, MdClose, MdLock, MdPersonAddAlt1, MdContentCopy } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { showAlert, formatLastLogin } from '../../../utils';
-import { fetchUsers, setUserActiveStatus, deleteUser, adminSetPassword, UserManagementRow } from '../../../services/userManagementService';
+import {
+  fetchUsers, setUserActiveStatus, deleteUser, adminSetPassword, createAdmin,
+  UserManagementRow, CreateAdminResult,
+} from '../../../services/userManagementService';
 
 interface ErrLike { response?: { data?: { message?: string } } }
 const errMessage = (e: unknown, fallback: string) => (e as ErrLike)?.response?.data?.message || fallback;
@@ -34,6 +37,11 @@ const UserManagementPage: React.FC = () => {
   const [pwTarget, setPwTarget] = useState<UserManagementRow | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [savingPw, setSavingPw] = useState(false);
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
+  const [createResult, setCreateResult] = useState<CreateAdminResult | null>(null);
 
   useEffect(() => { dispatch(setPageTitle('User Management')); }, [dispatch]);
 
@@ -96,6 +104,40 @@ const UserManagementPage: React.FC = () => {
     }
   };
 
+  const closeCreateModal = () => {
+    setShowCreate(false);
+    setCreateForm({ first_name: '', last_name: '', email: '', phone: '' });
+    setCreateResult(null);
+  };
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createForm.first_name.trim() || !createForm.email.trim()) return;
+    setCreating(true);
+    try {
+      const result = await createAdmin({
+        first_name: createForm.first_name.trim(),
+        last_name: createForm.last_name.trim() || undefined,
+        email: createForm.email.trim(),
+        phone: createForm.phone.trim() || undefined,
+      });
+      setCreateResult(result);
+      await load();
+    } catch (e) {
+      toast.error(errMessage(e, 'Failed to create admin account.'));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCopyTempPassword = () => {
+    if (!createResult) return;
+    navigator.clipboard?.writeText(createResult.temp_password).then(
+      () => toast.success('Temporary password copied.'),
+      () => toast.error('Could not copy — select and copy manually.')
+    );
+  };
+
   const activeCount = rows.filter((r) => r.is_active).length;
   const disabledCount = rows.filter((r) => !r.is_active).length;
   const lockedCount = rows.filter((r) => r.is_locked).length;
@@ -116,11 +158,18 @@ const UserManagementPage: React.FC = () => {
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Login Accounts</h3>
-          <button type="button" onClick={load} title="Refresh"
-            className="flex items-center justify-center rounded-xl"
-            style={{ width: 36, height: 36, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
-            <MdRefresh size={17} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold"
+              style={{ background: 'var(--grad-purple)', color: '#fff', border: 'none', cursor: 'pointer' }}>
+              <MdPersonAddAlt1 size={15} /> Create Admin
+            </button>
+            <button type="button" onClick={load} title="Refresh"
+              className="flex items-center justify-center rounded-xl"
+              style={{ width: 36, height: 36, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
+              <MdRefresh size={17} />
+            </button>
+          </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
@@ -219,6 +268,84 @@ const UserManagementPage: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => !creating && closeCreateModal()}>
+          <div className="rounded-2xl w-full" style={{ maxWidth: 440, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: t.textPrimary }}>
+                {createResult ? 'Admin Account Created' : 'Create Admin'}
+              </div>
+              <button type="button" onClick={() => !creating && closeCreateModal()} disabled={creating}
+                style={{ background: 'transparent', border: 'none', cursor: creating ? 'not-allowed' : 'pointer', color: t.textSecondary, padding: 4, display: 'flex' }}>
+                <MdClose size={20} />
+              </button>
+            </div>
+
+            {createResult ? (
+              <div className="p-5">
+                <p style={{ fontSize: 12.5, color: t.textSecondary, marginTop: 0 }}>
+                  Share this temporary password with <b style={{ color: t.textPrimary }}>{createResult.email}</b> securely.
+                  It will not be shown again — they must set a new password on first login.
+                </p>
+                <div className="flex items-center gap-2 mt-2" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10, padding: '9px 12px' }}>
+                  <code style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary, flex: 1, letterSpacing: 0.5 }}>{createResult.temp_password}</code>
+                  <button type="button" onClick={handleCopyTempPassword} title="Copy"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, display: 'flex' }}>
+                    <MdContentCopy size={16} />
+                  </button>
+                </div>
+                <div className="flex items-center justify-end mt-5">
+                  <button type="button" onClick={closeCreateModal}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold"
+                    style={{ background: '#1a5c38', color: '#fff', border: 'none', cursor: 'pointer' }}>
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleCreateAdmin} className="p-5" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>First Name *</label>
+                    <input required value={createForm.first_name} onChange={(e) => setCreateForm((f) => ({ ...f, first_name: e.target.value }))} autoFocus
+                      style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Last Name</label>
+                    <input value={createForm.last_name} onChange={(e) => setCreateForm((f) => ({ ...f, last_name: e.target.value }))}
+                      style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Email *</label>
+                  <input required type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+                    style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Phone</label>
+                  <input value={createForm.phone} onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))}
+                    style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                </div>
+                <p style={{ fontSize: 11, color: t.textSecondary, margin: 0 }}>
+                  A temporary password is generated automatically — the new admin must set their own password on first login.
+                </p>
+                <div className="flex items-center justify-end gap-2.5 mt-2">
+                  <button type="button" onClick={closeCreateModal} disabled={creating}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: creating ? 'not-allowed' : 'pointer' }}>
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={creating || !createForm.first_name.trim() || !createForm.email.trim()}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold"
+                    style={{ background: '#1a5c38', color: '#fff', border: 'none', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1 }}>
+                    {creating ? 'Creating…' : 'Create Admin'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

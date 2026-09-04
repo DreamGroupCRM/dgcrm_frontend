@@ -131,12 +131,21 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
     return arr;
   };
 
+  // V_21.0 — Lead delete now follows the same pending-delete pattern as
+  // Product/Supplier/etc (see leads.service.ts's remove() in dgcrm_backend):
+  // admin/superadmin still delete immediately, anyone else's delete is
+  // flagged pending_delete for admin review on the Pending Approvals page
+  // instead. Both outcomes are real deletes from this page's point of
+  // view (the lead disappears from the list either way), so the
+  // confirmation dialog and success toast are worded generically and the
+  // actual outcome ("Lead deleted" vs "submitted for admin approval")
+  // comes straight from the backend's own response message.
   const handleDelete = async (lead: Lead) => {
-    const result = await showAlert.confirm(`This will permanently delete "${lead.name}".`, 'Delete Lead?');
+    const result = await showAlert.confirm(`Delete "${lead.name}"?`, 'Delete Lead?');
     if (!result.isConfirmed) return;
     try {
-      await deleteLead(lead.id);
-      toast.success('Lead Deleted Successfully');
+      const res = await deleteLead(lead.id);
+      toast.success(res.message || 'Lead deleted.');
       fetchLeads();
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to delete lead.');
@@ -285,7 +294,13 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
                       <MasterIconButtons
                         onView={() => navigate(`${basePath}/view/${l.id}`)}
                         onEdit={() => navigate(`${basePath}/edit/${l.id}`)}
-                        onDelete={isAdmin ? () => handleDelete(l) : undefined}
+                        // V_21.0 — was admin-portal-only; the backend now
+                        // accepts a delete request from any authenticated
+                        // user and branches itself (admin deletes
+                        // immediately, anyone else's is flagged pending
+                        // for admin review), so the button is shown here
+                        // regardless of portal too.
+                        onDelete={() => handleDelete(l)}
                       />
                     </td>
                     <td>
