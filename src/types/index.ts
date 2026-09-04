@@ -674,6 +674,14 @@ export interface CustomerSingleResponse {
   data    : Customer;
 }
 
+// POST/PUT /api/customers response — admin/superadmin gets the Customer
+// back immediately (pending: false); anyone else's create/edit is queued
+// for admin review instead (see modules/changeRequests/ in dgcrm_backend)
+// and there's no updated Customer row yet, so no `data`.
+export type CustomerCreateEditResponse =
+  | { success: boolean; pending: false; message?: string; data: Customer }
+  | { success: boolean; pending: true; message?: string };
+
 export interface CustomerDeleteResponse {
   success : boolean;
   message?: string;
@@ -1118,6 +1126,14 @@ export interface LeadSingleResponse {
   success: boolean;
   data: Lead;
 }
+
+// POST /api/leads response — admin/superadmin gets the created Lead
+// immediately (pending: false); anyone else's submission is queued for
+// admin review instead (see modules/changeRequests/ in dgcrm_backend) and
+// there's no Lead row yet, so no `data`.
+export type LeadCreateResponse =
+  | { success: boolean; pending: false; data: Lead }
+  | { success: boolean; pending: true; message: string };
 
 export interface LeadStatusCountsResponse {
   success: boolean;

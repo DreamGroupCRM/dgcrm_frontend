@@ -925,11 +925,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       formData.append('is_active', String(isActive));
 
       if (mode === 'edit' && id) {
-        await updateCustomerWithDetails(id, formData);
-        toast.success('Customer Updated Successfully');
+        const res = await updateCustomerWithDetails(id, formData);
+        toast.success(res.pending ? 'Changes submitted for admin approval.' : 'Customer Updated Successfully');
       } else {
-        await createCustomerWithDetails(formData);
-        toast.success('Customer Created Successfully');
+        const res = await createCustomerWithDetails(formData);
+        toast.success(res.pending ? 'Customer submitted for admin approval.' : 'Customer Created Successfully');
       }
       navigate('/admin/crm/customer-details');
     } catch (e: any) {

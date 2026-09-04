@@ -1,40 +1,32 @@
 // ==========================================
-// DREAM GROUP CRM - PAYMENT RECEIVED PAGE
+// DREAM GROUP CRM - PAYMENT APPROVALS PAGE
 // ==========================================
-// V_21.0 — this page now shows ONLY approved payments (approval: 'approved'
-// hard-coded below, not a toggle) — a payment that hasn't been approved
-// yet no longer appears here at all. Review/approve pending payments moved
-// to its own dedicated screen, PaymentApprovalsPage.tsx (see Sidebar.tsx's
-// "Payment Approvals" entry) — this mirrors the ChangeRequestsPage split
-// from each module's own list, and the user's explicit call: pending
-// payments must not be visible in this existing screen, and get a
-// separate page for approval. Nothing about is_approved's effect on
-// due/EMI/remaining-balance math changed — those calculations still count
-// a payment the moment it's collected, exactly as before.
+// V_21.0 — dedicated review queue for payments awaiting admin approval,
+// split out of Payment Received (see that page's own header comment).
+// Backed by the same is_approved column/endpoints that page always used
+// (GET /api/payments?approval=pending, PUT /:id/approve, PUT
+// /bulk-approve) — nothing new on the backend, only where this UI lives.
+// Route-protected admin/superadmin only (see AdminRoutes.tsx), matching
+// the PUT routes' own requireAdmin gate.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
-import {
-  MdPayments, MdRefresh, MdSearch,
-  MdChevronLeft, MdChevronRight, MdKeyboardDoubleArrowLeft, MdKeyboardDoubleArrowRight,
-} from 'react-icons/md';
+import { MdPayments, MdRefresh, MdSearch, MdCheckCircle, MdHourglassEmpty } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
-import { fetchPaymentList, paymentForLabel, PaymentListRow } from '../../../../services/paymentService';
+import { fetchPaymentList, approvePayment, bulkApprovePayments, paymentForLabel, PaymentListRow } from '../../../../services/paymentService';
 import { formatLastLogin } from '../../../../utils';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
-type Theme = AppTheme;
 
 const rupee = (n: number): string => `₹ ${n.toLocaleString('en-IN')}`;
 
-const PaymentReceivedPage: React.FC = () => {
+const PaymentApprovalsPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { isDark, t, cssVars } = useAppearanceTokens();
+  const { t, cssVars } = useAppearanceTokens();
 
   const [rows, setRows] = useState<PaymentListRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -42,20 +34,21 @@ const PaymentReceivedPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [search, setSearch] = useState('');
-  // Debounced so typing a search term doesn't fire a real backend request
-  // on every keystroke — this page is server-paginated/-filtered.
   const debouncedSearch = useDebouncedValue(search, 400);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkApproving, setBulkApproving] = useState(false);
 
-  useEffect(() => { dispatch(setPageTitle('Payment Received')); }, [dispatch]);
+  useEffect(() => { dispatch(setPageTitle('Payment Approvals')); }, [dispatch]);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchPaymentList(page, limit, { approval: 'approved', search: debouncedSearch });
+      const res = await fetchPaymentList(page, limit, { approval: 'pending', search: debouncedSearch });
       if (res.success) { setRows(res.rows); setTotal(res.total); }
-      else toast.error('Failed to fetch payments.');
+      else toast.error('Failed to fetch pending payments.');
     } catch {
-      toast.error('Failed to fetch payments. Please try again.');
+      toast.error('Failed to fetch pending payments. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -63,6 +56,48 @@ const PaymentReceivedPage: React.FC = () => {
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
   useEffect(() => { setPage(1); }, [debouncedSearch]);
+  // Selection is page-scoped — clear it whenever the visible rows change
+  // under it (new page, search, refresh, or an approve removes rows) so a
+  // stale id can't get bulk-approved by surprise.
+  useEffect(() => { setSelectedIds(new Set()); }, [rows]);
+
+  const handleApprove = async (row: PaymentListRow) => {
+    setApprovingId(row.id);
+    try {
+      await approvePayment(row.id);
+      toast.success(`Payment ${row.receipt_number} approved.`);
+      fetchRows();
+    } catch {
+      toast.error('Failed to approve payment.');
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
+  const toggleSelectAll = () => setSelectedIds(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
+  const toggleSelectRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkApproving(true);
+    try {
+      const res = await bulkApprovePayments(Array.from(selectedIds));
+      toast.success(`${res.approved} payment(s) approved.`);
+      setSelectedIds(new Set());
+      fetchRows();
+    } catch {
+      toast.error('Failed to approve selected payments.');
+    } finally {
+      setBulkApproving(false);
+    }
+  };
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
@@ -76,24 +111,24 @@ const PaymentReceivedPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="flex items-center gap-3 mb-6">
-        <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
-          <MdPayments size={22} style={{ color: '#4f46e5' }} />
-        </div>
-        <div>
-          <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Payment Received</h1>
-          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Every approved payment — pending payments are reviewed on the Payment Approvals page</p>
-        </div>
-      </div>
-
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
-        <StatCard label="Total Received" value={total} icon={MdPayments} color="#7c3aed" bg="" loading={loading}
+        <StatCard label="Awaiting Approval" value={total} icon={MdHourglassEmpty} color="#ea580c" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex flex-wrap items-center justify-end gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
+        <div className="flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
+          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: 0 }}>
+            Approving moves a payment onto the Payment Received page and lets its receipt be printed.
+          </p>
           <div className="flex flex-wrap items-center gap-2.5">
+            {selectedIds.size > 0 && (
+              <button type="button" disabled={bulkApproving} onClick={handleBulkApprove}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white"
+                style={{ background: '#16a34a', border: 'none', cursor: bulkApproving ? 'not-allowed' : 'pointer', opacity: bulkApproving ? 0.7 : 1, whiteSpace: 'nowrap' }}>
+                <MdCheckCircle size={15} /> {bulkApproving ? 'Approving...' : `Approve Selected (${selectedIds.size})`}
+              </button>
+            )}
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 240 }}>
               <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
               <input type="text" placeholder="Search customer or receipt #..." value={search} onChange={(e) => setSearch(e.target.value)}
@@ -111,19 +146,26 @@ const PaymentReceivedPage: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Receipt #', 'Customer', 'Payment For', 'Amount', 'Company', 'Mode', 'Received By', 'Date', 'Approved By'].map((h) => (
+                <th style={{ padding: '12px 14px', width: 36 }}>
+                  <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={rows.length === 0}
+                    style={{ cursor: rows.length === 0 ? 'not-allowed' : 'pointer' }} />
+                </th>
+                {['Receipt #', 'Customer', 'Payment For', 'Amount', 'Company', 'Mode', 'Received By', 'Date', 'Action'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
+                <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading pending payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
+                <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments are waiting for approval.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                    <td style={{ padding: '12px 14px' }}>
+                      <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelectRow(r.id)} style={{ cursor: 'pointer' }} />
+                    </td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.customer_name || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{paymentForLabel(r.payment_type)}</td>
@@ -132,13 +174,12 @@ const PaymentReceivedPage: React.FC = () => {
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.mode_of_payment || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.received_by || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatLastLogin(r.created_at)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11, color: t.textSecondary, whiteSpace: 'nowrap' }}>
-                      {r.approved_by_name ? (
-                        <>
-                          <div style={{ fontWeight: 600, color: t.textPrimary }}>{r.approved_by_name}</div>
-                          {r.approved_at && <div style={{ fontSize: 10 }}>{formatLastLogin(r.approved_at)}</div>}
-                        </>
-                      ) : '—'}
+                    <td style={{ padding: '12px 14px' }}>
+                      <button type="button" disabled={approvingId === r.id} onClick={() => handleApprove(r)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                        style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: '#16a34a', cursor: approvingId === r.id ? 'not-allowed' : 'pointer' }}>
+                        <MdCheckCircle size={13} /> {approvingId === r.id ? 'Approving...' : 'Approve'}
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -159,14 +200,6 @@ const PaymentReceivedPage: React.FC = () => {
             Showing {total === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, total)} of {total}
           </div>
           <div className="flex-1 flex items-center justify-center gap-1.5">
-            <button type="button" disabled={safePage <= 1} onClick={() => setPage(1)}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage <= 1 ? 'not-allowed' : 'pointer', opacity: safePage <= 1 ? 0.5 : 1 }}>
-              <MdKeyboardDoubleArrowLeft size={16} />
-            </button>
-            <button type="button" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage <= 1 ? 'not-allowed' : 'pointer', opacity: safePage <= 1 ? 0.5 : 1 }}>
-              <MdChevronLeft size={18} />
-            </button>
             {pageBtns[0] > 1 && <span style={{ color: t.textSecondary, padding: '0 2px' }}>...</span>}
             {pageBtns.map((n) => (
               <button key={n} type="button" onClick={() => setPage(n)}
@@ -176,14 +209,6 @@ const PaymentReceivedPage: React.FC = () => {
               </button>
             ))}
             {pageBtns[pageBtns.length - 1] < totalPages && <span style={{ color: t.textSecondary, padding: '0 2px' }}>...</span>}
-            <button type="button" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', opacity: safePage >= totalPages ? 0.5 : 1 }}>
-              <MdChevronRight size={18} />
-            </button>
-            <button type="button" disabled={safePage >= totalPages} onClick={() => setPage(totalPages)}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', opacity: safePage >= totalPages ? 0.5 : 1 }}>
-              <MdKeyboardDoubleArrowRight size={16} />
-            </button>
           </div>
           <div style={{ width: 90 }} />
         </div>
@@ -192,4 +217,4 @@ const PaymentReceivedPage: React.FC = () => {
   );
 };
 
-export default PaymentReceivedPage;
+export default PaymentApprovalsPage;

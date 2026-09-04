@@ -132,6 +132,11 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
     try {
       if (isAdd) {
         const res = await createLead(form);
+        if (res.pending) {
+          toast.success('Lead submitted for admin approval.');
+          navigate(basePath);
+          return;
+        }
         toast.success(res.data.is_duplicate ? 'Lead created — flagged as a possible duplicate.' : 'Lead created successfully.');
         navigate(`${basePath}/view/${res.data.id}`);
       } else if (id) {
