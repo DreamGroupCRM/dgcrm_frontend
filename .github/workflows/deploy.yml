@@ -1,0 +1,43 @@
+name: Deploy Frontend to Dreamgroup.co.in
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Production Bundle
+        run: npm run build
+
+      - name: Deploy to Server via SSH
+        env:
+          SSHPASS: ${{ secrets.SERVER_PASSWORD }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          # Package dist into /tmp to avoid file change collision
+          tar -C dist -czf /tmp/frontend_dist.tar.gz .
+          # Upload archive to server
+          sshpass -e scp -o StrictHostKeyChecking=no /tmp/frontend_dist.tar.gz ${SERVER_USER}@${SERVER_HOST}:C:/inetpub/vhosts/Dreamgroup.co.in/frontend_dist.tar.gz
+          # Extract on Windows Server and clean up
+          sshpass -e ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_HOST} "powershell -ExecutionPolicy Bypass -Command \"tar -xzf C:\inetpub\vhosts\Dreamgroup.co.in\frontend_dist.tar.gz -C C:\inetpub\vhosts\Dreamgroup.co.in\httpdocs; Remove-Item C:\inetpub\vhosts\Dreamgroup.co.in\frontend_dist.tar.gz -Force\""
+
+      - name: Verify Live Deployment
+        run: |
+          curl -k -f -s -o /dev/null https://Dreamgroup.co.in || exit 1
+          echo "Frontend successfully deployed and accessible at https://Dreamgroup.co.in"

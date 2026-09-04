@@ -15,6 +15,7 @@
 // NAVIGATION: Pass navigateTo prop to make it a clickable link.
 //   <Logo size="md" navigateTo="/Admin/Dashboard" />
 //
+import logoImg from '../../assets/images/favicon_logo.png';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -51,7 +52,6 @@ const Logo: React.FC<LogoProps> = ({
 }) => {
   const navigate = useNavigate();
   const px = typeof size === 'number' ? size : SIZE_MAP[size] || 44;
-  const logoImg = "/src/assets/images/favicon_logo.png"; // ← real logo image (transparent bg) for best display on all themes/backgrounds
   const handleClick = () => {
     if (navigateTo) navigate(navigateTo);
   };

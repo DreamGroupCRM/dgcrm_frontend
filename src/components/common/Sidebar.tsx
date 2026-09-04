@@ -3,6 +3,7 @@
 // ==========================================
 
 import React, { useEffect, useState } from 'react';
+import logoImg from '../../assets/images/favicon_logo.png';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { toggleSidebar } from '../../redux/slices/uiSlice';
@@ -248,7 +249,6 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
-  const logoImg = '/src/assets/images/favicon_logo.png';
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { sidebarCollapsed } = useAppSelector((s) => s.ui);

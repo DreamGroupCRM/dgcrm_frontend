@@ -3,6 +3,7 @@
 // ==========================================
 
 import React, { useEffect, useRef, useState } from 'react';
+import logoImg from '../../assets/images/favicon_logo.png';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { toggleTheme } from '../../redux/slices/themeSlice';
 import { openProfileModal } from '../../redux/slices/profileSlice';
@@ -70,7 +71,6 @@ const IconBtn: React.FC<{
 };
 
 const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
-  const logoImg  = '/src/assets/images/favicon_logo.png';
   const dispatch = useAppDispatch();
   const { user, role } = useAppSelector((s) => s.auth);
   const { isDark, t, appearance, avatarGradient } = useAppearanceTokens();
