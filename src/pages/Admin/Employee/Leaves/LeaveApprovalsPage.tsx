@@ -15,8 +15,9 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { getFormInputStyle } from '../../../../components/common/MasterListUI';
 import StatCard from '../../../../components/masters/StatCard';
+import DateRangePresetFilter, { DateRangePreset, computeDateRangePreset } from '../../../../components/common/DateRangePresetFilter';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
-import { fetchLeaves, reviewLeaveRequest, LeaveRecord, LeaveStatus, LEAVE_TYPE_LABEL, LeaveType } from '../../../../services/leaveService';
+import { fetchLeaves, reviewLeaveRequest, LeaveRecord, LeaveStatus, LEAVE_TYPE_LABEL, LeaveType, LEAVE_SESSION_LABEL } from '../../../../services/leaveService';
 import { formatDate, formatLastLogin } from '../../../../utils';
 
 const STATUS_LABEL: Record<LeaveStatus, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
@@ -43,6 +44,9 @@ const LeaveApprovalsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | LeaveStatus>('pending');
   const [employeeFilter, setEmployeeFilter] = useState('');
   const [employeeOptions, setEmployeeOptions] = useState<{ id: string; name: string }[]>([]);
+  const [preset, setPreset] = useState<DateRangePreset>('monthly');
+  const [customFrom, setCustomFrom] = useState(new Date().toISOString().slice(0, 10));
+  const [customTo, setCustomTo] = useState(new Date().toISOString().slice(0, 10));
   const [records, setRecords] = useState<LeaveRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -58,9 +62,12 @@ const LeaveApprovalsPage: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const { from, to } = preset === 'custom' ? { from: customFrom, to: customTo } : computeDateRangePreset(preset);
       const rows = await fetchLeaves({
         status: statusFilter === 'all' ? undefined : statusFilter,
         employee_id: employeeFilter || undefined,
+        from,
+        to,
       });
       setRecords(rows);
     } catch {
@@ -68,7 +75,7 @@ const LeaveApprovalsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, employeeFilter]);
+  }, [statusFilter, employeeFilter, preset, customFrom, customTo]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -120,20 +127,26 @@ const LeaveApprovalsPage: React.FC = () => {
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2.5 px-5 py-3" style={{ borderBottom: `1px solid ${t.divider}` }}>
+          <DateRangePresetFilter t={t} preset={preset} onPresetChange={setPreset}
+            customFrom={customFrom} customTo={customTo} onCustomFromChange={setCustomFrom} onCustomToChange={setCustomTo}
+            accentColor="#7c3aed" />
+        </div>
+
         <div className="master-table-scroll">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Employee', 'From', 'To', 'Days', 'Type', 'Reason', 'Status', 'Requested', 'Action'].map((h) => (
+                {['Employee', 'From', 'To', 'Days', 'Type', 'Session', 'Reason', 'Status', 'Requested', 'Action'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading leave requests...</td></tr>
+                <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading leave requests...</td></tr>
               ) : records.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No leave requests found.</td></tr>
+                <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No leave requests found.</td></tr>
               ) : (
                 records.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -142,6 +155,7 @@ const LeaveApprovalsPage: React.FC = () => {
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDate(r.to_date)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{daysInclusive(r.from_date, r.to_date)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{leaveTypeLabel(r.leave_type)}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.session && r.session !== 'full' ? LEAVE_SESSION_LABEL[r.session] : '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, maxWidth: 220 }}>{r.reason || '—'}</td>
                     <td style={{ padding: '12px 14px' }}><StatusBadge status={r.status} /></td>
                     <td style={{ padding: '12px 14px', fontSize: 11, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatLastLogin(r.created_at)}</td>

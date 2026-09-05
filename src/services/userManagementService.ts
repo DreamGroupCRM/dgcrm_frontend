@@ -14,6 +14,7 @@ export interface UserManagementRow {
   email: string;
   first_name: string;
   last_name: string | null;
+  phone: string | null;
   base_role: string;
   is_active: boolean;
   allow_login: boolean;
@@ -67,4 +68,18 @@ export interface CreateAdminResult {
 export const createAdmin = async (payload: CreateAdminPayload): Promise<CreateAdminResult> => {
   const res = await axiosInstance.post('/user-management/users/admin', payload);
   return res.data.data;
+};
+
+export interface EditAdminPayload {
+  first_name: string;
+  last_name?: string;
+  email: string;
+  phone?: string;
+}
+
+/** PATCH /api/user-management/users/:id — first_name/last_name/email/phone
+ * only; base_role/role_id/company_id/password each have their own dedicated
+ * flow and are never editable here. */
+export const updateUser = async (id: number, payload: EditAdminPayload): Promise<void> => {
+  await axiosInstance.patch(`/user-management/users/${id}`, payload);
 };

@@ -14,7 +14,7 @@ import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { getFormInputStyle, FormField, getAccordionCardStyle, getAccordionHeaderStyle } from '../../../components/common/MasterListUI';
 import { fetchEmployeeDashboardSummary } from '../../../services/dashboardService';
-import { fetchLeaves, submitLeaveRequest, LeaveRecord, LeaveStatus, LEAVE_TYPES, LEAVE_TYPE_LABEL, LeaveType } from '../../../services/leaveService';
+import { fetchLeaves, submitLeaveRequest, LeaveRecord, LeaveStatus, GENERAL_LEAVE_TYPES, LEAVE_TYPE_LABEL, LeaveType } from '../../../services/leaveService';
 import { formatDate } from '../../../utils';
 
 const STATUS_LABEL: Record<LeaveStatus, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
@@ -71,7 +71,7 @@ const LeavePage: React.FC = () => {
     if (toDate < fromDate) { toast.error('To date cannot be before From date.'); return; }
     setSaving(true);
     try {
-      await submitLeaveRequest({ employee_id: employeeId, from_date: fromDate, to_date: toDate, leave_type: leaveType, reason: reason || null });
+      await submitLeaveRequest({ from_date: fromDate, to_date: toDate, leave_type: leaveType, reason: reason || null });
       toast.success('Leave request submitted.');
       setReason('');
       load();
@@ -96,7 +96,7 @@ const LeavePage: React.FC = () => {
           </div>
           <FormField label="Leave Type *" t={t}>
             <select value={leaveType} onChange={(e) => setLeaveType(e.target.value as LeaveType)} style={getFormInputStyle(t)}>
-              {LEAVE_TYPES.map((lt) => <option key={lt} value={lt}>{LEAVE_TYPE_LABEL[lt]}</option>)}
+              {GENERAL_LEAVE_TYPES.map((lt) => <option key={lt} value={lt}>{LEAVE_TYPE_LABEL[lt]}</option>)}
             </select>
           </FormField>
           <FormField label="Reason" t={t}>

@@ -8,7 +8,7 @@
 // activate/deactivate/delete). SuperAdmin-only, enforced server-side.
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { MdPeople, MdCheckCircle, MdCancel, MdDelete, MdRefresh, MdKey, MdClose, MdLock, MdPersonAddAlt1, MdContentCopy } from 'react-icons/md';
+import { MdPeople, MdCheckCircle, MdCancel, MdDelete, MdRefresh, MdKey, MdClose, MdLock, MdPersonAddAlt1, MdContentCopy, MdEdit } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
@@ -16,7 +16,7 @@ import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { showAlert, formatLastLogin } from '../../../utils';
 import {
-  fetchUsers, setUserActiveStatus, deleteUser, adminSetPassword, createAdmin,
+  fetchUsers, setUserActiveStatus, deleteUser, adminSetPassword, createAdmin, updateUser,
   UserManagementRow, CreateAdminResult,
 } from '../../../services/userManagementService';
 
@@ -42,6 +42,10 @@ const UserManagementPage: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
   const [createResult, setCreateResult] = useState<CreateAdminResult | null>(null);
+
+  const [editTarget, setEditTarget] = useState<UserManagementRow | null>(null);
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => { dispatch(setPageTitle('User Management')); }, [dispatch]);
 
@@ -130,6 +134,32 @@ const UserManagementPage: React.FC = () => {
     }
   };
 
+  const openEditModal = (row: UserManagementRow) => {
+    setEditTarget(row);
+    setEditForm({ first_name: row.first_name, last_name: row.last_name || '', email: row.email, phone: row.phone || '' });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTarget || !editForm.first_name.trim() || !editForm.email.trim()) return;
+    setSavingEdit(true);
+    try {
+      await updateUser(editTarget.id, {
+        first_name: editForm.first_name.trim(),
+        last_name: editForm.last_name.trim() || undefined,
+        email: editForm.email.trim(),
+        phone: editForm.phone.trim() || undefined,
+      });
+      toast.success('Admin details updated.');
+      setEditTarget(null);
+      await load();
+    } catch (e) {
+      toast.error(errMessage(e, 'Failed to update admin details.'));
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleCopyTempPassword = () => {
     if (!createResult) return;
     navigator.clipboard?.writeText(createResult.temp_password).then(
@@ -212,6 +242,11 @@ const UserManagementPage: React.FC = () => {
                       <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatLastLogin(row.last_login_at)}</td>
                       <td style={{ padding: '12px 14px' }}>
                         <div className="flex items-center gap-2">
+                          {row.base_role === 'admin' && (
+                            <button type="button" title="Edit admin details" onClick={() => openEditModal(row)} className="master-icon-btn">
+                              <MdEdit size={15} />
+                            </button>
+                          )}
                           <button type="button" title={isSelf ? "You can't disable your own account" : row.is_active ? 'Disable' : 'Enable'}
                             onClick={() => !isSelf && handleToggleActive(row)} disabled={isSelf || busyId === row.id}
                             className="master-icon-btn" style={{ opacity: isSelf ? 0.4 : 1, cursor: isSelf ? 'not-allowed' : 'pointer', color: row.is_active ? '#dc2626' : '#16a34a' }}>
@@ -268,6 +303,55 @@ const UserManagementPage: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => !savingEdit && setEditTarget(null)}>
+          <div className="rounded-2xl w-full" style={{ maxWidth: 440, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: t.textPrimary }}>Edit Admin Details</div>
+              <button type="button" onClick={() => !savingEdit && setEditTarget(null)} disabled={savingEdit}
+                style={{ background: 'transparent', border: 'none', cursor: savingEdit ? 'not-allowed' : 'pointer', color: t.textSecondary, padding: 4, display: 'flex' }}>
+                <MdClose size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="p-5" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>First Name *</label>
+                  <input required value={editForm.first_name} onChange={(e) => setEditForm((f) => ({ ...f, first_name: e.target.value }))} autoFocus
+                    style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Last Name</label>
+                  <input value={editForm.last_name} onChange={(e) => setEditForm((f) => ({ ...f, last_name: e.target.value }))}
+                    style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Email *</label>
+                <input required type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Phone</label>
+                <input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+              </div>
+              <div className="flex items-center justify-end gap-2.5 mt-2">
+                <button type="button" onClick={() => setEditTarget(null)} disabled={savingEdit}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: savingEdit ? 'not-allowed' : 'pointer' }}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={savingEdit || !editForm.first_name.trim() || !editForm.email.trim()}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold"
+                  style={{ background: '#1a5c38', color: '#fff', border: 'none', cursor: savingEdit ? 'not-allowed' : 'pointer', opacity: savingEdit ? 0.7 : 1 }}>
+                  {savingEdit ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

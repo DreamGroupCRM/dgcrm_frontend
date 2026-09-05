@@ -22,7 +22,7 @@ interface PaginationFooterProps {
 const PaginationFooter: React.FC<PaginationFooterProps> = ({
   t, limit, setLimit, setPage, safePage, totalPages, from, to, total, pageBtns,
 }) => (
-  <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" style={{ borderTop: `1px solid ${t.divider}` }}>
+  <div className="master-pagination" style={{ borderTop: `1px solid ${t.divider}` }}>
     <div className="flex items-center gap-2">
       <span style={{ fontSize: 11.5, color: t.textPrimary }}>Rows per page:</span>
       <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
@@ -32,16 +32,16 @@ const PaginationFooter: React.FC<PaginationFooterProps> = ({
     </div>
     <span style={{ fontSize: 11.5, color: t.textPrimary }}>Showing {from}–{to} of {total}</span>
     <div className="flex items-center gap-1">
-      <button onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage === 1}
-        style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage === 1 ? 'not-allowed' : 'pointer', fontSize: 11.5 }}>Prev</button>
+      <button onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage === 1} className="master-page-btn"
+        style={{ padding: '4px 10px', width: 'auto', border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage === 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
       {pageBtns().map((pg) => (
-        <button key={pg} onClick={() => setPage(pg)}
-          style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${pg === safePage ? '#2563eb' : t.surfaceBorder}`, background: pg === safePage ? '#2563eb' : t.btnSecondaryBg, color: pg === safePage ? '#fff' : t.textPrimary, cursor: 'pointer', fontSize: 11.5, fontWeight: pg === safePage ? 700 : 400 }}>
+        <button key={pg} onClick={() => setPage(pg)} className="master-page-btn"
+          style={{ border: `1px solid ${pg === safePage ? '#2563eb' : t.surfaceBorder}`, background: pg === safePage ? '#2563eb' : t.btnSecondaryBg, color: pg === safePage ? '#fff' : t.textPrimary, fontWeight: pg === safePage ? 700 : 400 }}>
           {pg}
         </button>
       ))}
-      <button onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages}
-        style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', fontSize: 11.5 }}>Next</button>
+      <button onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages} className="master-page-btn"
+        style={{ padding: '4px 10px', width: 'auto', border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer' }}>Next</button>
     </div>
   </div>
 );

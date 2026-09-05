@@ -4,8 +4,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
-import { MdGridOn, MdRefresh, MdDoneAll } from 'react-icons/md';
-import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { MdGridOn, MdRefresh, MdDoneAll, MdSettings } from 'react-icons/md';
+import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { getAccordionCardStyle, getAccordionHeaderStyle } from '../../../../components/common/MasterListUI';
@@ -16,9 +16,14 @@ import { MappingMatrix } from '../../../../types/index';
 
 const EMPTY_MATRIX: MappingMatrix = { modules: [], actions: [], mappings: [] };
 
+// Fixed width for the sticky Module column — same visual language as the
+// other masters' left-sticky Actions column (divider + shadow), even
+// though this column holds row labels rather than action buttons.
+const MODULE_COL_WIDTH = 180;
+
 const ModuleMappingPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { isDark, t } = useAppearanceTokens();
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   useEffect(() => { dispatch(setPageTitle('Module Mapping')); }, [dispatch]);
 
@@ -89,16 +94,16 @@ const ModuleMappingPage: React.FC = () => {
   const colCount = matrix.actions.length + 2;
 
   return (
-    <div style={{ fontFamily: t.fontFamily }}>
+    <div className="master-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
       <div style={accordionCard}>
         <div style={accordionHeader}>
           <div className="flex items-center gap-2" style={{ flex: '0 0 auto' }}>
             <MdGridOn size={22} style={{ color: '#0891b2' }} />
             <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, fontFamily: t.fontFamily }}>Module ↔ Action Mapping</span>
           </div>
-          <div className="flex items-center gap-2" style={{ flex: '0 0 auto', marginLeft: 'auto' }}>
-            <button onClick={fetchMatrix} title="Refresh" className="p-2 rounded-xl"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', color: t.textSecondary }}>
+          <div className="master-actions" style={{ flex: '0 0 auto', marginLeft: 'auto' }}>
+            <button onClick={fetchMatrix} title="Refresh" className="master-btn-icon"
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
               <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
@@ -108,68 +113,74 @@ const ModuleMappingPage: React.FC = () => {
           Check a box to make that action available for a module on the employee/role permission page. Unchecking removes it everywhere.
         </p>
 
-        <div style={{ overflowX: 'auto', padding: '8px 0 16px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 400 + matrix.actions.length * 90 }}>
+        <div className="master-table-scroll" style={{ padding: '8px 0 16px' }}>
+          <table className="master-table" style={{ minWidth: 400 + matrix.actions.length * 90 }}>
             <thead>
-              <tr style={{ background: t.tableHeaderBg }}>
+              <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <th style={{
-                  padding: '12px 16px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase',
-                  letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
+                  width: MODULE_COL_WIDTH, minWidth: MODULE_COL_WIDTH,
+                  borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap',
                   position: 'sticky', left: 0, zIndex: 2, background: t.tableHeaderBg,
+                  borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                 }}>
                   Module
                 </th>
                 {matrix.actions.map((a) => (
-                  <th key={a.id} style={{ padding: '12px 16px', textAlign: 'center', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>
+                  <th key={a.id} style={{ textAlign: 'center', borderBottom: `1px solid ${t.divider}` }}>
                     {a.name}
                   </th>
                 ))}
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.textPrimary, borderBottom: `1px solid ${t.divider}`, whiteSpace: 'nowrap' }}>
+                <th style={{ textAlign: 'center', borderBottom: `1px solid ${t.divider}` }}>
                   All
                 </th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={colCount} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>Loading...</td></tr>
+                <tr><td colSpan={colCount} style={{ textAlign: 'center', padding: 48 }}>Loading...</td></tr>
               ) : matrix.modules.length === 0 ? (
-                <tr><td colSpan={colCount} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>No active modules found.</td></tr>
+                <tr><td colSpan={colCount} style={{ textAlign: 'center', padding: 48 }}>No active modules found.</td></tr>
               ) : matrix.actions.length === 0 ? (
-                <tr><td colSpan={colCount} style={{ textAlign: 'center', padding: 48, color: t.textPrimary }}>No active actions found. Add one in Action Master first.</td></tr>
+                <tr><td colSpan={colCount} style={{ textAlign: 'center', padding: 48 }}>No active actions found. Add one in Action Master first.</td></tr>
               ) : matrix.modules.map((m, idx) => {
                 const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
                 return (
                   <tr key={m.id} style={{ background: rowBg, borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}` }}>
                     <td style={{
-                      padding: '12px 16px', fontSize: 12.5, color: t.textPrimary, fontWeight: 500, whiteSpace: 'nowrap',
-                      position: 'sticky', left: 0, zIndex: 1, background: rowBg,
+                      fontWeight: 500, whiteSpace: 'nowrap',
+                      position: 'sticky', left: 0, zIndex: 1, background: isDark ? t.surfaceBg : '#ffffff',
+                      borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                     }}>
-                      {m.name}
+                      <div className="flex items-center gap-2">
+                        <MdSettings size={16} className="master-row-icon" />
+                        {m.name}
+                      </div>
                     </td>
                     {matrix.actions.map((a) => {
                       const key = `${m.id}-${a.id}`;
                       const checked = pairMap.has(key);
                       const isPending = pendingCell === key;
                       return (
-                        <td key={a.id} style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        <td key={a.id} style={{ textAlign: 'center' }}>
                           <input
                             type="checkbox"
                             checked={checked}
                             disabled={isPending}
                             onChange={() => toggleCell(m.id, a.id)}
-                            style={{ width: 16, height: 16, cursor: isPending ? 'wait' : 'pointer' }}
+                            style={{ width: 16, height: 16, cursor: isPending ? 'wait' : 'pointer', accentColor: '#2563eb' }}
                           />
                         </td>
                       );
                     })}
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <td style={{ textAlign: 'center' }}>
                       <button
                         onClick={() => selectAllForModule(m.id)}
                         disabled={pendingRow === m.id}
                         title="Attach every active action to this module"
-                        style={{ background: 'none', border: 'none', cursor: pendingRow === m.id ? 'wait' : 'pointer', color: '#0891b2', padding: 4, display: 'inline-flex', alignItems: 'center' }}
+                        className="master-icon-btn"
+                        style={{ cursor: pendingRow === m.id ? 'wait' : 'pointer' }}
                       >
-                        <MdDoneAll size={18} />
+                        <MdDoneAll size={15} />
                       </button>
                     </td>
                   </tr>

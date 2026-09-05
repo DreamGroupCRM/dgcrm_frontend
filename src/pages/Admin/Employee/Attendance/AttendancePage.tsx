@@ -15,6 +15,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { getFormInputStyle, FormField } from '../../../../components/common/MasterListUI';
 import StatCard from '../../../../components/masters/StatCard';
+import DateRangePresetFilter, { DateRangePreset, computeDateRangePreset } from '../../../../components/common/DateRangePresetFilter';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import { fetchAttendance, markAttendance, AttendanceRecord, AttendanceStatus } from '../../../../services/attendanceService';
 import { formatDate } from '../../../../utils';
@@ -41,9 +42,11 @@ const AttendancePage: React.FC = () => {
   const { t, cssVars } = useAppearanceTokens();
 
   const now = new Date();
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year, setYear] = useState(now.getFullYear());
+  const [preset, setPreset] = useState<DateRangePreset>('monthly');
+  const [customFrom, setCustomFrom] = useState(now.toISOString().slice(0, 10));
+  const [customTo, setCustomTo] = useState(now.toISOString().slice(0, 10));
   const [employeeFilter, setEmployeeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<AttendanceStatus | ''>('');
   const [employeeOptions, setEmployeeOptions] = useState<{ id: string; name: string }[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,16 +65,22 @@ const AttendancePage: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await fetchAttendance({ month, year, employee_id: employeeFilter || undefined });
+      const { from, to } = preset === 'custom' ? { from: customFrom, to: customTo } : computeDateRangePreset(preset);
+      const rows = await fetchAttendance({ from, to, employee_id: employeeFilter || undefined });
       setRecords(rows);
     } catch {
       toast.error('Failed to load attendance.');
     } finally {
       setLoading(false);
     }
-  }, [month, year, employeeFilter]);
+  }, [preset, customFrom, customTo, employeeFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  const filteredRecords = useMemo(
+    () => (statusFilter ? records.filter((r) => r.status === statusFilter) : records),
+    [records, statusFilter],
+  );
 
   const counts = useMemo(() => {
     const c: Record<AttendanceStatus, number> = { present: 0, absent: 0, half_day: 0, leave: 0 };
@@ -104,9 +113,6 @@ const AttendancePage: React.FC = () => {
     }
   };
 
-  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const years = Array.from({ length: 6 }, (_, i) => now.getFullYear() - 3 + i);
-
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -122,18 +128,8 @@ const AttendancePage: React.FC = () => {
 
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} style={{ ...getFormInputStyle(t), width: 150 }}>
-              {months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-            </select>
-            <select value={year} onChange={(e) => setYear(Number(e.target.value))} style={{ ...getFormInputStyle(t), width: 100 }}>
-              {years.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} style={{ ...getFormInputStyle(t), width: 200 }}>
-              <option value="">All Employees</option>
-              {employeeOptions.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-            </select>
-          </div>
+          <DateRangePresetFilter t={t} preset={preset} onPresetChange={setPreset}
+            customFrom={customFrom} customTo={customTo} onCustomFromChange={setCustomFrom} onCustomToChange={setCustomTo} />
           <div className="flex items-center gap-2.5">
             <button type="button" onClick={openModal} className="master-btn-primary">
               <MdAdd size={16} /> Mark Attendance
@@ -146,28 +142,44 @@ const AttendancePage: React.FC = () => {
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2.5 px-5 py-3" style={{ borderBottom: `1px solid ${t.divider}` }}>
+          <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} style={{ ...getFormInputStyle(t), width: 200 }}>
+            <option value="">All Employees</option>
+            {employeeOptions.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
+          </select>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as AttendanceStatus | '')} style={{ ...getFormInputStyle(t), width: 160 }}>
+            <option value="">All Statuses</option>
+            {(Object.keys(STATUS_LABEL) as AttendanceStatus[]).map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+          </select>
+        </div>
+
         <div className="master-table-scroll">
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Employee', 'Date', 'Status', 'Check In', 'Check Out', 'Remarks'].map((h) => (
+                {['Employee', 'Date', 'Status', 'Check In', 'Check Out', 'Location', 'Remarks'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading attendance...</td></tr>
-              ) : records.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No attendance records for this period.</td></tr>
+                <tr><td colSpan={7} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading attendance...</td></tr>
+              ) : filteredRecords.length === 0 ? (
+                <tr><td colSpan={7} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No attendance records for this period.</td></tr>
               ) : (
-                records.map((r) => (
+                filteredRecords.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
                     <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.employee_name}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDate(r.attendance_date)}</td>
                     <td style={{ padding: '12px 14px' }}><StatusBadge status={r.status} /></td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.check_in_time || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.check_out_time || '—'}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, whiteSpace: 'nowrap' }}>
+                      {r.latitude != null && r.longitude != null ? (
+                        <a href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`} target="_blank" rel="noreferrer" style={{ color: '#0284c7' }}>View on Map</a>
+                      ) : <span style={{ color: t.textSecondary }}>—</span>}
+                    </td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary }}>{r.remarks || '—'}</td>
                   </tr>
                 ))
