@@ -977,7 +977,7 @@ const CustomerDetailsListPage: React.FC = () => {
           Details List uses (compact + labelFontSize=16), so the two pages'
           summary boxes are pixel-identical instead of two independently
           hand-tuned card markups drifting apart. ──────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Total Customers', value: summary.total_customers, icon: MdGroups, color: '#7c3aed' },
           { label: 'Active Customers', value: summary.active_customers, icon: MdCheckCircle, color: '#16a34a' },
@@ -1066,8 +1066,8 @@ const CustomerDetailsListPage: React.FC = () => {
 
       {/* ── Employee assignment + action row ─────────────────────────── */}
       <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
-        <div className="flex items-end gap-3">
-          <div style={{ minWidth: 240 }}>
+        <div className="flex flex-wrap items-end gap-3">
+          <div style={{ flex: '1 1 200px', maxWidth: 280, minWidth: 0 }}>
             <label className="cust-filter-label">Search Employee</label>
             <SearchableSelect t={t} placeholder="Select employee" options={employeeOptions} value={employeeSearch} onChange={setEmployeeSearch} disabled={!assignmentEnabled} />
           </div>

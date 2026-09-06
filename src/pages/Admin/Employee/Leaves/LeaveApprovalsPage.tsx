@@ -96,7 +96,7 @@ const LeaveApprovalsPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         <StatCard label="Showing" value={records.length} icon={MdBeachAccess} color="#7c3aed" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Pending" value={pendingCount} icon={MdHourglassEmpty} color="#d97706" bg="" loading={loading}

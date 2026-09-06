@@ -115,7 +115,7 @@ const AttendancePage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Present" value={counts.present} icon={MdCheckCircle} color="#16a34a" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Absent" value={counts.absent} icon={MdCancel} color="#dc2626" bg="" loading={loading}

@@ -308,7 +308,7 @@ const SchemeSummaryRow: React.FC<{
     { label: 'Monthly EMI (After)', value: formatINR(emiAfter), icon: MdTrendingUp, color: '#16a34a' },
   ];
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mb-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mb-4">
       {cards.map((card) => (
         <StatCard key={card.label} {...card} bg="" compact labelFontSize={14}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />

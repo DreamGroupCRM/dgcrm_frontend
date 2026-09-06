@@ -296,7 +296,7 @@ const DueReportPage: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
             <StatCard label="Total Installments" value={counts.total} icon={MdPayments} color="#7c3aed" bg="" loading={loadingGrid}
               surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
             <StatCard label="Already Due" value={counts.due} icon={MdErrorOutline} color="#dc2626" bg="" loading={loadingGrid}

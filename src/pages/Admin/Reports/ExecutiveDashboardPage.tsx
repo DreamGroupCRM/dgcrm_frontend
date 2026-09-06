@@ -360,7 +360,7 @@ const ExecutiveDashboardPage: React.FC = () => {
       )}
 
       {/* ── KPI cards ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" style={{ marginBottom: 18 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" style={{ marginBottom: 18 }}>
         <StatCard label="Total Customers" value={loading ? '—' : kpis!.total_customers} icon={MdPeople} color="#2563eb" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Properties" value={loading ? '—' : kpis!.total_properties} icon={MdApartment} color="#7c3aed" bg="" loading={loading}
@@ -403,7 +403,7 @@ const ExecutiveDashboardPage: React.FC = () => {
           ) : (
             <>
               {/* Insight tiles — Feature 8 */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5" style={{ marginBottom: 16 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-2.5" style={{ marginBottom: 16 }}>
                 <InsightTile t={t} isDark={isDark} emoji="🔥" label="Hot Leads" value={String(aiInsights.hot_leads)} />
                 <InsightTile t={t} isDark={isDark} emoji="⚠️" label="Overdue Follow-ups" value={String(aiInsights.overdue_follow_ups)} />
                 <InsightTile t={t} isDark={isDark} emoji="🎯" label="Ready for Site Visit" value={String(aiInsights.ready_for_site_visit)} />

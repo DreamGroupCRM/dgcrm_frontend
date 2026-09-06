@@ -103,7 +103,7 @@ const BackupDatabasePage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Snapshots" value={snapshots.length} icon={MdStorage} color="#0284c7" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Manual" value={manualCount} icon={MdAdd} color="#16a34a" bg="" loading={loading}
