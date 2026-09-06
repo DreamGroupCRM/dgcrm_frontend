@@ -379,9 +379,24 @@
     align-items: stretch;
   }
 
+  /* flex: 0 0 auto overrides master.css's `flex: 1 1 200px` (written for
+     the desktop row layout, where the 200px basis sizes width). Once
+     .master-topbar switches to a column above, that same shorthand sizes
+     HEIGHT instead — flex-grow:1 then stretches the box to fill the
+     column's cross-free main axis, ballooning it into a ~200px-tall
+     near-square block instead of a normal compact search bar. Resetting
+     the shorthand here keeps height content-driven (icon+padding, ~40px)
+     while width:100% (a separate, cross-axis property under
+     flex-direction:column) still makes it span the row. */
   .master-search-box {
     max-width: none;
     width: 100%;
+    flex: 0 0 auto;
+    /* A couple of px of margin so the search bar doesn't sit perfectly
+       flush with .master-topbar's own edges — a small "app search bar"
+       inset on top of the page's own padding, matching native mobile
+       search fields instead of a bar that spans edge-to-edge. */
+    margin: 0 2px;
   }
 
   .master-actions {
