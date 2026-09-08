@@ -41,12 +41,6 @@ type FileValue = File | string | null;
 const COUNTRY_CODE_FLAGS: Record<string, string> = {
   '+91': '🇮🇳', '+1': '🇺🇸', '+44': '🇬🇧', '+61': '🇦🇺', '+971': '🇦🇪', '+65': '🇸🇬',
 };
-// Country name alongside the flag/code above — the phone dropdown used to
-// show only "🇮🇳 +91", with no way to tell India apart from another +91
-// territory at a glance.
-const COUNTRY_CODE_NAMES: Record<string, string> = {
-  '+91': 'India', '+1': 'USA', '+44': 'UK', '+61': 'Australia', '+971': 'UAE', '+65': 'Singapore',
-};
 const COUNTRY_CODES = Object.keys(COUNTRY_CODE_FLAGS);
 const FOOTER_HEIGHT = 76;
 
@@ -274,14 +268,18 @@ const PhoneField: React.FC<{
 }> = ({ t, isView, icon, code, onCodeChange, number, onNumberChange, onAdd }) => (
   <div className={`flex items-center gap-2 ${fieldClassName(!!isView)}`} style={{ padding: '0 8px 0 12px' }}>
     {icon}
+    {/* Fixed width + flag-and-code label, matching Employee CRUD's select —
+        the previous full-country-name option text made this flexShrink:0
+        select wide enough to starve the sibling number input down to 0px,
+        silently blocking Mobile/WhatsApp Number entry on Create Customer. */}
     <select value={code} disabled={isView} onChange={(e) => onCodeChange(e.target.value)}
-      style={{ border: 'none', outline: 'none', background: 'transparent', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily, padding: '9px 2px', flexShrink: 0 }}>
-      {COUNTRY_CODES.map((c) => <option key={c} value={c}>{COUNTRY_CODE_FLAGS[c]} {COUNTRY_CODE_NAMES[c]} ({c})</option>)}
+      style={{ border: 'none', outline: 'none', background: 'transparent', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily, padding: '9px 2px', width: 62, flexShrink: 0 }}>
+      {COUNTRY_CODES.map((c) => <option key={c} value={c}>{COUNTRY_CODE_FLAGS[c]} {c}</option>)}
     </select>
     <span style={{ width: 1, height: 18, background: t.inputBorder, flexShrink: 0 }} />
     <input type="tel" placeholder="Enter number" value={number} readOnly={isView} disabled={isView}
       onChange={(e) => onNumberChange(e.target.value.replace(/[^\d]/g, ''))}
-      style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
+      style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 50, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
     {onAdd && !isView && (
       <button type="button" onClick={onAdd} title="Add another mobile number"
         className="flex items-center justify-center rounded-lg flex-shrink-0"
