@@ -800,7 +800,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const isFormValid =
     firstName.trim() !== '' && middleName.trim() !== '' && lastName.trim() !== '' && !!customerPhoto &&
     email.trim() !== '' && mobileNumber.trim() !== '' && whatsappNumber.trim() !== '' &&
-    !!aadharPhoto && !!pancardPhoto &&
+    aadharNumber.trim() !== '' && !!aadharPhoto && !!pancardPhoto &&
     address.trim() !== '' && dateOfBirth !== '' &&
     companyName.trim() !== '' && projectName.trim() !== '' &&
     (wantsParking === 'no' || parkingNo.trim() !== '') &&
@@ -827,6 +827,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     }
     if (remainingBookingDate && bookingDate && remainingBookingDate < bookingDate) {
       toast.error('Remaining Booking Date cannot be before the Booking Date.');
+      return;
+    }
+    // Backend hard-requires a 12-digit Aadhaar number (CreateCustomerSchema's
+    // aadhar_card_no) — checked here too so a photo whose OCR auto-fill
+    // misread or skipped the number doesn't reach the server before the
+    // customer gets a clear message about it.
+    if (!/^\d{12}$/.test(aadharNumber.trim())) {
+      toast.error('Aadhaar number must be exactly 12 digits.');
       return;
     }
 
@@ -1162,7 +1170,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <PhoneField t={t} isView={isView} icon={<FaWhatsapp size={15} style={{ color: '#25D366', flexShrink: 0 }} />}
               code={whatsappCountryCode} onCodeChange={setWhatsappCountryCode} number={whatsappNumber} onNumberChange={setWhatsappNumber} />
           </Field>
-          <Field t={t} label="Aadhar Number">
+          <Field t={t} label="Aadhar Number" required>
             <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView}
               onChange={(e) => setAadharNumber(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
