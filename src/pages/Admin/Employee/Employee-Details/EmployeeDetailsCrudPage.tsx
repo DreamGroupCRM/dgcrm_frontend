@@ -22,6 +22,9 @@ import { FetchDepartmentList } from '../../../../services/departmentService';
 import { fetchDesignationList } from '../../../../services/designationService';
 import { fetchMappingMatrix } from '../../../../services/moduleActionService';
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
+import { DobPicker } from '../../../../components/common/DobPicker';
+import { TimePicker } from '../../../../components/common/TimePicker';
+import { PhoneInput } from '../../../../components/common/PhoneInput';
 import './EmployeeDetails.css';
 
 // Employee Status badge colors for View mode — same palette as
@@ -38,13 +41,6 @@ type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
 type Theme = AppTheme;
 
-// Same emoji mapping CustomerDetailsCrudPage.tsx's PhoneField uses — "+1" is
-// shared by US/Canada; the US flag is the conventional default for that
-// dial code.
-const COUNTRY_CODE_FLAGS: Record<string, string> = {
-  '+91': '🇮🇳', '+1': '🇺🇸', '+44': '🇬🇧', '+61': '🇦🇺', '+971': '🇦🇪',
-};
-const COUNTRY_CODES = ['+91', '+1', '+44', '+61', '+971'];
 const WORKING_HOURS_OPTIONS = ['8', '9', '10'];
 const HOLIDAYS_OPTIONS = ['Sunday Only', 'Alternate Saturdays + Sunday', 'All Saturdays + Sunday', 'Custom / As per Company Policy'];
 const ACCOUNT_TYPE_OPTIONS = ['Savings', 'Current'];
@@ -153,26 +149,6 @@ const Field: React.FC<{ t: Theme; label: string; required?: boolean; children: R
     <label className="emp-label">{label}{required && <span className="emp-required"> *</span>}</label>
     {children}
   </div>
-);
-
-const PhoneField: React.FC<{
-  t: Theme; isView: boolean;
-  label: string; required?: boolean;
-  code: string; number: string;
-  onCode: (v: string) => void; onNumber: (v: string) => void;
-}> = ({ t, isView, label, required, code, number, onCode, onNumber }) => (
-  <Field t={t} label={label} required={required}>
-    <div className="flex gap-2">
-      <select value={code} disabled={isView} onChange={(e) => onCode(e.target.value)} className={fieldClassName(isView)} style={{ width: 88, cursor: isView ? 'default' : 'pointer' }}>
-        {COUNTRY_CODES.map((c) => <option key={c} value={c}>{COUNTRY_CODE_FLAGS[c]} {c}</option>)}
-      </select>
-      <input
-        type="tel" placeholder="Enter mobile number" value={number} readOnly={isView} disabled={isView}
-        onChange={(e) => onNumber(e.target.value.replace(/[^\d]/g, ''))}
-        className={fieldClassName(isView)}
-      />
-    </div>
-  </Field>
 );
 
 const FileUploadBox: React.FC<{
@@ -568,49 +544,31 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     }).finally(() => setOcrRunning(null));
   };
 
-  // ── Scroll-wheel stepping for Check In/Check Out (time) and Date of Birth
-  // (date) — native browser scroll-to-adjust on these input types is wildly
-  // inconsistent: on a trackpad it fires many wheel events per physical
-  // gesture, so time fields flip through many minutes on one scroll (too
-  // fast); the date field's native step, by contrast, reads as sluggish (too
-  // slow). Both are intercepted here and driven by one deliberate step per
-  // throttle window instead — a longer window for time (normal/expected
-  // speed), a shorter one for date (snappier than the native default).
-  const timeWheelThrottleRef = useRef(0);
-  const dateWheelThrottleRef = useRef(0);
-
-  const stepTime = (value: string, deltaSign: number): string => {
-    const [hStr, mStr] = (value || '00:00').split(':');
-    let h = Number(hStr) || 0;
-    let m = (Number(mStr) || 0) + deltaSign;
-    if (m < 0) { m = 59; h = (h + 23) % 24; }
-    if (m > 59) { m = 0; h = (h + 1) % 24; }
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  // Item 13 — Check In + Working Hours auto-calculates Check Out
+  // ("09:30 AM" + "8 Hours" -> "17:30"). Runs whenever either input
+  // changes; the field stays a normal editable time input afterward, so
+  // the computed value is a starting point, not a lock.
+  const addHoursToTime = (time: string, hours: number): string => {
+    const [hStr, mStr] = (time || '00:00').split(':');
+    const totalMinutes = ((Number(hStr) || 0) * 60 + (Number(mStr) || 0) + hours * 60) % (24 * 60);
+    const normalized = (totalMinutes + 24 * 60) % (24 * 60);
+    return `${String(Math.floor(normalized / 60)).padStart(2, '0')}:${String(normalized % 60).padStart(2, '0')}`;
   };
 
-  const handleTimeWheel = (key: 'check_in_time' | 'check_out_time') => (e: React.WheelEvent<HTMLInputElement>) => {
-    if (isView) return;
-    e.preventDefault();
-    const now = Date.now();
-    if (now - timeWheelThrottleRef.current < 120) return;
-    timeWheelThrottleRef.current = now;
-    set(key, stepTime(form[key], e.deltaY > 0 ? -1 : 1));
+  const setCheckInAndAutoCheckOut = (checkIn: string, workingHours: string) => {
+    setForm((prev) => ({
+      ...prev,
+      check_in_time: checkIn,
+      check_out_time: checkIn && workingHours ? addHoursToTime(checkIn, Number(workingHours)) : prev.check_out_time,
+    }));
   };
 
-  const stepDate = (value: string, deltaSign: number): string => {
-    const base = value ? new Date(`${value}T00:00:00`) : new Date();
-    if (Number.isNaN(base.getTime())) return value;
-    base.setDate(base.getDate() + deltaSign);
-    return base.toISOString().slice(0, 10);
-  };
-
-  const handleDobWheel = (e: React.WheelEvent<HTMLInputElement>) => {
-    if (isView) return;
-    e.preventDefault();
-    const now = Date.now();
-    if (now - dateWheelThrottleRef.current < 40) return;
-    dateWheelThrottleRef.current = now;
-    set('date_of_birth', stepDate(form.date_of_birth, e.deltaY > 0 ? -1 : 1));
+  const setWorkingHoursAndAutoCheckOut = (workingHours: string) => {
+    setForm((prev) => ({
+      ...prev,
+      working_hours: workingHours,
+      check_out_time: prev.check_in_time && workingHours ? addHoursToTime(prev.check_in_time, Number(workingHours)) : prev.check_out_time,
+    }));
   };
 
   // ── employee code preview (Add) or actual code (Edit/View) ────────────
@@ -1183,8 +1141,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => set('last_name', e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Date of Birth" required>
-            <input type="date" value={form.date_of_birth} readOnly={isView} disabled={isView}
-              onChange={(e) => set('date_of_birth', e.target.value)} onClick={openPicker} onWheel={handleDobWheel} className={fieldClass} />
+            <DobPicker theme={t} value={form.date_of_birth} disabled={isView} onChange={(v) => set('date_of_birth', v)} />
           </Field>
         </div>
 
@@ -1194,12 +1151,18 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="email" placeholder="Enter email address" value={form.email} readOnly={isView} disabled={isView}
               onChange={(e) => set('email', e.target.value)} className={fieldClass} />
           </Field>
-          <PhoneField t={t} isView={isView} label="Mobile Number" required code={form.mobile_country_code} number={form.mobile_number}
-            onCode={(v) => set('mobile_country_code', v)} onNumber={(v) => set('mobile_number', v)} />
-          <PhoneField t={t} isView={isView} label="Alternate Number" code={form.alternate_country_code} number={form.alternate_number}
-            onCode={(v) => set('alternate_country_code', v)} onNumber={(v) => set('alternate_number', v)} />
-          <PhoneField t={t} isView={isView} label="WhatsApp Number" code={form.whatsapp_country_code} number={form.whatsapp_number}
-            onCode={(v) => set('whatsapp_country_code', v)} onNumber={(v) => set('whatsapp_number', v)} />
+          <Field t={t} label="Mobile Number" required>
+            <PhoneInput theme={t} disabled={isView} code={form.mobile_country_code} onCodeChange={(v) => set('mobile_country_code', v)}
+              number={form.mobile_number} onNumberChange={(v) => set('mobile_number', v)} placeholder="Enter mobile number" />
+          </Field>
+          <Field t={t} label="Alternate Number">
+            <PhoneInput theme={t} disabled={isView} code={form.alternate_country_code} onCodeChange={(v) => set('alternate_country_code', v)}
+              number={form.alternate_number} onNumberChange={(v) => set('alternate_number', v)} placeholder="Enter mobile number" />
+          </Field>
+          <Field t={t} label="WhatsApp Number">
+            <PhoneInput theme={t} disabled={isView} code={form.whatsapp_country_code} onCodeChange={(v) => set('whatsapp_country_code', v)}
+              number={form.whatsapp_number} onNumberChange={(v) => set('whatsapp_number', v)} placeholder="Enter mobile number" />
+          </Field>
         </div>
 
         {/* Row 3 of 4 — ID proofs */}
@@ -1247,18 +1210,17 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => set('joining_date', e.target.value)} onClick={openPicker} className={fieldClass} />
           </Field>
           <Field t={t} label="Working Hours" required>
-            <select value={form.working_hours} disabled={isView} onChange={(e) => set('working_hours', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
+            <select value={form.working_hours} disabled={isView} onChange={(e) => setWorkingHoursAndAutoCheckOut(e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select hours (8, 9, 10)</option>
               {WORKING_HOURS_OPTIONS.map((h) => <option key={h} value={h}>{h} Hours</option>)}
             </select>
           </Field>
           <Field t={t} label="Check In" required>
-            <input type="time" value={form.check_in_time} readOnly={isView} disabled={isView}
-              onChange={(e) => set('check_in_time', e.target.value)} onClick={openPicker} onWheel={handleTimeWheel('check_in_time')} className={fieldClass} />
+            <TimePicker theme={t} value={form.check_in_time} disabled={isView}
+              onChange={(v) => setCheckInAndAutoCheckOut(v, form.working_hours)} />
           </Field>
           <Field t={t} label="Check Out" required>
-            <input type="time" value={form.check_out_time} readOnly={isView} disabled={isView}
-              onChange={(e) => set('check_out_time', e.target.value)} onClick={openPicker} onWheel={handleTimeWheel('check_out_time')} className={fieldClass} />
+            <TimePicker theme={t} value={form.check_out_time} disabled={isView} onChange={(v) => set('check_out_time', v)} />
           </Field>
           <Field t={t} label="Holidays" required>
             <select value={form.holidays} disabled={isView} onChange={(e) => set('holidays', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>

@@ -24,6 +24,8 @@ import { companyService } from '../../../../services/companyService';
 import { Building, Company, ParkingChoice } from '../../../../types/index';
 import { showAlert } from '../../../../utils';
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
+import { DobPicker } from '../../../../components/common/DobPicker';
+import { PhoneInput } from '../../../../components/common/PhoneInput';
 import './CustomerDetails.css';
 
 type Mode = 'add' | 'edit' | 'view';
@@ -35,13 +37,6 @@ type Theme = AppTheme;
 // null (nothing chosen). Every upload control in this page speaks this type.
 type FileValue = File | string | null;
 
-// { dial code -> flag emoji } — item 5: "Mobile number field should have
-// flags and country code." +1 is shared by US/Canada; the US flag is used
-// as the conventional default for that dial code.
-const COUNTRY_CODE_FLAGS: Record<string, string> = {
-  '+91': '🇮🇳', '+1': '🇺🇸', '+44': '🇬🇧', '+61': '🇦🇺', '+971': '🇦🇪', '+65': '🇸🇬',
-};
-const COUNTRY_CODES = Object.keys(COUNTRY_CODE_FLAGS);
 const FOOTER_HEIGHT = 76;
 
 // ── module-scope helpers only — nothing defined inside the page component,
@@ -273,40 +268,6 @@ const SearchableSelect: React.FC<{
   );
 };
 
-// A country-code prefixed phone input — the "+91 | 9876543210" combo used
-// for Mobile Number and WhatsApp Number. `onAdd`, when passed (only the
-// primary Mobile Number field passes it), renders a compact "+" button that
-// appends a blank row to the Secondary Mobile Numbers list below — it does
-// not add a whole new UI, just a shortcut into the list that's already there.
-const PhoneField: React.FC<{
-  t: Theme; isView?: boolean; icon?: React.ReactNode;
-  code: string; onCodeChange: (v: string) => void;
-  number: string; onNumberChange: (v: string) => void;
-  onAdd?: () => void;
-}> = ({ t, isView, icon, code, onCodeChange, number, onNumberChange, onAdd }) => (
-  <div className={`flex items-center gap-2 ${fieldClassName(!!isView)}`} style={{ padding: '0 8px 0 12px' }}>
-    {icon}
-    {/* Fixed width + flag-and-code label, matching Employee CRUD's select —
-        the previous full-country-name option text made this flexShrink:0
-        select wide enough to starve the sibling number input down to 0px,
-        silently blocking Mobile/WhatsApp Number entry on Create Customer. */}
-    <select value={code} disabled={isView} onChange={(e) => onCodeChange(e.target.value)}
-      style={{ border: 'none', outline: 'none', background: 'transparent', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily, padding: '9px 2px', width: 62, flexShrink: 0 }}>
-      {COUNTRY_CODES.map((c) => <option key={c} value={c}>{COUNTRY_CODE_FLAGS[c]} {c}</option>)}
-    </select>
-    <span style={{ width: 1, height: 18, background: t.inputBorder, flexShrink: 0 }} />
-    <input type="tel" placeholder="Enter number" value={number} readOnly={isView} disabled={isView}
-      onChange={(e) => onNumberChange(e.target.value.replace(/[^\d]/g, ''))}
-      style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 50, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
-    {onAdd && !isView && (
-      <button type="button" onClick={onAdd} title="Add another mobile number"
-        className="flex items-center justify-center rounded-lg flex-shrink-0"
-        style={{ width: 22, height: 22, background: t.insetBg, border: `1px solid ${t.inputBorder}`, color: '#0284c7', cursor: 'pointer' }}>
-        <MdAdd size={14} />
-      </button>
-    )}
-  </div>
-);
 
 // Compact "chosen file" chip with a trash icon (Aadhar / PAN photo), or an
 // upload prompt when nothing is chosen yet — matches "AadharCard.jpg [🗑]".
@@ -1185,7 +1146,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             followed by its own upload field, no field between them) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="WhatsApp Number" required>
-            <PhoneField t={t} isView={isView} icon={<FaWhatsapp size={15} style={{ color: '#25D366', flexShrink: 0 }} />}
+            <PhoneInput theme={t} disabled={isView} icon={<FaWhatsapp size={15} style={{ color: '#25D366', flexShrink: 0 }} />}
               code={whatsappCountryCode} onCodeChange={setWhatsappCountryCode} number={whatsappNumber} onNumberChange={setWhatsappNumber} />
           </Field>
           <Field t={t} label="Upload Aadhar Card Photo" required>
@@ -1213,8 +1174,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="Date of Birth" required>
             <div className="flex items-center gap-2">
-              <input type="date" value={dateOfBirth} readOnly={isView} disabled={isView}
-                onClick={openPicker} onFocus={openPicker} onChange={(e) => setDateOfBirth(e.target.value)} className={fieldClass} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <DobPicker theme={t} value={dateOfBirth} disabled={isView} onChange={setDateOfBirth} />
+              </div>
               {age && (
                 <div className="rounded-xl px-2 py-2 flex-shrink-0" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
                   <p style={{ fontSize: 9, color: t.textSecondary, margin: 0, fontWeight: 600 }}>Age</p>
@@ -1236,7 +1198,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => setAddress(e.target.value)} className={fieldClass} style={{ resize: 'vertical' }} />
           </Field>
           <Field t={t} label="Mobile Number" required>
-            <PhoneField t={t} isView={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber}
+            <PhoneInput theme={t} disabled={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber}
               onAdd={addSecondaryNumber} />
           </Field>
         </div>
@@ -1262,7 +1224,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               {secondaryNumbers.map((p, idx) => (
                 <div key={idx} className="flex items-center gap-1.5">
                   <div style={{ flex: 1 }}>
-                    <PhoneField t={t} isView={isView} code={p.country_code}
+                    <PhoneInput theme={t} disabled={isView} code={p.country_code}
                       onCodeChange={(v) => updateSecondaryNumber(idx, { country_code: v })}
                       number={p.number} onNumberChange={(v) => updateSecondaryNumber(idx, { number: v })} />
                   </div>
