@@ -21,6 +21,7 @@ import {
 import { FetchDepartmentList } from '../../../../services/departmentService';
 import { fetchDesignationList } from '../../../../services/designationService';
 import { fetchMappingMatrix } from '../../../../services/moduleActionService';
+import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
 import './EmployeeDetails.css';
 
 // Employee Status badge colors for View mode — same palette as
@@ -101,6 +102,18 @@ const formatAmountDisplay = (v: string): string => {
   if (!v) return '';
   const n = Number(v);
   return Number.isFinite(n) ? n.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : v;
+};
+
+// K/L/Cr shorthand shown at the end of the Salary box — same
+// compactINR pattern as Customize Scheme's SliderField and Customer
+// CRUD's AmountField, reused here rather than a second implementation.
+const trimDecimal = (x: number): string => x.toFixed(2).replace(/\.?0+$/, '');
+const compactINR = (v: string): string => {
+  const n = Math.max(0, Number(v) || 0);
+  if (n >= 10000000) return `${trimDecimal(n / 10000000)} Cr`;
+  if (n >= 100000) return `${trimDecimal(n / 100000)} L`;
+  if (n >= 1000) return `${trimDecimal(n / 1000)} K`;
+  return '';
 };
 
 // ── Helper components — ALL defined at module scope (outside the page
@@ -246,6 +259,72 @@ const CheckboxGroup: React.FC<{
   </div>
 );
 
+// Designations grouped by their own Department, one row per department —
+// "Sales" -> "Sales Executive | Sales Head | Sales Manager", "Marketing" ->
+// "Marketing Executive | Marketing Head" — instead of a flat list where
+// every single designation repeated its department name in its own label
+// ("Sales Executive | Sales", "Sales Head | Sales", ...). Each name stays
+// individually checkable; the " | " between them is purely a visual
+// separator matching the requested layout, not a joined static string.
+// A designation with no department of its own (global) falls into its own
+// "Other" group at the end.
+const GroupedDesignationChecklist: React.FC<{
+  t: Theme; isView: boolean; required?: boolean;
+  options: DesignationOption[]; departmentOptions: IdOption[];
+  selected: number[]; onToggle: (v: number) => void; loading?: boolean; emptyHint?: string;
+}> = ({ t, isView, required, options, departmentOptions, selected, onToggle, loading, emptyHint }) => {
+  const groups = useMemo(() => {
+    const byDept = new Map<number | null, DesignationOption[]>();
+    options.forEach((opt) => {
+      const key = opt.departmentId;
+      const arr = byDept.get(key) || [];
+      arr.push(opt);
+      byDept.set(key, arr);
+    });
+    const named = Array.from(byDept.entries())
+      .filter(([deptId]) => deptId != null)
+      .map(([deptId, opts]) => ({
+        key: String(deptId),
+        heading: departmentOptions.find((d) => d.value === deptId)?.label || 'Department',
+        opts,
+      }));
+    const other = byDept.get(null);
+    return other?.length ? [...named, { key: 'other', heading: 'Other', opts: other }] : named;
+  }, [options, departmentOptions]);
+
+  return (
+    <div className="mb-5">
+      <label className="emp-label">Assign Designations{required && <span className="emp-required"> *</span>}</label>
+      {loading ? (
+        <p className="emp-hint-text">Loading...</p>
+      ) : groups.length === 0 ? (
+        <p className="emp-hint-text">{emptyHint}</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {groups.map((group) => (
+            <div key={group.key}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>
+                {group.heading}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2">
+                {group.opts.map((opt, i) => (
+                  <React.Fragment key={opt.value}>
+                    {i > 0 && <span style={{ color: t.divider }}>|</span>}
+                    <label className="flex items-center gap-1.5" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+                      <input type="checkbox" checked={selected.includes(opt.value)} disabled={isView} onChange={() => onToggle(opt.value)} />
+                      {opt.label}
+                    </label>
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Unified shape both the Add-mode source (fetchMappingMatrix — flat
 // modules/actions/mappings, nothing pre-checked) and the Edit/View-mode
 // source (fetchEmployeePermissions — already grouped by module, with an
@@ -276,12 +355,17 @@ const orderActionColumns = (labelByCode: Map<string, string>): { code: string; l
 const ModuleActionGrid: React.FC<{
   t: Theme; isView: boolean; grid: ModuleActionGridData;
   selected: number[]; onToggle: (moduleActionId: number) => void; loading?: boolean;
-}> = ({ t, isView, grid, selected, onToggle, loading }) => {
+  // Final "Check All" column (item 8) — toggles every valid checkbox in
+  // that row at once; its own checked state stays in sync with the row's
+  // individual checkboxes both ways (checking every box manually also
+  // shows Check All as checked, and unchecking any one of them unchecks it).
+  onToggleRow?: (moduleActionIds: number[], checked: boolean) => void;
+}> = ({ t, isView, grid, selected, onToggle, loading, onToggleRow }) => {
   if (loading) return <p className="emp-hint-text">Loading...</p>;
   if (grid.modules.length === 0) return <p className="emp-hint-text">No modules available.</p>;
   return (
     <div className="emp-grid-scroll" style={{ border: `1px solid ${t.surfaceBorder}`, borderRadius: 12 }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 620 }}>
         <thead>
           <tr>
             <th className="emp-grid-th-gradient">
@@ -292,37 +376,57 @@ const ModuleActionGrid: React.FC<{
                 {a.label}
               </th>
             ))}
+            <th className="emp-grid-th-gradient emp-grid-th-gradient-center">Check All</th>
           </tr>
         </thead>
         <tbody>
-          {grid.modules.map((m) => (
-            <tr key={m.id} className="emp-grid-tr">
-              <td className="emp-grid-td">
-                {m.name}
-              </td>
-              {grid.actionColumns.map((a) => {
-                const moduleActionId = grid.cells[`${m.id}:${a.code}`];
-                const checked = moduleActionId != null && selected.includes(moduleActionId);
-                return (
-                  <td key={a.code} className={`emp-grid-td-center${checked ? ' emp-grid-td-checked' : ''}`}>
-                    {moduleActionId != null ? (
-                      isView ? (
-                        checked ? <MdCheckCircle size={15} color="#16a34a" /> : <span style={{ color: t.divider }}>–</span>
+          {grid.modules.map((m) => {
+            const rowIds = grid.actionColumns
+              .map((a) => grid.cells[`${m.id}:${a.code}`])
+              .filter((id): id is number => id != null);
+            const rowAllChecked = rowIds.length > 0 && rowIds.every((id) => selected.includes(id));
+            return (
+              <tr key={m.id} className="emp-grid-tr">
+                <td className="emp-grid-td">
+                  {m.name}
+                </td>
+                {grid.actionColumns.map((a) => {
+                  const moduleActionId = grid.cells[`${m.id}:${a.code}`];
+                  const checked = moduleActionId != null && selected.includes(moduleActionId);
+                  return (
+                    <td key={a.code} className={`emp-grid-td-center${checked ? ' emp-grid-td-checked' : ''}`}>
+                      {moduleActionId != null ? (
+                        isView ? (
+                          checked ? <MdCheckCircle size={15} color="#16a34a" /> : <span style={{ color: t.divider }}>–</span>
+                        ) : (
+                          <input
+                            type="checkbox" checked={checked} disabled={isView}
+                            style={{ cursor: isView ? 'default' : 'pointer' }}
+                            onChange={() => onToggle(moduleActionId)}
+                          />
+                        )
                       ) : (
-                        <input
-                          type="checkbox" checked={checked} disabled={isView}
-                          style={{ cursor: isView ? 'default' : 'pointer' }}
-                          onChange={() => onToggle(moduleActionId)}
-                        />
-                      )
-                    ) : (
-                      <span style={{ color: t.divider }}>—</span>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+                        <span style={{ color: t.divider }}>—</span>
+                      )}
+                    </td>
+                  );
+                })}
+                <td className={`emp-grid-td-center${rowAllChecked ? ' emp-grid-td-checked' : ''}`}>
+                  {rowIds.length === 0 ? (
+                    <span style={{ color: t.divider }}>—</span>
+                  ) : isView ? (
+                    rowAllChecked ? <MdCheckCircle size={15} color="#16a34a" /> : <span style={{ color: t.divider }}>–</span>
+                  ) : (
+                    <input
+                      type="checkbox" checked={rowAllChecked}
+                      style={{ cursor: 'pointer' }}
+                      onChange={() => onToggleRow?.(rowIds, !rowAllChecked)}
+                    />
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -435,6 +539,35 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const setFile = (key: keyof EmployeeFileValues) => (f: File | null) =>
     setFiles((prev) => ({ ...prev, [key]: f }));
 
+  // ── OCR auto-fill from Aadhar/PAN photo — same client-side Tesseract.js
+  // approach as Customer CRUD's handleAadharPhotoChange/handlePancardPhotoChange
+  // (see CustomerDetailsCrudPage.tsx), reused here rather than a second OCR
+  // implementation. Only pre-fills the number field, which stays fully
+  // editable, and never overwrites a value the user already typed in.
+  const [ocrRunning, setOcrRunning] = useState<'aadhar' | 'pancard' | null>(null);
+
+  const handleAadharCardChange = (f: File | null) => {
+    setFile('aadhar_card')(f);
+    if (!(f instanceof File)) return;
+    setOcrRunning('aadhar');
+    runOcr(f).then((text) => {
+      const number = extractAadharNumber(text);
+      if (number) { set('aadhar_number', number); toast.success('Aadhar number auto-filled from the photo — please verify it.'); }
+      else toast.info('Could not read an Aadhar number from that photo — please enter it manually.');
+    }).finally(() => setOcrRunning(null));
+  };
+
+  const handlePanCardChange = (f: File | null) => {
+    setFile('pan_card')(f);
+    if (!(f instanceof File)) return;
+    setOcrRunning('pancard');
+    runOcr(f).then((text) => {
+      const number = extractPanNumber(text);
+      if (number) { set('pan_number', number); toast.success('PAN number auto-filled from the photo — please verify it.'); }
+      else toast.info('Could not read a PAN number from that photo — please enter it manually.');
+    }).finally(() => setOcrRunning(null));
+  };
+
   // ── Scroll-wheel stepping for Check In/Check Out (time) and Date of Birth
   // (date) — native browser scroll-to-adjust on these input types is wildly
   // inconsistent: on a trackpad it fires many wheel events per physical
@@ -506,11 +639,13 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       try {
         const res = await fetchDesignationList(1, 1000);
         if (res.success) {
-          // Pipe-separated label ("Designation Name | Department Name") so
-          // it's clear which department a designation belongs to when
-          // several departments' designations are shown together.
+          // Plain designation name — which department it belongs to is now
+          // shown once, as that department's own group heading in the
+          // checklist below, instead of being repeated inside every single
+          // designation's own label ("Sales Executive | Sales", "Sales
+          // Head | Sales", ...).
           setDesignationOptions((res.rows || []).map((d) => ({
-            value: Number(d.id), label: d.department ? `${d.name} | ${d.department}` : d.name,
+            value: Number(d.id), label: d.name,
             departmentId: d.department_id != null && d.department_id !== '' ? Number(d.department_id) : null,
           })));
         }
@@ -672,6 +807,16 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     setForm((prev) => {
       const arr = prev[key];
       return { ...prev, [key]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value] };
+    });
+  };
+
+  // Assign Actions & Modules — Check All column (item 8): applies to every
+  // valid checkbox in one module's row at once.
+  const toggleModuleActionRow = (moduleActionIds: number[], checked: boolean) => {
+    setForm((prev) => {
+      const next = new Set(prev.module_action_ids);
+      moduleActionIds.forEach((id) => (checked ? next.add(id) : next.delete(id)));
+      return { ...prev, module_action_ids: Array.from(next) };
     });
   };
 
@@ -1059,18 +1204,20 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         {/* Row 3 of 4 — ID proofs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
+            file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={handleAadharCardChange} />
           <Field t={t} label="Aadhar Number" required>
             <input type="text" placeholder="Enter aadhar number" value={form.aadhar_number} readOnly={isView} disabled={isView}
               onChange={(e) => set('aadhar_number', e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
+            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
-            file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={setFile('aadhar_card')} />
+          <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
+            file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={handlePanCardChange} />
           <Field t={t} label="PAN Number" required>
             <input type="text" placeholder="Enter PAN number" value={form.pan_number} readOnly={isView} disabled={isView}
               onChange={(e) => set('pan_number', e.target.value.toUpperCase())} className={fieldClass} />
+            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
-            file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={setFile('pan_card')} />
         </div>
 
         {/* Row 4 of 4 — Address + Profile Photo. Profile Photo now uses the
@@ -1125,8 +1272,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <input
                 type="text" inputMode="decimal" placeholder="Enter salary" value={formatAmountDisplay(form.salary)} readOnly={isView} disabled={isView}
                 onChange={(e) => set('salary', e.target.value.replace(/[^\d.]/g, ''))}
-                style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }}
+                style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }}
               />
+              {compactINR(form.salary) && (
+                <span style={{ color: '#0284c7', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(form.salary)}</span>
+              )}
             </div>
           </Field>
           <FileUploadBox t={t} isView={isView} label="Resume" hint="PDF, DOC, DOCX (Max 5MB)" accept=".pdf,.doc,.docx"
@@ -1194,10 +1344,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </div>
           <div className="emp-assign-box">
-            <CheckboxGroup
-              t={t} isView={isView}
-              label="Assign Designations" required
-              options={visibleDesignationOptions} selected={form.designation_ids}
+            <GroupedDesignationChecklist
+              t={t} isView={isView} required
+              options={visibleDesignationOptions} departmentOptions={departmentOptions} selected={form.designation_ids}
               onToggle={(v) => toggleIdInArray('designation_ids', v)}
               loading={loadingDesignations}
               emptyHint={form.department_ids.length === 0 ? 'Select a department above to see its designations.' : 'No designations available for the selected department(s).'}
@@ -1212,6 +1361,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               t={t} isView={isView} grid={moduleGrid}
               selected={form.module_action_ids}
               onToggle={(v) => toggleIdInArray('module_action_ids', v)}
+              onToggleRow={toggleModuleActionRow}
               loading={loadingModules}
             />
           </div>

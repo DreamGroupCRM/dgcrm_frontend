@@ -2,6 +2,7 @@
 // DREAM GROUP CRM - EMPLOYEE LIST PAGE
 // ==========================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, NavigateFunction } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -175,6 +176,50 @@ const EmployeeCard: React.FC<{
   );
 };
 
+// ── Row-action dropdown, rendered into a document.body portal — same fix
+// Customer List's RowActionMenu uses. The old version was `position:
+// absolute` inside the table's own `overflow-x: auto` wrapper, which
+// clips both axes per the CSS spec, cutting the dropdown off whenever it
+// opened near the table's bottom or right edge. A portal positioned with
+// `fixed` from the trigger button's own bounding rect escapes that
+// clipped container entirely, and computeMenuPos below opens it toward
+// whichever side (left/right) actually has room, instead of always
+// growing rightward off the edge of the screen.
+const MENU_WIDTH = 130;
+const computeMenuPos = (rect: DOMRect): { top: number; left: number } => {
+  const spaceRight = window.innerWidth - rect.left;
+  const left = spaceRight >= MENU_WIDTH ? rect.left : Math.max(8, rect.right - MENU_WIDTH);
+  return { top: rect.bottom + 4, left };
+};
+
+const RowActionMenu: React.FC<{
+  t: Theme; pos: { top: number; left: number };
+  emp: Employee; onView: () => void; onEdit: () => void; onDelete: () => void; onToggleActive: () => void;
+}> = ({ t, pos, emp, onView, onEdit, onDelete, onToggleActive }) => createPortal(
+  <div
+    data-employee-row-menu
+    style={{
+      position: 'fixed', top: pos.top, left: pos.left, zIndex: 100, width: MENU_WIDTH,
+      background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 8,
+      boxShadow: '0 6px 16px rgba(0,0,0,0.16)', overflow: 'hidden',
+    }}
+  >
+    <button type="button" title="View" onClick={onView} className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
+      <MdVisibility size={14} color="#2563eb" /> View
+    </button>
+    <button type="button" title="Edit" onClick={onEdit} className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
+      <MdEdit size={13} color="#7c3aed" /> Edit
+    </button>
+    <button type="button" title="Delete" onClick={onDelete} className="emp-row-menu-btn emp-menu-btn-danger" style={{ borderBottom: `1px solid ${t.divider}` }}>
+      <MdDelete size={14} /> Delete
+    </button>
+    <button type="button" title={emp.is_active ? 'Deactivate' : 'Activate'} onClick={onToggleActive} className="emp-row-menu-btn">
+      {emp.is_active ? <><MdToggleOff size={14} color="#ea580c" /> Deactivate</> : <><MdToggleOn size={14} color="#16a34a" /> Activate</>}
+    </button>
+  </div>,
+  document.body
+);
+
 const EmployeeDetailsListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -206,6 +251,7 @@ const EmployeeDetailsListPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { dispatch(setPageTitle('Employees')); }, [dispatch]);
@@ -238,10 +284,16 @@ const EmployeeDetailsListPage: React.FC = () => {
   // number would otherwise land on an empty or out-of-range page.
   useEffect(() => { setPage(1); }, [debouncedSearch]);
 
-  // close the row action menu on outside click
+  // close the row action menu on outside click — the menu itself now lives
+  // in a document.body portal (see RowActionMenu), so it's tagged with
+  // data-employee-row-menu rather than being inside menuRef.
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenuId(null);
+      const target = e.target as HTMLElement;
+      if (menuRef.current?.contains(target)) return;
+      if (target.closest?.('[data-employee-row-menu]')) return;
+      setOpenMenuId(null);
+      setMenuPos(null);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -341,44 +393,31 @@ const EmployeeDetailsListPage: React.FC = () => {
 
   // ── row action dropdown — shared between Grid cards and List rows so the
   // "same View/Edit/Delete as Grid View" requirement (item 6) is trivially
-  // true: both views render this exact same block. ──────────────────────
-  // `align="left"` is for the List view's Action column, which is the
-  // table's leftmost/sticky column — a right-anchored menu there would
-  // grow off the left edge of the table (nothing to its left to grow
-  // into) and get clipped by the panel/scroll container instead.
-  const renderActionMenu = (emp: Employee, align: 'left' | 'right' = 'right') => (
+  // true: both views render this exact same block. Renders into a portal
+  // (see RowActionMenu above), positioned from the trigger button's own
+  // bounding rect — never clipped by the table's scroll container, and
+  // opens toward whichever side actually has room. ───────────────────────
+  const renderActionMenu = (emp: Employee) => (
     <div style={{ position: 'relative' }} ref={openMenuId === emp.id ? menuRef : undefined}>
       <button
         type="button"
-        onClick={() => setOpenMenuId((v) => (v === emp.id ? null : emp.id))}
+        onClick={(e) => {
+          if (openMenuId === emp.id) { setOpenMenuId(null); setMenuPos(null); return; }
+          setMenuPos(computeMenuPos(e.currentTarget.getBoundingClientRect()));
+          setOpenMenuId(emp.id);
+        }}
         style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}
       >
         <MdMoreVert size={18} />
       </button>
-      {openMenuId === emp.id && (
-        <div
-          className="emp-row-menu"
-          style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, ...(align === 'left' ? { left: 0, right: 'auto' } : {}) }}
-        >
-          <button type="button" title="View" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/view/${emp.id}`); }}
-            className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
-            <MdVisibility size={14} color="#2563eb" /> View
-          </button>
-          <button type="button" title="Edit" onClick={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/edit/${emp.id}`); }}
-            className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
-            <MdEdit size={13} color="#7c3aed" /> Edit
-          </button>
-          <button type="button" title="Delete" onClick={() => handleDelete(emp)}
-            className="emp-row-menu-btn emp-menu-btn-danger" style={{ borderBottom: `1px solid ${t.divider}` }}>
-            <MdDelete size={14} /> Delete
-          </button>
-          <button type="button" title={emp.is_active ? 'Deactivate' : 'Activate'} onClick={() => handleToggleActive(emp)}
-            className="emp-row-menu-btn">
-            {emp.is_active
-              ? <><MdToggleOff size={14} color="#ea580c" /> Deactivate</>
-              : <><MdToggleOn size={14} color="#16a34a" /> Activate</>}
-          </button>
-        </div>
+      {openMenuId === emp.id && menuPos && (
+        <RowActionMenu
+          t={t} pos={menuPos} emp={emp}
+          onView={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/view/${emp.id}`); }}
+          onEdit={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/edit/${emp.id}`); }}
+          onDelete={() => handleDelete(emp)}
+          onToggleActive={() => handleToggleActive(emp)}
+        />
       )}
     </div>
   );
@@ -471,16 +510,16 @@ const EmployeeDetailsListPage: React.FC = () => {
                     borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
                     borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                   }}>Action</th>
-                  {['Employee Code', 'Employee Name', 'D.O.B', 'Email ID', 'Mobile No', 'Joining Date', 'Designation', 'Status'].map((h) => (
+                  {['Employee Code', 'Employee Name', 'D.O.B', 'Email ID', 'Mobile No', 'Joining Date', 'Status'].map((h) => (
                     <th key={h} style={{ borderBottom: `1px solid ${t.divider}` }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 48 }}>Loading employees...</td></tr>
+                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 48 }}>Loading employees...</td></tr>
                 ) : pageRows.length === 0 ? (
-                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 48 }}>No employees found.</td></tr>
+                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 48 }}>No employees found.</td></tr>
                 ) : (
                   pageRows.map((emp, idx) => {
                     const status = STATUS_STYLES[emp.status] || STATUS_STYLES.active;
@@ -499,7 +538,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                           zIndex: openMenuId === emp.id ? 30 : 1, background: isInactive ? 'transparent' : (isDark ? t.surfaceBg : '#ffffff'),
                           borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                         }}>
-                          <div className="flex items-center justify-center">{renderActionMenu(emp, 'left')}</div>
+                          <div className="flex items-center justify-center">{renderActionMenu(emp)}</div>
                         </td>
                         <td>
                           <button type="button" onClick={() => navigate(`/admin/employee/employee-details/view/${emp.id}`)}
@@ -524,7 +563,6 @@ const EmployeeDetailsListPage: React.FC = () => {
                         <td>{emp.email || '—'}</td>
                         <td>{emp.mobile_country_code} {emp.mobile_number}</td>
                         <td>{formatDate(emp.joining_date) || '—'}</td>
-                        <td>{(emp.designation_names || []).join(', ') || '—'}</td>
                         <td>
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
                             style={{ background: status.bg, color: status.color, fontSize: 10.5, whiteSpace: 'nowrap' }}>

@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh, MdVisibility,
-  MdGroups, MdCheckCircle, MdPersonAddAlt1, MdPersonOff, MdClose,
+  MdGroups, MdPersonAddAlt1, MdPersonOff, MdClose,
   MdKeyboardArrowDown, MdMoreVert, MdReceiptLong, MdLoyalty, MdPhone, MdEmail,
   MdChevronLeft, MdChevronRight, MdKeyboardDoubleArrowLeft, MdKeyboardDoubleArrowRight,
   MdPayments, MdPrint, MdAccountBalanceWallet, MdDescription, MdFilterList,
@@ -346,7 +346,7 @@ const CustomerDetailsListPage: React.FC = () => {
   // array, narrowing it to a live search has no effect on either feature's
   // correctness — see the fetch effect below.
   const [customerDirectory, setCustomerDirectory] = useState<Customer[]>([]);
-  const [summary, setSummary] = useState<CustomerListSummary>({ total_customers: 0, active_customers: 0, inactive_customers: 0, new_this_month: 0 });
+  const [summary, setSummary] = useState<CustomerListSummary>({ total_customers: 0, active_customers: 0, inactive_customers: 0, new_this_month: 0, assigned_customers: 0, unassigned_customers: 0 });
   const [loading, setLoading] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
   const [page, setPage] = useState(1);
@@ -973,18 +973,22 @@ const CustomerDetailsListPage: React.FC = () => {
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
 
-      {/* ── KPI cards — now the same shared StatCard component Employee
-          Details List uses (compact + labelFontSize=16), so the two pages'
-          summary boxes are pixel-identical instead of two independently
-          hand-tuned card markups drifting apart. ──────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        {[
-          { label: 'Total Customers', value: summary.total_customers, icon: MdGroups, color: '#7c3aed' },
-          { label: 'Active Customers', value: summary.active_customers, icon: MdCheckCircle, color: '#16a34a' },
-          { label: 'New Customers This Month', value: summary.new_this_month, icon: MdPersonAddAlt1, color: '#ea580c' },
-          { label: 'Inactive Customers', value: summary.inactive_customers, icon: MdPersonOff, color: '#dc2626' },
-        ].map((card) => (
-          <StatCard key={card.label} {...card} bg="" loading={loading} compact labelFontSize={14}
+      {/* ── KPI cards — All/Assigned/Un Assigned Customer, doubling as the
+          assignment filter (item 3): clicking a box applies that filter to
+          the table below and highlights itself as the active one. Replaces
+          the old Active/Inactive pair, which never reflected a real
+          "inactive customer" concept anyway (see getCustomerListSummary's
+          comment) and duplicated the separate Assigned/Unassigned toggle
+          that used to sit further down this page. ─────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        {([
+          { filterKey: 'all', label: 'All Customers', value: summary.total_customers, icon: MdGroups, color: '#7c3aed' },
+          { filterKey: 'assigned', label: 'Assigned Customers', value: summary.assigned_customers, icon: MdPersonAddAlt1, color: '#16a34a' },
+          { filterKey: 'unassigned', label: 'Un Assigned Customers', value: summary.unassigned_customers, icon: MdPersonOff, color: '#ea580c' },
+        ] as const).map(({ filterKey, ...card }) => (
+          <StatCard key={filterKey} {...card} bg="" loading={loading} compact labelFontSize={14}
+            active={assignmentStatusFilter === filterKey}
+            onClick={() => setAssignmentStatusFilter(filterKey)}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
       </div>
@@ -1085,30 +1089,6 @@ const CustomerDetailsListPage: React.FC = () => {
           >
             {assigning ? 'Assigning...' : 'Assign to Employee'}
           </button>
-
-          {/* Item 13: this same area doubles as an Assigned/Unassigned
-              filter on the table below — inactive customers are excluded
-              from selection above (their checkbox is disabled), not from
-              this filter, since "inactive but was assigned" is still a
-              meaningful thing to be able to see. */}
-          <div>
-            <label className="cust-filter-label">Assignment</label>
-            <div className="flex items-center rounded-xl p-0.5" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}` }}>
-              {([['all', 'All'], ['assigned', 'Assigned'], ['unassigned', 'Unassigned']] as const).map(([value, label]) => (
-                <button
-                  key={value} type="button" onClick={() => setAssignmentStatusFilter(value)}
-                  className="px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap"
-                  style={{
-                    background: assignmentStatusFilter === value ? 'var(--grad-purple)' : 'transparent',
-                    color: assignmentStatusFilter === value ? '#fff' : t.textSecondary,
-                    border: 'none', cursor: 'pointer',
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         <div className="flex items-center gap-2.5">

@@ -316,6 +316,13 @@
   .emp-doc-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* All 4 documents in one row on desktop (item 11) — same card sizing as
+   View Customer's 3-per-row .cust-doc-grid, just one more column since
+   there are 4 cards here instead of 5. */
+@media (min-width: 1024px) {
+  .emp-doc-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
 .emp-doc-card {
   display: flex;
   flex-direction: column;

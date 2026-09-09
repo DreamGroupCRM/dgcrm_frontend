@@ -640,6 +640,8 @@ export interface CustomerListSummary {
   active_customers  : number;
   inactive_customers : number;
   new_this_month       : number;
+  assigned_customers   : number;
+  unassigned_customers : number;
 }
 
 export interface CustomerListFilters {

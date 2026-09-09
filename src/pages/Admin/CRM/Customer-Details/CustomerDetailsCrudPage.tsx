@@ -1170,21 +1170,21 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <PhoneField t={t} isView={isView} icon={<FaWhatsapp size={15} style={{ color: '#25D366', flexShrink: 0 }} />}
               code={whatsappCountryCode} onCodeChange={setWhatsappCountryCode} number={whatsappNumber} onNumberChange={setWhatsappNumber} />
           </Field>
-          <Field t={t} label="Aadhar Number" required>
-            <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView}
-              onChange={(e) => setAadharNumber(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
-          </Field>
           <Field t={t} label="Upload Aadhar Card Photo" required>
             <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange} />
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
-          <Field t={t} label="Pancard Number">
-            <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView}
-              onChange={(e) => setPancardNumber(e.target.value.toUpperCase())} className={fieldClass} />
+          <Field t={t} label="Aadhar Number" required>
+            <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView}
+              onChange={(e) => setAadharNumber(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
           <Field t={t} label="Upload Pancard Photo" required>
             <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange} />
             {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
+          </Field>
+          <Field t={t} label="Pancard Number">
+            <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView}
+              onChange={(e) => setPancardNumber(e.target.value.toUpperCase())} className={fieldClass} />
           </Field>
         </div>
 
@@ -1333,8 +1333,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" gradient="var(--grad-green)" />
 
-        {/* Row 1 of 3 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+        {/* Row 1 of 3 — Remaining Booking Amount & Date spans 2 columns (its
+            own amount+date pair was squeezing into the same 1/5-width slot
+            as every other single field here, cramming both inputs). */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
           <Field t={t} label="Total Cost of Flat (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter total cost" value={totalCost} onChange={setTotalCost} />
           </Field>
@@ -1345,11 +1347,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Booking Amount (₹)" required>
             <AmountField t={t} isView={isView} placeholder="Enter booking amount" value={bookingAmount} onChange={setBookingAmount} />
           </Field>
-          <Field t={t} label="Remaining Booking Amount & Date">
+          <Field t={t} label="Remaining Booking Amount & Date" className="lg:col-span-2">
             <div className="flex items-center gap-2">
-              <AmountField t={t} isView={isView} placeholder="Amount" value={remainingBookingAmount} onChange={setRemainingBookingAmount} />
+              <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                <AmountField t={t} isView={isView} placeholder="Amount" value={remainingBookingAmount} onChange={setRemainingBookingAmount} />
+              </div>
               <input type="date" value={remainingBookingDate} readOnly={isView} disabled={isView}
-                onClick={openPicker} onFocus={openPicker} onChange={(e) => setRemainingBookingDate(e.target.value)} className={fieldClass} />
+                onClick={openPicker} onFocus={openPicker} onChange={(e) => setRemainingBookingDate(e.target.value)} className={fieldClass}
+                style={{ flexShrink: 0, width: 150 }} />
             </div>
           </Field>
           <Field t={t} label="Possession Amount (₹)" required>
