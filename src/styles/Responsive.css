@@ -379,9 +379,24 @@
     align-items: stretch;
   }
 
+  /* flex: 0 0 auto overrides master.css's `flex: 1 1 200px` (written for
+     the desktop row layout, where the 200px basis sizes width). Once
+     .master-topbar switches to a column above, that same shorthand sizes
+     HEIGHT instead — flex-grow:1 then stretches the box to fill the
+     column's cross-free main axis, ballooning it into a ~200px-tall
+     near-square block instead of a normal compact search bar. Resetting
+     the shorthand here keeps height content-driven (icon+padding, ~40px)
+     while width:100% (a separate, cross-axis property under
+     flex-direction:column) still makes it span the row. */
   .master-search-box {
     max-width: none;
     width: 100%;
+    flex: 0 0 auto;
+    /* A couple of px of margin so the search bar doesn't sit perfectly
+       flush with .master-topbar's own edges — a small "app search bar"
+       inset on top of the page's own padding, matching native mobile
+       search fields instead of a bar that spans edge-to-edge. */
+    margin: 0 2px;
   }
 
   .master-actions {
@@ -396,16 +411,19 @@
 }
 
 /* Phones — summary cards drop to a single column so labels/values never
-   get squeezed, and the pagination footer stacks instead of overflowing.
+   get squeezed.
 
-   Action row fix: previously every button in .master-actions (the Add
-   button AND the icon-only Download/Refresh buttons) got stacked into
-   full-width bars — a big blue "Add" bar followed by two nearly-empty
-   full-width bars with a tiny centered icon each. Now only the primary
-   Add button takes its own full-width row (flex-basis 100% forces the
-   wrap); the icon buttons wrap onto the row after it and share that
-   row's width evenly via flex-grow, so Download/Refresh sit side by side
-   as two compact square-ish buttons instead of two odd full-width bars. */
+   Pagination + action-row fix (superseded the old stack-into-3-rows /
+   stack-into-3-rows behavior — see git history for the previous
+   flex-direction:column / flex-basis:100% approach): both
+   .master-pagination (Rows-per-page / Showing X-Y / Prev-Next) and
+   .master-actions (view toggle / Add / Export / Refresh) fit their
+   content in well under 350px even on a 320px phone once padding/gaps/
+   font-size are trimmed a little, so both now stay a genuine single row
+   (flex-wrap: nowrap) instead of stacking. overflow-x:auto is a safety
+   net for the rare very-long "Showing X–Y of Z" + many page-number
+   buttons case — it scrolls sideways within that one row rather than
+   ever wrapping into a second one. */
 @media (max-width: 480px) {
   .master-stat-grid,
   .master-stat-grid-5,
@@ -414,23 +432,34 @@
   }
 
   .master-pagination {
-    flex-direction: column;
-    align-items: stretch;
-    text-align: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .master-pagination > * {
+    flex-shrink: 0;
+  }
+
+  .master-pagination span {
+    font-size: 10.5px !important;
+    white-space: nowrap;
   }
 
   .master-actions {
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 
   .master-actions .master-btn-primary {
-    flex: 1 1 100%;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
   .master-actions .master-btn-icon {
-    flex: 1 1 0;
-    width: auto;
+    flex: 0 0 auto;
   }
 
   /* Grouped Total/Enabled/Disabled cards (Building's Flats/Shops boxes) —

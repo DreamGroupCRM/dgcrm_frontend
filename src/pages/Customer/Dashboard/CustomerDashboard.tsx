@@ -146,10 +146,21 @@ const CustomerDashboard: React.FC = () => {
     };
   }, [dueGrid]);
 
+  // Total Paid is derived from the same per-installment schedule status
+  // (getCustomerDueGrid) the "Payment Schedule" table below renders — the
+  // single source of truth staff already see for this same customer on
+  // Payment Dues, rather than a second, independently-computed figure from
+  // the raw payments list (which could disagree with the schedule, e.g. a
+  // payment recorded against a booster row with no tracked "paid" column).
+  // Total Due is then just Total Amount minus that, floored at 0 — the
+  // same "never negative" convention payment.service.ts's
+  // getCurrentRemainingAmount already uses.
   const totalPaid = useMemo(
-    () => payments.filter((p) => p.is_approved).reduce((s, p) => s + p.amount, 0),
-    [payments]
+    () => (dueGrid?.rows ?? []).filter((r) => r.status === 'paid').reduce((s, r) => s + r.amount, 0),
+    [dueGrid]
   );
+  const totalAmount = detail?.flat_amount ?? 0;
+  const totalDue = Math.max(0, totalAmount - totalPaid);
 
   const firstName = profile?.first_name || '';
   const documents = detail
@@ -223,12 +234,13 @@ const CustomerDashboard: React.FC = () => {
             <div className="flex items-center justify-center" style={{ padding: 60 }}><CircularProgress size={26} sx={{ color: '#2563eb' }} /></div>
           ) : (
             <>
-              {/* KPI row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" style={{ marginBottom: 18 }}>
-                <StatCard label="Flat Amount" value={rupee(detail.flat_amount)} icon={MdApartment} color="#2563eb" bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-                <StatCard label="Amount Paid" value={rupee(totalPaid)} icon={MdCheckCircle} color="#16a34a" bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-                <StatCard label="Due Installments" value={dueCounts.due} icon={MdErrorOutline} color="#dc2626" bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-                <StatCard label="Upcoming" value={dueCounts.upcoming} icon={MdSchedule} color="#ea580c" bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+              {/* Payment summary — Total Amount / Total Paid / Total Due, the
+                  headline numbers a customer needs to understand where they
+                  stand at a glance. */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ marginBottom: 18 }}>
+                <StatCard label="Total Amount" value={rupee(totalAmount)} icon={MdApartment} color="#2563eb" bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+                <StatCard label="Total Paid" value={rupee(totalPaid)} icon={MdCheckCircle} color="#16a34a" bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+                <StatCard label="Total Due" value={rupee(totalDue)} icon={MdErrorOutline} color={totalDue > 0 ? '#dc2626' : '#16a34a'} bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
               </div>
 
               {/* Booking overview */}
@@ -282,6 +294,9 @@ const CustomerDashboard: React.FC = () => {
 
               {/* Due grid — read-only, no Add Payment (that's staff-only) */}
               <Section t={t} title="Payment Schedule" icon={MdCalendarToday}>
+                <p style={{ fontSize: 12, color: t.textMuted, marginTop: -8, marginBottom: 12 }}>
+                  {dueCounts.due} due now &middot; {dueCounts.upcoming} upcoming &middot; {dueCounts.paid} paid
+                </p>
                 <div className="overflow-x-auto">
                   <table className="w-full" style={{ borderCollapse: 'collapse' }}>
                     <thead>

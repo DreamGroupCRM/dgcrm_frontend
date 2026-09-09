@@ -118,7 +118,7 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
   // the whole point is a regular Admin reviews delete requests an
   // employee couldn't complete themselves, so this is visible to both,
   // unlike the Super Admin lobby group below.
-  { label: 'Pending Approvals', path: ROUTES.ADMIN.PENDING_APPROVALS, icon: <MdPendingActions /> },
+  { label: 'Pending Admin Approval', path: ROUTES.ADMIN.PENDING_APPROVALS, icon: <MdPendingActions /> },
   { label: 'Change Requests', path: ROUTES.ADMIN.CHANGE_REQUESTS, icon: <MdPendingActions /> },
   { label: 'Customize Scheme', path: ROUTES.ADMIN.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
 
