@@ -1,10 +1,14 @@
 // ==========================================
 // DREAM GROUP CRM - PAYMENT DUES PAGE
 // ==========================================
-// Rebuilt per item 15: pick a customer, see their EMI Schedule re-dated
-// against today as a per-installment grid — Red (already due), Orange
-// (upcoming), Green (paid) — with an inline "Add Payment" action per row
-// (and a general one) that posts through the EXISTING, already-battle-
+// Two views in one page: by default (no customer picked) this shows EVERY
+// customer who currently owes something — GET /payments/due-list, the same
+// getOverdueBreakdown() the dashboards already compute — as a simple
+// sortable list. Picking (or typing) a customer name narrows that list by
+// name; picking an EXACT customer (via the dropdown, or "View Schedule")
+// drills into their full per-installment EMI schedule — Red (already due),
+// Orange (upcoming), Green (paid) — with an inline "Add Payment" action per
+// row (and a general one) that posts through the EXISTING, already-battle-
 // tested POST /api/payments (collectPayment) — none of that carry-forward
 // math is touched here, this page only reads a new view of it
 // (payment.service.ts's getCustomerDueGrid) and writes through the same
@@ -13,19 +17,21 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify';
 import {
   MdPayments, MdRefresh, MdAdd, MdClose, MdCheckCircle, MdSchedule, MdErrorOutline, MdKeyboardArrowDown,
+  MdDownload, MdSearch, MdArrowBack, MdVisibility, MdGroups, MdAccountBalanceWallet,
 } from 'react-icons/md';
 
-import { useAppDispatch, useAppSelector } from '../../../../hooks';
+import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
+import PaginationFooter from '../../../../components/common/PaginationFooter';
 import {
-  fetchCustomerDueGrid, collectPayment, fetchDefaultAmount, PAYMENT_FOR_OPTIONS, DueGridRow, CustomerDueGrid,
+  fetchCustomerDueGrid, fetchDueList, collectPayment, fetchDefaultAmount, PAYMENT_FOR_OPTIONS, DueGridRow, CustomerDueGrid,
 } from '../../../../services/paymentService';
 import { fetchAllCustomerDetails } from '../../../../services/customerDetailsService';
 import { companyService } from '../../../../services/companyService';
-import { Customer, Company, PaymentFor, CollectPaymentPayload } from '../../../../types/index';
+import { Customer, Company, PaymentFor, CollectPaymentPayload, DueListRow } from '../../../../types/index';
 import { formatDate } from '../../../../utils';
 
 type Theme = AppTheme;
@@ -53,6 +59,7 @@ const SearchableSelect: React.FC<{
     <div ref={ref} style={{ position: 'relative' }}>
       <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: disabled ? t.insetBg : t.inputBg, border: `1px solid ${t.inputBorder}`, cursor: disabled ? 'not-allowed' : 'text' }}
         onClick={() => !disabled && setOpen(true)}>
+        <MdSearch size={15} style={{ color: t.textSecondary, flexShrink: 0 }} />
         <input type="text" placeholder={placeholder} value={query} disabled={disabled}
           onFocus={() => setOpen(true)}
           onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
@@ -118,7 +125,27 @@ const DueReportPage: React.FC = () => {
   const [grid, setGrid] = useState<CustomerDueGrid | null>(null);
   const [loadingGrid, setLoadingGrid] = useState(false);
 
+  // ── the "everyone with a due" list — shown by default, before any
+  // customer is picked (item: "initially show every payment due"). ───────
+  const [dueRows, setDueRows] = useState<DueListRow[]>([]);
+  const [loadingDueList, setLoadingDueList] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
+
   useEffect(() => { dispatch(setPageTitle('Payment Dues')); }, [dispatch]);
+
+  const fetchDueRows = useCallback(async () => {
+    setLoadingDueList(true);
+    try {
+      const res = await fetchDueList();
+      setDueRows(res.rows ?? []);
+    } catch {
+      toast.error('Failed to load payment dues.');
+    } finally {
+      setLoadingDueList(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchDueRows(); }, [fetchDueRows]);
 
   useEffect(() => {
     (async () => {
@@ -135,6 +162,7 @@ const DueReportPage: React.FC = () => {
     })();
   }, []);
 
+  const customersById = useMemo(() => new Map(customers.map((c) => [String(c.id), c])), [customers]);
   const customerOptions = useMemo(
     () => customers.map((c) => `${c.customer_name}${c.customer_code ? ` (${c.customer_code})` : ''}`),
     [customers]
@@ -145,6 +173,17 @@ const DueReportPage: React.FC = () => {
     setCustomerSearch(v);
     const exact = customers.find((c) => `${c.customer_name}${c.customer_code ? ` (${c.customer_code})` : ''}` === v);
     setSelectedCustomerId(exact ? exact.id : null);
+  };
+
+  const viewSchedule = (row: DueListRow) => {
+    const c = customersById.get(String(row.customer_id));
+    setCustomerSearch(c ? `${c.customer_name}${c.customer_code ? ` (${c.customer_code})` : ''}` : row.customer_name);
+    setSelectedCustomerId(String(row.customer_id));
+  };
+
+  const backToAllDues = () => {
+    setSelectedCustomerId(null);
+    setCustomerSearch('');
   };
 
   const fetchGrid = useCallback(async () => {
@@ -162,6 +201,66 @@ const DueReportPage: React.FC = () => {
   }, [selectedCustomerId]);
 
   useEffect(() => { fetchGrid(); }, [fetchGrid]);
+
+  const handleRefresh = () => {
+    fetchDueRows();
+    if (selectedCustomerId) fetchGrid();
+  };
+
+  // Customer Name narrows the "everyone with a due" list by a plain
+  // substring match — no need to pick an exact customer just to filter.
+  const filteredDueRows = useMemo(() => {
+    const q = customerSearch.trim().toLowerCase();
+    if (!q) return dueRows;
+    return dueRows.filter((r) => r.customer_name.toLowerCase().includes(q));
+  }, [dueRows, customerSearch]);
+
+  const totalDueAmount = useMemo(() => dueRows.reduce((s, r) => s + r.amount_due, 0), [dueRows]);
+
+  // ── Client-side pagination over the "everyone with a due" list — the
+  // backend deliberately returns the full list unpaginated (see this
+  // page's header comment), so paging happens here. Default page size 10,
+  // reset to page 1 whenever the name filter narrows the list. ───────────
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  useEffect(() => { setPage(1); }, [customerSearch]);
+  const totalPages = Math.max(1, Math.ceil(filteredDueRows.length / limit));
+  const safePage = Math.min(page, totalPages);
+  const from = filteredDueRows.length === 0 ? 0 : (safePage - 1) * limit + 1;
+  const to = Math.min(safePage * limit, filteredDueRows.length);
+  const pagedDueRows = useMemo(() => filteredDueRows.slice((safePage - 1) * limit, safePage * limit), [filteredDueRows, safePage, limit]);
+  const pageBtns = useCallback(() => {
+    const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
+    const end = Math.min(totalPages, start + 4);
+    const arr: number[] = [];
+    for (let i = start; i <= end; i++) arr.push(i);
+    return arr;
+  }, [safePage, totalPages]);
+
+  const handleExportCsv = () => {
+    setExportingCsv(true);
+    try {
+      if (filteredDueRows.length === 0) {
+        toast.error('No dues to export.');
+        return;
+      }
+      const header = ['Customer Name', 'Mobile', 'Building', 'Total Due (₹)'];
+      const rows = filteredDueRows.map((r) => {
+        const c = customersById.get(String(r.customer_id));
+        return [r.customer_name, c?.mobile_number || '', c?.building_name || '', r.amount_due];
+      });
+      const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `payment_dues_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportingCsv(false);
+    }
+  };
 
   // Header counts — reactive to the currently-displayed grid, not a
   // separate global tally (item 15's "header counts reactive to grid
@@ -264,6 +363,7 @@ const DueReportPage: React.FC = () => {
       toast.success(`${res.message}${res.receiptNumber ? ` — Receipt #${res.receiptNumber}` : ''}`);
       setAddPaymentOpen(false);
       fetchGrid();
+      fetchDueRows();
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to record payment.');
     } finally {
@@ -273,26 +373,96 @@ const DueReportPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-5">
         <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
           <MdPayments size={22} style={{ color: '#4f46e5' }} />
         </div>
         <div>
           <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Payment Dues</h1>
-          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Pick a customer to see their full installment schedule, color-coded by due status</p>
+          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Every customer with an outstanding due — search a name to narrow the list, or pick one for their full installment schedule</p>
         </div>
       </div>
 
-      <div className="rounded-2xl mb-5 p-5" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>Customer</label>
-        <div style={{ maxWidth: 420 }}>
-          <SearchableSelect t={t} placeholder="Select or type customer name" options={customerOptions} value={customerSearch} onChange={handleCustomerSearchChange} />
+      {/* ── Stat boxes — always at the top of the page, independent of any
+          search/selection (item: "boxes always on top"). ─────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        <StatCard label="Customers With Dues" value={dueRows.length} icon={MdGroups} color="#7c3aed" bg="" loading={loadingDueList}
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        <StatCard label="Total Amount Due" value={rupee(totalDueAmount)} icon={MdAccountBalanceWallet} color="#dc2626" bg="" loading={loadingDueList}
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        <StatCard label="Total Customers" value={customers.length} icon={MdPayments} color="#16a34a" bg="" loading={false}
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+      </div>
+
+      {/* ── Toolbar — Search, Export CSV, Refresh all in one row. ────────── */}
+      <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="flex flex-wrap items-center gap-3">
+          <div style={{ flex: '1 1 200px', maxWidth: 320 }}>
+            <SearchableSelect t={t} placeholder="Search or select customer name" options={customerOptions} value={customerSearch} onChange={handleCustomerSearchChange} />
+          </div>
+          <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
+            <button type="button" onClick={handleExportCsv} disabled={exportingCsv || (!selectedCustomerId && filteredDueRows.length === 0)}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+              <MdDownload size={16} /> {exportingCsv ? 'Exporting…' : 'Export CSV'}
+            </button>
+            <button type="button" onClick={handleRefresh} title="Refresh"
+              className="flex items-center justify-center rounded-xl"
+              style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
+              <MdRefresh size={18} />
+            </button>
+          </div>
         </div>
       </div>
 
       {!selectedCustomerId ? (
-        <div className="rounded-2xl p-10 text-center" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textSecondary, fontSize: 13 }}>
-          Select a customer above to view their payment dues.
+        <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+              <thead>
+                <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
+                  {['Customer Name', 'Mobile', 'Building', 'Total Due', 'Action'].map((h) => (
+                    <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {loadingDueList ? (
+                  <tr><td colSpan={5} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
+                ) : filteredDueRows.length === 0 ? (
+                  <tr><td colSpan={5} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
+                    {dueRows.length === 0 ? 'No customers currently have a payment due.' : 'No customer matches that name.'}
+                  </td></tr>
+                ) : (
+                  pagedDueRows.map((r) => {
+                    const c = customersById.get(String(r.customer_id));
+                    return (
+                      <tr key={r.customer_id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                        <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.customer_name}</td>
+                        <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{c?.mobile_number || '—'}</td>
+                        <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{c?.building_name || '—'}</td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full font-semibold" style={{ background: '#fee2e2', color: '#dc2626', fontSize: 11.5, whiteSpace: 'nowrap' }}>
+                            {rupee(r.amount_due)}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <button type="button" onClick={() => viewSchedule(r)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: '#7c3aed', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            <MdVisibility size={13} /> View Schedule
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          {filteredDueRows.length > 0 && (
+            <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={filteredDueRows.length} pageBtns={pageBtns} />
+          )}
         </div>
       ) : (
         <>
@@ -309,22 +479,22 @@ const DueReportPage: React.FC = () => {
 
           <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
             <div className="flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: t.textPrimary }}>{grid?.customer_name || 'Customer'}</div>
-                <div style={{ fontSize: 11, color: t.textSecondary }}>{grid?.company_name || 'No company set'}</div>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <button type="button" onClick={() => openAddPayment()}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-                  style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  <MdAdd size={18} /> Add Payment
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={backToAllDues} title="Back to all dues"
+                  className="flex items-center justify-center rounded-xl flex-shrink-0"
+                  style={{ width: 36, height: 36, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
+                  <MdArrowBack size={17} />
                 </button>
-                <button type="button" onClick={fetchGrid} title="Refresh"
-                  className="flex items-center justify-center rounded-xl"
-                  style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
-                  <MdRefresh size={18} />
-                </button>
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: t.textPrimary }}>{grid?.customer_name || 'Customer'}</div>
+                  <div style={{ fontSize: 11, color: t.textSecondary }}>{grid?.company_name || 'No company set'}</div>
+                </div>
               </div>
+              <button type="button" onClick={() => openAddPayment()}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+                style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <MdAdd size={18} /> Add Payment
+              </button>
             </div>
 
             <div style={{ overflowX: 'auto' }}>

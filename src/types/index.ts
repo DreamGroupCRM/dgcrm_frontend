@@ -640,6 +640,8 @@ export interface CustomerListSummary {
   active_customers  : number;
   inactive_customers : number;
   new_this_month       : number;
+  assigned_customers   : number;
+  unassigned_customers : number;
 }
 
 export interface CustomerListFilters {
@@ -716,6 +718,7 @@ export interface AssignCustomersResponse {
 export interface CustomerPaymentRecord {
   id           : string;
   paid_on      : string;
+  inst_date?   : string;
   amount       : number;
   mode?        : string;
   reference_no?: string;
@@ -932,6 +935,21 @@ export interface DueReportRow {
 export interface DueReportResponse {
   success: boolean;
   rows   : DueReportRow[];
+  total  : number;
+}
+
+// Every customer who currently owes something, with their total due
+// amount — powers the Payment Dues page's default "show everyone with a
+// due" list (shown before any customer is searched/selected).
+export interface DueListRow {
+  customer_id  : number;
+  customer_name: string;
+  amount_due   : number;
+}
+
+export interface DueListResponse {
+  success: boolean;
+  rows   : DueListRow[];
   total  : number;
 }
 

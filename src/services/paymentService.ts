@@ -28,6 +28,7 @@ import {
   CollectPaymentPayload,
   CollectPaymentResponse,
   DueReportResponse,
+  DueListResponse,
   CustomerDueResponse,
   CustomerRemainingResponse,
   PaymentReceiptResponse,
@@ -151,6 +152,15 @@ export const fetchDueReport = async (): Promise<DueReportResponse> => {
   return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
 };
 
+// ── Every customer who currently owes something — powers the Payment
+// Dues page's default "show everyone with a due" view, before any
+// customer is searched/selected. ────────────────────────────────────────
+/** GET /api/payments/due-list */
+export const fetchDueList = async (): Promise<DueListResponse> => {
+  const res = await axiosInstance.get('/payments/due-list');
+  return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
+};
+
 // ── One customer's due amount, from the EMI schedule (independent of the
 // partial-payment ledger) ────────────────────────────────────────────────
 /** GET /api/payments/customer/:customerId/due */
@@ -182,6 +192,27 @@ export const fetchPaymentReceipt = async (transactionId: string | number): Promi
       total_emis: d.total_emis,
       emi_number: d.emi_number,
     },
+  };
+};
+
+// ── Monthly receipt — every approved payment one customer made in a given
+// calendar month, combined into one receipt (as opposed to
+// fetchPaymentReceipt above, which is always exactly one transaction). ──
+export interface MonthlyReceiptData {
+  customer: PaymentReceiptCustomer;
+  month: string;
+  transactions: PaymentListRow[];
+  total_amount: number;
+}
+/** GET /api/payments/customer/:customerId/monthly-receipt?month=YYYY-MM */
+export const fetchMonthlyReceipt = async (customerId: string | number, month: string): Promise<MonthlyReceiptData> => {
+  const res = await axiosInstance.get(`/payments/customer/${customerId}/monthly-receipt`, { params: { month } });
+  const d = res.data.data;
+  return {
+    customer: mapReceiptCustomer(d.customer as BackendReceiptCustomer),
+    month: d.month,
+    transactions: d.transactions ?? [],
+    total_amount: d.total_amount ?? 0,
   };
 };
 
@@ -268,9 +299,11 @@ export const fetchDefaultAmount = async (customerId: string | number, paymentFor
 export const paymentService = {
   collect          : collectPayment,
   dueReport        : fetchDueReport,
+  dueList          : fetchDueList,
   customerDue      : fetchCustomerDue,
   customerRemaining: fetchCustomerRemaining,
   receipt          : fetchPaymentReceipt,
+  monthlyReceipt   : fetchMonthlyReceipt,
   customerDueGrid  : fetchCustomerDueGrid,
   list             : fetchPaymentList,
   approve          : approvePayment,

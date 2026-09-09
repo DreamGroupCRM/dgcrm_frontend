@@ -35,16 +35,32 @@ interface StatCardProps {
   // summary cards ask for 18px specifically) — undefined everywhere else,
   // so every other caller keeps the CSS class's default label size.
   labelFontSize?: number;
+  // Makes the card double as a clickable filter (Customer List's All/
+  // Assigned/Un Assigned boxes) — undefined everywhere else, so every
+  // other caller stays a plain non-interactive summary card. `active`
+  // draws a highlighted ring so it's obvious at a glance which filter is
+  // currently applied.
+  onClick?: () => void;
+  active?: boolean;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
-  label, value, icon: Icon, color, surfaceBorder, loading, compact, labelFontSize,
+  label, value, icon: Icon, color, surfaceBorder, loading, compact, labelFontSize, onClick, active,
 }) => {
   const { tintGradient } = useAppearanceTokens();
   return (
   <div
     className={`master-stat-card master-stat-card-gradient${compact ? ' master-stat-card-compact' : ''}`}
-    style={{ background: getStatGradient(color, tintGradient), border: `1px solid ${surfaceBorder}` }}
+    style={{
+      background: getStatGradient(color, tintGradient),
+      border: `1px solid ${surfaceBorder}`,
+      ...(onClick ? { cursor: 'pointer' } : {}),
+      ...(active ? { boxShadow: '0 0 0 2.5px rgba(255,255,255,0.9), 0 0 0 4.5px rgba(0,0,0,0.15)' } : {}),
+    }}
+    onClick={onClick}
+    role={onClick ? 'button' : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
   >
     <div className="master-stat-icon" style={{ background: 'rgba(255,255,255,0.22)' }}>
       <Icon size={compact ? 15 : 19} style={{ color: '#fff' }} />

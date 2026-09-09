@@ -21,6 +21,11 @@ import {
 import { FetchDepartmentList } from '../../../../services/departmentService';
 import { fetchDesignationList } from '../../../../services/designationService';
 import { fetchMappingMatrix } from '../../../../services/moduleActionService';
+import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
+import { DobPicker } from '../../../../components/common/DobPicker';
+import { TimePicker } from '../../../../components/common/TimePicker';
+import { PhoneInput } from '../../../../components/common/PhoneInput';
+import { AccordionSection } from '../../../../components/common/Accordion';
 import './EmployeeDetails.css';
 
 // Employee Status badge colors for View mode — same palette as
@@ -34,16 +39,10 @@ const VIEW_STATUS_STYLES: Record<string, { bg: string; color: string; label: str
 };
 
 type Mode = 'add' | 'edit' | 'view';
+type SectionKey = 'personal' | 'office' | 'bank' | 'assign';
 interface Props { mode: Mode; }
 type Theme = AppTheme;
 
-// Same emoji mapping CustomerDetailsCrudPage.tsx's PhoneField uses — "+1" is
-// shared by US/Canada; the US flag is the conventional default for that
-// dial code.
-const COUNTRY_CODE_FLAGS: Record<string, string> = {
-  '+91': '🇮🇳', '+1': '🇺🇸', '+44': '🇬🇧', '+61': '🇦🇺', '+971': '🇦🇪',
-};
-const COUNTRY_CODES = ['+91', '+1', '+44', '+61', '+971'];
 const WORKING_HOURS_OPTIONS = ['8', '9', '10'];
 const HOLIDAYS_OPTIONS = ['Sunday Only', 'Alternate Saturdays + Sunday', 'All Saturdays + Sunday', 'Custom / As per Company Policy'];
 const ACCOUNT_TYPE_OPTIONS = ['Savings', 'Current'];
@@ -103,6 +102,18 @@ const formatAmountDisplay = (v: string): string => {
   return Number.isFinite(n) ? n.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : v;
 };
 
+// K/L/Cr shorthand shown at the end of the Salary box — same
+// compactINR pattern as Customize Scheme's SliderField and Customer
+// CRUD's AmountField, reused here rather than a second implementation.
+const trimDecimal = (x: number): string => x.toFixed(2).replace(/\.?0+$/, '');
+const compactINR = (v: string): string => {
+  const n = Math.max(0, Number(v) || 0);
+  if (n >= 10000000) return `${trimDecimal(n / 10000000)} Cr`;
+  if (n >= 100000) return `${trimDecimal(n / 100000)} L`;
+  if (n >= 1000) return `${trimDecimal(n / 1000)} K`;
+  return '';
+};
+
 // ── Helper components — ALL defined at module scope (outside the page
 // component) rather than inside it. This is the fix for the "cursor
 // disappears after one keystroke" bug: when a component is declared
@@ -135,31 +146,11 @@ const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; 
   </div>
 );
 
-const Field: React.FC<{ t: Theme; label: string; required?: boolean; children: React.ReactNode; className?: string }> = ({ t, label, required, children, className }) => (
-  <div className={className}>
+const Field: React.FC<{ t: Theme; label: string; required?: boolean; children: React.ReactNode; className?: string; fieldRef?: React.Ref<HTMLDivElement> }> = ({ t, label, required, children, className, fieldRef }) => (
+  <div className={className} ref={fieldRef}>
     <label className="emp-label">{label}{required && <span className="emp-required"> *</span>}</label>
     {children}
   </div>
-);
-
-const PhoneField: React.FC<{
-  t: Theme; isView: boolean;
-  label: string; required?: boolean;
-  code: string; number: string;
-  onCode: (v: string) => void; onNumber: (v: string) => void;
-}> = ({ t, isView, label, required, code, number, onCode, onNumber }) => (
-  <Field t={t} label={label} required={required}>
-    <div className="flex gap-2">
-      <select value={code} disabled={isView} onChange={(e) => onCode(e.target.value)} className={fieldClassName(isView)} style={{ width: 88, cursor: isView ? 'default' : 'pointer' }}>
-        {COUNTRY_CODES.map((c) => <option key={c} value={c}>{COUNTRY_CODE_FLAGS[c]} {c}</option>)}
-      </select>
-      <input
-        type="tel" placeholder="Enter mobile number" value={number} readOnly={isView} disabled={isView}
-        onChange={(e) => onNumber(e.target.value.replace(/[^\d]/g, ''))}
-        className={fieldClassName(isView)}
-      />
-    </div>
-  </Field>
 );
 
 const FileUploadBox: React.FC<{
@@ -167,11 +158,12 @@ const FileUploadBox: React.FC<{
   label: string; hint: string; accept: string; required?: boolean;
   file: File | null | undefined; existingUrl?: string | null;
   onChange: (f: File | null) => void;
-}> = ({ t, isView, label, hint, accept, required, file, existingUrl, onChange }) => {
+  fieldRef?: React.Ref<HTMLDivElement>;
+}> = ({ t, isView, label, hint, accept, required, file, existingUrl, onChange, fieldRef }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const displayName = file?.name || (existingUrl ? String(existingUrl).split('/').pop() : null);
   return (
-    <Field t={t} label={label} required={required}>
+    <Field t={t} label={label} required={required} fieldRef={fieldRef}>
       <button
         type="button"
         disabled={isView}
@@ -213,8 +205,9 @@ const CheckboxGroup: React.FC<{
   // 'chip' — Assign Visible Employees: one pill per employee, checkbox
   // first, wrapping to a new line whenever the row runs out of width.
   variant?: 'plain' | 'chip';
-}> = ({ t, isView, label, required, options, selected, onToggle, emptyHint, loading, variant = 'plain' }) => (
-  <div className="mb-5">
+  containerRef?: React.Ref<HTMLDivElement>;
+}> = ({ t, isView, label, required, options, selected, onToggle, emptyHint, loading, variant = 'plain', containerRef }) => (
+  <div className="mb-5" ref={containerRef}>
     <label className="emp-label">{label}{required && <span className="emp-required"> *</span>}</label>
     {loading ? (
       <p className="emp-hint-text">Loading...</p>
@@ -246,6 +239,73 @@ const CheckboxGroup: React.FC<{
   </div>
 );
 
+// Designations grouped by their own Department, one row per department —
+// "Sales" -> "Sales Executive | Sales Head | Sales Manager", "Marketing" ->
+// "Marketing Executive | Marketing Head" — instead of a flat list where
+// every single designation repeated its department name in its own label
+// ("Sales Executive | Sales", "Sales Head | Sales", ...). Each name stays
+// individually checkable; the " | " between them is purely a visual
+// separator matching the requested layout, not a joined static string.
+// A designation with no department of its own (global) falls into its own
+// "Other" group at the end.
+const GroupedDesignationChecklist: React.FC<{
+  t: Theme; isView: boolean; required?: boolean;
+  options: DesignationOption[]; departmentOptions: IdOption[];
+  selected: number[]; onToggle: (v: number) => void; loading?: boolean; emptyHint?: string;
+  containerRef?: React.Ref<HTMLDivElement>;
+}> = ({ t, isView, required, options, departmentOptions, selected, onToggle, loading, emptyHint, containerRef }) => {
+  const groups = useMemo(() => {
+    const byDept = new Map<number | null, DesignationOption[]>();
+    options.forEach((opt) => {
+      const key = opt.departmentId;
+      const arr = byDept.get(key) || [];
+      arr.push(opt);
+      byDept.set(key, arr);
+    });
+    const named = Array.from(byDept.entries())
+      .filter(([deptId]) => deptId != null)
+      .map(([deptId, opts]) => ({
+        key: String(deptId),
+        heading: departmentOptions.find((d) => d.value === deptId)?.label || 'Department',
+        opts,
+      }));
+    const other = byDept.get(null);
+    return other?.length ? [...named, { key: 'other', heading: 'Other', opts: other }] : named;
+  }, [options, departmentOptions]);
+
+  return (
+    <div className="mb-5" ref={containerRef}>
+      <label className="emp-label">Assign Designations{required && <span className="emp-required"> *</span>}</label>
+      {loading ? (
+        <p className="emp-hint-text">Loading...</p>
+      ) : groups.length === 0 ? (
+        <p className="emp-hint-text">{emptyHint}</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {groups.map((group) => (
+            <div key={group.key}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>
+                {group.heading}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2">
+                {group.opts.map((opt, i) => (
+                  <React.Fragment key={opt.value}>
+                    {i > 0 && <span style={{ color: t.divider }}>|</span>}
+                    <label className="flex items-center gap-1.5" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+                      <input type="checkbox" checked={selected.includes(opt.value)} disabled={isView} onChange={() => onToggle(opt.value)} />
+                      {opt.label}
+                    </label>
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Unified shape both the Add-mode source (fetchMappingMatrix — flat
 // modules/actions/mappings, nothing pre-checked) and the Edit/View-mode
 // source (fetchEmployeePermissions — already grouped by module, with an
@@ -276,12 +336,17 @@ const orderActionColumns = (labelByCode: Map<string, string>): { code: string; l
 const ModuleActionGrid: React.FC<{
   t: Theme; isView: boolean; grid: ModuleActionGridData;
   selected: number[]; onToggle: (moduleActionId: number) => void; loading?: boolean;
-}> = ({ t, isView, grid, selected, onToggle, loading }) => {
+  // Final "Check All" column (item 8) — toggles every valid checkbox in
+  // that row at once; its own checked state stays in sync with the row's
+  // individual checkboxes both ways (checking every box manually also
+  // shows Check All as checked, and unchecking any one of them unchecks it).
+  onToggleRow?: (moduleActionIds: number[], checked: boolean) => void;
+}> = ({ t, isView, grid, selected, onToggle, loading, onToggleRow }) => {
   if (loading) return <p className="emp-hint-text">Loading...</p>;
   if (grid.modules.length === 0) return <p className="emp-hint-text">No modules available.</p>;
   return (
     <div className="emp-grid-scroll" style={{ border: `1px solid ${t.surfaceBorder}`, borderRadius: 12 }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 620 }}>
         <thead>
           <tr>
             <th className="emp-grid-th-gradient">
@@ -292,37 +357,57 @@ const ModuleActionGrid: React.FC<{
                 {a.label}
               </th>
             ))}
+            <th className="emp-grid-th-gradient emp-grid-th-gradient-center">Check All</th>
           </tr>
         </thead>
         <tbody>
-          {grid.modules.map((m) => (
-            <tr key={m.id} className="emp-grid-tr">
-              <td className="emp-grid-td">
-                {m.name}
-              </td>
-              {grid.actionColumns.map((a) => {
-                const moduleActionId = grid.cells[`${m.id}:${a.code}`];
-                const checked = moduleActionId != null && selected.includes(moduleActionId);
-                return (
-                  <td key={a.code} className={`emp-grid-td-center${checked ? ' emp-grid-td-checked' : ''}`}>
-                    {moduleActionId != null ? (
-                      isView ? (
-                        checked ? <MdCheckCircle size={15} color="#16a34a" /> : <span style={{ color: t.divider }}>–</span>
+          {grid.modules.map((m) => {
+            const rowIds = grid.actionColumns
+              .map((a) => grid.cells[`${m.id}:${a.code}`])
+              .filter((id): id is number => id != null);
+            const rowAllChecked = rowIds.length > 0 && rowIds.every((id) => selected.includes(id));
+            return (
+              <tr key={m.id} className="emp-grid-tr">
+                <td className="emp-grid-td">
+                  {m.name}
+                </td>
+                {grid.actionColumns.map((a) => {
+                  const moduleActionId = grid.cells[`${m.id}:${a.code}`];
+                  const checked = moduleActionId != null && selected.includes(moduleActionId);
+                  return (
+                    <td key={a.code} className={`emp-grid-td-center${checked ? ' emp-grid-td-checked' : ''}`}>
+                      {moduleActionId != null ? (
+                        isView ? (
+                          checked ? <MdCheckCircle size={15} color="#16a34a" /> : <span style={{ color: t.divider }}>–</span>
+                        ) : (
+                          <input
+                            type="checkbox" checked={checked} disabled={isView}
+                            style={{ cursor: isView ? 'default' : 'pointer' }}
+                            onChange={() => onToggle(moduleActionId)}
+                          />
+                        )
                       ) : (
-                        <input
-                          type="checkbox" checked={checked} disabled={isView}
-                          style={{ cursor: isView ? 'default' : 'pointer' }}
-                          onChange={() => onToggle(moduleActionId)}
-                        />
-                      )
-                    ) : (
-                      <span style={{ color: t.divider }}>—</span>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+                        <span style={{ color: t.divider }}>—</span>
+                      )}
+                    </td>
+                  );
+                })}
+                <td className={`emp-grid-td-center${rowAllChecked ? ' emp-grid-td-checked' : ''}`}>
+                  {rowIds.length === 0 ? (
+                    <span style={{ color: t.divider }}>—</span>
+                  ) : isView ? (
+                    rowAllChecked ? <MdCheckCircle size={15} color="#16a34a" /> : <span style={{ color: t.divider }}>–</span>
+                  ) : (
+                    <input
+                      type="checkbox" checked={rowAllChecked}
+                      style={{ cursor: 'pointer' }}
+                      onChange={() => onToggleRow?.(rowIds, !rowAllChecked)}
+                    />
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -403,6 +488,15 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const isView = mode === 'view';
 
   const [fetching, setFetching] = useState(mode !== 'add');
+
+  // Accordion (item 2.1) — each CRUD section can independently collapse;
+  // all start open since every section holds required fields on a fresh
+  // form. sectionRefs/fieldRefs back item 2.2's auto-expand-and-scroll-to-
+  // error behavior (see revealInvalidField below).
+  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({ personal: true, office: true, bank: true, assign: true });
+  const sectionRefs = useRef<Record<SectionKey, HTMLDivElement | null>>({ personal: null, office: null, bank: null, assign: null });
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+  const setFieldRef = (key: string) => (el: HTMLElement | null) => { fieldRefs.current[key] = el; };
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState<EmployeeFormValues>(emptyForm);
@@ -435,49 +529,60 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const setFile = (key: keyof EmployeeFileValues) => (f: File | null) =>
     setFiles((prev) => ({ ...prev, [key]: f }));
 
-  // ── Scroll-wheel stepping for Check In/Check Out (time) and Date of Birth
-  // (date) — native browser scroll-to-adjust on these input types is wildly
-  // inconsistent: on a trackpad it fires many wheel events per physical
-  // gesture, so time fields flip through many minutes on one scroll (too
-  // fast); the date field's native step, by contrast, reads as sluggish (too
-  // slow). Both are intercepted here and driven by one deliberate step per
-  // throttle window instead — a longer window for time (normal/expected
-  // speed), a shorter one for date (snappier than the native default).
-  const timeWheelThrottleRef = useRef(0);
-  const dateWheelThrottleRef = useRef(0);
+  // ── OCR auto-fill from Aadhar/PAN photo — same client-side Tesseract.js
+  // approach as Customer CRUD's handleAadharPhotoChange/handlePancardPhotoChange
+  // (see CustomerDetailsCrudPage.tsx), reused here rather than a second OCR
+  // implementation. Only pre-fills the number field, which stays fully
+  // editable, and never overwrites a value the user already typed in.
+  const [ocrRunning, setOcrRunning] = useState<'aadhar' | 'pancard' | null>(null);
 
-  const stepTime = (value: string, deltaSign: number): string => {
-    const [hStr, mStr] = (value || '00:00').split(':');
-    let h = Number(hStr) || 0;
-    let m = (Number(mStr) || 0) + deltaSign;
-    if (m < 0) { m = 59; h = (h + 23) % 24; }
-    if (m > 59) { m = 0; h = (h + 1) % 24; }
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  const handleAadharCardChange = (f: File | null) => {
+    setFile('aadhar_card')(f);
+    if (!(f instanceof File)) return;
+    setOcrRunning('aadhar');
+    runOcr(f).then((text) => {
+      const number = extractAadharNumber(text);
+      if (number) { set('aadhar_number', number); toast.success('Aadhar number auto-filled from the photo — please verify it.'); }
+      else toast.info('Could not read an Aadhar number from that photo — please enter it manually.');
+    }).finally(() => setOcrRunning(null));
   };
 
-  const handleTimeWheel = (key: 'check_in_time' | 'check_out_time') => (e: React.WheelEvent<HTMLInputElement>) => {
-    if (isView) return;
-    e.preventDefault();
-    const now = Date.now();
-    if (now - timeWheelThrottleRef.current < 120) return;
-    timeWheelThrottleRef.current = now;
-    set(key, stepTime(form[key], e.deltaY > 0 ? -1 : 1));
+  const handlePanCardChange = (f: File | null) => {
+    setFile('pan_card')(f);
+    if (!(f instanceof File)) return;
+    setOcrRunning('pancard');
+    runOcr(f).then((text) => {
+      const number = extractPanNumber(text);
+      if (number) { set('pan_number', number); toast.success('PAN number auto-filled from the photo — please verify it.'); }
+      else toast.info('Could not read a PAN number from that photo — please enter it manually.');
+    }).finally(() => setOcrRunning(null));
   };
 
-  const stepDate = (value: string, deltaSign: number): string => {
-    const base = value ? new Date(`${value}T00:00:00`) : new Date();
-    if (Number.isNaN(base.getTime())) return value;
-    base.setDate(base.getDate() + deltaSign);
-    return base.toISOString().slice(0, 10);
+  // Item 13 — Check In + Working Hours auto-calculates Check Out
+  // ("09:30 AM" + "8 Hours" -> "17:30"). Runs whenever either input
+  // changes; the field stays a normal editable time input afterward, so
+  // the computed value is a starting point, not a lock.
+  const addHoursToTime = (time: string, hours: number): string => {
+    const [hStr, mStr] = (time || '00:00').split(':');
+    const totalMinutes = ((Number(hStr) || 0) * 60 + (Number(mStr) || 0) + hours * 60) % (24 * 60);
+    const normalized = (totalMinutes + 24 * 60) % (24 * 60);
+    return `${String(Math.floor(normalized / 60)).padStart(2, '0')}:${String(normalized % 60).padStart(2, '0')}`;
   };
 
-  const handleDobWheel = (e: React.WheelEvent<HTMLInputElement>) => {
-    if (isView) return;
-    e.preventDefault();
-    const now = Date.now();
-    if (now - dateWheelThrottleRef.current < 40) return;
-    dateWheelThrottleRef.current = now;
-    set('date_of_birth', stepDate(form.date_of_birth, e.deltaY > 0 ? -1 : 1));
+  const setCheckInAndAutoCheckOut = (checkIn: string, workingHours: string) => {
+    setForm((prev) => ({
+      ...prev,
+      check_in_time: checkIn,
+      check_out_time: checkIn && workingHours ? addHoursToTime(checkIn, Number(workingHours)) : prev.check_out_time,
+    }));
+  };
+
+  const setWorkingHoursAndAutoCheckOut = (workingHours: string) => {
+    setForm((prev) => ({
+      ...prev,
+      working_hours: workingHours,
+      check_out_time: prev.check_in_time && workingHours ? addHoursToTime(prev.check_in_time, Number(workingHours)) : prev.check_out_time,
+    }));
   };
 
   // ── employee code preview (Add) or actual code (Edit/View) ────────────
@@ -506,11 +611,13 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       try {
         const res = await fetchDesignationList(1, 1000);
         if (res.success) {
-          // Pipe-separated label ("Designation Name | Department Name") so
-          // it's clear which department a designation belongs to when
-          // several departments' designations are shown together.
+          // Plain designation name — which department it belongs to is now
+          // shown once, as that department's own group heading in the
+          // checklist below, instead of being repeated inside every single
+          // designation's own label ("Sales Executive | Sales", "Sales
+          // Head | Sales", ...).
           setDesignationOptions((res.rows || []).map((d) => ({
-            value: Number(d.id), label: d.department ? `${d.name} | ${d.department}` : d.name,
+            value: Number(d.id), label: d.name,
             departmentId: d.department_id != null && d.department_id !== '' ? Number(d.department_id) : null,
           })));
         }
@@ -675,6 +782,16 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     });
   };
 
+  // Assign Actions & Modules — Check All column (item 8): applies to every
+  // valid checkbox in one module's row at once.
+  const toggleModuleActionRow = (moduleActionIds: number[], checked: boolean) => {
+    setForm((prev) => {
+      const next = new Set(prev.module_action_ids);
+      moduleActionIds.forEach((id) => (checked ? next.add(id) : next.delete(id)));
+      return { ...prev, module_action_ids: Array.from(next) };
+    });
+  };
+
   // Assign Designations is scoped to whichever Departments are checked above
   // it — e.g. checking "Sales" only reveals Sales's designations; unchecking
   // it hides them again. A designation with no department_id of its own
@@ -712,32 +829,35 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   };
 
   // ── validation ────────────────────────────────────────────────────────
-  const validate = (): string | null => {
-    if (!form.first_name.trim()) return 'Please enter the First Name.';
-    if (!form.last_name.trim()) return 'Please enter the Last Name.';
-    if (!form.date_of_birth) return 'Please enter the Date of Birth.';
-    if (!form.email.trim()) return 'Please enter the Email address.';
-    if (!form.mobile_number.trim()) return 'Please enter the Mobile Number.';
-    if (!form.address.trim()) return 'Please enter the Address.';
-    if (!form.aadhar_number.trim()) return 'Please enter the Aadhar Number.';
-    if (!files.aadhar_card && !existingUrls.aadhar_card) return 'Please upload the Aadhar Card.';
-    if (!form.pan_number.trim()) return 'Please enter the PAN Number.';
-    if (!files.pan_card && !existingUrls.pan_card) return 'Please upload the PAN Card.';
-    if (!files.profile_photo && !existingUrls.profile_photo) return 'Please upload the Profile Photo.';
-    if (!form.joining_date) return 'Please enter the Employee Joining Date.';
-    if (!form.working_hours) return 'Please select Working Hours.';
-    if (!form.check_in_time || !form.check_out_time) return 'Please enter both Check In and Check Out time.';
-    if (!form.holidays) return 'Please select Holidays.';
-    if (!form.salary.trim()) return 'Please enter the Salary.';
-    if (!form.account_holder_name.trim()) return 'Please enter the Account Holder Name.';
-    if (!form.bank_name.trim()) return 'Please enter the Bank Name.';
-    if (!form.bank_account_number.trim()) return 'Please enter the Bank Account Number.';
-    if (!form.account_type) return 'Please select the Account Type.';
-    if (!form.ifsc_code.trim()) return 'Please enter the IFSC Code.';
-    if (!form.branch.trim()) return 'Please enter the Branch.';
-    if (!files.passbook_photo && !existingUrls.passbook_photo) return 'Please upload the Bank Passbook Photo.';
-    if (form.department_ids.length === 0) return 'Please assign at least one Department.';
-    if (form.designation_ids.length === 0) return 'Please assign at least one Designation.';
+  // Each check names the accordion section (item 2.1) and field it belongs
+  // to, so a failed submit (item 2.2) can auto-expand that section, then
+  // scroll to and focus/highlight that exact field — not just show a
+  // generic toast the user has to go hunting for.
+  const validationChecks: { field: string; section: SectionKey; message: string; failed: () => boolean }[] = [
+    { field: 'first_name', section: 'personal', message: 'Please enter the First Name.', failed: () => !form.first_name.trim() },
+    { field: 'last_name', section: 'personal', message: 'Please enter the Last Name.', failed: () => !form.last_name.trim() },
+    { field: 'date_of_birth', section: 'personal', message: 'Please enter the Date of Birth.', failed: () => !form.date_of_birth },
+    { field: 'email', section: 'personal', message: 'Please enter the Email address.', failed: () => !form.email.trim() },
+    { field: 'mobile_number', section: 'personal', message: 'Please enter the Mobile Number.', failed: () => !form.mobile_number.trim() },
+    { field: 'address', section: 'personal', message: 'Please enter the Address.', failed: () => !form.address.trim() },
+    { field: 'aadhar_number', section: 'personal', message: 'Please enter the Aadhar Number.', failed: () => !form.aadhar_number.trim() },
+    { field: 'aadhar_card', section: 'personal', message: 'Please upload the Aadhar Card.', failed: () => !files.aadhar_card && !existingUrls.aadhar_card },
+    { field: 'pan_number', section: 'personal', message: 'Please enter the PAN Number.', failed: () => !form.pan_number.trim() },
+    { field: 'pan_card', section: 'personal', message: 'Please upload the PAN Card.', failed: () => !files.pan_card && !existingUrls.pan_card },
+    { field: 'profile_photo', section: 'personal', message: 'Please upload the Profile Photo.', failed: () => !files.profile_photo && !existingUrls.profile_photo },
+    { field: 'joining_date', section: 'office', message: 'Please enter the Employee Joining Date.', failed: () => !form.joining_date },
+    { field: 'working_hours', section: 'office', message: 'Please select Working Hours.', failed: () => !form.working_hours },
+    { field: 'check_in_time', section: 'office', message: 'Please enter both Check In and Check Out time.', failed: () => !form.check_in_time || !form.check_out_time },
+    { field: 'holidays', section: 'office', message: 'Please select Holidays.', failed: () => !form.holidays },
+    { field: 'salary', section: 'office', message: 'Please enter the Salary.', failed: () => !form.salary.trim() },
+    { field: 'account_holder_name', section: 'bank', message: 'Please enter the Account Holder Name.', failed: () => !form.account_holder_name.trim() },
+    { field: 'bank_name', section: 'bank', message: 'Please enter the Bank Name.', failed: () => !form.bank_name.trim() },
+    { field: 'bank_account_number', section: 'bank', message: 'Please enter the Bank Account Number.', failed: () => !form.bank_account_number.trim() },
+    { field: 'account_type', section: 'bank', message: 'Please select the Account Type.', failed: () => !form.account_type },
+    { field: 'ifsc_code', section: 'bank', message: 'Please enter the IFSC Code.', failed: () => !form.ifsc_code.trim() },
+    { field: 'branch', section: 'bank', message: 'Please enter the Branch.', failed: () => !form.branch.trim() },
+    { field: 'passbook_photo', section: 'bank', message: 'Please upload the Bank Passbook Photo.', failed: () => !files.passbook_photo && !existingUrls.passbook_photo },
+    { field: 'department_ids', section: 'assign', message: 'Please assign at least one Department.', failed: () => form.department_ids.length === 0 },
     // Actions/Modules is deliberately NOT required here — the backend
     // itself treats it as fully optional (employees.service.ts's
     // createEmployee/updateEmployee only assigns permissions when the
@@ -745,15 +865,29 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     // before an admin has defined any modules/actions this checklist can
     // legitimately be empty. Requiring it here used to make Employee
     // Creation impossible on a fresh install.
-    return null;
+    { field: 'designation_ids', section: 'assign', message: 'Please assign at least one Designation.', failed: () => form.designation_ids.length === 0 },
+  ];
+
+  const getFirstInvalid = () => validationChecks.find((c) => c.failed()) ?? null;
+  const validate = (): string | null => getFirstInvalid()?.message ?? null;
+  const isFormValid = getFirstInvalid() === null;
+
+  // Auto-expand the section containing the first invalid field, then
+  // scroll to and focus it once the section has actually rendered open.
+  const revealInvalidField = (field: string, section: SectionKey) => {
+    setOpenSections((prev) => ({ ...prev, [section]: true }));
+    setTimeout(() => {
+      const el = fieldRefs.current[field] ?? sectionRefs.current[section];
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el?.querySelector<HTMLElement>('input, select, button, textarea')?.focus();
+    }, 60);
   };
 
-  const isFormValid = validate() === null;
-
   const handleSubmit = async () => {
-    const error = validate();
-    if (error) {
-      toast.error(error);
+    const invalid = getFirstInvalid();
+    if (invalid) {
+      toast.error(invalid.message);
+      revealInvalidField(invalid.field, invalid.section);
       return;
     }
     setSaving(true);
@@ -865,7 +999,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
 
         {/* ── Row 1: Personal Details + Office Use Only ──────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        {/* items-start (item 12) — Office Use Only has far fewer fields than
+            Personal Details; without this the grid's default equal-height
+            stretch left a large block of empty space below its last field. */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 items-start">
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
             <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)" />
             <div className="emp-view-grid">
@@ -896,7 +1033,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
 
         {/* ── Row 2: Bank Details + Assign Action & Module ───────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 items-start">
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
             <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="var(--grad-green)" />
             <div className="emp-view-grid">
@@ -1020,12 +1157,13 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       </div>
 
       {/* ── Personal Details ─────────────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)" />
+      <AccordionSection theme={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)"
+        open={openSections.personal} onToggle={() => setOpenSections((p) => ({ ...p, personal: !p.personal }))}
+        sectionRef={(el) => (sectionRefs.current.personal = el)}>
 
         {/* Row 1 of 4 — Name */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <Field t={t} label="First Name" required>
+          <Field t={t} label="First Name" required fieldRef={setFieldRef('first_name') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter first name" value={form.first_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('first_name', e.target.value)} className={fieldClass} />
           </Field>
@@ -1033,44 +1171,53 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter middle name" value={form.middle_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('middle_name', e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Last Name" required>
+          <Field t={t} label="Last Name" required fieldRef={setFieldRef('last_name') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter last name" value={form.last_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('last_name', e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Date of Birth" required>
-            <input type="date" value={form.date_of_birth} readOnly={isView} disabled={isView}
-              onChange={(e) => set('date_of_birth', e.target.value)} onClick={openPicker} onWheel={handleDobWheel} className={fieldClass} />
+          <Field t={t} label="Date of Birth" required fieldRef={setFieldRef('date_of_birth') as React.Ref<HTMLDivElement>}>
+            <DobPicker theme={t} value={form.date_of_birth} disabled={isView} onChange={(v) => set('date_of_birth', v)} />
           </Field>
         </div>
 
         {/* Row 2 of 4 — Contact */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <Field t={t} label="Email" required>
+          <Field t={t} label="Email" required fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
             <input type="email" placeholder="Enter email address" value={form.email} readOnly={isView} disabled={isView}
               onChange={(e) => set('email', e.target.value)} className={fieldClass} />
           </Field>
-          <PhoneField t={t} isView={isView} label="Mobile Number" required code={form.mobile_country_code} number={form.mobile_number}
-            onCode={(v) => set('mobile_country_code', v)} onNumber={(v) => set('mobile_number', v)} />
-          <PhoneField t={t} isView={isView} label="Alternate Number" code={form.alternate_country_code} number={form.alternate_number}
-            onCode={(v) => set('alternate_country_code', v)} onNumber={(v) => set('alternate_number', v)} />
-          <PhoneField t={t} isView={isView} label="WhatsApp Number" code={form.whatsapp_country_code} number={form.whatsapp_number}
-            onCode={(v) => set('whatsapp_country_code', v)} onNumber={(v) => set('whatsapp_number', v)} />
+          <Field t={t} label="Mobile Number" required fieldRef={setFieldRef('mobile_number') as React.Ref<HTMLDivElement>}>
+            <PhoneInput theme={t} disabled={isView} code={form.mobile_country_code} onCodeChange={(v) => set('mobile_country_code', v)}
+              number={form.mobile_number} onNumberChange={(v) => set('mobile_number', v)} placeholder="Enter mobile number" />
+          </Field>
+          <Field t={t} label="Alternate Number">
+            <PhoneInput theme={t} disabled={isView} code={form.alternate_country_code} onCodeChange={(v) => set('alternate_country_code', v)}
+              number={form.alternate_number} onNumberChange={(v) => set('alternate_number', v)} placeholder="Enter mobile number" />
+          </Field>
+          <Field t={t} label="WhatsApp Number">
+            <PhoneInput theme={t} disabled={isView} code={form.whatsapp_country_code} onCodeChange={(v) => set('whatsapp_country_code', v)}
+              number={form.whatsapp_number} onNumberChange={(v) => set('whatsapp_number', v)} placeholder="Enter mobile number" />
+          </Field>
         </div>
 
         {/* Row 3 of 4 — ID proofs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <Field t={t} label="Aadhar Number" required>
+          <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
+            file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={handleAadharCardChange}
+            fieldRef={setFieldRef('aadhar_card') as React.Ref<HTMLDivElement>} />
+          <Field t={t} label="Aadhar Number" required fieldRef={setFieldRef('aadhar_number') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter aadhar number" value={form.aadhar_number} readOnly={isView} disabled={isView}
               onChange={(e) => set('aadhar_number', e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
-          </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
-            file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={setFile('aadhar_card')} />
-          <Field t={t} label="PAN Number" required>
-            <input type="text" placeholder="Enter PAN number" value={form.pan_number} readOnly={isView} disabled={isView}
-              onChange={(e) => set('pan_number', e.target.value.toUpperCase())} className={fieldClass} />
+            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
           <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
-            file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={setFile('pan_card')} />
+            file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={handlePanCardChange}
+            fieldRef={setFieldRef('pan_card') as React.Ref<HTMLDivElement>} />
+          <Field t={t} label="PAN Number" required fieldRef={setFieldRef('pan_number') as React.Ref<HTMLDivElement>}>
+            <input type="text" placeholder="Enter PAN number" value={form.pan_number} readOnly={isView} disabled={isView}
+              onChange={(e) => set('pan_number', e.target.value.toUpperCase())} className={fieldClass} />
+            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
+          </Field>
         </div>
 
         {/* Row 4 of 4 — Address + Profile Photo. Profile Photo now uses the
@@ -1078,55 +1225,59 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             square dropzone that left a lot of dead space below the much
             shorter Address textarea next to it). */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start">
-          <Field t={t} label="Address" required className="lg:col-span-3">
+          <Field t={t} label="Address" required className="lg:col-span-3" fieldRef={setFieldRef('address') as React.Ref<HTMLDivElement>}>
             <textarea
               placeholder="Enter full address" value={form.address} readOnly={isView} disabled={isView} rows={2}
               onChange={(e) => set('address', e.target.value)} className={fieldClass} style={{ resize: 'vertical' }}
             />
           </Field>
           <FileUploadBox t={t} isView={isView} label="Upload Profile Photo" hint="JPG, PNG (Max 2MB)" accept=".jpg,.jpeg,.png" required
-            file={files.profile_photo} existingUrl={existingUrls.profile_photo} onChange={setFile('profile_photo')} />
+            file={files.profile_photo} existingUrl={existingUrls.profile_photo} onChange={setFile('profile_photo')}
+            fieldRef={setFieldRef('profile_photo') as React.Ref<HTMLDivElement>} />
         </div>
-      </div>
+      </AccordionSection>
 
       {/* ── Office Use Only ──────────────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="var(--grad-purple)" />
+      <AccordionSection theme={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="var(--grad-purple)"
+        open={openSections.office} onToggle={() => setOpenSections((p) => ({ ...p, office: !p.office }))}
+        sectionRef={(el) => (sectionRefs.current.office = el)}>
 
         {/* All 10 fields flow across exactly 2 rows on desktop (5 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          <Field t={t} label="Employee Joining Date" required>
+          <Field t={t} label="Employee Joining Date" required fieldRef={setFieldRef('joining_date') as React.Ref<HTMLDivElement>}>
             <input type="date" value={form.joining_date} readOnly={isView} disabled={isView}
               onChange={(e) => set('joining_date', e.target.value)} onClick={openPicker} className={fieldClass} />
           </Field>
-          <Field t={t} label="Working Hours" required>
-            <select value={form.working_hours} disabled={isView} onChange={(e) => set('working_hours', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
+          <Field t={t} label="Working Hours" required fieldRef={setFieldRef('working_hours') as React.Ref<HTMLDivElement>}>
+            <select value={form.working_hours} disabled={isView} onChange={(e) => setWorkingHoursAndAutoCheckOut(e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select hours (8, 9, 10)</option>
               {WORKING_HOURS_OPTIONS.map((h) => <option key={h} value={h}>{h} Hours</option>)}
             </select>
           </Field>
-          <Field t={t} label="Check In" required>
-            <input type="time" value={form.check_in_time} readOnly={isView} disabled={isView}
-              onChange={(e) => set('check_in_time', e.target.value)} onClick={openPicker} onWheel={handleTimeWheel('check_in_time')} className={fieldClass} />
+          <Field t={t} label="Check In" required fieldRef={setFieldRef('check_in_time') as React.Ref<HTMLDivElement>}>
+            <TimePicker theme={t} value={form.check_in_time} disabled={isView}
+              onChange={(v) => setCheckInAndAutoCheckOut(v, form.working_hours)} />
           </Field>
           <Field t={t} label="Check Out" required>
-            <input type="time" value={form.check_out_time} readOnly={isView} disabled={isView}
-              onChange={(e) => set('check_out_time', e.target.value)} onClick={openPicker} onWheel={handleTimeWheel('check_out_time')} className={fieldClass} />
+            <TimePicker theme={t} value={form.check_out_time} disabled={isView} onChange={(v) => set('check_out_time', v)} />
           </Field>
-          <Field t={t} label="Holidays" required>
+          <Field t={t} label="Holidays" required fieldRef={setFieldRef('holidays') as React.Ref<HTMLDivElement>}>
             <select value={form.holidays} disabled={isView} onChange={(e) => set('holidays', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select holidays</option>
               {HOLIDAYS_OPTIONS.map((h) => <option key={h} value={h}>{h}</option>)}
             </select>
           </Field>
-          <Field t={t} label="Salary" required>
+          <Field t={t} label="Salary" required fieldRef={setFieldRef('salary') as React.Ref<HTMLDivElement>}>
             <div className={`flex items-center gap-2 ${fieldClass}`} style={{ padding: '0 12px' }}>
               <span style={{ color: t.textSecondary }}>₹</span>
               <input
                 type="text" inputMode="decimal" placeholder="Enter salary" value={formatAmountDisplay(form.salary)} readOnly={isView} disabled={isView}
                 onChange={(e) => set('salary', e.target.value.replace(/[^\d.]/g, ''))}
-                style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }}
+                style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }}
               />
+              {compactINR(form.salary) && (
+                <span style={{ color: '#0284c7', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(form.salary)}</span>
+              )}
             </div>
           </Field>
           <FileUploadBox t={t} isView={isView} label="Resume" hint="PDF, DOC, DOCX (Max 5MB)" accept=".pdf,.doc,.docx"
@@ -1139,48 +1290,51 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             </select>
           </Field>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* ── Bank Details ─────────────────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="var(--grad-green)" />
+      <AccordionSection theme={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="var(--grad-green)"
+        open={openSections.bank} onToggle={() => setOpenSections((p) => ({ ...p, bank: !p.bank }))}
+        sectionRef={(el) => (sectionRefs.current.bank = el)}>
 
         {/* All 7 fields flow across exactly 2 rows on desktop (4 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Field t={t} label="Account Holder Name" required>
+          <Field t={t} label="Account Holder Name" required fieldRef={setFieldRef('account_holder_name') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter account holder name" value={form.account_holder_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('account_holder_name', e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Bank Name" required>
+          <Field t={t} label="Bank Name" required fieldRef={setFieldRef('bank_name') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter bank name" value={form.bank_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('bank_name', e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Bank Account Number" required>
+          <Field t={t} label="Bank Account Number" required fieldRef={setFieldRef('bank_account_number') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter account number" value={form.bank_account_number} readOnly={isView} disabled={isView}
               onChange={(e) => set('bank_account_number', e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
-          <Field t={t} label="Account Type" required>
+          <Field t={t} label="Account Type" required fieldRef={setFieldRef('account_type') as React.Ref<HTMLDivElement>}>
             <select value={form.account_type} disabled={isView} onChange={(e) => set('account_type', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select account type</option>
               {ACCOUNT_TYPE_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
           </Field>
-          <Field t={t} label="IFSC Code" required>
+          <Field t={t} label="IFSC Code" required fieldRef={setFieldRef('ifsc_code') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter IFSC code" value={form.ifsc_code} readOnly={isView} disabled={isView}
               onChange={(e) => set('ifsc_code', e.target.value.toUpperCase())} className={fieldClass} />
           </Field>
-          <Field t={t} label="Branch" required>
+          <Field t={t} label="Branch" required fieldRef={setFieldRef('branch') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter branch name" value={form.branch} readOnly={isView} disabled={isView}
               onChange={(e) => set('branch', e.target.value)} className={fieldClass} />
           </Field>
           <FileUploadBox t={t} isView={isView} label="Upload Bank Passbook Photo" hint="JPG, PNG (Max 2MB)" accept=".jpg,.jpeg,.png" required
-            file={files.passbook_photo} existingUrl={existingUrls.passbook_photo} onChange={setFile('passbook_photo')} />
+            file={files.passbook_photo} existingUrl={existingUrls.passbook_photo} onChange={setFile('passbook_photo')}
+            fieldRef={setFieldRef('passbook_photo') as React.Ref<HTMLDivElement>} />
         </div>
-      </div>
+      </AccordionSection>
 
       {/* ── Assign Action & Module for this Employee ────────────────── */}
-      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module for this Employee" gradient="var(--grad-grey)" />
+      <AccordionSection theme={t} icon={<MdGroups size={16} />} title="Assign Action & Module for this Employee" gradient="var(--grad-grey)"
+        open={openSections.assign} onToggle={() => setOpenSections((p) => ({ ...p, assign: !p.assign }))}
+        sectionRef={(el) => (sectionRefs.current.assign = el)}>
 
         {/* Department (left) + Designation (right) — side by side, equal balance */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
@@ -1191,16 +1345,17 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               options={departmentOptions} selected={form.department_ids}
               onToggle={toggleDepartment}
               loading={loadingDepartments} emptyHint="No departments available."
+              containerRef={setFieldRef('department_ids') as React.Ref<HTMLDivElement>}
             />
           </div>
           <div className="emp-assign-box">
-            <CheckboxGroup
-              t={t} isView={isView}
-              label="Assign Designations" required
-              options={visibleDesignationOptions} selected={form.designation_ids}
+            <GroupedDesignationChecklist
+              t={t} isView={isView} required
+              options={visibleDesignationOptions} departmentOptions={departmentOptions} selected={form.designation_ids}
               onToggle={(v) => toggleIdInArray('designation_ids', v)}
               loading={loadingDesignations}
               emptyHint={form.department_ids.length === 0 ? 'Select a department above to see its designations.' : 'No designations available for the selected department(s).'}
+              containerRef={setFieldRef('designation_ids') as React.Ref<HTMLDivElement>}
             />
           </div>
         </div>
@@ -1212,6 +1367,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               t={t} isView={isView} grid={moduleGrid}
               selected={form.module_action_ids}
               onToggle={(v) => toggleIdInArray('module_action_ids', v)}
+              onToggleRow={toggleModuleActionRow}
               loading={loadingModules}
             />
           </div>
@@ -1232,7 +1388,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <MdInfoOutline size={16} style={{ flexShrink: 0 }} />
           You can assign multiple departments and designations, pick exactly which actions apply per module, and choose which employees this employee can view.
         </div>
-      </div>
+      </AccordionSection>
 
       {/* ── Sticky footer — Go Back (always) + Create/Update (add/edit only), centered ──────── */}
       <div className="master-crud-footer flex items-center justify-center gap-3" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
@@ -1249,11 +1405,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={!isFormValid || saving}
+            disabled={saving}
             className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
             style={{
               background: !isFormValid || saving ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentFocus})`,
-              border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.8 : 1,
+              border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.8 : 1,
             }}
           >
             {saving ? 'Saving...' : mode === 'edit' ? 'Update' : 'Create'}

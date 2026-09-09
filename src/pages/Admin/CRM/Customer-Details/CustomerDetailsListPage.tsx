@@ -7,9 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh, MdVisibility,
-  MdGroups, MdCheckCircle, MdPersonAddAlt1, MdPersonOff, MdClose,
+  MdGroups, MdPersonAddAlt1, MdPersonOff, MdClose,
   MdKeyboardArrowDown, MdMoreVert, MdReceiptLong, MdLoyalty, MdPhone, MdEmail,
-  MdChevronLeft, MdChevronRight, MdKeyboardDoubleArrowLeft, MdKeyboardDoubleArrowRight,
   MdPayments, MdPrint, MdAccountBalanceWallet, MdDescription, MdFilterList,
   MdGridView, MdViewList, MdLocationOn, MdBadge,
 } from 'react-icons/md';
@@ -20,6 +19,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
+import PaginationFooter from '../../../../components/common/PaginationFooter';
 import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory } from '../../../../services/customerDetailsService';
 import {
   collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, deletePayment, PAYMENT_FOR_OPTIONS, paymentForLabel,
@@ -36,7 +36,6 @@ import { formatDate, showAlert } from '../../../../utils';
 import './CustomerDetails.css';
 
 type Theme = AppTheme;
-const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 // ── SearchableSelect — module scope (not inside the page component), so
 // typing in it never causes the "cursor disappears" bug seen before.
@@ -126,66 +125,6 @@ const SearchableSelect: React.FC<{
           ))}
         </div>
       )}
-    </div>
-  );
-};
-
-// ── Filter chip/tag bar — only currently-applied filters are shown, each as
-// a small removable pill (e.g. "Building: Skyline ✕"). A collapsed pill
-// reopens its control on click; a freshly-added filter (via "Add Filter")
-// starts open so the user can immediately pick a value. This replaces the
-// old fixed grid of always-visible filter boxes (item 4: "show only which
-// filter is applied"). ──────────────────────────────────────────────────
-type FilterKey = 'customerName' | 'building' | 'wing' | 'floor' | 'flatNo' | 'fromDate' | 'toDate';
-const FILTER_LABELS: Record<FilterKey, string> = {
-  customerName: 'Customer Name', building: 'Building', wing: 'Wing', floor: 'Floor',
-  flatNo: 'Flat No', fromDate: 'From Date', toDate: 'To Date',
-};
-// Fields whose options depend on another filter's value being set —
-// removing the parent also removes and clears these.
-const FILTER_DEPENDENTS: Partial<Record<FilterKey, FilterKey[]>> = {
-  building: ['wing', 'floor', 'flatNo'],
-  wing: ['floor', 'flatNo'],
-  floor: ['flatNo'],
-};
-
-const FilterChip: React.FC<{
-  t: Theme; label: string; displayValue: string; editing: boolean;
-  onOpen: () => void; onRemove: () => void; children: React.ReactNode;
-}> = ({ t, label, displayValue, editing, onOpen, onRemove, children }) => {
-  if (!editing) {
-    return (
-      <button
-        type="button" onClick={onOpen}
-        className="inline-flex items-center gap-1.5 rounded-full"
-        style={{
-          padding: '6px 6px 6px 12px', background: t.insetBg, border: `1px solid ${t.surfaceBorder}`,
-          color: t.textPrimary, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap',
-        }}
-      >
-        <span style={{ fontWeight: 700 }}>{label}:</span> {displayValue}
-        <span
-          role="button" tabIndex={-1}
-          onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="flex items-center justify-center rounded-full"
-          style={{ width: 18, height: 18, marginLeft: 2, background: t.surfaceBg, color: t.textSecondary }}
-        >
-          <MdClose size={12} />
-        </span>
-      </button>
-    );
-  }
-  return (
-    <div style={{ minWidth: 190 }}>
-      <label className="cust-filter-label">{label}</label>
-      <div className="flex items-center gap-1">
-        <div style={{ flex: 1 }}>{children}</div>
-        <button type="button" onClick={onRemove} title={`Remove ${label} filter`}
-          className="flex items-center justify-center rounded-lg flex-shrink-0"
-          style={{ width: 30, height: 30, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textSecondary, cursor: 'pointer' }}>
-          <MdClose size={14} />
-        </button>
-      </div>
     </div>
   );
 };
@@ -346,7 +285,7 @@ const CustomerDetailsListPage: React.FC = () => {
   // array, narrowing it to a live search has no effect on either feature's
   // correctness — see the fetch effect below.
   const [customerDirectory, setCustomerDirectory] = useState<Customer[]>([]);
-  const [summary, setSummary] = useState<CustomerListSummary>({ total_customers: 0, active_customers: 0, inactive_customers: 0, new_this_month: 0 });
+  const [summary, setSummary] = useState<CustomerListSummary>({ total_customers: 0, active_customers: 0, inactive_customers: 0, new_this_month: 0, assigned_customers: 0, unassigned_customers: 0 });
   const [loading, setLoading] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
   const [page, setPage] = useState(1);
@@ -371,22 +310,6 @@ const CustomerDetailsListPage: React.FC = () => {
   // Item 13: the assign/unassign area doubles as an Assigned/Unassigned
   // filter on the table below it.
   const [assignmentStatusFilter, setAssignmentStatusFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
-
-  // Which filters are currently applied (shown as chips), and which one (if
-  // any) is currently open for editing — see FilterChip above.
-  const [activeFilters, setActiveFilters] = useState<FilterKey[]>([]);
-  const [editingFilter, setEditingFilter] = useState<FilterKey | null>(null);
-  const [addFilterMenuOpen, setAddFilterMenuOpen] = useState(false);
-  const addFilterRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!addFilterMenuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (addFilterRef.current && !addFilterRef.current.contains(e.target as Node)) setAddFilterMenuOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [addFilterMenuOpen]);
 
   // ── selection + assignment ──────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -569,45 +492,15 @@ const CustomerDetailsListPage: React.FC = () => {
   const clearAllFilters = () => {
     setCustomerNameFilter(''); setBuildingFilter(''); setWingFilter(''); setFloorFilter(''); setFlatNoFilter('');
     setFromDate(''); setToDate('');
-    setActiveFilters([]); setEditingFilter(null);
   };
-
-  // ── chip/tag filter bar helpers ─────────────────────────────────────────
-  const addFilter = (key: FilterKey) => {
-    setActiveFilters((prev) => (prev.includes(key) ? prev : [...prev, key]));
-    setEditingFilter(key);
-    setAddFilterMenuOpen(false);
-  };
-  const removeFilter = (key: FilterKey) => {
-    const toRemove = [key, ...(FILTER_DEPENDENTS[key] ?? [])];
-    setActiveFilters((prev) => prev.filter((k) => !toRemove.includes(k)));
-    if (editingFilter && toRemove.includes(editingFilter)) setEditingFilter(null);
-    if (toRemove.includes('customerName')) setCustomerNameFilter('');
-    if (toRemove.includes('building')) setBuildingFilter('');
-    if (toRemove.includes('wing')) setWingFilter('');
-    if (toRemove.includes('floor')) setFloorFilter('');
-    if (toRemove.includes('flatNo')) setFlatNoFilter('');
-    if (toRemove.includes('fromDate')) setFromDate('');
-    if (toRemove.includes('toDate')) setToDate('');
-  };
-  // Prerequisite fields must already have a value before their dependent
-  // field can be added — mirrors the old disabled-select behavior.
-  const filterAvailable = (key: FilterKey): boolean => {
-    if (activeFilters.includes(key)) return false;
-    if (key === 'wing') return !!buildingFilter;
-    if (key === 'floor') return !!wingFilter;
-    if (key === 'flatNo') return !!floorFilter;
-    return true;
-  };
-  const availableFilterKeys = (Object.keys(FILTER_LABELS) as FilterKey[]).filter(filterAvailable);
+  const anyFilterApplied =
+    !!customerNameFilter || !!buildingFilter || !!wingFilter || !!floorFilter || !!flatNoFilter || !!fromDate || !!toDate;
 
   // Selecting an exact customer name (not just typing a partial match)
   // auto-populates the Building/Wing/Floor/Flat No filters from that
   // customer's own booking, narrowing the whole filter row to their flat
   // in one action instead of four (item 11's "auto-populate related
-  // details... fast updates without manual actions") — and surfaces each
-  // one as its own chip, since a filter is only ever silently "applied"
-  // if it's visible as a chip.
+  // details... fast updates without manual actions").
   const handleCustomerNameFilterChange = (v: string) => {
     setCustomerNameFilter(v);
     const exact = customerDirectory.find((c) => c.customer_name === v);
@@ -616,14 +509,6 @@ const CustomerDetailsListPage: React.FC = () => {
       setWingFilter(exact.wing_name || '');
       setFloorFilter('');
       setFlatNoFilter(exact.flat_no || '');
-      setActiveFilters((prev) => {
-        const next = new Set(prev);
-        next.add('customerName');
-        if (exact.building_name) next.add('building');
-        if (exact.wing_name) next.add('wing');
-        if (exact.flat_no) next.add('flatNo');
-        return Array.from(next);
-      });
     }
   };
 
@@ -638,6 +523,8 @@ const CustomerDetailsListPage: React.FC = () => {
   const pageRows = allCustomers;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
+  const from = total === 0 ? 0 : (safePage - 1) * limit + 1;
+  const to = Math.min(safePage * limit, total);
 
   const pageBtns = () => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
@@ -914,48 +801,6 @@ const CustomerDetailsListPage: React.FC = () => {
     }
   };
 
-  // ── chip/tag filter bar: per-key control + display value ───────────────
-  const renderFilterControl = (key: FilterKey): React.ReactNode => {
-    const collapse = () => setEditingFilter(null);
-    switch (key) {
-      case 'customerName':
-        return <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={handleCustomerNameFilterChange} onCommit={collapse} autoFocus />;
-      case 'building':
-        return (
-          <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter} onCommit={collapse} autoFocus
-            onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFloorFilter(''); setFlatNoFilter(''); }} />
-        );
-      case 'wing':
-        return (
-          <SearchableSelect t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingFilter}
-            disabled={!selectedBuilding || loadingBuildingDetail} onCommit={collapse} autoFocus
-            onChange={(v) => { setWingFilter(v); setFloorFilter(''); setFlatNoFilter(''); }} />
-        );
-      case 'floor':
-        return (
-          <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter} disabled={!selectedWing} onCommit={collapse} autoFocus
-            onChange={(v) => { setFloorFilter(v); setFlatNoFilter(''); }} />
-        );
-      case 'flatNo':
-        return <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} disabled={!selectedFloor} onChange={setFlatNoFilter} labelFor={flatLabelFor} onCommit={collapse} autoFocus />;
-      case 'fromDate':
-        return <input type="date" autoFocus value={fromDate} onClick={openPicker} onFocus={openPicker} onBlur={collapse} onChange={(e) => { setFromDate(e.target.value); collapse(); }} className="cust-date-field" />;
-      case 'toDate':
-        return <input type="date" autoFocus value={toDate} onClick={openPicker} onFocus={openPicker} onBlur={collapse} onChange={(e) => { setToDate(e.target.value); collapse(); }} className="cust-date-field" />;
-    }
-  };
-  const filterDisplayValue = (key: FilterKey): string => {
-    switch (key) {
-      case 'customerName': return customerNameFilter || '—';
-      case 'building': return buildingFilter || '—';
-      case 'wing': return wingFilter || '—';
-      case 'floor': return floorFilter || '—';
-      case 'flatNo': return flatNoFilter || '—';
-      case 'fromDate': return fromDate ? formatDate(fromDate) : '—';
-      case 'toDate': return toDate ? formatDate(toDate) : '—';
-    }
-  };
-
   // ── CSS custom properties for CustomerDetails.css — set once here from
   // this page's own theme values, consumed by the cust-* classes used
   // throughout this page's filters/table/modals below. Also spreads in
@@ -973,18 +818,22 @@ const CustomerDetailsListPage: React.FC = () => {
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
 
-      {/* ── KPI cards — now the same shared StatCard component Employee
-          Details List uses (compact + labelFontSize=16), so the two pages'
-          summary boxes are pixel-identical instead of two independently
-          hand-tuned card markups drifting apart. ──────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        {[
-          { label: 'Total Customers', value: summary.total_customers, icon: MdGroups, color: '#7c3aed' },
-          { label: 'Active Customers', value: summary.active_customers, icon: MdCheckCircle, color: '#16a34a' },
-          { label: 'New Customers This Month', value: summary.new_this_month, icon: MdPersonAddAlt1, color: '#ea580c' },
-          { label: 'Inactive Customers', value: summary.inactive_customers, icon: MdPersonOff, color: '#dc2626' },
-        ].map((card) => (
-          <StatCard key={card.label} {...card} bg="" loading={loading} compact labelFontSize={14}
+      {/* ── KPI cards — All/Assigned/Un Assigned Customer, doubling as the
+          assignment filter (item 3): clicking a box applies that filter to
+          the table below and highlights itself as the active one. Replaces
+          the old Active/Inactive pair, which never reflected a real
+          "inactive customer" concept anyway (see getCustomerListSummary's
+          comment) and duplicated the separate Assigned/Unassigned toggle
+          that used to sit further down this page. ─────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        {([
+          { filterKey: 'all', label: 'All Customers', value: summary.total_customers, icon: MdGroups, color: '#7c3aed' },
+          { filterKey: 'assigned', label: 'Assigned Customers', value: summary.assigned_customers, icon: MdPersonAddAlt1, color: '#16a34a' },
+          { filterKey: 'unassigned', label: 'Un Assigned Customers', value: summary.unassigned_customers, icon: MdPersonOff, color: '#ea580c' },
+        ] as const).map(({ filterKey, ...card }) => (
+          <StatCard key={filterKey} {...card} bg="" loading={loading} compact labelFontSize={14}
+            active={assignmentStatusFilter === filterKey}
+            onClick={() => setAssignmentStatusFilter(filterKey)}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
       </div>
@@ -1000,74 +849,60 @@ const CustomerDetailsListPage: React.FC = () => {
           <h3 style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>Search &amp; Filter Customers</h3>
         </div>
 
-        {/* Only applied filters show, each as a small removable chip — click
-            a collapsed chip to edit its value, click its ✕ to remove it
-            entirely. "Add Filter" reveals the fields not yet applied. */}
-        <div className="flex flex-wrap items-start gap-2.5">
-          {activeFilters.map((key) => (
-            <FilterChip
-              key={key} t={t} label={FILTER_LABELS[key]}
-              displayValue={filterDisplayValue(key)}
-              editing={editingFilter === key}
-              onOpen={() => setEditingFilter(key)}
-              onRemove={() => removeFilter(key)}
-            >
-              {renderFilterControl(key)}
-            </FilterChip>
-          ))}
-
-          <div ref={addFilterRef} style={{ position: 'relative' }}>
-            <button
-              type="button" onClick={() => setAddFilterMenuOpen((v) => !v)}
-              disabled={availableFilterKeys.length === 0}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap"
-              style={{
-                background: 'transparent', border: `1px dashed ${t.surfaceBorder}`, color: t.textSecondary,
-                cursor: availableFilterKeys.length === 0 ? 'not-allowed' : 'pointer', opacity: availableFilterKeys.length === 0 ? 0.5 : 1,
-              }}
-            >
-              <MdAdd size={15} /> Add Filter
-            </button>
-            {addFilterMenuOpen && availableFilterKeys.length > 0 && (
-              <div
-                style={{
-                  position: 'absolute', top: '110%', left: 0, zIndex: 30, minWidth: 170,
-                  background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0',
-                }}
-              >
-                {availableFilterKeys.map((key) => (
-                  <button
-                    key={key} type="button" onClick={() => addFilter(key)}
-                    className="w-full text-left px-3.5 py-2 text-sm"
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}
-                  >
-                    {FILTER_LABELS[key]}
-                  </button>
-                ))}
-              </div>
-            )}
+        {/* All filters always visible in one row (wraps on narrow screens) —
+            no click-to-reveal step. Wing/Floor/Flat No stay disabled until
+            their prerequisite is picked, same cascade as before. */}
+        <div className="flex flex-wrap items-end gap-3">
+          <div style={{ flex: '1 1 170px', minWidth: 150 }}>
+            <label className="cust-filter-label">Customer Name</label>
+            <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={handleCustomerNameFilterChange} />
+          </div>
+          <div style={{ flex: '1 1 170px', minWidth: 150 }}>
+            <label className="cust-filter-label">Building</label>
+            <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter}
+              onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFloorFilter(''); setFlatNoFilter(''); }} />
+          </div>
+          <div style={{ flex: '1 1 150px', minWidth: 130 }}>
+            <label className="cust-filter-label">Wing</label>
+            <SearchableSelect t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingFilter}
+              disabled={!selectedBuilding || loadingBuildingDetail}
+              onChange={(v) => { setWingFilter(v); setFloorFilter(''); setFlatNoFilter(''); }} />
+          </div>
+          <div style={{ flex: '1 1 150px', minWidth: 130 }}>
+            <label className="cust-filter-label">Floor</label>
+            <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter} disabled={!selectedWing}
+              onChange={(v) => { setFloorFilter(v); setFlatNoFilter(''); }} />
+          </div>
+          <div style={{ flex: '1 1 150px', minWidth: 130 }}>
+            <label className="cust-filter-label">Flat No</label>
+            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} disabled={!selectedFloor} onChange={setFlatNoFilter} labelFor={flatLabelFor} />
+          </div>
+          <div style={{ flex: '1 1 140px', minWidth: 130 }}>
+            <label className="cust-filter-label">From Date</label>
+            <input type="date" value={fromDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setFromDate(e.target.value)} className="cust-date-field" />
+          </div>
+          <div style={{ flex: '1 1 140px', minWidth: 130 }}>
+            <label className="cust-filter-label">To Date</label>
+            <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} className="cust-date-field" />
           </div>
 
-          {activeFilters.length > 0 && (
+          {anyFilterApplied && (
             <button
               type="button" onClick={clearAllFilters}
               className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}
             > Reset Filters
             </button>
-          )}
-
-          {activeFilters.length === 0 && (
-            <span style={{ fontSize: 11.5, color: t.textSecondary, alignSelf: 'center' }}>No filters applied.</span>
           )}
         </div>
       </div>
 
-      {/* ── Employee assignment + action row ─────────────────────────── */}
+      {/* ── Toolbar — Search Employee + Assign to Employee together on the
+          left, Add Customer / Grid-List / Export CSV / Refresh always on
+          the right, all in one row. ─────────────────────────────────── */}
       <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
         <div className="flex flex-wrap items-end gap-3">
-          <div style={{ flex: '1 1 200px', maxWidth: 280, minWidth: 0 }}>
+          <div style={{ flex: '1 1 200px', maxWidth: 320 }}>
             <label className="cust-filter-label">Search Employee</label>
             <SearchableSelect t={t} placeholder="Select employee" options={employeeOptions} value={employeeSearch} onChange={setEmployeeSearch} disabled={!assignmentEnabled} />
           </div>
@@ -1085,43 +920,19 @@ const CustomerDetailsListPage: React.FC = () => {
           >
             {assigning ? 'Assigning...' : 'Assign to Employee'}
           </button>
-
-          {/* Item 13: this same area doubles as an Assigned/Unassigned
-              filter on the table below — inactive customers are excluded
-              from selection above (their checkbox is disabled), not from
-              this filter, since "inactive but was assigned" is still a
-              meaningful thing to be able to see. */}
-          <div>
-            <label className="cust-filter-label">Assignment</label>
-            <div className="flex items-center rounded-xl p-0.5" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}` }}>
-              {([['all', 'All'], ['assigned', 'Assigned'], ['unassigned', 'Unassigned']] as const).map(([value, label]) => (
-                <button
-                  key={value} type="button" onClick={() => setAssignmentStatusFilter(value)}
-                  className="px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap"
-                  style={{
-                    background: assignmentStatusFilter === value ? 'var(--grad-purple)' : 'transparent',
-                    color: assignmentStatusFilter === value ? '#fff' : t.textSecondary,
-                    border: 'none', cursor: 'pointer',
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5" style={{ flexShrink: 0 }}>
+          <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+            style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <MdAdd size={18} /> Add Customer
+          </button>
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
             title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
             className="flex items-center justify-center rounded-xl"
             style={{ width: 40, height: 40, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
-          </button>
-          <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            <MdAdd size={18} /> Add Customer
           </button>
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
@@ -1274,47 +1085,7 @@ const CustomerDetailsListPage: React.FC = () => {
         </div>
         )}
 
-        {/* pagination — bottom-center, First/Prev/[numbers]/Next/Last */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4 cust-divider-top">
-          <div className="flex items-center gap-2">
-            <span style={{ fontSize: 11, color: t.textSecondary }}>Rows per page:</span>
-            <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer', outline: 'none' }}>
-              {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          <div style={{ fontSize: 11, color: t.textSecondary }}>
-            Showing {total === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, total)} of {total}
-          </div>
-          <div className="flex-1 flex items-center justify-center gap-1.5">
-            <button type="button" disabled={safePage <= 1} onClick={() => setPage(1)}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage <= 1 ? 'not-allowed' : 'pointer', opacity: safePage <= 1 ? 0.5 : 1 }}>
-              <MdKeyboardDoubleArrowLeft size={16} />
-            </button>
-            <button type="button" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage <= 1 ? 'not-allowed' : 'pointer', opacity: safePage <= 1 ? 0.5 : 1 }}>
-              <MdChevronLeft size={18} />
-            </button>
-            {pageBtns()[0] > 1 && <span style={{ color: t.textSecondary, padding: '0 2px' }}>...</span>}
-            {pageBtns().map((n) => (
-              <button key={n} type="button" onClick={() => setPage(n)}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium"
-                style={{ background: n === safePage ? '#7c3aed' : t.insetBg, color: n === safePage ? '#fff' : t.textPrimary, border: `1px solid ${n === safePage ? '#7c3aed' : t.surfaceBorder}`, cursor: 'pointer' }}>
-                {n}
-              </button>
-            ))}
-            {pageBtns()[pageBtns().length - 1] < totalPages && <span style={{ color: t.textSecondary, padding: '0 2px' }}>...</span>}
-            <button type="button" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', opacity: safePage >= totalPages ? 0.5 : 1 }}>
-              <MdChevronRight size={18} />
-            </button>
-            <button type="button" disabled={safePage >= totalPages} onClick={() => setPage(totalPages)}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', opacity: safePage >= totalPages ? 0.5 : 1 }}>
-              <MdKeyboardDoubleArrowRight size={16} />
-            </button>
-          </div>
-          <div style={{ width: 90 }} />
-        </div>
+        <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={total} pageBtns={pageBtns} />
       </div>
 
       {/* ── Payment History modal ────────────────────────────────────── */}
@@ -1426,7 +1197,7 @@ const CustomerDetailsListPage: React.FC = () => {
                       {infoModal.payments!.map((p) => (
                         <div key={p.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: t.insetBg }}>
                           <div>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <span style={{ fontSize: 12, fontWeight: 600, color: t.textPrimary }}>₹ {p.amount.toLocaleString('en-IN')}</span>
                               <span
                                 style={{
@@ -1436,8 +1207,18 @@ const CustomerDetailsListPage: React.FC = () => {
                                 }}>
                                 {p.is_approved ? 'Approved' : 'Pending'}
                               </span>
+                              <span
+                                style={{
+                                  fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 999,
+                                  color: '#2563eb', background: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
+                                }}>
+                                {paymentForLabel(p.payment_type)}
+                              </span>
                             </div>
-                            <div style={{ fontSize: 10.5, color: t.textSecondary }}>{formatDate(p.paid_on)}{p.mode ? ` · ${p.mode}` : ''}</div>
+                            <div style={{ fontSize: 10.5, color: t.textSecondary }}>
+                              Paid on {formatDate(p.paid_on)}{p.mode ? ` · ${p.mode}` : ''}
+                              {p.inst_date && p.inst_date !== p.paid_on ? ` · Installment due ${formatDate(p.inst_date)}` : ''}
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             {p.reference_no && <div style={{ fontSize: 10, color: t.textSecondary }}>Ref: {p.reference_no}</div>}

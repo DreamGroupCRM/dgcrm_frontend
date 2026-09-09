@@ -24,6 +24,9 @@ import { companyService } from '../../../../services/companyService';
 import { Building, Company, ParkingChoice } from '../../../../types/index';
 import { showAlert } from '../../../../utils';
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
+import { DobPicker } from '../../../../components/common/DobPicker';
+import { PhoneInput } from '../../../../components/common/PhoneInput';
+import { AccordionSection } from '../../../../components/common/Accordion';
 import './CustomerDetails.css';
 
 type Mode = 'add' | 'edit' | 'view';
@@ -35,13 +38,6 @@ type Theme = AppTheme;
 // null (nothing chosen). Every upload control in this page speaks this type.
 type FileValue = File | string | null;
 
-// { dial code -> flag emoji } — item 5: "Mobile number field should have
-// flags and country code." +1 is shared by US/Canada; the US flag is used
-// as the conventional default for that dial code.
-const COUNTRY_CODE_FLAGS: Record<string, string> = {
-  '+91': '🇮🇳', '+1': '🇺🇸', '+44': '🇬🇧', '+61': '🇦🇺', '+971': '🇦🇪', '+65': '🇸🇬',
-};
-const COUNTRY_CODES = Object.keys(COUNTRY_CODE_FLAGS);
 const FOOTER_HEIGHT = 76;
 
 // ── module-scope helpers only — nothing defined inside the page component,
@@ -135,8 +131,8 @@ const SubHeading: React.FC<{ t: Theme; title: string }> = ({ t, title }) => (
   <p className="cust-subheading">{title}</p>
 );
 
-const Field: React.FC<{ t: Theme; label: string; required?: boolean; children: React.ReactNode; className?: string }> = ({ t, label, required, children, className }) => (
-  <div className={className}>
+const Field: React.FC<{ t: Theme; label: string; required?: boolean; children: React.ReactNode; className?: string; fieldRef?: React.Ref<HTMLDivElement> }> = ({ t, label, required, children, className, fieldRef }) => (
+  <div className={className} ref={fieldRef}>
     <label className="cust-label">{label}{required && <span className="cust-required"> *</span>}</label>
     {children}
   </div>
@@ -202,7 +198,12 @@ const SearchableSelect: React.FC<{
   // still work off the plain option string. Used by the Flat No select to
   // show "A-101 · 2 BHK · 850 Sqft" per option.
   labelFor?: (opt: string) => string;
-}> = ({ t, placeholder, options, value, onChange, disabled, labelFor }) => {
+  // Item 1.2 — a flat marked Disabled/Unavailable in the Building Master
+  // still appears in this list (so it's clear it exists and clear why it
+  // can't be picked) but can't actually be selected: no onClick, grayed
+  // out, not-allowed cursor. Unused by every other SearchableSelect caller.
+  isOptionDisabled?: (opt: string) => boolean;
+}> = ({ t, placeholder, options, value, onChange, disabled, labelFor, isOptionDisabled }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
@@ -243,52 +244,31 @@ const SearchableSelect: React.FC<{
           background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0',
         }}>
-          {filtered.map((opt) => (
-            <button key={opt} type="button" onClick={() => { onChange(opt); setQuery(opt); setOpen(false); }}
-              className="w-full text-left px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-              {labelFor ? labelFor(opt) : opt}
-            </button>
-          ))}
+          {filtered.map((opt) => {
+            const optDisabled = isOptionDisabled?.(opt) ?? false;
+            return (
+              <button
+                key={opt} type="button" disabled={optDisabled}
+                onClick={() => { if (optDisabled) return; onChange(opt); setQuery(opt); setOpen(false); }}
+                title={optDisabled ? 'This flat has been marked unavailable and cannot be selected.' : undefined}
+                className="w-full text-left px-3.5 py-2 text-sm"
+                style={{
+                  background: 'transparent', border: 'none', fontFamily: t.fontFamily,
+                  color: optDisabled ? t.textSecondary : t.textPrimary,
+                  cursor: optDisabled ? 'not-allowed' : 'pointer',
+                  opacity: optDisabled ? 0.55 : 1,
+                }}
+              >
+                {labelFor ? labelFor(opt) : opt}{optDisabled && ' — Unavailable'}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
   );
 };
 
-// A country-code prefixed phone input — the "+91 | 9876543210" combo used
-// for Mobile Number and WhatsApp Number. `onAdd`, when passed (only the
-// primary Mobile Number field passes it), renders a compact "+" button that
-// appends a blank row to the Secondary Mobile Numbers list below — it does
-// not add a whole new UI, just a shortcut into the list that's already there.
-const PhoneField: React.FC<{
-  t: Theme; isView?: boolean; icon?: React.ReactNode;
-  code: string; onCodeChange: (v: string) => void;
-  number: string; onNumberChange: (v: string) => void;
-  onAdd?: () => void;
-}> = ({ t, isView, icon, code, onCodeChange, number, onNumberChange, onAdd }) => (
-  <div className={`flex items-center gap-2 ${fieldClassName(!!isView)}`} style={{ padding: '0 8px 0 12px' }}>
-    {icon}
-    {/* Fixed width + flag-and-code label, matching Employee CRUD's select —
-        the previous full-country-name option text made this flexShrink:0
-        select wide enough to starve the sibling number input down to 0px,
-        silently blocking Mobile/WhatsApp Number entry on Create Customer. */}
-    <select value={code} disabled={isView} onChange={(e) => onCodeChange(e.target.value)}
-      style={{ border: 'none', outline: 'none', background: 'transparent', color: t.inputText, fontSize: 12, fontFamily: t.fontFamily, padding: '9px 2px', width: 62, flexShrink: 0 }}>
-      {COUNTRY_CODES.map((c) => <option key={c} value={c}>{COUNTRY_CODE_FLAGS[c]} {c}</option>)}
-    </select>
-    <span style={{ width: 1, height: 18, background: t.inputBorder, flexShrink: 0 }} />
-    <input type="tel" placeholder="Enter number" value={number} readOnly={isView} disabled={isView}
-      onChange={(e) => onNumberChange(e.target.value.replace(/[^\d]/g, ''))}
-      style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 50, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
-    {onAdd && !isView && (
-      <button type="button" onClick={onAdd} title="Add another mobile number"
-        className="flex items-center justify-center rounded-lg flex-shrink-0"
-        style={{ width: 22, height: 22, background: t.insetBg, border: `1px solid ${t.inputBorder}`, color: '#0284c7', cursor: 'pointer' }}>
-        <MdAdd size={14} />
-      </button>
-    )}
-  </div>
-);
 
 // Compact "chosen file" chip with a trash icon (Aadhar / PAN photo), or an
 // upload prompt when nothing is chosen yet — matches "AadharCard.jpg [🗑]".
@@ -621,6 +601,18 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [isActive, setIsActive] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  // ── Item 2.1/2.2 — collapsible sections + auto-open-and-scroll-to the
+  // first invalid field on a failed submit, same pattern as Employee CRUD. ─
+  type SectionKey = 'personal' | 'property' | 'payment' | 'documents';
+  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
+    personal: true, property: true, payment: true, documents: true,
+  });
+  const sectionRefs = useRef<Record<SectionKey, HTMLDivElement | null>>({
+    personal: null, property: null, payment: null, documents: null,
+  });
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+  const setFieldRef = (key: string) => (el: HTMLElement | null) => { fieldRefs.current[key] = el; };
+
   useEffect(() => {
     (async () => {
       try {
@@ -797,24 +789,54 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // carries .default(0), so omitting them just defaults to 0 server-side).
   // That mismatch unconditionally blocked Customer Creation client-side on
   // a form the backend would have happily accepted.
-  const isFormValid =
-    firstName.trim() !== '' && middleName.trim() !== '' && lastName.trim() !== '' && !!customerPhoto &&
-    email.trim() !== '' && mobileNumber.trim() !== '' && whatsappNumber.trim() !== '' &&
-    aadharNumber.trim() !== '' && !!aadharPhoto && !!pancardPhoto &&
-    address.trim() !== '' && dateOfBirth !== '' &&
-    companyName.trim() !== '' && projectName.trim() !== '' &&
-    (wantsParking === 'no' || parkingNo.trim() !== '') &&
-    totalCost.trim() !== '' && bookingDate !== '' && bookingAmount.trim() !== '' &&
-    possessionAmount.trim() !== '' &&
-    installmentDate !== '' && monthlyEmiBeforePossession.trim() !== '' && monthlyEmiAfterPossession.trim() !== '' &&
-    totalEmiTenure.trim() !== '' &&
-    !!applicationForm && !!declarationForm && !!allotmentLetter;
+  const validationChecks: { field: string; section: SectionKey; message: string; failed: () => boolean }[] = [
+    { field: 'firstName', section: 'personal', message: 'Please enter the First Name.', failed: () => firstName.trim() === '' },
+    { field: 'middleName', section: 'personal', message: 'Please enter the Middle Name.', failed: () => middleName.trim() === '' },
+    { field: 'lastName', section: 'personal', message: 'Please enter the Last Name.', failed: () => lastName.trim() === '' },
+    { field: 'customerPhoto', section: 'personal', message: 'Please upload the Customer Photo.', failed: () => !customerPhoto },
+    { field: 'email', section: 'personal', message: 'Please enter the Email.', failed: () => email.trim() === '' },
+    { field: 'mobileNumber', section: 'personal', message: 'Please enter the Mobile Number.', failed: () => mobileNumber.trim() === '' },
+    { field: 'whatsappNumber', section: 'personal', message: 'Please enter the WhatsApp Number.', failed: () => whatsappNumber.trim() === '' },
+    { field: 'aadharPhoto', section: 'personal', message: 'Please upload the Aadhar Card.', failed: () => !aadharPhoto },
+    { field: 'aadharNumber', section: 'personal', message: 'Please enter the Aadhar Number.', failed: () => aadharNumber.trim() === '' },
+    { field: 'pancardPhoto', section: 'personal', message: 'Please upload the PAN Card.', failed: () => !pancardPhoto },
+    { field: 'address', section: 'personal', message: 'Please enter the Address.', failed: () => address.trim() === '' },
+    { field: 'dateOfBirth', section: 'personal', message: 'Please select the Date of Birth.', failed: () => dateOfBirth === '' },
+    { field: 'companyName', section: 'property', message: 'Please select the Company Name.', failed: () => companyName.trim() === '' },
+    { field: 'projectName', section: 'property', message: 'Please select the Project Name.', failed: () => projectName.trim() === '' },
+    { field: 'parkingNo', section: 'property', message: 'Please enter the Parking No.', failed: () => wantsParking === 'yes' && parkingNo.trim() === '' },
+    { field: 'totalCost', section: 'payment', message: 'Please enter the Total Cost.', failed: () => totalCost.trim() === '' },
+    { field: 'bookingDate', section: 'payment', message: 'Please select the Booking Date.', failed: () => bookingDate === '' },
+    { field: 'bookingAmount', section: 'payment', message: 'Please enter the Booking Amount.', failed: () => bookingAmount.trim() === '' },
+    { field: 'possessionAmount', section: 'payment', message: 'Please enter the Possession Amount.', failed: () => possessionAmount.trim() === '' },
+    { field: 'installmentDate', section: 'payment', message: 'Please select the Installment Date.', failed: () => installmentDate === '' },
+    { field: 'monthlyEmiBeforePossession', section: 'payment', message: 'Please enter the Monthly EMI Before Possession.', failed: () => monthlyEmiBeforePossession.trim() === '' },
+    { field: 'monthlyEmiAfterPossession', section: 'payment', message: 'Please enter the Monthly EMI After Possession.', failed: () => monthlyEmiAfterPossession.trim() === '' },
+    { field: 'totalEmiTenure', section: 'payment', message: 'Please enter the Total EMI Tenure.', failed: () => totalEmiTenure.trim() === '' },
+    { field: 'applicationForm', section: 'documents', message: 'Please upload the Application Form.', failed: () => !applicationForm },
+    { field: 'declarationForm', section: 'documents', message: 'Please upload the Declaration Form.', failed: () => !declarationForm },
+    { field: 'allotmentLetter', section: 'documents', message: 'Please upload the Allotment Letter.', failed: () => !allotmentLetter },
+  ];
+
+  const getFirstInvalid = () => validationChecks.find((c) => c.failed()) ?? null;
+  const isFormValid = getFirstInvalid() === null;
+
+  const revealInvalidField = (field: string, section: SectionKey) => {
+    setOpenSections((prev) => ({ ...prev, [section]: true }));
+    setTimeout(() => {
+      const el = fieldRefs.current[field] ?? sectionRefs.current[section];
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el?.querySelector<HTMLElement>('input, select, button, textarea')?.focus();
+    }, 60);
+  };
 
   const handlePreview = () => setPreviewOpen(true);
 
   const handleSubmit = async () => {
-    if (!isFormValid) {
-      toast.error('Please fill all mandatory fields.');
+    const invalid = getFirstInvalid();
+    if (invalid) {
+      toast.error(invalid.message);
+      revealInvalidField(invalid.field, invalid.section);
       return;
     }
     // Item 8: Installment Date can't predate Booking Date — plus the same
@@ -1022,7 +1044,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
 
         {/* ── Row 1: Personal Details + Property Booking Details ─────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        {/* items-start (item 12) — a grid row's cells default to equal-height
+            stretch, which forced the shorter box (Property Booking Details
+            has far fewer fields than Personal Details) to stretch into a
+            large block of empty space below its last field. Each box now
+            sizes to its own content instead. */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 items-start">
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
             <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)" />
             <div className="cust-view-grid">
@@ -1060,7 +1087,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
 
         {/* ── Row 2: Payment Details + Uploaded Documents ─────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 items-start">
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
             <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" gradient="var(--grad-green)" />
             <div className="cust-view-grid">
@@ -1136,29 +1163,30 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       </div>
 
       {/* ── Customer Details (Personal Details) ──────────────────────── */}
-      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdPerson size={16} />} title="Customer Details" gradient="var(--grad-sky)" />
+      <AccordionSection theme={t} icon={<MdPerson size={16} />} title="Customer Details" gradient="var(--grad-sky)"
+        open={openSections.personal} onToggle={() => setOpenSections((p) => ({ ...p, personal: !p.personal }))}
+        sectionRef={(el) => (sectionRefs.current.personal = el)}>
         <SubHeading t={t} title="Personal Details" />
 
         {/* Row 1 of 3 — Name + Photo */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          <Field t={t} label="First Name" required>
+          <Field t={t} label="First Name" required fieldRef={setFieldRef('firstName') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter first name" value={firstName} readOnly={isView} disabled={isView}
               onChange={(e) => setFirstName(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Middle Name" required>
+          <Field t={t} label="Middle Name" required fieldRef={setFieldRef('middleName') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter middle name" value={middleName} readOnly={isView} disabled={isView}
               onChange={(e) => setMiddleName(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Last Name" required>
+          <Field t={t} label="Last Name" required fieldRef={setFieldRef('lastName') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter last name" value={lastName} readOnly={isView} disabled={isView}
               onChange={(e) => setLastName(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Email ID" required>
+          <Field t={t} label="Email ID" required fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
             <input type="email" placeholder="Enter email address" value={email} readOnly={isView} disabled={isView}
               onChange={(e) => setEmail(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Customer Photo" required>
+          <Field t={t} label="Customer Photo" required fieldRef={setFieldRef('customerPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} accept="image/*" value={customerPhoto} onChange={setCustomerPhoto} />
           </Field>
         </div>
@@ -1166,25 +1194,25 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* Row 2 of 3 — WhatsApp + ID proofs (each number immediately
             followed by its own upload field, no field between them) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          <Field t={t} label="WhatsApp Number" required>
-            <PhoneField t={t} isView={isView} icon={<FaWhatsapp size={15} style={{ color: '#25D366', flexShrink: 0 }} />}
+          <Field t={t} label="WhatsApp Number" required fieldRef={setFieldRef('whatsappNumber') as React.Ref<HTMLDivElement>}>
+            <PhoneInput theme={t} disabled={isView} icon={<FaWhatsapp size={15} style={{ color: '#25D366', flexShrink: 0 }} />}
               code={whatsappCountryCode} onCodeChange={setWhatsappCountryCode} number={whatsappNumber} onNumberChange={setWhatsappNumber} />
           </Field>
-          <Field t={t} label="Aadhar Number" required>
+          <Field t={t} label="Upload Aadhar Card Photo" required fieldRef={setFieldRef('aadharPhoto') as React.Ref<HTMLDivElement>}>
+            <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange} />
+            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
+          </Field>
+          <Field t={t} label="Aadhar Number" required fieldRef={setFieldRef('aadharNumber') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView}
               onChange={(e) => setAadharNumber(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
-          <Field t={t} label="Upload Aadhar Card Photo" required>
-            <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange} />
-            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
+          <Field t={t} label="Upload Pancard Photo" required fieldRef={setFieldRef('pancardPhoto') as React.Ref<HTMLDivElement>}>
+            <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange} />
+            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
           <Field t={t} label="Pancard Number">
             <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView}
               onChange={(e) => setPancardNumber(e.target.value.toUpperCase())} className={fieldClass} />
-          </Field>
-          <Field t={t} label="Upload Pancard Photo" required>
-            <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange} />
-            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
         </div>
 
@@ -1193,10 +1221,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             detail section") — placed right before Secondary Mobile Numbers
             below, since its own "+" button feeds that list. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          <Field t={t} label="Date of Birth" required>
+          <Field t={t} label="Date of Birth" required fieldRef={setFieldRef('dateOfBirth') as React.Ref<HTMLDivElement>}>
             <div className="flex items-center gap-2">
-              <input type="date" value={dateOfBirth} readOnly={isView} disabled={isView}
-                onClick={openPicker} onFocus={openPicker} onChange={(e) => setDateOfBirth(e.target.value)} className={fieldClass} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <DobPicker theme={t} value={dateOfBirth} disabled={isView} onChange={setDateOfBirth} />
+              </div>
               {age && (
                 <div className="rounded-xl px-2 py-2 flex-shrink-0" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
                   <p style={{ fontSize: 9, color: t.textSecondary, margin: 0, fontWeight: 600 }}>Age</p>
@@ -1213,12 +1242,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="tel" placeholder="Enter mobile number" value={alternatePersonMobile} readOnly={isView} disabled={isView}
               onChange={(e) => setAlternatePersonMobile(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
-          <Field t={t} label="Address" required>
+          <Field t={t} label="Address" required fieldRef={setFieldRef('address') as React.Ref<HTMLDivElement>}>
             <textarea placeholder="Enter address" value={address} readOnly={isView} disabled={isView} rows={2}
               onChange={(e) => setAddress(e.target.value)} className={fieldClass} style={{ resize: 'vertical' }} />
           </Field>
-          <Field t={t} label="Mobile Number" required>
-            <PhoneField t={t} isView={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber}
+          <Field t={t} label="Mobile Number" required fieldRef={setFieldRef('mobileNumber') as React.Ref<HTMLDivElement>}>
+            <PhoneInput theme={t} disabled={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber}
               onAdd={addSecondaryNumber} />
           </Field>
         </div>
@@ -1244,7 +1273,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               {secondaryNumbers.map((p, idx) => (
                 <div key={idx} className="flex items-center gap-1.5">
                   <div style={{ flex: 1 }}>
-                    <PhoneField t={t} isView={isView} code={p.country_code}
+                    <PhoneInput theme={t} disabled={isView} code={p.country_code}
                       onCodeChange={(v) => updateSecondaryNumber(idx, { country_code: v })}
                       number={p.number} onNumberChange={(v) => updateSecondaryNumber(idx, { number: v })} />
                   </div>
@@ -1260,19 +1289,20 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             </div>
           )}
         </div>
-      </div>
+      </AccordionSection>
 
       {/* ── Property Booking Details ─────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="var(--grad-teal)" />
+      <AccordionSection theme={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="var(--grad-teal)"
+        open={openSections.property} onToggle={() => setOpenSections((p) => ({ ...p, property: !p.property }))}
+        sectionRef={(el) => (sectionRefs.current.property = el)}>
 
         {/* Row 1 of 2 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
-          <Field t={t} label="Company Name" required>
+          <Field t={t} label="Company Name" required fieldRef={setFieldRef('companyName') as React.Ref<HTMLDivElement>}>
             <SearchableSelect t={t} placeholder="Select company" options={companyNameOptions} value={companyName} disabled={isView}
               onChange={setCompanyName} />
           </Field>
-          <Field t={t} label="Project Name" required>
+          <Field t={t} label="Project Name" required fieldRef={setFieldRef('projectName') as React.Ref<HTMLDivElement>}>
             <SearchableSelect t={t} placeholder="Select project" options={projectNameOptions} value={projectName} disabled={isView}
               onChange={(v) => { setProjectName(v); setBuildingName(''); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
           </Field>
@@ -1306,6 +1336,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 if (!fl) return no;
                 return [no, fl.flat_type, fl.area_sqft != null ? `${fl.area_sqft} Sqft` : null].filter(Boolean).join(' · ');
               }}
+              // Item 1.2 — a flat marked Disabled/Unavailable in the
+              // Building Master (is_active: false) still shows in the list
+              // (so it's clear it exists) but can't be selected.
+              isOptionDisabled={(no) => selectedFloor?.flats.find((f) => f.flat_no === no)?.is_active === false}
             />
           </Field>
           <Field t={t} label="Flat Type">
@@ -1321,55 +1355,61 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             </div>
           </Field>
           {wantsParking === 'yes' && (
-            <Field t={t} label="Parking No?" required>
+            <Field t={t} label="Parking No?" required fieldRef={setFieldRef('parkingNo') as React.Ref<HTMLDivElement>}>
               <input type="text" placeholder="Enter parking number" value={parkingNo} readOnly={isView} disabled={isView}
                 onChange={(e) => setParkingNo(e.target.value)} className={fieldClass} />
             </Field>
           )}
         </div>
-      </div>
+      </AccordionSection>
 
       {/* ── Payment Details ──────────────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" gradient="var(--grad-green)" />
+      <AccordionSection theme={t} icon={<MdPayments size={16} />} title="Payment Details" gradient="var(--grad-green)"
+        open={openSections.payment} onToggle={() => setOpenSections((p) => ({ ...p, payment: !p.payment }))}
+        sectionRef={(el) => (sectionRefs.current.payment = el)}>
 
-        {/* Row 1 of 3 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          <Field t={t} label="Total Cost of Flat (₹)" required>
+        {/* Row 1 of 3 — Remaining Booking Amount & Date spans 2 columns (its
+            own amount+date pair was squeezing into the same 1/5-width slot
+            as every other single field here, cramming both inputs). */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
+          <Field t={t} label="Total Cost of Flat (₹)" required fieldRef={setFieldRef('totalCost') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter total cost" value={totalCost} onChange={setTotalCost} />
           </Field>
-          <Field t={t} label="Booking Date" required>
+          <Field t={t} label="Booking Date" required fieldRef={setFieldRef('bookingDate') as React.Ref<HTMLDivElement>}>
             <input type="date" value={bookingDate} readOnly={isView} disabled={isView}
               onClick={openPicker} onFocus={openPicker} onChange={(e) => setBookingDate(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Booking Amount (₹)" required>
+          <Field t={t} label="Booking Amount (₹)" required fieldRef={setFieldRef('bookingAmount') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter booking amount" value={bookingAmount} onChange={setBookingAmount} />
           </Field>
-          <Field t={t} label="Remaining Booking Amount & Date">
+          <Field t={t} label="Remaining Booking Amount & Date" className="lg:col-span-2">
             <div className="flex items-center gap-2">
-              <AmountField t={t} isView={isView} placeholder="Amount" value={remainingBookingAmount} onChange={setRemainingBookingAmount} />
+              <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                <AmountField t={t} isView={isView} placeholder="Amount" value={remainingBookingAmount} onChange={setRemainingBookingAmount} />
+              </div>
               <input type="date" value={remainingBookingDate} readOnly={isView} disabled={isView}
-                onClick={openPicker} onFocus={openPicker} onChange={(e) => setRemainingBookingDate(e.target.value)} className={fieldClass} />
+                onClick={openPicker} onFocus={openPicker} onChange={(e) => setRemainingBookingDate(e.target.value)} className={fieldClass}
+                style={{ flexShrink: 0, width: 150 }} />
             </div>
           </Field>
-          <Field t={t} label="Possession Amount (₹)" required>
+          <Field t={t} label="Possession Amount (₹)" required fieldRef={setFieldRef('possessionAmount') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter possession amount" value={possessionAmount} onChange={setPossessionAmount} />
           </Field>
         </div>
 
         {/* Row 2 of 3 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          <Field t={t} label="Installment Date" required>
+          <Field t={t} label="Installment Date" required fieldRef={setFieldRef('installmentDate') as React.Ref<HTMLDivElement>}>
             <input type="date" value={installmentDate} readOnly={isView} disabled={isView}
               onClick={openPicker} onFocus={openPicker} onChange={(e) => setInstallmentDate(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Monthly EMI Before Possession (₹)" required>
+          <Field t={t} label="Monthly EMI Before Possession (₹)" required fieldRef={setFieldRef('monthlyEmiBeforePossession') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} />
           </Field>
-          <Field t={t} label="Monthly EMI After Possession (₹)" required>
+          <Field t={t} label="Monthly EMI After Possession (₹)" required fieldRef={setFieldRef('monthlyEmiAfterPossession') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} />
           </Field>
-          <Field t={t} label="Total EMI Tenure (Months)" required>
+          <Field t={t} label="Total EMI Tenure (Months)" required fieldRef={setFieldRef('totalEmiTenure') as React.Ref<HTMLDivElement>}>
             {/* Max 99 / 2-digit cap (Task 6) — maxLength blocks typing a 3rd
                 digit, and the max clamp inside NumberField covers paste
                 edge cases so the stored value can never exceed 99. */}
@@ -1392,24 +1432,25 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} />
           </Field>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* ── Document Upload ──────────────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <SectionHeader t={t} icon={<MdDescription size={16} />} title="Document Upload" gradient="var(--grad-purple)" />
+      <AccordionSection theme={t} icon={<MdDescription size={16} />} title="Document Upload" gradient="var(--grad-purple)"
+        open={openSections.documents} onToggle={() => setOpenSections((p) => ({ ...p, documents: !p.documents }))}
+        sectionRef={(el) => (sectionRefs.current.documents = el)}>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Field t={t} label="Application Form" required>
+          <Field t={t} label="Application Form" required fieldRef={setFieldRef('applicationForm') as React.Ref<HTMLDivElement>}>
             <DocumentDropCard t={t} isView={isView} label="Application Form" value={applicationForm} onChange={setApplicationForm} />
           </Field>
-          <Field t={t} label="Declaration Form" required>
+          <Field t={t} label="Declaration Form" required fieldRef={setFieldRef('declarationForm') as React.Ref<HTMLDivElement>}>
             <DocumentDropCard t={t} isView={isView} label="Declaration Form" value={declarationForm} onChange={setDeclarationForm} />
           </Field>
-          <Field t={t} label="Allotment Letter" required>
+          <Field t={t} label="Allotment Letter" required fieldRef={setFieldRef('allotmentLetter') as React.Ref<HTMLDivElement>}>
             <DocumentDropCard t={t} isView={isView} label="Allotment Letter" value={allotmentLetter} onChange={setAllotmentLetter} />
           </Field>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* ── Footer — same shared `master-crud-footer` class every other
           CRUD page (Building/Employee/Company/...) uses: a floating card
@@ -1433,9 +1474,13 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               style={{ background: t.insetBg, color: '#0284c7', border: `1px solid ${t.inputBorder}`, cursor: saving ? 'not-allowed' : 'pointer' }}>
               <MdVisibility size={16} /> Preview
             </button>
-            <button type="button" onClick={handleSubmit} disabled={!isFormValid || saving}
+            <button type="button" onClick={handleSubmit} disabled={saving}
               className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white cust-btn-primary"
-              style={{ opacity: saving ? 0.8 : 1 }}>
+              style={{
+                opacity: saving ? 0.8 : 1,
+                background: !isFormValid && !saving ? '#9ca3af' : undefined,
+                cursor: saving ? 'not-allowed' : 'pointer',
+              }}>
               <MdSave size={17} /> {saving ? 'Saving...' : mode === 'edit' ? 'Update Customer' : 'Create Customer'}
             </button>
           </>

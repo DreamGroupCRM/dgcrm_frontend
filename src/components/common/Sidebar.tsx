@@ -107,8 +107,8 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
     children: [
       { label: 'Customer Details', path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage /> },
       { label: 'Payment Dues', path: ROUTES.ADMIN.PAYMENT_DUES, icon: <MdPayment /> },
-      { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
       { label: 'Payment Approvals', path: ROUTES.ADMIN.PAYMENT_APPROVALS, icon: <MdPendingActions /> },
+      { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
       { label: 'Leads', path: ROUTES.ADMIN.LEADS, icon: <MdLeaderboard /> },
     ],
   },
