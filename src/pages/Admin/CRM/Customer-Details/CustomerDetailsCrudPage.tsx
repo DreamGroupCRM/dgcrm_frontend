@@ -202,7 +202,12 @@ const SearchableSelect: React.FC<{
   // still work off the plain option string. Used by the Flat No select to
   // show "A-101 · 2 BHK · 850 Sqft" per option.
   labelFor?: (opt: string) => string;
-}> = ({ t, placeholder, options, value, onChange, disabled, labelFor }) => {
+  // Item 1.2 — a flat marked Disabled/Unavailable in the Building Master
+  // still appears in this list (so it's clear it exists and clear why it
+  // can't be picked) but can't actually be selected: no onClick, grayed
+  // out, not-allowed cursor. Unused by every other SearchableSelect caller.
+  isOptionDisabled?: (opt: string) => boolean;
+}> = ({ t, placeholder, options, value, onChange, disabled, labelFor, isOptionDisabled }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
@@ -243,12 +248,25 @@ const SearchableSelect: React.FC<{
           background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0',
         }}>
-          {filtered.map((opt) => (
-            <button key={opt} type="button" onClick={() => { onChange(opt); setQuery(opt); setOpen(false); }}
-              className="w-full text-left px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-              {labelFor ? labelFor(opt) : opt}
-            </button>
-          ))}
+          {filtered.map((opt) => {
+            const optDisabled = isOptionDisabled?.(opt) ?? false;
+            return (
+              <button
+                key={opt} type="button" disabled={optDisabled}
+                onClick={() => { if (optDisabled) return; onChange(opt); setQuery(opt); setOpen(false); }}
+                title={optDisabled ? 'This flat has been marked unavailable and cannot be selected.' : undefined}
+                className="w-full text-left px-3.5 py-2 text-sm"
+                style={{
+                  background: 'transparent', border: 'none', fontFamily: t.fontFamily,
+                  color: optDisabled ? t.textSecondary : t.textPrimary,
+                  cursor: optDisabled ? 'not-allowed' : 'pointer',
+                  opacity: optDisabled ? 0.55 : 1,
+                }}
+              >
+                {labelFor ? labelFor(opt) : opt}{optDisabled && ' — Unavailable'}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -1306,6 +1324,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 if (!fl) return no;
                 return [no, fl.flat_type, fl.area_sqft != null ? `${fl.area_sqft} Sqft` : null].filter(Boolean).join(' · ');
               }}
+              // Item 1.2 — a flat marked Disabled/Unavailable in the
+              // Building Master (is_active: false) still shows in the list
+              // (so it's clear it exists) but can't be selected.
+              isOptionDisabled={(no) => selectedFloor?.flats.find((f) => f.flat_no === no)?.is_active === false}
             />
           </Field>
           <Field t={t} label="Flat Type">

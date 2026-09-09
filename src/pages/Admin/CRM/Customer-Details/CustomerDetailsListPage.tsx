@@ -150,20 +150,25 @@ const FILTER_DEPENDENTS: Partial<Record<FilterKey, FilterKey[]>> = {
 };
 
 const FilterChip: React.FC<{
-  t: Theme; label: string; displayValue: string; editing: boolean;
+  t: Theme; isDark: boolean; label: string; displayValue: string; editing: boolean;
   onOpen: () => void; onRemove: () => void; children: React.ReactNode;
-}> = ({ t, label, displayValue, editing, onOpen, onRemove, children }) => {
+}> = ({ t, isDark, label, displayValue, editing, onOpen, onRemove, children }) => {
   if (!editing) {
+    // Tinted accent background + left border, rather than the same flat
+    // `insetBg` the rest of the panel uses — an applied filter should read
+    // as visibly "on" at a glance, not blend into the surrounding chrome.
     return (
       <button
         type="button" onClick={onOpen}
         className="inline-flex items-center gap-1.5 rounded-full"
         style={{
-          padding: '6px 6px 6px 12px', background: t.insetBg, border: `1px solid ${t.surfaceBorder}`,
+          padding: '6px 6px 6px 12px',
+          background: isDark ? 'rgba(124,58,237,0.16)' : 'rgba(124,58,237,0.09)',
+          border: '1px solid rgba(124,58,237,0.35)',
           color: t.textPrimary, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap',
         }}
       >
-        <span style={{ fontWeight: 700 }}>{label}:</span> {displayValue}
+        <span style={{ fontWeight: 700, color: '#7c3aed' }}>{label}:</span> {displayValue}
         <span
           role="button" tabIndex={-1}
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
@@ -1002,6 +1007,14 @@ const CustomerDetailsListPage: React.FC = () => {
         <div className="flex items-center gap-2.5 -m-5 mb-4 px-5 py-3.5 rounded-t-2xl" style={{ background: 'var(--grad-sky)' }}>
           <MdFilterList size={18} style={{ color: '#fff', flexShrink: 0 }} />
           <h3 style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>Search &amp; Filter Customers</h3>
+          {activeFilters.length > 0 && (
+            <span
+              className="rounded-full"
+              style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: 'rgba(255,255,255,0.25)', padding: '2px 9px' }}
+            >
+              {activeFilters.length} active
+            </span>
+          )}
         </div>
 
         {/* Only applied filters show, each as a small removable chip — click
@@ -1010,7 +1023,7 @@ const CustomerDetailsListPage: React.FC = () => {
         <div className="flex flex-wrap items-start gap-2.5">
           {activeFilters.map((key) => (
             <FilterChip
-              key={key} t={t} label={FILTER_LABELS[key]}
+              key={key} t={t} isDark={isDark} label={FILTER_LABELS[key]}
               displayValue={filterDisplayValue(key)}
               editing={editingFilter === key}
               onOpen={() => setEditingFilter(key)}
