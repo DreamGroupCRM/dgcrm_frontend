@@ -897,17 +897,15 @@ const CustomerDetailsListPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Toolbar — Search Employee (left), Assign to Employee | Add
-          Customer | Grid/List toggle (right), plus Export CSV/Refresh,
-          all in one row so this never wraps into a second row on desktop
-          the way the old two-block layout could. ────────────────────── */}
+      {/* ── Toolbar — Search Employee + Assign to Employee together on the
+          left, Add Customer / Grid-List / Export CSV / Refresh always on
+          the right, all in one row. ─────────────────────────────────── */}
       <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
-        <div style={{ flex: '1 1 200px', maxWidth: 320 }}>
-          <label className="cust-filter-label">Search Employee</label>
-          <SearchableSelect t={t} placeholder="Select employee" options={employeeOptions} value={employeeSearch} onChange={setEmployeeSearch} disabled={!assignmentEnabled} />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5" style={{ flexShrink: 0 }}>
+        <div className="flex flex-wrap items-end gap-3">
+          <div style={{ flex: '1 1 200px', maxWidth: 320 }}>
+            <label className="cust-filter-label">Search Employee</label>
+            <SearchableSelect t={t} placeholder="Select employee" options={employeeOptions} value={employeeSearch} onChange={setEmployeeSearch} disabled={!assignmentEnabled} />
+          </div>
           <button
             type="button"
             onClick={handleAssign}
@@ -922,6 +920,9 @@ const CustomerDetailsListPage: React.FC = () => {
           >
             {assigning ? 'Assigning...' : 'Assign to Employee'}
           </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5" style={{ flexShrink: 0 }}>
           <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
             style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
