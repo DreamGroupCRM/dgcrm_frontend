@@ -1234,7 +1234,7 @@ const CustomerDetailsListPage: React.FC = () => {
                       {infoModal.payments!.map((p) => (
                         <div key={p.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: t.insetBg }}>
                           <div>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <span style={{ fontSize: 12, fontWeight: 600, color: t.textPrimary }}>₹ {p.amount.toLocaleString('en-IN')}</span>
                               <span
                                 style={{
@@ -1244,8 +1244,18 @@ const CustomerDetailsListPage: React.FC = () => {
                                 }}>
                                 {p.is_approved ? 'Approved' : 'Pending'}
                               </span>
+                              <span
+                                style={{
+                                  fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 999,
+                                  color: '#2563eb', background: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
+                                }}>
+                                {paymentForLabel(p.payment_type)}
+                              </span>
                             </div>
-                            <div style={{ fontSize: 10.5, color: t.textSecondary }}>{formatDate(p.paid_on)}{p.mode ? ` · ${p.mode}` : ''}</div>
+                            <div style={{ fontSize: 10.5, color: t.textSecondary }}>
+                              Paid on {formatDate(p.paid_on)}{p.mode ? ` · ${p.mode}` : ''}
+                              {p.inst_date && p.inst_date !== p.paid_on ? ` · Installment due ${formatDate(p.inst_date)}` : ''}
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             {p.reference_no && <div style={{ fontSize: 10, color: t.textSecondary }}>Ref: {p.reference_no}</div>}
