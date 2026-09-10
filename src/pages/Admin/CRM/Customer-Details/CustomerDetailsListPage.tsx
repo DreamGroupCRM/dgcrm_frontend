@@ -74,17 +74,58 @@ const SearchableSelect: React.FC<{
 }> = ({ t, placeholder, options, value, onChange, disabled, labelFor, onCommit, autoFocus, loading, emptyMessage = 'No options found.', onRetry }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setQuery(value); }, [value]);
 
+  // Every dropdown here used to render as a plain position:absolute child
+  // of its own field wrapper (z-index 30) — nothing but that number kept it
+  // above the results grid/table right below it, and the grid's own cards/
+  // rows won a real browser's stacking order often enough that the
+  // Customer Name suggestions and the Assign Employee list both ended up
+  // visually and click-through BEHIND the table: options looked selectable
+  // but the click actually landed on whatever table row/cell was underneath.
+  // Portaling to document.body (position:fixed, computed from the field's
+  // own bounding rect on open) removes the ambiguity entirely — same fix
+  // already applied to RowActionMenu and to CustomerDetailsCrudPage.tsx's
+  // own SearchableSelect.
+  const openDropdown = () => {
+    if (disabled) return;
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    setOpen(true);
+  };
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); onCommit?.(); }
+      const target = e.target as Node;
+      if (ref.current && !ref.current.contains(target) && !(target as HTMLElement).closest?.('[data-searchable-select-menu]')) {
+        setOpen(false);
+        onCommit?.();
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [onCommit]);
+
+  // Reposition (rather than just closing) on scroll/resize while open — this
+  // page's filter row and results grid share one scroll container, so a
+  // stale position from an earlier openDropdown() would otherwise drift out
+  // from under the field the moment the page scrolls.
+  useEffect(() => {
+    if (!open) return;
+    const reposition = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    };
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open]);
 
   const filtered = options.filter((o) => o?.toLowerCase().includes(query.toLowerCase()));
 
@@ -93,7 +134,7 @@ const SearchableSelect: React.FC<{
       <div
         className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
         style={{ background: disabled ? t.insetBg : t.inputBg, border: `1px solid ${t.inputBorder}`, cursor: disabled ? 'not-allowed' : 'text' }}
-        onClick={() => !disabled && setOpen(true)}
+        onClick={openDropdown}
       >
         <input
           type="text"
@@ -101,8 +142,8 @@ const SearchableSelect: React.FC<{
           value={query}
           disabled={disabled}
           autoFocus={autoFocus}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+          onFocus={openDropdown}
+          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); openDropdown(); }}
           style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 11.5, width: '100%' }}
         />
         {value && !disabled && (
@@ -116,10 +157,11 @@ const SearchableSelect: React.FC<{
         )}
         <MdKeyboardArrowDown size={16} style={{ color: t.textSecondary, flexShrink: 0 }} />
       </div>
-      {open && !disabled && (loading || filtered.length > 0 || emptyMessage) && (
+      {open && !disabled && menuPos && (loading || filtered.length > 0 || emptyMessage) && createPortal(
         <div
+          data-searchable-select-menu
           style={{
-            position: 'absolute', top: '110%', left: 0, right: 0, zIndex: 30, maxHeight: 220, overflowY: 'auto',
+            position: 'fixed', top: menuPos.top, left: menuPos.left, width: menuPos.width, zIndex: 200, maxHeight: 220, overflowY: 'auto',
             background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
             boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0',
           }}
@@ -152,7 +194,8 @@ const SearchableSelect: React.FC<{
               </button>
             ))
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
