@@ -394,10 +394,13 @@ const DueReportPage: React.FC = () => {
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
-      {/* ── Toolbar — Search, Export CSV, Refresh all in one row. ────────── */}
+      {/* ── Toolbar — Search (left), Export CSV + Refresh (right), always
+          one row — flex-nowrap + justify-between so the search field and
+          the button group sit at opposite ends with the gap between
+          them, and never split onto a second line. ──────────────────── */}
       <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex flex-wrap items-center gap-3">
-          <div style={{ flex: '1 1 200px', maxWidth: 320 }}>
+        <div className="flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+          <div style={{ width: 260, flexShrink: 0 }}>
             <SearchableSelect t={t} placeholder="Search or select customer name" options={customerOptions} value={customerSearch} onChange={handleCustomerSearchChange} />
           </div>
           <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>

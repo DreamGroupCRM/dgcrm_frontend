@@ -899,10 +899,13 @@ const CustomerDetailsListPage: React.FC = () => {
 
       {/* ── Toolbar — Search Employee + Assign to Employee together on the
           left, Add Customer / Grid-List / Export CSV / Refresh always on
-          the right, all in one row. ─────────────────────────────────── */}
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
-        <div className="flex flex-wrap items-end gap-3">
-          <div style={{ flex: '1 1 200px', maxWidth: 320 }}>
+          the right, all in one single row — flex-nowrap (not flex-wrap)
+          so this never splits into two rows on desktop; the row scrolls
+          horizontally instead of wrapping if the viewport is too narrow
+          to fit everything (e.g. on mobile). ───────────────────────────── */}
+      <div className="flex items-end justify-between gap-3 mb-2" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+        <div className="flex items-end gap-3" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
+          <div style={{ width: 240 }}>
             <label className="cust-filter-label">Search Employee</label>
             <SearchableSelect t={t} placeholder="Select employee" options={employeeOptions} value={employeeSearch} onChange={setEmployeeSearch} disabled={!assignmentEnabled} />
           </div>
@@ -922,7 +925,7 @@ const CustomerDetailsListPage: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5" style={{ flexShrink: 0 }}>
+        <div className="flex items-center gap-2.5" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
             title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
             className="flex items-center justify-center rounded-xl"
