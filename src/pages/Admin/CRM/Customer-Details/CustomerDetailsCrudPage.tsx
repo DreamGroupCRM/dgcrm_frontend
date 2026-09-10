@@ -599,6 +599,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [address, setAddress] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [alternatePersonName, setAlternatePersonName] = useState('');
+  const [alternatePersonCountryCode, setAlternatePersonCountryCode] = useState('+91');
   const [alternatePersonMobile, setAlternatePersonMobile] = useState('');
 
   // ── Property Booking Details ──────────────────────────────────────────
@@ -689,6 +690,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           setAddress(c.address || '');
           setDateOfBirth(c.date_of_birth || '');
           setAlternatePersonName(c.alternate_person_name || '');
+          setAlternatePersonCountryCode(c.alternate_person_country_code || '+91');
           setAlternatePersonMobile(c.alternate_person_mobile || '');
 
           setCompanyName(c.company_name || '');
@@ -938,6 +940,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       formData.append('address', address.trim());
       formData.append('date_of_birth', dateOfBirth);
       formData.append('alternate_person_name', alternatePersonName.trim());
+      formData.append('alternate_person_country_code', alternatePersonCountryCode);
       formData.append('alternate_person_mobile', alternatePersonMobile.trim());
 
       // Property Booking Details
@@ -1120,7 +1123,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <ViewValue label="Date of Birth" value={dateOfBirth ? `${dateOfBirth}${age ? ` (${age.years}y ${age.months}m)` : ''}` : ''} />
               <ViewValue label="Aadhar Number" value={aadharNumber} />
               <ViewValue label="PAN Number" value={pancardNumber} />
-              <ViewValue label="Alternate Contact" value={alternatePersonName ? `${alternatePersonName}${alternatePersonMobile ? ` · ${alternatePersonMobile}` : ''}` : ''} />
+              <ViewValue label="Alternate Contact" value={alternatePersonName ? `${alternatePersonName}${alternatePersonMobile ? ` · ${alternatePersonCountryCode} ${alternatePersonMobile}` : ''}` : ''} />
               <ViewValue label="Address" value={address} className="cust-view-field-wide" />
             </div>
           </div>
@@ -1293,8 +1296,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => setAlternatePersonName(e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Alternate Contact Mobile">
-            <input type="tel" placeholder="Enter mobile number" value={alternatePersonMobile} readOnly={isView} disabled={isView}
-              onChange={(e) => setAlternatePersonMobile(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
+            <PhoneInput theme={t} disabled={isView}
+              code={alternatePersonCountryCode} onCodeChange={setAlternatePersonCountryCode}
+              number={alternatePersonMobile} onNumberChange={setAlternatePersonMobile} />
           </Field>
           <Field t={t} label="Address" required fieldRef={setFieldRef('address') as React.Ref<HTMLDivElement>}>
             <textarea placeholder="Enter address" value={address} readOnly={isView} disabled={isView} rows={2}
@@ -1553,7 +1557,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             whatsapp: whatsappNumber ? `${whatsappCountryCode} ${whatsappNumber}` : '',
             aadhar: aadharNumber, pan: pancardNumber, address, dob: dateOfBirth,
             age: age ? `${age.years}y ${age.months}m` : '',
-            altName: alternatePersonName, altMobile: alternatePersonMobile,
+            altName: alternatePersonName, altMobile: alternatePersonMobile ? `${alternatePersonCountryCode} ${alternatePersonMobile}` : '',
             companyName, projectName, buildingName, wingName, floorLabel,
             flatNo: selectedFlat?.flat_no || flatNo,
             flatType: selectedFlat?.flat_type || '',

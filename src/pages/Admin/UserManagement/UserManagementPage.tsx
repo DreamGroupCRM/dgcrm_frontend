@@ -14,6 +14,7 @@ import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
+import { PhoneInput } from '../../../components/common/PhoneInput';
 import { showAlert, formatLastLogin } from '../../../utils';
 import {
   fetchUsers, setUserActiveStatus, deleteUser, adminSetPassword, createAdmin, updateUser,
@@ -40,11 +41,11 @@ const UserManagementPage: React.FC = () => {
 
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
+  const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', phone_country_code: '+91', phone: '' });
   const [createResult, setCreateResult] = useState<CreateAdminResult | null>(null);
 
   const [editTarget, setEditTarget] = useState<UserManagementRow | null>(null);
-  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', phone_country_code: '+91', phone: '' });
   const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => { dispatch(setPageTitle('User Management')); }, [dispatch]);
@@ -110,7 +111,7 @@ const UserManagementPage: React.FC = () => {
 
   const closeCreateModal = () => {
     setShowCreate(false);
-    setCreateForm({ first_name: '', last_name: '', email: '', phone: '' });
+    setCreateForm({ first_name: '', last_name: '', email: '', phone_country_code: '+91', phone: '' });
     setCreateResult(null);
   };
 
@@ -123,6 +124,7 @@ const UserManagementPage: React.FC = () => {
         first_name: createForm.first_name.trim(),
         last_name: createForm.last_name.trim() || undefined,
         email: createForm.email.trim(),
+        phone_country_code: createForm.phone_country_code,
         phone: createForm.phone.trim() || undefined,
       });
       setCreateResult(result);
@@ -136,7 +138,7 @@ const UserManagementPage: React.FC = () => {
 
   const openEditModal = (row: UserManagementRow) => {
     setEditTarget(row);
-    setEditForm({ first_name: row.first_name, last_name: row.last_name || '', email: row.email, phone: row.phone || '' });
+    setEditForm({ first_name: row.first_name, last_name: row.last_name || '', email: row.email, phone_country_code: row.phone_country_code || '+91', phone: row.phone || '' });
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -148,6 +150,7 @@ const UserManagementPage: React.FC = () => {
         first_name: editForm.first_name.trim(),
         last_name: editForm.last_name.trim() || undefined,
         email: editForm.email.trim(),
+        phone_country_code: editForm.phone_country_code,
         phone: editForm.phone.trim() || undefined,
       });
       toast.success('Admin details updated.');
@@ -337,8 +340,9 @@ const UserManagementPage: React.FC = () => {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Phone</label>
-                <input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
-                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                <PhoneInput theme={t}
+                  code={editForm.phone_country_code} onCodeChange={(v) => setEditForm((f) => ({ ...f, phone_country_code: v }))}
+                  number={editForm.phone} onNumberChange={(v) => setEditForm((f) => ({ ...f, phone: v }))} />
               </div>
               <div className="flex items-center justify-end gap-2.5 mt-2">
                 <button type="button" onClick={() => setEditTarget(null)} disabled={savingEdit}
@@ -411,8 +415,9 @@ const UserManagementPage: React.FC = () => {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Phone</label>
-                  <input value={createForm.phone} onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))}
-                    style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                  <PhoneInput theme={t}
+                    code={createForm.phone_country_code} onCodeChange={(v) => setCreateForm((f) => ({ ...f, phone_country_code: v }))}
+                    number={createForm.phone} onNumberChange={(v) => setCreateForm((f) => ({ ...f, phone: v }))} />
                 </div>
                 <p style={{ fontSize: 11, color: t.textSecondary, margin: 0 }}>
                   A temporary password is generated automatically — the new admin must set their own password on first login.

@@ -810,6 +810,7 @@ export interface CustomerDetailFormValues {
   address                                     : string;
   date_of_birth                                 : string;
   alternate_person_name                           : string;
+  alternate_person_country_code                     : string;
   alternate_person_mobile                           : string;
 
   // Property Booking Details

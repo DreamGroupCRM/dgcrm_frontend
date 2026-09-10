@@ -99,6 +99,7 @@ interface BackendCustomer {
   address: string | null;
   date_of_birth: string | null;
   alternate_contact_name: string | null;
+  alternate_contact_country_code: string | null;
   alternate_contact_mobile: string | null;
   company_name: string | null;
   has_parking: boolean;
@@ -216,6 +217,7 @@ const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
   address: bc.address ?? '',
   date_of_birth: bc.date_of_birth ?? '',
   alternate_person_name: bc.alternate_contact_name ?? '',
+  alternate_person_country_code: bc.alternate_contact_country_code || '+91',
   alternate_person_mobile: bc.alternate_contact_mobile ?? '',
 
   company_name: bc.company_name ?? '',
@@ -291,6 +293,7 @@ const CUSTOMER_TEXT_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
   ['aadhar_number', 'aadhar_card_no'],
   ['pancard_number', 'pan_card_no'],
   ['alternate_person_name', 'alternate_contact_name'],
+  ['alternate_person_country_code', 'alternate_contact_country_code'],
   ['alternate_person_mobile', 'alternate_contact_mobile'],
   ['total_cost', 'flat_amount'],
   ['monthly_emi_before_possession', 'installment_amount'],
