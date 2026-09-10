@@ -550,24 +550,15 @@ const CustomerDetailsListPage: React.FC = () => {
     !!customerNameFilter || !!buildingFilter || !!wingFilter || !!floorFilter || !!flatNoFilter || !!fromDate || !!toDate
     || assignmentStatusFilter !== 'all';
 
-  // Selecting an exact customer name (not just typing a partial match)
-  // auto-populates the Building/Wing/Floor/Flat No filters from that
-  // customer's own booking, narrowing the whole filter row to their flat
-  // in one action instead of four (item 11's "auto-populate related
-  // details... fast updates without manual actions"). ONLY when the user
-  // hasn't already picked a Building/Wing/Flat independently — every
-  // filter must stay independent (V_21.0 item 1), so Customer Name must
-  // never silently overwrite a Building/Wing/Flat the user already chose.
+  // Every filter is fully independent — setting/typing into Customer Name
+  // touches ONLY customerNameFilter. An earlier version of this handler
+  // auto-populated Building/Wing/Floor/Flat No from the matched customer's
+  // own booking as a "convenience"; that is exactly the "other filters get
+  // automatically selected" behavior reported against this page, so it has
+  // been removed outright rather than merely guarded — the user must
+  // explicitly set every filter they want applied.
   const handleCustomerNameFilterChange = (v: string) => {
     setCustomerNameFilter(v);
-    if (buildingFilter || wingFilter || flatNoFilter) return;
-    const exact = customerDirectory.find((c) => c.customer_name === v);
-    if (exact) {
-      setBuildingFilter(exact.building_name || '');
-      setWingFilter(exact.wing_name || '');
-      setFloorFilter('');
-      setFlatNoFilter(exact.flat_no || '');
-    }
   };
 
   // allCustomers IS the current page now — the server already applied
@@ -924,8 +915,16 @@ const CustomerDetailsListPage: React.FC = () => {
         </div>
 
         {/* All filters always visible in one row (wraps on narrow screens) —
-            no click-to-reveal step. Wing/Floor/Flat No stay disabled until
-            their prerequisite is picked, same cascade as before. */}
+            no click-to-reveal step. Each filter below sets ONLY its own
+            state — no filter clears, overwrites, or disables another. The
+            option LIST a filter offers may still be narrowed by ones set
+            before it (Wing's options come from whichever Building is
+            selected, same as any real drill-down picker), but that's a
+            list of valid choices to show, never a value picked on the
+            user's behalf, and every field stays enabled and independently
+            usable — a genuinely empty option list surfaces via
+            SearchableSelect's own empty-state message, not by disabling
+            the field. */}
         <div className="flex flex-wrap items-end gap-3">
           <div style={{ flex: '1 1 170px', minWidth: 150 }}>
             <label className="cust-filter-label">Customer Name</label>
@@ -934,22 +933,26 @@ const CustomerDetailsListPage: React.FC = () => {
           <div style={{ flex: '1 1 170px', minWidth: 150 }}>
             <label className="cust-filter-label">Building</label>
             <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter}
-              onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFloorFilter(''); setFlatNoFilter(''); }} />
+              onChange={setBuildingFilter} />
           </div>
           <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Wing</label>
             <SearchableSelect t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingFilter}
-              disabled={!selectedBuilding || loadingBuildingDetail}
-              onChange={(v) => { setWingFilter(v); setFloorFilter(''); setFlatNoFilter(''); }} />
+              loading={loadingBuildingDetail}
+              emptyMessage={selectedBuilding ? 'No wings found for this building.' : 'Select a Building first to see its wings.'}
+              onChange={setWingFilter} />
           </div>
           <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Floor</label>
-            <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter} disabled={!selectedWing}
-              onChange={(v) => { setFloorFilter(v); setFlatNoFilter(''); }} />
+            <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter}
+              emptyMessage={selectedWing ? 'No floors found for this wing.' : 'Select a Wing first to see its floors.'}
+              onChange={setFloorFilter} />
           </div>
           <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Flat No</label>
-            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} disabled={!selectedFloor} onChange={setFlatNoFilter} labelFor={flatLabelFor} />
+            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter}
+              emptyMessage={selectedFloor ? 'No flats found for this floor.' : 'Select a Floor first to see its flats.'}
+              onChange={setFlatNoFilter} labelFor={flatLabelFor} />
           </div>
           <div style={{ flex: '1 1 140px', minWidth: 130 }}>
             <label className="cust-filter-label">From Date</label>
