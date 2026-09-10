@@ -15,6 +15,7 @@ import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FormField, getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
+import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { showAlert } from '../../../../utils';
 import { companyService, CompanyPayload } from '../../../../services/companyService';
 import { Company } from '../../../../types';
@@ -32,11 +33,12 @@ interface FieldProps {
   error?: string;
   t: AppTheme;
   children: React.ReactNode;
+  fieldRef?: React.Ref<HTMLDivElement>;
 }
 
-const Field: React.FC<FieldProps> = ({ label, required, error, t, children }) => (
+const Field: React.FC<FieldProps> = ({ label, required, error, t, children, fieldRef }) => (
   <FormField
-    label={label} t={t} required={required} error={error}
+    label={label} t={t} required={required} error={error} fieldRef={fieldRef}
     labelStyle={getFormLabelStyle(t, { fontWeight: 700, fontSize: 12.5, marginBottom: 6, color: t.textPrimary })}
   >
     {children}
@@ -124,6 +126,21 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
   const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(!isAdd);
   const fileRef = useRef<HTMLInputElement>(null);
+  const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const setFieldRef = (key: string) => (el: HTMLDivElement | null) => { fieldRefs.current[key] = el; };
+
+  // Field label text for each key — used by the top-of-form error summary
+  // (item 7) so its list reads like real sentences instead of raw keys.
+  const FIELD_LABELS: Record<keyof FormErrors, string> = {
+    name: 'Company Name', email: 'Email', phone: 'Phone', whatsapp_number: 'WhatsApp Number',
+    city: 'City', state: 'State', country: 'Country',
+  };
+
+  const revealInvalidField = (field: string) => {
+    const el = fieldRefs.current[field];
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el?.querySelector<HTMLElement>('input, select, button, textarea')?.focus();
+  };
 
   useEffect(() => { dispatch(setPageTitle(PAGE_TITLES[mode])); }, [dispatch, mode]);
 
@@ -188,7 +205,12 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
 
   const handleSubmit = async () => {
     const errs = validateAll();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      const firstField = (Object.keys(FIELD_LABELS) as (keyof FormErrors)[]).find((k) => errs[k]);
+      if (firstField) revealInvalidField(firstField);
+      return;
+    }
 
     setSaving(true);
     try {
@@ -271,6 +293,13 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
+      <ValidationErrorSummary
+        t={t}
+        errors={(Object.keys(FIELD_LABELS) as (keyof FormErrors)[])
+          .filter((k) => errors[k])
+          .map((k) => ({ field: k, message: errors[k] as string }))}
+        onErrorClick={revealInvalidField}
+      />
       <div style={{
         background: t.surfaceBg,
         border: `1px solid ${t.surfaceBorder}`,
@@ -281,7 +310,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Field grid ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
 
-          <Field label="Company Name" required={!isView} t={t} error={errors.name}>
+          <Field label="Company Name" required={!isView} t={t} error={errors.name} fieldRef={setFieldRef('name')}>
             <input
               type="text"
               placeholder="Enter company name"
@@ -294,7 +323,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
 
-          <Field label="Email" required={!isView} t={t} error={errors.email}>
+          <Field label="Email" required={!isView} t={t} error={errors.email} fieldRef={setFieldRef('email')}>
             <input
               type="email"
               placeholder="Enter email address"
@@ -307,7 +336,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
 
-          <Field label="Phone" required={!isView} t={t} error={errors.phone}>
+          <Field label="Phone" required={!isView} t={t} error={errors.phone} fieldRef={setFieldRef('phone')}>
             <PhoneInput
               theme={t} disabled={isView} placeholder="Enter 10-digit phone number"
               code={form.phone_country_code} onCodeChange={(v) => handleChange('phone_country_code', v)}
@@ -316,7 +345,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
 
-          <Field label="WhatsApp Number" t={t} error={errors.whatsapp_number}>
+          <Field label="WhatsApp Number" t={t} error={errors.whatsapp_number} fieldRef={setFieldRef('whatsapp_number')}>
             <PhoneInput
               theme={t} disabled={isView} placeholder="Enter 10-digit WhatsApp number"
               code={form.whatsapp_country_code} onCodeChange={(v) => handleChange('whatsapp_country_code', v)}
@@ -325,7 +354,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
 
-          <Field label="City" t={t} error={errors.city}>
+          <Field label="City" t={t} error={errors.city} fieldRef={setFieldRef('city')}>
             <input
               type="text"
               placeholder="Enter city"
@@ -341,7 +370,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
 
-          <Field label="State" t={t} error={errors.state}>
+          <Field label="State" t={t} error={errors.state} fieldRef={setFieldRef('state')}>
             <input
               type="text"
               placeholder="Enter state"
@@ -357,7 +386,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
 
-          <Field label="Country" t={t} error={errors.country}>
+          <Field label="Country" t={t} error={errors.country} fieldRef={setFieldRef('country')}>
             <input
               type="text"
               placeholder="Enter country"

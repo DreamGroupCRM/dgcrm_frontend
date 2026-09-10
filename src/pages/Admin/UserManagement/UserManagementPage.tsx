@@ -6,7 +6,7 @@
 // for why this deliberately never touches the linked Employee/Customer
 // business record (Employee/Customer pages already own their own
 // activate/deactivate/delete). SuperAdmin-only, enforced server-side.
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { MdPeople, MdCheckCircle, MdCancel, MdDelete, MdRefresh, MdKey, MdClose, MdLock, MdPersonAddAlt1, MdContentCopy, MdEdit } from 'react-icons/md';
 
@@ -15,7 +15,12 @@ import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { PhoneInput } from '../../../components/common/PhoneInput';
+import { ValidationErrorSummary } from '../../../components/common/ValidationErrorSummary';
 import { showAlert, formatLastLogin } from '../../../utils';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+interface FieldCheck { field: string; message: string; failed: () => boolean; }
 import {
   fetchUsers, setUserActiveStatus, deleteUser, adminSetPassword, createAdmin, updateUser,
   UserManagementRow, CreateAdminResult,
@@ -47,6 +52,40 @@ const UserManagementPage: React.FC = () => {
   const [editTarget, setEditTarget] = useState<UserManagementRow | null>(null);
   const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', phone_country_code: '+91', phone: '' });
   const [savingEdit, setSavingEdit] = useState(false);
+
+  // ── Create Admin validation ──────────────────────────────────────────
+  const createFieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const setCreateFieldRef = (key: string) => (el: HTMLDivElement | null) => { createFieldRefs.current[key] = el; };
+  const revealCreateField = (field: string) => {
+    const el = createFieldRefs.current[field];
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el?.querySelector<HTMLElement>('input, select, button, textarea')?.focus();
+  };
+  const createValidationChecks: FieldCheck[] = [
+    { field: 'first_name', message: 'Please enter First Name.', failed: () => !createForm.first_name.trim() },
+    { field: 'email', message: 'Please enter a valid Email address.', failed: () => !createForm.email.trim() || !EMAIL_RE.test(createForm.email.trim()) },
+  ];
+  const [createSubmitAttempted, setCreateSubmitAttempted] = useState(false);
+  const createActiveErrors = createSubmitAttempted ? createValidationChecks.filter((c) => c.failed()) : [];
+  const createErrorFor = (field: string): string | undefined =>
+    createSubmitAttempted ? createValidationChecks.find((c) => c.field === field && c.failed())?.message : undefined;
+
+  // ── Edit Admin validation ────────────────────────────────────────────
+  const editFieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const setEditFieldRef = (key: string) => (el: HTMLDivElement | null) => { editFieldRefs.current[key] = el; };
+  const revealEditField = (field: string) => {
+    const el = editFieldRefs.current[field];
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el?.querySelector<HTMLElement>('input, select, button, textarea')?.focus();
+  };
+  const editValidationChecks: FieldCheck[] = [
+    { field: 'first_name', message: 'Please enter First Name.', failed: () => !editForm.first_name.trim() },
+    { field: 'email', message: 'Please enter a valid Email address.', failed: () => !editForm.email.trim() || !EMAIL_RE.test(editForm.email.trim()) },
+  ];
+  const [editSubmitAttempted, setEditSubmitAttempted] = useState(false);
+  const editActiveErrors = editSubmitAttempted ? editValidationChecks.filter((c) => c.failed()) : [];
+  const editErrorFor = (field: string): string | undefined =>
+    editSubmitAttempted ? editValidationChecks.find((c) => c.field === field && c.failed())?.message : undefined;
 
   useEffect(() => { dispatch(setPageTitle('User Management')); }, [dispatch]);
 
@@ -113,11 +152,14 @@ const UserManagementPage: React.FC = () => {
     setShowCreate(false);
     setCreateForm({ first_name: '', last_name: '', email: '', phone_country_code: '+91', phone: '' });
     setCreateResult(null);
+    setCreateSubmitAttempted(false);
   };
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!createForm.first_name.trim() || !createForm.email.trim()) return;
+    setCreateSubmitAttempted(true);
+    const invalid = createValidationChecks.find((c) => c.failed());
+    if (invalid) { revealCreateField(invalid.field); return; }
     setCreating(true);
     try {
       const result = await createAdmin({
@@ -139,11 +181,15 @@ const UserManagementPage: React.FC = () => {
   const openEditModal = (row: UserManagementRow) => {
     setEditTarget(row);
     setEditForm({ first_name: row.first_name, last_name: row.last_name || '', email: row.email, phone_country_code: row.phone_country_code || '+91', phone: row.phone || '' });
+    setEditSubmitAttempted(false);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editTarget || !editForm.first_name.trim() || !editForm.email.trim()) return;
+    if (!editTarget) return;
+    setEditSubmitAttempted(true);
+    const invalid = editValidationChecks.find((c) => c.failed());
+    if (invalid) { revealEditField(invalid.field); return; }
     setSavingEdit(true);
     try {
       await updateUser(editTarget.id, {
@@ -321,11 +367,17 @@ const UserManagementPage: React.FC = () => {
               </button>
             </div>
             <form onSubmit={handleSaveEdit} className="p-5" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <ValidationErrorSummary
+                t={t}
+                errors={editActiveErrors.map((c) => ({ field: c.field, message: c.message }))}
+                onErrorClick={revealEditField}
+              />
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                <div ref={setEditFieldRef('first_name')}>
                   <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>First Name *</label>
                   <input required value={editForm.first_name} onChange={(e) => setEditForm((f) => ({ ...f, first_name: e.target.value }))} autoFocus
-                    style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                    style={{ width: '100%', background: t.inputBg, border: `1px solid ${editErrorFor('first_name') ? '#ef4444' : t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                  {editErrorFor('first_name') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{editErrorFor('first_name')}</p>}
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Last Name</label>
@@ -333,10 +385,11 @@ const UserManagementPage: React.FC = () => {
                     style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
                 </div>
               </div>
-              <div>
+              <div ref={setEditFieldRef('email')}>
                 <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Email *</label>
                 <input required type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
-                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${editErrorFor('email') ? '#ef4444' : t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                {editErrorFor('email') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{editErrorFor('email')}</p>}
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Phone</label>
@@ -396,11 +449,17 @@ const UserManagementPage: React.FC = () => {
               </div>
             ) : (
               <form onSubmit={handleCreateAdmin} className="p-5" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <ValidationErrorSummary
+                  t={t}
+                  errors={createActiveErrors.map((c) => ({ field: c.field, message: c.message }))}
+                  onErrorClick={revealCreateField}
+                />
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
+                  <div ref={setCreateFieldRef('first_name')}>
                     <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>First Name *</label>
                     <input required value={createForm.first_name} onChange={(e) => setCreateForm((f) => ({ ...f, first_name: e.target.value }))} autoFocus
-                      style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                      style={{ width: '100%', background: t.inputBg, border: `1px solid ${createErrorFor('first_name') ? '#ef4444' : t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                    {createErrorFor('first_name') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{createErrorFor('first_name')}</p>}
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Last Name</label>
@@ -408,10 +467,11 @@ const UserManagementPage: React.FC = () => {
                       style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
                   </div>
                 </div>
-                <div>
+                <div ref={setCreateFieldRef('email')}>
                   <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Email *</label>
                   <input required type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
-                    style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                    style={{ width: '100%', background: t.inputBg, border: `1px solid ${createErrorFor('email') ? '#ef4444' : t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
+                  {createErrorFor('email') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{createErrorFor('email')}</p>}
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Phone</label>

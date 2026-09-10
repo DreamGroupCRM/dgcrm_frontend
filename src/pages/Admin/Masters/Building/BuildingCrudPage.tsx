@@ -2,7 +2,7 @@
 // Single page handles Add / View / Update for the Building Master
 // (Project Details -> Wings -> Floors in Each Wing -> Flats on Each Floor -> Save)
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -14,6 +14,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
+import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { useAccordion } from '../../../../hooks/useAccordion';
 import { showAlert } from '../../../../utils';
 import {
@@ -143,8 +144,9 @@ const StepBadge: React.FC<{ n: number; accent: string }> = ({ n, accent }) => (
 
 const SectionCard: React.FC<{
   t: AppTheme; children: React.ReactNode; style?: React.CSSProperties;
-}> = ({ t, children, style }) => (
-  <div style={{
+  sectionRef?: React.Ref<HTMLDivElement>;
+}> = ({ t, children, style, sectionRef }) => (
+  <div ref={sectionRef} style={{
     background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`,
     borderRadius: 14, padding: 24, marginBottom: 20, ...style,
   }}>
@@ -756,24 +758,37 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
     shopsSectionValid &&
     parkingSectionValid;
 
+  // Global validation error summary (item 7) — same 4 checks the handleSubmit
+  // if/else chain below already made, just named and given a section to
+  // scroll to instead of only ever reporting the first one via toast.
+  const projectDetailsRef = useRef<HTMLDivElement>(null);
+  const wingsRef = useRef<HTMLDivElement>(null);
+  const shopsRef = useRef<HTMLDivElement>(null);
+  const parkingRef = useRef<HTMLDivElement>(null);
+  const validationChecks: { field: string; message: string; failed: () => boolean; sectionRef: React.RefObject<HTMLDivElement> }[] = [
+    { field: 'projectDetails', message: 'Please fill all Project Details fields.', sectionRef: projectDetailsRef,
+      failed: () => !projectName.trim() || !location.trim() || !buildingName.trim() },
+    { field: 'wings', message: 'Please give every wing a name and a valid floor count.', sectionRef: wingsRef,
+      failed: () => wings.length === 0 || wings.some((w) => w.name.trim() === '' || !(parseInt(w.no_of_floors, 10) >= 0)) },
+    { field: 'shops', message: hasShops === null ? 'Please select whether this building has shops.' : 'Please enter the number of shops and click Generate Shops.', sectionRef: shopsRef,
+      failed: () => hasShops === null || (hasShops === true && shops.length === 0) },
+    { field: 'parking', message: hasParking === null ? 'Please select whether this building has parking.' : 'Please enter a valid number of parking spaces.', sectionRef: parkingRef,
+      failed: () => hasParking === null || (hasParking === true && !parkingCountValid) },
+  ];
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const activeErrors = submitAttempted ? validationChecks.filter((c) => c.failed()) : [];
+  const revealInvalidField = (field: string) => {
+    const check = validationChecks.find((c) => c.field === field);
+    check?.sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    check?.sectionRef.current?.querySelector<HTMLElement>('input, select, button, textarea')?.focus();
+  };
+
   // ── submit ────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
+    setSubmitAttempted(true);
     if (!isFormValid) {
-      if (!projectName.trim() || !location.trim() || !buildingName.trim()) {
-        toast.error('Please fill all Project Details fields.');
-      } else if (wings.length === 0 || wings.some((w) => w.name.trim() === '' || !(parseInt(w.no_of_floors, 10) >= 0))) {
-        toast.error('Please give every wing a name and a valid floor count.');
-      } else if (hasShops === null) {
-        toast.error('Please select whether this building has shops.');
-      } else if (hasShops && shops.length === 0) {
-        toast.error('Please enter the number of shops and click Generate Shops.');
-      } else if (hasParking === null) {
-        toast.error('Please select whether this building has parking.');
-      } else if (hasParking && !parkingCountValid) {
-        toast.error('Please enter a valid number of parking spaces.');
-      } else {
-        toast.error('Please fill all mandatory fields.');
-      }
+      const first = validationChecks.find((c) => c.failed());
+      if (first) revealInvalidField(first.field);
       return;
     }
     setSaving(true);
@@ -862,9 +877,14 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
+      <ValidationErrorSummary
+        t={t}
+        errors={activeErrors.map((c) => ({ field: c.field, message: c.message }))}
+        onErrorClick={revealInvalidField}
+      />
 
       {/* ── Step 1: Project Details ─────────────────────────────────────── */}
-      <SectionCard t={t}>
+      <SectionCard t={t} sectionRef={projectDetailsRef}>
         <div className="flex items-center gap-2.5 mb-1">
           <StepBadge n={1} accent={accent} />
           <div>
@@ -903,7 +923,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       </SectionCard>
 
       {/* ── Step 2: Wings ────────────────────────────────────────────────── */}
-      <SectionCard t={t}>
+      <SectionCard t={t} sectionRef={wingsRef}>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
           <div className="flex items-center gap-2.5">
             <StepBadge n={2} accent={accent} />
@@ -1202,7 +1222,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       </SectionCard>
 
       {/* ── Step 5: Shop Details ─────────────────────────────────────────── */}
-      <SectionCard t={t}>
+      <SectionCard t={t} sectionRef={shopsRef}>
         <div className="flex items-center gap-2.5 mb-4">
           <StepBadge n={5} accent={accent} />
           <div>
@@ -1341,7 +1361,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       </SectionCard>
 
       {/* ── Step 6: Parking ──────────────────────────────────────────────── */}
-      <SectionCard t={t}>
+      <SectionCard t={t} sectionRef={parkingRef}>
         <div className="flex items-center gap-2.5 mb-4">
           <StepBadge n={6} accent={accent} />
           <div>

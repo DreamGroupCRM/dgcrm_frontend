@@ -25,6 +25,7 @@ import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils
 import { DobPicker } from '../../../../components/common/DobPicker';
 import { TimePicker } from '../../../../components/common/TimePicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
+import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './EmployeeDetails.css';
 
@@ -146,10 +147,11 @@ const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; 
   </div>
 );
 
-const Field: React.FC<{ t: Theme; label: string; required?: boolean; children: React.ReactNode; className?: string; fieldRef?: React.Ref<HTMLDivElement> }> = ({ t, label, required, children, className, fieldRef }) => (
+const Field: React.FC<{ t: Theme; label: string; required?: boolean; error?: string; children: React.ReactNode; className?: string; fieldRef?: React.Ref<HTMLDivElement> }> = ({ t, label, required, error, children, className, fieldRef }) => (
   <div className={className} ref={fieldRef}>
     <label className="emp-label">{label}{required && <span className="emp-required"> *</span>}</label>
     {children}
+    {error && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4, fontFamily: t.fontFamily }}>{error}</p>}
   </div>
 );
 
@@ -872,6 +874,17 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const validate = (): string | null => getFirstInvalid()?.message ?? null;
   const isFormValid = getFirstInvalid() === null;
 
+  // Global validation error summary — validationChecks already re-evaluates
+  // every field fresh on every render, so activeErrors is automatically
+  // just "whatever is still wrong right now": fixing a field makes it drop
+  // out of both this list and its own inline message on the very next
+  // render. Gated on submitAttempted so a fresh form doesn't open with
+  // every required field already flagged red.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const activeErrors = submitAttempted ? validationChecks.filter((c) => c.failed()) : [];
+  const errorFor = (field: string): string | undefined =>
+    submitAttempted ? validationChecks.find((c) => c.field === field && c.failed())?.message : undefined;
+
   // Auto-expand the section containing the first invalid field, then
   // scroll to and focus it once the section has actually rendered open.
   const revealInvalidField = (field: string, section: SectionKey) => {
@@ -884,9 +897,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   };
 
   const handleSubmit = async () => {
+    setSubmitAttempted(true);
     const invalid = getFirstInvalid();
     if (invalid) {
-      toast.error(invalid.message);
       revealInvalidField(invalid.field, invalid.section);
       return;
     }
@@ -1169,6 +1182,15 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
       </div>
 
+      <ValidationErrorSummary
+        t={t}
+        errors={activeErrors.map((c) => ({ field: c.field, message: c.message }))}
+        onErrorClick={(field) => {
+          const c = validationChecks.find((vc) => vc.field === field);
+          if (c) revealInvalidField(c.field, c.section);
+        }}
+      />
+
       {/* ── Personal Details ─────────────────────────────────────────── */}
       <AccordionSection theme={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)"
         open={openSections.personal} onToggle={() => setOpenSections((p) => ({ ...p, personal: !p.personal }))}
@@ -1176,7 +1198,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         {/* Row 1 of 4 — Name */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <Field t={t} label="First Name" required fieldRef={setFieldRef('first_name') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="First Name" required error={errorFor('first_name')} fieldRef={setFieldRef('first_name') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter first name" value={form.first_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('first_name', e.target.value)} className={fieldClass} />
           </Field>
@@ -1184,22 +1206,22 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter middle name" value={form.middle_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('middle_name', e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Last Name" required fieldRef={setFieldRef('last_name') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Last Name" required error={errorFor('last_name')} fieldRef={setFieldRef('last_name') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter last name" value={form.last_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('last_name', e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Date of Birth" required fieldRef={setFieldRef('date_of_birth') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Date of Birth" required error={errorFor('date_of_birth')} fieldRef={setFieldRef('date_of_birth') as React.Ref<HTMLDivElement>}>
             <DobPicker theme={t} value={form.date_of_birth} disabled={isView} onChange={(v) => set('date_of_birth', v)} />
           </Field>
         </div>
 
         {/* Row 2 of 4 — Contact */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <Field t={t} label="Email" required fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Email" required error={errorFor('email')} fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
             <input type="email" placeholder="Enter email address" value={form.email} readOnly={isView} disabled={isView}
               onChange={(e) => set('email', e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Mobile Number" required fieldRef={setFieldRef('mobile_number') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Mobile Number" required error={errorFor('mobile_number')} fieldRef={setFieldRef('mobile_number') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView} code={form.mobile_country_code} onCodeChange={(v) => set('mobile_country_code', v)}
               number={form.mobile_number} onNumberChange={(v) => set('mobile_number', v)} placeholder="Enter mobile number" />
           </Field>
@@ -1218,7 +1240,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
             file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={handleAadharCardChange}
             fieldRef={setFieldRef('aadhar_card') as React.Ref<HTMLDivElement>} />
-          <Field t={t} label="Aadhar Number" required fieldRef={setFieldRef('aadhar_number') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Aadhar Number" required error={errorFor('aadhar_number')} fieldRef={setFieldRef('aadhar_number') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter aadhar number" value={form.aadhar_number} readOnly={isView} disabled={isView}
               onChange={(e) => set('aadhar_number', e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
@@ -1226,7 +1248,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
             file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={handlePanCardChange}
             fieldRef={setFieldRef('pan_card') as React.Ref<HTMLDivElement>} />
-          <Field t={t} label="PAN Number" required fieldRef={setFieldRef('pan_number') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="PAN Number" required error={errorFor('pan_number')} fieldRef={setFieldRef('pan_number') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter PAN number" value={form.pan_number} readOnly={isView} disabled={isView}
               onChange={(e) => set('pan_number', e.target.value.toUpperCase())} className={fieldClass} />
             {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
@@ -1257,30 +1279,30 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         {/* All 10 fields flow across exactly 2 rows on desktop (5 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          <Field t={t} label="Employee Joining Date" required fieldRef={setFieldRef('joining_date') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Employee Joining Date" required error={errorFor('joining_date')} fieldRef={setFieldRef('joining_date') as React.Ref<HTMLDivElement>}>
             <input type="date" value={form.joining_date} readOnly={isView} disabled={isView}
               onChange={(e) => set('joining_date', e.target.value)} onClick={openPicker} className={fieldClass} />
           </Field>
-          <Field t={t} label="Working Hours" required fieldRef={setFieldRef('working_hours') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Working Hours" required error={errorFor('working_hours')} fieldRef={setFieldRef('working_hours') as React.Ref<HTMLDivElement>}>
             <select value={form.working_hours} disabled={isView} onChange={(e) => setWorkingHoursAndAutoCheckOut(e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select hours (8, 9, 10)</option>
               {WORKING_HOURS_OPTIONS.map((h) => <option key={h} value={h}>{h} Hours</option>)}
             </select>
           </Field>
-          <Field t={t} label="Check In" required fieldRef={setFieldRef('check_in_time') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Check In" required error={errorFor('check_in_time')} fieldRef={setFieldRef('check_in_time') as React.Ref<HTMLDivElement>}>
             <TimePicker theme={t} value={form.check_in_time} disabled={isView}
               onChange={(v) => setCheckInAndAutoCheckOut(v, form.working_hours)} />
           </Field>
           <Field t={t} label="Check Out" required>
             <TimePicker theme={t} value={form.check_out_time} disabled={isView} onChange={(v) => set('check_out_time', v)} />
           </Field>
-          <Field t={t} label="Holidays" required fieldRef={setFieldRef('holidays') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Holidays" required error={errorFor('holidays')} fieldRef={setFieldRef('holidays') as React.Ref<HTMLDivElement>}>
             <select value={form.holidays} disabled={isView} onChange={(e) => set('holidays', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select holidays</option>
               {HOLIDAYS_OPTIONS.map((h) => <option key={h} value={h}>{h}</option>)}
             </select>
           </Field>
-          <Field t={t} label="Salary" required fieldRef={setFieldRef('salary') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Salary" required error={errorFor('salary')} fieldRef={setFieldRef('salary') as React.Ref<HTMLDivElement>}>
             <div className={`flex items-center gap-2 ${fieldClass}`} style={{ padding: '0 12px' }}>
               <span style={{ color: t.textSecondary }}>₹</span>
               <input
@@ -1312,29 +1334,29 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         {/* All 7 fields flow across exactly 2 rows on desktop (4 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Field t={t} label="Account Holder Name" required fieldRef={setFieldRef('account_holder_name') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Account Holder Name" required error={errorFor('account_holder_name')} fieldRef={setFieldRef('account_holder_name') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter account holder name" value={form.account_holder_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('account_holder_name', e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Bank Name" required fieldRef={setFieldRef('bank_name') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Bank Name" required error={errorFor('bank_name')} fieldRef={setFieldRef('bank_name') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter bank name" value={form.bank_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('bank_name', e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Bank Account Number" required fieldRef={setFieldRef('bank_account_number') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Bank Account Number" required error={errorFor('bank_account_number')} fieldRef={setFieldRef('bank_account_number') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter account number" value={form.bank_account_number} readOnly={isView} disabled={isView}
               onChange={(e) => set('bank_account_number', e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
-          <Field t={t} label="Account Type" required fieldRef={setFieldRef('account_type') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Account Type" required error={errorFor('account_type')} fieldRef={setFieldRef('account_type') as React.Ref<HTMLDivElement>}>
             <select value={form.account_type} disabled={isView} onChange={(e) => set('account_type', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select account type</option>
               {ACCOUNT_TYPE_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
           </Field>
-          <Field t={t} label="IFSC Code" required fieldRef={setFieldRef('ifsc_code') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="IFSC Code" required error={errorFor('ifsc_code')} fieldRef={setFieldRef('ifsc_code') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter IFSC code" value={form.ifsc_code} readOnly={isView} disabled={isView}
               onChange={(e) => set('ifsc_code', e.target.value.toUpperCase())} className={fieldClass} />
           </Field>
-          <Field t={t} label="Branch" required fieldRef={setFieldRef('branch') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Branch" required error={errorFor('branch')} fieldRef={setFieldRef('branch') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter branch name" value={form.branch} readOnly={isView} disabled={isView}
               onChange={(e) => set('branch', e.target.value)} className={fieldClass} />
           </Field>
