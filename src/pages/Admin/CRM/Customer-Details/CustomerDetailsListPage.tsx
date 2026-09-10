@@ -923,16 +923,16 @@ const CustomerDetailsListPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5" style={{ flexShrink: 0 }}>
-          <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            <MdAdd size={18} /> Add Customer
-          </button>
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
             title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
             className="flex items-center justify-center rounded-xl"
             style={{ width: 40, height: 40, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
+          </button>
+          <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+            style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <MdAdd size={18} /> Add Customer
           </button>
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
