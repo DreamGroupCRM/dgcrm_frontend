@@ -14,7 +14,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import {
-  MdPayments, MdRefresh, MdSearch,
+  MdPayments, MdRefresh, MdSearch, MdDownload, MdReceiptLong,
   MdChevronLeft, MdChevronRight, MdKeyboardDoubleArrowLeft, MdKeyboardDoubleArrowRight,
 } from 'react-icons/md';
 
@@ -45,6 +45,7 @@ const PaymentReceivedPage: React.FC = () => {
   // Debounced so typing a search term doesn't fire a real backend request
   // on every keystroke — this page is server-paginated/-filtered.
   const debouncedSearch = useDebouncedValue(search, 400);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   useEffect(() => { dispatch(setPageTitle('Payment Received')); }, [dispatch]);
 
@@ -63,6 +64,38 @@ const PaymentReceivedPage: React.FC = () => {
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
   useEffect(() => { setPage(1); }, [debouncedSearch]);
+
+  // Exports every approved payment matching the current search — not just
+  // the current page — same "fetch a large batch, then download" pattern
+  // as the Customer List page's own CSV export.
+  const handleExportCsv = async () => {
+    setExportingCsv(true);
+    try {
+      const res = await fetchPaymentList(1, 5000, { approval: 'approved', search: debouncedSearch });
+      const exportRows = res.rows ?? [];
+      if (exportRows.length === 0) {
+        toast.error('No payments to export.');
+        return;
+      }
+      const header = ['Receipt #', 'Customer', 'Payment For', 'Amount', 'Company', 'Mode', 'Received By', 'Date', 'Approved By'];
+      const csvRows = exportRows.map((r) => [
+        r.receipt_number, r.customer_name || '', paymentForLabel(r.payment_type), r.amount,
+        r.company || '', r.mode_of_payment || '', r.received_by || '', formatLastLogin(r.created_at), r.approved_by_name || '',
+      ]);
+      const csv = [header, ...csvRows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `payments_received_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Failed to export payments. Please try again.');
+    } finally {
+      setExportingCsv(false);
+    }
+  };
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
@@ -91,22 +124,30 @@ const PaymentReceivedPage: React.FC = () => {
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
-      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex flex-wrap items-center justify-end gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, flex: '1 1 200px', maxWidth: 240, minWidth: 0 }}>
-              <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
-              <input type="text" placeholder="Search customer or receipt #..." value={search} onChange={(e) => setSearch(e.target.value)}
-                style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%', minWidth: 0 }} />
-            </div>
+      {/* ── Toolbar — Search, Export CSV, and Refresh all in one row. ────── */}
+      <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, flex: '1 1 220px', minWidth: 200 }}>
+            <MdSearch size={18} style={{ color: t.textSecondary, flexShrink: 0 }} />
+            <input type="text" placeholder="Search customer or receipt #..." value={search} onChange={(e) => setSearch(e.target.value)}
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%', minWidth: 0 }} />
+          </div>
+          <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
+            <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+              <MdDownload size={16} /> {exportingCsv ? 'Exporting…' : 'Export CSV'}
+            </button>
             <button type="button" onClick={fetchRows} title="Refresh"
               className="flex items-center justify-center rounded-xl"
-              style={{ width: 38, height: 38, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
+              style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
               <MdRefresh size={18} />
             </button>
           </div>
         </div>
+      </div>
 
+      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="master-table-scroll">
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
             <thead>
@@ -124,10 +165,18 @@ const PaymentReceivedPage: React.FC = () => {
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                      <span className="flex items-center gap-1.5">
+                        <MdReceiptLong size={14} style={{ color: '#7c3aed', flexShrink: 0 }} /> {r.receipt_number}
+                      </span>
+                    </td>
                     <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.customer_name || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{paymentForLabel(r.payment_type)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full font-semibold" style={{ background: '#dcfce7', color: '#16a34a', fontSize: 11.5, whiteSpace: 'nowrap' }}>
+                        {rupee(r.amount)}
+                      </span>
+                    </td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.company || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.mode_of_payment || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.received_by || '—'}</td>

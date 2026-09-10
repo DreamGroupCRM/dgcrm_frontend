@@ -28,6 +28,7 @@ import {
   CollectPaymentPayload,
   CollectPaymentResponse,
   DueReportResponse,
+  DueListResponse,
   CustomerDueResponse,
   CustomerRemainingResponse,
   PaymentReceiptResponse,
@@ -151,6 +152,15 @@ export const fetchDueReport = async (): Promise<DueReportResponse> => {
   return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
 };
 
+// ── Every customer who currently owes something — powers the Payment
+// Dues page's default "show everyone with a due" view, before any
+// customer is searched/selected. ────────────────────────────────────────
+/** GET /api/payments/due-list */
+export const fetchDueList = async (): Promise<DueListResponse> => {
+  const res = await axiosInstance.get('/payments/due-list');
+  return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
+};
+
 // ── One customer's due amount, from the EMI schedule (independent of the
 // partial-payment ledger) ────────────────────────────────────────────────
 /** GET /api/payments/customer/:customerId/due */
@@ -268,6 +278,7 @@ export const fetchDefaultAmount = async (customerId: string | number, paymentFor
 export const paymentService = {
   collect          : collectPayment,
   dueReport        : fetchDueReport,
+  dueList          : fetchDueList,
   customerDue      : fetchCustomerDue,
   customerRemaining: fetchCustomerRemaining,
   receipt          : fetchPaymentReceipt,

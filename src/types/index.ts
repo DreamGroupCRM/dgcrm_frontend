@@ -937,6 +937,21 @@ export interface DueReportResponse {
   total  : number;
 }
 
+// Every customer who currently owes something, with their total due
+// amount — powers the Payment Dues page's default "show everyone with a
+// due" list (shown before any customer is searched/selected).
+export interface DueListRow {
+  customer_id  : number;
+  customer_name: string;
+  amount_due   : number;
+}
+
+export interface DueListResponse {
+  success: boolean;
+  rows   : DueListRow[];
+  total  : number;
+}
+
 export interface CustomerDueSummary {
   total_due       : number; // owed per the EMI schedule right now
   remaining_amount: number; // total_due minus what's actually been paid so far
