@@ -515,18 +515,23 @@ const CustomerDetailsListPage: React.FC = () => {
 
   const clearAllFilters = () => {
     setCustomerNameFilter(''); setBuildingFilter(''); setWingFilter(''); setFloorFilter(''); setFlatNoFilter('');
-    setFromDate(''); setToDate('');
+    setFromDate(''); setToDate(''); setAssignmentStatusFilter('all');
   };
   const anyFilterApplied =
-    !!customerNameFilter || !!buildingFilter || !!wingFilter || !!floorFilter || !!flatNoFilter || !!fromDate || !!toDate;
+    !!customerNameFilter || !!buildingFilter || !!wingFilter || !!floorFilter || !!flatNoFilter || !!fromDate || !!toDate
+    || assignmentStatusFilter !== 'all';
 
   // Selecting an exact customer name (not just typing a partial match)
   // auto-populates the Building/Wing/Floor/Flat No filters from that
   // customer's own booking, narrowing the whole filter row to their flat
   // in one action instead of four (item 11's "auto-populate related
-  // details... fast updates without manual actions").
+  // details... fast updates without manual actions"). ONLY when the user
+  // hasn't already picked a Building/Wing/Flat independently — every
+  // filter must stay independent (V_21.0 item 1), so Customer Name must
+  // never silently overwrite a Building/Wing/Flat the user already chose.
   const handleCustomerNameFilterChange = (v: string) => {
     setCustomerNameFilter(v);
+    if (buildingFilter || wingFilter || flatNoFilter) return;
     const exact = customerDirectory.find((c) => c.customer_name === v);
     if (exact) {
       setBuildingFilter(exact.building_name || '');
@@ -542,7 +547,7 @@ const CustomerDetailsListPage: React.FC = () => {
   // do here. Resetting to page 1 on filter change still matters — a
   // filter narrowing the result set out from under an already-deep page
   // number would otherwise land on an empty or out-of-range page.
-  useEffect(() => { setPage(1); }, [debouncedCustomerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter]);
+  useEffect(() => { setPage(1); }, [debouncedCustomerNameFilter, buildingFilter, wingFilter, floorFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter]);
 
   const pageRows = allCustomers;
   const totalPages = Math.max(1, Math.ceil(total / limit));

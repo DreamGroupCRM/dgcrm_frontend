@@ -2,6 +2,7 @@
 // DREAM GROUP CRM - CUSTOMER DETAILS CRUD PAGE
 // ==========================================
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -206,14 +207,47 @@ const SearchableSelect: React.FC<{
 }> = ({ t, placeholder, options, value, onChange, disabled, labelFor, isOptionDisabled }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setQuery(value); }, [value]);
   useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (ref.current && !ref.current.contains(target) && !(target as HTMLElement).closest?.('[data-searchable-select-menu]')) setOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Item 2: every dropdown inside an accordion section (Property Booking
+  // Details, Payment Details, ...) used to render as a plain
+  // position:absolute child, which AccordionSection's own overflow:hidden
+  // wrapper clips the moment it opens near a section's bottom edge. The
+  // menu is now portaled to document.body (position:fixed, computed from
+  // the trigger's own bounding rect on open) — same fix already used for
+  // the Customer List page's row-action menu (see
+  // CustomerDetailsListPage.tsx's RowActionMenu/createPortal) — so it
+  // always renders above every container instead of being cut off.
+  // Closing on scroll (rather than continuously repositioning) is enough
+  // here since the surrounding form is one long scrollable page, not a
+  // fixed-height panel the trigger could drift within while staying visible.
+  const openDropdown = () => {
+    if (disabled) return;
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    setOpen(true);
+  };
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
 
   const filtered = options.filter((o) => o.toLowerCase().includes(query.toLowerCase()));
 
@@ -222,12 +256,12 @@ const SearchableSelect: React.FC<{
       <div
         className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
         style={{ background: disabled ? t.insetBg : t.inputBg, border: `1px solid ${t.inputBorder}`, cursor: disabled ? 'not-allowed' : 'text' }}
-        onClick={() => !disabled && setOpen(true)}
+        onClick={openDropdown}
       >
         <input
           type="text" placeholder={placeholder} value={query} disabled={disabled}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+          onFocus={openDropdown}
+          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); openDropdown(); }}
           style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%' }}
         />
         {value && !disabled && (
@@ -238,9 +272,9 @@ const SearchableSelect: React.FC<{
         )}
         <MdKeyboardArrowDown size={16} style={{ color: t.textSecondary, flexShrink: 0 }} />
       </div>
-      {open && !disabled && filtered.length > 0 && (
-        <div style={{
-          position: 'absolute', top: '110%', left: 0, right: 0, zIndex: 30, maxHeight: 220, overflowY: 'auto',
+      {open && !disabled && filtered.length > 0 && menuPos && createPortal(
+        <div data-searchable-select-menu style={{
+          position: 'fixed', top: menuPos.top, left: menuPos.left, width: menuPos.width, zIndex: 200, maxHeight: 220, overflowY: 'auto',
           background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0',
         }}>
@@ -263,7 +297,8 @@ const SearchableSelect: React.FC<{
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -966,6 +1001,25 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         ? backendErrors.map((er) => `${er.field}: ${er.message}`).join('; ')
         : e?.response?.data?.message;
       toast.error(detail || (mode === 'edit' ? 'Failed to update customer.' : 'Failed to create customer.'));
+      // Item 8: a server-side (Zod) rejection reuses the SAME accordion
+      // auto-expand-and-scroll mechanism client-side validation already
+      // has above, instead of leaving the user to hunt for the offending
+      // field themselves after a toast-only error. Backend field names are
+      // this schema's own snake_case column names; this page's own
+      // validationChecks key everything by camelCase, so the mapping is a
+      // plain snake_case->camelCase conversion (true for every field here
+      // except `name`, aliased below) rather than a hand-maintained table
+      // per field — new fields need no update here as long as they follow
+      // that same naming convention.
+      if (backendErrors?.length) {
+        const FIELD_ALIASES: Record<string, string> = { name: 'firstName' };
+        const toFrontendField = (f: string) => FIELD_ALIASES[f] ?? f.replace(/_([a-z])/g, (_m, c) => c.toUpperCase());
+        for (const er of backendErrors) {
+          const frontendField = toFrontendField(er.field);
+          const match = validationChecks.find((c) => c.field === frontendField);
+          if (match) { revealInvalidField(match.field, match.section); break; }
+        }
+      }
     } finally {
       setSaving(false);
     }
@@ -1383,8 +1437,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <AmountField t={t} isView={isView} placeholder="Enter booking amount" value={bookingAmount} onChange={setBookingAmount} />
           </Field>
           <Field t={t} label="Remaining Booking Amount & Date" className="lg:col-span-2">
+            {/* Amount narrowed to ~half the pair's width (was flex:1 1 auto,
+                stretching to fill everything left after the date field —
+                unnecessarily wide for what's usually a small remainder). */}
             <div className="flex items-center gap-2">
-              <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+              <div style={{ flex: '0 1 50%', minWidth: 0 }}>
                 <AmountField t={t} isView={isView} placeholder="Amount" value={remainingBookingAmount} onChange={setRemainingBookingAmount} />
               </div>
               <input type="date" value={remainingBookingDate} readOnly={isView} disabled={isView}
@@ -1397,8 +1454,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
         </div>
 
-        {/* Row 2 of 3 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+        {/* Row 2 of 2 — Installment Date/EMI/Tenure plus all 4 Booster
+            fields grouped together in the requested order (Amount Before,
+            Interval Before, Amount After, Interval After), instead of split
+            across a 3rd row with the Amount/Interval pairs interleaved. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-3">
           <Field t={t} label="Installment Date" required fieldRef={setFieldRef('installmentDate') as React.Ref<HTMLDivElement>}>
             <input type="date" value={installmentDate} readOnly={isView} disabled={isView}
               onClick={openPicker} onFocus={openPicker} onChange={(e) => setInstallmentDate(e.target.value)} className={fieldClass} />
@@ -1418,15 +1478,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Booster Amount Before Possession (₹)">
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} />
           </Field>
-        </div>
-
-        {/* Row 3 of 3 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
-          <Field t={t} label="Booster Amount After Possession (₹)">
-            <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} />
-          </Field>
           <Field t={t} label="Booster Interval Before Possession (Months)">
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} />
+          </Field>
+          <Field t={t} label="Booster Amount After Possession (₹)">
+            <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} />
           </Field>
           <Field t={t} label="Booster Interval After Possession (Months)">
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} />

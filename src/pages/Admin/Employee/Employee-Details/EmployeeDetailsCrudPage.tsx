@@ -915,7 +915,20 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       navigate('/admin/employee/employee-details');
     } catch (err: any) {
       const fallback = mode === 'edit' ? 'Failed to update employee.' : 'Failed to create employee.';
-      toast.error(err?.response?.data?.message || fallback);
+      const backendErrors = err?.response?.data?.errors as { field: string; message: string }[] | undefined;
+      toast.error(
+        backendErrors?.length ? backendErrors.map((er) => `${er.field}: ${er.message}`).join('; ') : err?.response?.data?.message || fallback
+      );
+      // Item 8: reuse the same accordion auto-expand-and-scroll mechanism
+      // client-side validation already has above for a server-side (Zod)
+      // rejection — this page's own validationChecks already key fields by
+      // their snake_case backend name, so no name translation is needed.
+      if (backendErrors?.length) {
+        for (const er of backendErrors) {
+          const match = validationChecks.find((c) => c.field === er.field);
+          if (match) { revealInvalidField(match.field, match.section); break; }
+        }
+      }
     } finally {
       setSaving(false);
     }
