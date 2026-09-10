@@ -352,6 +352,39 @@ const CustomerDetailsListPage: React.FC = () => {
 
   useEffect(() => { dispatch(setPageTitle('Customer Details')); }, [dispatch]);
 
+  // ── Employee dropdown for "Assign to Employee" — root cause of the
+  // reported "select customer, open Assign, dropdown stays empty" bug:
+  // this fetch used to run exactly once on page mount with its failure
+  // silently swallowed (empty catch, no toast, no retry) and no way to
+  // notice it had failed, since the field itself stays disabled — and
+  // invisible — until a customer is actually selected. If that one
+  // mount-time request hit any transient failure (auth/token refresh
+  // race on initial load, a network blip), `employees` stayed `[]` for
+  // the rest of the page's life with zero visible sign anything was
+  // wrong, right up to the exact moment the user needed it. Fix: surface
+  // the failure with a toast, and retry automatically the moment the
+  // Assign row becomes usable (a customer gets checked) if the list is
+  // still empty, so a one-off failure self-heals instead of requiring a
+  // full page reload.
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const fetchEmployeesForAssignment = useCallback(async () => {
+    setLoadingEmployees(true);
+    try {
+      // activeOnly=true — don't offer a deactivated employee as an
+      // assignee for a customer.
+      const res = await FetchEmployeeDetails(1, 1000, undefined, true);
+      if (res.success) {
+        setEmployees((res.rows ?? []).map((e) => ({ id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})` })));
+      } else {
+        toast.error('Failed to load employees for assignment.');
+      }
+    } catch {
+      toast.error('Failed to load employees for assignment. Please try again.');
+    } finally {
+      setLoadingEmployees(false);
+    }
+  }, []);
+
   // ── fetch everything this page needs ────────────────────────────────
   useEffect(() => {
     (async () => {
@@ -360,17 +393,8 @@ const CustomerDetailsListPage: React.FC = () => {
         if (res.success) setBuildings(res.rows ?? []);
       } catch { /* dropdowns just stay empty if this fails */ }
     })();
-    (async () => {
-      try {
-        // activeOnly=true — don't offer a deactivated employee as an
-        // assignee for a customer.
-        const res = await FetchEmployeeDetails(1, 1000, undefined, true);
-        if (res.success) {
-          setEmployees((res.rows ?? []).map((e) => ({ id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})` })));
-        }
-      } catch { /* dropdown just stays empty if this fails */ }
-    })();
-  }, []);
+    fetchEmployeesForAssignment();
+  }, [fetchEmployeesForAssignment]);
 
   // Customer-name autocomplete — a small server search (top 25) that
   // re-runs as the user types, instead of one unfiltered fetch of up to
@@ -556,6 +580,22 @@ const CustomerDetailsListPage: React.FC = () => {
   };
 
   const assignmentEnabled = selectedIds.size > 0;
+
+  // Self-healing retry: if the mount-time fetch above ever failed (or is
+  // still in flight when the user checks a customer), pick it back up the
+  // moment the Assign row actually becomes usable, instead of leaving the
+  // dropdown silently empty until a full page reload. Fires at most ONCE
+  // per selection (guarded by retriedForSelectionRef, reset when the
+  // selection is cleared) — a legitimately-empty employee table must not
+  // turn this into a tight fetch loop every time loadingEmployees flips.
+  const retriedForSelectionRef = useRef(false);
+  useEffect(() => {
+    if (!assignmentEnabled) { retriedForSelectionRef.current = false; return; }
+    if (employees.length === 0 && !loadingEmployees && !retriedForSelectionRef.current) {
+      retriedForSelectionRef.current = true;
+      fetchEmployeesForAssignment();
+    }
+  }, [assignmentEnabled, employees.length, loadingEmployees, fetchEmployeesForAssignment]);
 
   const handleAssign = async () => {
     const employee = employees.find((e) => e.label === employeeSearch);
@@ -907,7 +947,7 @@ const CustomerDetailsListPage: React.FC = () => {
         <div className="flex items-end gap-3" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
           <div style={{ width: 240 }}>
             <label className="cust-filter-label">Search Employee</label>
-            <SearchableSelect t={t} placeholder="Select employee" options={employeeOptions} value={employeeSearch} onChange={setEmployeeSearch} disabled={!assignmentEnabled} />
+            <SearchableSelect t={t} placeholder={loadingEmployees ? 'Loading employees...' : 'Select employee'} options={employeeOptions} value={employeeSearch} onChange={setEmployeeSearch} disabled={!assignmentEnabled || loadingEmployees} />
           </div>
           <button
             type="button"

@@ -502,6 +502,7 @@ const CustomizeSchemePage: React.FC = () => {
   // stays visible; only the long row-by-row Schedule table hides behind
   // this toggle.
   const [showSchedule, setShowSchedule] = useState(false);
+  const [showScheme, setShowScheme] = useState(false);
 
   // ── the whole EMI Scheme + EMI Schedule, recomputed live on every field
   //    change — see the file-header note on the direct-input + greedy-
@@ -746,21 +747,35 @@ const CustomizeSchemePage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── EMI Scheme summary ──────────────────────────────────────── */}
+      {/* ── EMI Scheme summary — collapsed by default, same click-to-expand
+          convention as EMI Schedule below (item 6: both accordions,
+          independently collapsible, collapsed on load). ──────────────── */}
       <div className="rounded-2xl mb-4 overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <ResultPanelHeader
-          icon={<MdCalculate size={15} color="#fff" />} title="EMI Scheme"
-          gradient={`linear-gradient(135deg,${accent},#6366f1)`}
-          subtitle={`Total Cost of Flat: ${formatINR(totalCost)}`}
-        />
-        <div className="p-4">
-          <SummaryTable t={t} accent={accent} heading="A) Mode of Payment (Before Possession)" rows={computed.summaryA} total={computed.totalA} totalLabel="Total (A) (Before Possession)" />
-          <SummaryTable t={t} accent={accent} heading="B) After Possession" rows={computed.summaryB} total={computed.totalB} totalLabel="Total (B) (After Possession)" />
-          <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
-            <span style={{ fontSize: 11.5, fontWeight: 800, color: accent }}>{formatINR(computed.grandTotal)}</span>
+        <button
+          type="button" onClick={() => setShowScheme((v) => !v)}
+          className="w-full text-left" style={{ border: 'none', padding: 0, cursor: 'pointer', display: 'block' }}
+        >
+          <ResultPanelHeader
+            icon={<MdCalculate size={15} color="#fff" />} title="EMI Scheme"
+            gradient={`linear-gradient(135deg,${accent},#6366f1)`}
+            subtitle={
+              <span className="flex items-center gap-1.5">
+                {`Total Cost of Flat: ${formatINR(totalCost)}`}
+                {showScheme ? <MdExpandLess size={16} /> : <MdExpandMore size={16} />}
+              </span>
+            }
+          />
+        </button>
+        {showScheme && (
+          <div className="p-4">
+            <SummaryTable t={t} accent={accent} heading="A) Mode of Payment (Before Possession)" rows={computed.summaryA} total={computed.totalA} totalLabel="Total (A) (Before Possession)" />
+            <SummaryTable t={t} accent={accent} heading="B) After Possession" rows={computed.summaryB} total={computed.totalB} totalLabel="Total (B) (After Possession)" />
+            <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
+              <span style={{ fontSize: 11.5, fontWeight: 800, color: accent }}>{formatINR(computed.grandTotal)}</span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── EMI Schedule — full month-by-month breakdown, collapsed by

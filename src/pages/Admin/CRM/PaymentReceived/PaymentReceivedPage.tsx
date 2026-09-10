@@ -139,9 +139,9 @@ const PaymentReceivedPage: React.FC = () => {
         toast.error('No payments to export.');
         return;
       }
-      const header = ['Receipt #', 'Customer', 'Payment For', 'Amount', 'Company', 'Mode', 'Received By', 'Date', 'Approved By'];
+      const header = ['Receipt #', 'Customer', 'Customer Code', 'Payment For', 'Amount', 'Company', 'Mode', 'Received By', 'Date', 'Approved By'];
       const csvRows = exportRows.map((r) => [
-        r.receipt_number, r.customer_name || '', paymentForLabel(r.payment_type), r.amount,
+        r.receipt_number, r.customer_name || '', r.customer_code || '', paymentForLabel(r.payment_type), r.amount,
         r.company || '', r.mode_of_payment || '', r.received_by || '', formatLastLogin(r.created_at), r.approved_by_name || '',
       ]);
       const csv = [header, ...csvRows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -308,7 +308,7 @@ const PaymentReceivedPage: React.FC = () => {
         <div className="flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 280, flexShrink: 0 }}>
             <MdSearch size={18} style={{ color: t.textSecondary, flexShrink: 0 }} />
-            <input type="text" placeholder="Search customer or receipt #..." value={search} onChange={(e) => setSearch(e.target.value)}
+            <input type="text" placeholder="Search customer, code, or receipt #..." value={search} onChange={(e) => setSearch(e.target.value)}
               style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%', minWidth: 0 }} />
           </div>
           <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
@@ -336,16 +336,16 @@ const PaymentReceivedPage: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Receipt #', 'Customer', 'Payment For', 'Amount', 'Company', 'Mode', 'Received By', 'Date', 'Approved By'].map((h) => (
+                {['Receipt #', 'Customer', 'Customer Code', 'Payment For', 'Amount', 'Company', 'Mode', 'Received By', 'Date', 'Approved By'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
+                <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
+                <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -355,6 +355,7 @@ const PaymentReceivedPage: React.FC = () => {
                       </span>
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.customer_name || '—'}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.customer_code || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{paymentForLabel(r.payment_type)}</td>
                     <td style={{ padding: '12px 14px' }}>
                       <span className="inline-flex items-center px-2.5 py-1 rounded-full font-semibold" style={{ background: '#dcfce7', color: '#16a34a', fontSize: 11.5, whiteSpace: 'nowrap' }}>

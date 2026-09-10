@@ -27,7 +27,7 @@ import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
 import {
-  fetchCustomerDueGrid, fetchDueList, collectPayment, fetchDefaultAmount, PAYMENT_FOR_OPTIONS, DueGridRow, CustomerDueGrid,
+  fetchCustomerDueGrid, fetchDueList, collectPayment, fetchDefaultAmount, fetchUpcomingAmount, PAYMENT_FOR_OPTIONS, DueGridRow, CustomerDueGrid, UpcomingAmountData,
 } from '../../../../services/paymentService';
 import { fetchAllCustomerDetails } from '../../../../services/customerDetailsService';
 import { companyService } from '../../../../services/companyService';
@@ -207,13 +207,18 @@ const DueReportPage: React.FC = () => {
     if (selectedCustomerId) fetchGrid();
   };
 
-  // Customer Name narrows the "everyone with a due" list by a plain
-  // substring match — no need to pick an exact customer just to filter.
+  // Customer Name OR Customer Code narrows the "everyone with a due" list
+  // by a plain substring match — no need to pick an exact customer just
+  // to filter, and typing a code ("C00125") works just as well as a name.
   const filteredDueRows = useMemo(() => {
     const q = customerSearch.trim().toLowerCase();
     if (!q) return dueRows;
-    return dueRows.filter((r) => r.customer_name.toLowerCase().includes(q));
-  }, [dueRows, customerSearch]);
+    return dueRows.filter((r) => {
+      if (r.customer_name.toLowerCase().includes(q)) return true;
+      const code = customersById.get(String(r.customer_id))?.customer_code;
+      return !!code && code.toLowerCase().includes(q);
+    });
+  }, [dueRows, customerSearch, customersById]);
 
   const totalDueAmount = useMemo(() => dueRows.reduce((s, r) => s + r.amount_due, 0), [dueRows]);
 
@@ -237,6 +242,48 @@ const DueReportPage: React.FC = () => {
     return arr;
   }, [safePage, totalPages]);
 
+  // ── "Show Upcoming Amount" (items 7-9) — an opt-in date-range total,
+  // computed server-side from the same EMI schedule logic the Due grid
+  // already uses (see fetchUpcomingAmount / getUpcomingAmountInRange).
+  // Unchecking hides the controls AND clears the result (item 11) without
+  // touching any of the page's other filters/data.
+  const [showUpcoming, setShowUpcoming] = useState(false);
+  const [upcomingFrom, setUpcomingFrom] = useState('');
+  const [upcomingTo, setUpcomingTo] = useState('');
+  const [upcomingLoading, setUpcomingLoading] = useState(false);
+  const [upcomingResult, setUpcomingResult] = useState<UpcomingAmountData | null>(null);
+
+  const handleToggleUpcoming = () => {
+    setShowUpcoming((v) => {
+      const next = !v;
+      if (!next) setUpcomingResult(null);
+      return next;
+    });
+  };
+
+  // OK stays disabled until both dates are picked and To isn't before From.
+  const upcomingRangeValid = !!upcomingFrom && !!upcomingTo && upcomingTo >= upcomingFrom;
+
+  const handleCalculateUpcoming = async () => {
+    if (!upcomingRangeValid) return;
+    setUpcomingLoading(true);
+    try {
+      const data = await fetchUpcomingAmount(upcomingFrom, upcomingTo);
+      setUpcomingResult(data);
+    } catch {
+      toast.error('Failed to calculate the upcoming amount. Please try again.');
+    } finally {
+      setUpcomingLoading(false);
+    }
+  };
+
+  // "Upcoming Amount — N Days" — an inclusive day count over the selected
+  // range (1–30 Sep is 30 days), not a raw millisecond diff.
+  const upcomingDaysLabel = (r: UpcomingAmountData): string => {
+    const days = Math.round((new Date(r.to).getTime() - new Date(r.from).getTime()) / 86400000) + 1;
+    return `Upcoming Amount — ${days} Day${days === 1 ? '' : 's'}`;
+  };
+
   const handleExportCsv = () => {
     setExportingCsv(true);
     try {
@@ -244,10 +291,10 @@ const DueReportPage: React.FC = () => {
         toast.error('No dues to export.');
         return;
       }
-      const header = ['Customer Name', 'Mobile', 'Building', 'Total Due (₹)'];
+      const header = ['Customer Name', 'Customer Code', 'Mobile', 'Building', 'Total Due (₹)'];
       const rows = filteredDueRows.map((r) => {
         const c = customersById.get(String(r.customer_id));
-        return [r.customer_name, c?.mobile_number || '', c?.building_name || '', r.amount_due];
+        return [r.customer_name, c?.customer_code || '', c?.mobile_number || '', c?.building_name || '', r.amount_due];
       });
       const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -394,14 +441,53 @@ const DueReportPage: React.FC = () => {
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
-      {/* ── Toolbar — Search (left), Export CSV + Refresh (right), always
-          one row — flex-nowrap + justify-between so the search field and
-          the button group sit at opposite ends with the gap between
-          them, and never split onto a second line. ──────────────────── */}
+      {/* ── Toolbar — Search + Show Upcoming Amount cluster (left), Export
+          CSV + Refresh (right), always one row — flex-nowrap +
+          justify-between so the left cluster and the button group sit at
+          opposite ends with the gap between them, and never split onto a
+          second line. The left cluster itself scrolls horizontally
+          (rather than wrapping) if it ever can't fit — e.g. a narrow
+          mobile screen with the date range expanded — so the row never
+          becomes two rows even then. ─────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
-          <div style={{ width: 260, flexShrink: 0 }}>
-            <SearchableSelect t={t} placeholder="Search or select customer name" options={customerOptions} value={customerSearch} onChange={handleCustomerSearchChange} />
+          <div className="flex items-center gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto', minWidth: 0 }}>
+            <div style={{ width: 220, flexShrink: 0 }}>
+              <SearchableSelect t={t} placeholder="Search name or code" options={customerOptions} value={customerSearch} onChange={handleCustomerSearchChange} />
+            </div>
+
+            <label className="flex items-center gap-1.5" style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: t.textPrimary, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <input type="checkbox" checked={showUpcoming} onChange={handleToggleUpcoming} style={{ cursor: 'pointer' }} />
+              Show Upcoming Amount
+            </label>
+
+            {showUpcoming && (
+              <>
+                <input type="date" value={upcomingFrom} max={upcomingTo || undefined}
+                  onChange={(e) => { setUpcomingFrom(e.target.value); setUpcomingResult(null); }}
+                  style={{ width: 148, flexShrink: 0, background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '8px 10px', fontSize: 12, outline: 'none', cursor: 'pointer' }} />
+                <input type="date" value={upcomingTo} min={upcomingFrom || undefined}
+                  onChange={(e) => { setUpcomingTo(e.target.value); setUpcomingResult(null); }}
+                  style={{ width: 148, flexShrink: 0, background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '8px 10px', fontSize: 12, outline: 'none', cursor: 'pointer' }} />
+                <button type="button" onClick={handleCalculateUpcoming} disabled={!upcomingRangeValid || upcomingLoading}
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{
+                    flexShrink: 0, whiteSpace: 'nowrap',
+                    background: !upcomingRangeValid || upcomingLoading ? t.insetBg : 'var(--grad-purple)',
+                    color: !upcomingRangeValid || upcomingLoading ? t.textSecondary : '#fff',
+                    border: `1px solid ${!upcomingRangeValid || upcomingLoading ? t.surfaceBorder : 'transparent'}`,
+                    cursor: !upcomingRangeValid || upcomingLoading ? 'not-allowed' : 'pointer',
+                  }}>
+                  {upcomingLoading ? 'Calculating…' : 'OK'}
+                </button>
+                {upcomingResult && (
+                  <div className="rounded-xl px-3.5 py-2" style={{ flexShrink: 0, whiteSpace: 'nowrap', background: 'linear-gradient(135deg,#7c3aed,#a78bfa)' }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>{upcomingDaysLabel(upcomingResult)}</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{rupee(upcomingResult.total_amount)}</div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv || (!selectedCustomerId && filteredDueRows.length === 0)}
@@ -424,17 +510,17 @@ const DueReportPage: React.FC = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
               <thead>
                 <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                  {['Customer Name', 'Mobile', 'Building', 'Total Due', 'Action'].map((h) => (
+                  {['Customer Name', 'Customer Code', 'Mobile', 'Building', 'Total Due', 'Action'].map((h) => (
                     <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loadingDueList ? (
-                  <tr><td colSpan={5} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
+                  <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
                 ) : filteredDueRows.length === 0 ? (
-                  <tr><td colSpan={5} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
-                    {dueRows.length === 0 ? 'No customers currently have a payment due.' : 'No customer matches that name.'}
+                  <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
+                    {dueRows.length === 0 ? 'No customers currently have a payment due.' : 'No customer matches that name or code.'}
                   </td></tr>
                 ) : (
                   pagedDueRows.map((r) => {
@@ -442,6 +528,7 @@ const DueReportPage: React.FC = () => {
                     return (
                       <tr key={r.customer_id} style={{ borderTop: `1px solid ${t.divider}` }}>
                         <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.customer_name}</td>
+                        <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{c?.customer_code || '—'}</td>
                         <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{c?.mobile_number || '—'}</td>
                         <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{c?.building_name || '—'}</td>
                         <td style={{ padding: '12px 14px' }}>

@@ -177,7 +177,7 @@ const PaymentApprovalsPage: React.FC = () => {
         <div className="flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 280, flexShrink: 0 }}>
             <MdSearch size={18} style={{ color: t.textSecondary, flexShrink: 0 }} />
-            <input type="text" placeholder="Search customer or receipt #..." value={search} onChange={(e) => setSearch(e.target.value)}
+            <input type="text" placeholder="Search customer, code, or receipt #..." value={search} onChange={(e) => setSearch(e.target.value)}
               style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%', minWidth: 0 }} />
           </div>
           <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
@@ -205,16 +205,16 @@ const PaymentApprovalsPage: React.FC = () => {
                   <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={rows.length === 0}
                     style={{ cursor: rows.length === 0 ? 'not-allowed' : 'pointer' }} />
                 </th>
-                {['Receipt #', 'Customer', 'Payment For', 'Amount', 'Company', 'Mode', 'Received By', 'Date', 'Action'].map((h) => (
+                {['Receipt #', 'Customer', 'Customer Code', 'Payment For', 'Amount', 'Company', 'Mode', 'Received By', 'Date', 'Action'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading pending payments...</td></tr>
+                <tr><td colSpan={11} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading pending payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments are waiting for approval.</td></tr>
+                <tr><td colSpan={11} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments are waiting for approval.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -223,6 +223,7 @@ const PaymentApprovalsPage: React.FC = () => {
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.customer_name || '—'}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.customer_code || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{paymentForLabel(r.payment_type)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.company || '—'}</td>

@@ -161,6 +161,22 @@ export const fetchDueList = async (): Promise<DueListResponse> => {
   return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
 };
 
+// ── "Show Upcoming Amount" (item 7-9) — total of every customer's
+// upcoming (not-yet-due) installment amounts whose due date falls in
+// [from, to], reusing the same EMI schedule logic the Due grid already
+// uses server-side (see payment.service.ts's getUpcomingAmountInRange).
+export interface UpcomingAmountData {
+  from: string;
+  to: string;
+  total_amount: number;
+  customer_count: number;
+}
+/** GET /api/payments/upcoming-amount?from=YYYY-MM-DD&to=YYYY-MM-DD */
+export const fetchUpcomingAmount = async (from: string, to: string): Promise<UpcomingAmountData> => {
+  const res = await axiosInstance.get('/payments/upcoming-amount', { params: { from, to } });
+  return res.data.data;
+};
+
 // ── One customer's due amount, from the EMI schedule (independent of the
 // partial-payment ledger) ────────────────────────────────────────────────
 /** GET /api/payments/customer/:customerId/due */
@@ -245,6 +261,7 @@ export interface PaymentListRow {
   payment_type: PaymentFor;
   amount: number;
   customer_id: string;
+  customer_code: string | null;
   customer_name: string;
   company: string | null;
   mode_of_payment: string | null;
@@ -300,6 +317,7 @@ export const paymentService = {
   collect          : collectPayment,
   dueReport        : fetchDueReport,
   dueList          : fetchDueList,
+  upcomingAmount   : fetchUpcomingAmount,
   customerDue      : fetchCustomerDue,
   customerRemaining: fetchCustomerRemaining,
   receipt          : fetchPaymentReceipt,
