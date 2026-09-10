@@ -10,29 +10,28 @@
 // the PUT routes' own requireAdmin gate.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
-import { MdPayments, MdRefresh, MdSearch, MdCheckCircle, MdHourglassEmpty } from 'react-icons/md';
+import { MdPayments, MdRefresh, MdSearch, MdCheckCircle, MdHourglassEmpty, MdDownload } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
+import PaginationFooter from '../../../../components/common/PaginationFooter';
 import { fetchPaymentList, approvePayment, bulkApprovePayments, paymentForLabel, PaymentListRow } from '../../../../services/paymentService';
 import { formatLastLogin } from '../../../../utils';
-
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 const rupee = (n: number): string => `₹ ${n.toLocaleString('en-IN')}`;
 
 const PaymentApprovalsPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { t, cssVars } = useAppearanceTokens();
+  const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [rows, setRows] = useState<PaymentListRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 400);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -99,8 +98,43 @@ const PaymentApprovalsPage: React.FC = () => {
     }
   };
 
+  // Exports every pending payment matching the current search — not just
+  // the current page — same "fetch a large batch, then download" pattern
+  // as Payment Received's own CSV export.
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const handleExportCsv = async () => {
+    setExportingCsv(true);
+    try {
+      const res = await fetchPaymentList(1, 5000, { approval: 'pending', search: debouncedSearch });
+      const exportRows = res.rows ?? [];
+      if (exportRows.length === 0) {
+        toast.error('No pending payments to export.');
+        return;
+      }
+      const header = ['Receipt #', 'Customer', 'Payment For', 'Amount', 'Company', 'Mode', 'Received By', 'Date'];
+      const csvRows = exportRows.map((r) => [
+        r.receipt_number, r.customer_name || '', paymentForLabel(r.payment_type), r.amount,
+        r.company || '', r.mode_of_payment || '', r.received_by || '', formatLastLogin(r.created_at),
+      ]);
+      const csv = [header, ...csvRows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pending_payments_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Failed to export payments. Please try again.');
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
+  const from = total === 0 ? 0 : (safePage - 1) * limit + 1;
+  const to = Math.min(safePage * limit, total);
   const pageBtns = useMemo(() => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
     const end = Math.min(totalPages, start + 4);
@@ -111,36 +145,57 @@ const PaymentApprovalsPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
+          <MdPayments size={22} style={{ color: '#4f46e5' }} />
+        </div>
+        <div>
+          <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Payment Approvals</h1>
+          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Approving moves a payment onto the Payment Received page and lets its receipt be printed</p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         <StatCard label="Awaiting Approval" value={total} icon={MdHourglassEmpty} color="#ea580c" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
-      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
-          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: 0 }}>
-            Approving moves a payment onto the Payment Received page and lets its receipt be printed.
-          </p>
-          <div className="flex flex-wrap items-center gap-2.5">
-            {selectedIds.size > 0 && (
-              <button type="button" disabled={bulkApproving} onClick={handleBulkApprove}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white"
-                style={{ background: '#16a34a', border: 'none', cursor: bulkApproving ? 'not-allowed' : 'pointer', opacity: bulkApproving ? 0.7 : 1, whiteSpace: 'nowrap' }}>
-                <MdCheckCircle size={15} /> {bulkApproving ? 'Approving...' : `Approve Selected (${selectedIds.size})`}
-              </button>
-            )}
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, flex: '1 1 200px', maxWidth: 240, minWidth: 0 }}>
-              <MdSearch size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
-              <input type="text" placeholder="Search customer or receipt #..." value={search} onChange={(e) => setSearch(e.target.value)}
-                style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%', minWidth: 0 }} />
-            </div>
+      {/* ── Toolbar — Search, Export CSV, and Refresh all in one row; the
+          bulk-approve bar only appears above it, and only while rows are
+          selected, so it never crowds the standard single-row layout. ──── */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl mb-3 p-3" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+          <span style={{ fontSize: 11.5, color: t.textSecondary }}>{selectedIds.size} payment(s) selected</span>
+          <button type="button" disabled={bulkApproving} onClick={handleBulkApprove}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white"
+            style={{ background: '#16a34a', border: 'none', cursor: bulkApproving ? 'not-allowed' : 'pointer', opacity: bulkApproving ? 0.7 : 1, whiteSpace: 'nowrap' }}>
+            <MdCheckCircle size={15} /> {bulkApproving ? 'Approving...' : `Approve Selected (${selectedIds.size})`}
+          </button>
+        </div>
+      )}
+      <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, flex: '1 1 200px', maxWidth: 320 }}>
+            <MdSearch size={18} style={{ color: t.textSecondary, flexShrink: 0 }} />
+            <input type="text" placeholder="Search customer or receipt #..." value={search} onChange={(e) => setSearch(e.target.value)}
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%', minWidth: 0 }} />
+          </div>
+          <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
+            <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+              <MdDownload size={16} /> {exportingCsv ? 'Exporting…' : 'Export CSV'}
+            </button>
             <button type="button" onClick={fetchRows} title="Refresh"
               className="flex items-center justify-center rounded-xl"
-              style={{ width: 38, height: 38, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
+              style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
               <MdRefresh size={18} />
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
 
         <div className="master-table-scroll">
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
@@ -188,30 +243,7 @@ const PaymentApprovalsPage: React.FC = () => {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4" style={{ borderTop: `1px solid ${t.divider}` }}>
-          <div className="flex items-center gap-2">
-            <span style={{ fontSize: 11, color: t.textSecondary }}>Rows per page:</span>
-            <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer', outline: 'none' }}>
-              {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          <div style={{ fontSize: 11, color: t.textSecondary }}>
-            Showing {total === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, total)} of {total}
-          </div>
-          <div className="flex-1 flex items-center justify-center gap-1.5">
-            {pageBtns[0] > 1 && <span style={{ color: t.textSecondary, padding: '0 2px' }}>...</span>}
-            {pageBtns.map((n) => (
-              <button key={n} type="button" onClick={() => setPage(n)}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium"
-                style={{ background: n === safePage ? '#7c3aed' : t.insetBg, color: n === safePage ? '#fff' : t.textPrimary, border: `1px solid ${n === safePage ? '#7c3aed' : t.surfaceBorder}`, cursor: 'pointer' }}>
-                {n}
-              </button>
-            ))}
-            {pageBtns[pageBtns.length - 1] < totalPages && <span style={{ color: t.textSecondary, padding: '0 2px' }}>...</span>}
-          </div>
-          <div style={{ width: 90 }} />
-        </div>
+        <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={total} pageBtns={() => pageBtns} />
       </div>
     </div>
   );

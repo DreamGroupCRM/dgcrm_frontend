@@ -16,7 +16,6 @@ import { toast } from 'react-toastify';
 import jsPDF from 'jspdf';
 import {
   MdPayments, MdRefresh, MdSearch, MdDownload, MdReceiptLong, MdClose, MdKeyboardArrowDown,
-  MdChevronLeft, MdChevronRight, MdKeyboardDoubleArrowLeft, MdKeyboardDoubleArrowRight,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -25,6 +24,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
+import PaginationFooter from '../../../../components/common/PaginationFooter';
 import {
   fetchPaymentList, paymentForLabel, PaymentListRow, fetchMonthlyReceipt, MonthlyReceiptData,
 } from '../../../../services/paymentService';
@@ -32,7 +32,6 @@ import { fetchAllCustomerDetails } from '../../../../services/customerDetailsSer
 import { Customer } from '../../../../types/index';
 import { formatLastLogin, formatDate } from '../../../../utils';
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 type Theme = AppTheme;
 
 const rupee = (n: number): string => `₹ ${n.toLocaleString('en-IN')}`;
@@ -103,7 +102,7 @@ const PaymentReceivedPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState('');
   // Debounced so typing a search term doesn't fire a real backend request
   // on every keystroke — this page is server-paginated/-filtered.
@@ -276,6 +275,8 @@ const PaymentReceivedPage: React.FC = () => {
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
+  const from = total === 0 ? 0 : (safePage - 1) * limit + 1;
+  const to = Math.min(safePage * limit, total);
   const pageBtns = useMemo(() => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
     const end = Math.min(totalPages, start + 4);
@@ -304,7 +305,7 @@ const PaymentReceivedPage: React.FC = () => {
       {/* ── Toolbar — Search, Export CSV, and Refresh all in one row. ────── */}
       <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, flex: '1 1 220px', minWidth: 200 }}>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, flex: '1 1 200px', maxWidth: 320 }}>
             <MdSearch size={18} style={{ color: t.textSecondary, flexShrink: 0 }} />
             <input type="text" placeholder="Search customer or receipt #..." value={search} onChange={(e) => setSearch(e.target.value)}
               style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%', minWidth: 0 }} />
@@ -378,46 +379,7 @@ const PaymentReceivedPage: React.FC = () => {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4" style={{ borderTop: `1px solid ${t.divider}` }}>
-          <div className="flex items-center gap-2">
-            <span style={{ fontSize: 11, color: t.textSecondary }}>Rows per page:</span>
-            <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer', outline: 'none' }}>
-              {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          <div style={{ fontSize: 11, color: t.textSecondary }}>
-            Showing {total === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, total)} of {total}
-          </div>
-          <div className="flex-1 flex items-center justify-center gap-1.5">
-            <button type="button" disabled={safePage <= 1} onClick={() => setPage(1)}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage <= 1 ? 'not-allowed' : 'pointer', opacity: safePage <= 1 ? 0.5 : 1 }}>
-              <MdKeyboardDoubleArrowLeft size={16} />
-            </button>
-            <button type="button" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage <= 1 ? 'not-allowed' : 'pointer', opacity: safePage <= 1 ? 0.5 : 1 }}>
-              <MdChevronLeft size={18} />
-            </button>
-            {pageBtns[0] > 1 && <span style={{ color: t.textSecondary, padding: '0 2px' }}>...</span>}
-            {pageBtns.map((n) => (
-              <button key={n} type="button" onClick={() => setPage(n)}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium"
-                style={{ background: n === safePage ? '#7c3aed' : t.insetBg, color: n === safePage ? '#fff' : t.textPrimary, border: `1px solid ${n === safePage ? '#7c3aed' : t.surfaceBorder}`, cursor: 'pointer' }}>
-                {n}
-              </button>
-            ))}
-            {pageBtns[pageBtns.length - 1] < totalPages && <span style={{ color: t.textSecondary, padding: '0 2px' }}>...</span>}
-            <button type="button" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', opacity: safePage >= totalPages ? 0.5 : 1 }}>
-              <MdChevronRight size={18} />
-            </button>
-            <button type="button" disabled={safePage >= totalPages} onClick={() => setPage(totalPages)}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', opacity: safePage >= totalPages ? 0.5 : 1 }}>
-              <MdKeyboardDoubleArrowRight size={16} />
-            </button>
-          </div>
-          <div style={{ width: 90 }} />
-        </div>
+        <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={total} pageBtns={() => pageBtns} />
       </div>
 
       {/* ── Generate Monthly Receipt modal ────────────────────────────── */}

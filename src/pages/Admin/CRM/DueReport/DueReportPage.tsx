@@ -25,6 +25,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
+import PaginationFooter from '../../../../components/common/PaginationFooter';
 import {
   fetchCustomerDueGrid, fetchDueList, collectPayment, fetchDefaultAmount, PAYMENT_FOR_OPTIONS, DueGridRow, CustomerDueGrid,
 } from '../../../../services/paymentService';
@@ -216,6 +217,26 @@ const DueReportPage: React.FC = () => {
 
   const totalDueAmount = useMemo(() => dueRows.reduce((s, r) => s + r.amount_due, 0), [dueRows]);
 
+  // ── Client-side pagination over the "everyone with a due" list — the
+  // backend deliberately returns the full list unpaginated (see this
+  // page's header comment), so paging happens here. Default page size 10,
+  // reset to page 1 whenever the name filter narrows the list. ───────────
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  useEffect(() => { setPage(1); }, [customerSearch]);
+  const totalPages = Math.max(1, Math.ceil(filteredDueRows.length / limit));
+  const safePage = Math.min(page, totalPages);
+  const from = filteredDueRows.length === 0 ? 0 : (safePage - 1) * limit + 1;
+  const to = Math.min(safePage * limit, filteredDueRows.length);
+  const pagedDueRows = useMemo(() => filteredDueRows.slice((safePage - 1) * limit, safePage * limit), [filteredDueRows, safePage, limit]);
+  const pageBtns = useCallback(() => {
+    const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
+    const end = Math.min(totalPages, start + 4);
+    const arr: number[] = [];
+    for (let i = start; i <= end; i++) arr.push(i);
+    return arr;
+  }, [safePage, totalPages]);
+
   const handleExportCsv = () => {
     setExportingCsv(true);
     try {
@@ -376,7 +397,7 @@ const DueReportPage: React.FC = () => {
       {/* ── Toolbar — Search, Export CSV, Refresh all in one row. ────────── */}
       <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="flex flex-wrap items-center gap-3">
-          <div style={{ flex: '1 1 260px', minWidth: 220 }}>
+          <div style={{ flex: '1 1 200px', maxWidth: 320 }}>
             <SearchableSelect t={t} placeholder="Search or select customer name" options={customerOptions} value={customerSearch} onChange={handleCustomerSearchChange} />
           </div>
           <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
@@ -413,7 +434,7 @@ const DueReportPage: React.FC = () => {
                     {dueRows.length === 0 ? 'No customers currently have a payment due.' : 'No customer matches that name.'}
                   </td></tr>
                 ) : (
-                  filteredDueRows.map((r) => {
+                  pagedDueRows.map((r) => {
                     const c = customersById.get(String(r.customer_id));
                     return (
                       <tr key={r.customer_id} style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -439,6 +460,9 @@ const DueReportPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+          {filteredDueRows.length > 0 && (
+            <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={filteredDueRows.length} pageBtns={pageBtns} />
+          )}
         </div>
       ) : (
         <>

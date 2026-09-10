@@ -9,7 +9,6 @@ import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh, MdVisibility,
   MdGroups, MdPersonAddAlt1, MdPersonOff, MdClose,
   MdKeyboardArrowDown, MdMoreVert, MdReceiptLong, MdLoyalty, MdPhone, MdEmail,
-  MdChevronLeft, MdChevronRight, MdKeyboardDoubleArrowLeft, MdKeyboardDoubleArrowRight,
   MdPayments, MdPrint, MdAccountBalanceWallet, MdDescription, MdFilterList,
   MdGridView, MdViewList, MdLocationOn, MdBadge,
 } from 'react-icons/md';
@@ -20,6 +19,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
+import PaginationFooter from '../../../../components/common/PaginationFooter';
 import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory } from '../../../../services/customerDetailsService';
 import {
   collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, deletePayment, PAYMENT_FOR_OPTIONS, paymentForLabel,
@@ -36,7 +36,6 @@ import { formatDate, showAlert } from '../../../../utils';
 import './CustomerDetails.css';
 
 type Theme = AppTheme;
-const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 // ── SearchableSelect — module scope (not inside the page component), so
 // typing in it never causes the "cursor disappears" bug seen before.
@@ -524,6 +523,8 @@ const CustomerDetailsListPage: React.FC = () => {
   const pageRows = allCustomers;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
+  const from = total === 0 ? 0 : (safePage - 1) * limit + 1;
+  const to = Math.min(safePage * limit, total);
 
   const pageBtns = () => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
@@ -896,13 +897,17 @@ const CustomerDetailsListPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Employee assignment + action row ─────────────────────────── */}
+      {/* ── Toolbar — Search Employee (left), Assign to Employee | Add
+          Customer | Grid/List toggle (right), plus Export CSV/Refresh,
+          all in one row so this never wraps into a second row on desktop
+          the way the old two-block layout could. ────────────────────── */}
       <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
-        <div className="flex flex-wrap items-end gap-3">
-          <div style={{ flex: '1 1 200px', maxWidth: 280, minWidth: 0 }}>
-            <label className="cust-filter-label">Search Employee</label>
-            <SearchableSelect t={t} placeholder="Select employee" options={employeeOptions} value={employeeSearch} onChange={setEmployeeSearch} disabled={!assignmentEnabled} />
-          </div>
+        <div style={{ flex: '1 1 200px', maxWidth: 320 }}>
+          <label className="cust-filter-label">Search Employee</label>
+          <SearchableSelect t={t} placeholder="Select employee" options={employeeOptions} value={employeeSearch} onChange={setEmployeeSearch} disabled={!assignmentEnabled} />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5" style={{ flexShrink: 0 }}>
           <button
             type="button"
             onClick={handleAssign}
@@ -917,19 +922,16 @@ const CustomerDetailsListPage: React.FC = () => {
           >
             {assigning ? 'Assigning...' : 'Assign to Employee'}
           </button>
-        </div>
-
-        <div className="flex items-center gap-2.5">
+          <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+            style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <MdAdd size={18} /> Add Customer
+          </button>
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
             title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
             className="flex items-center justify-center rounded-xl"
             style={{ width: 40, height: 40, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
-          </button>
-          <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            <MdAdd size={18} /> Add Customer
           </button>
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
@@ -1082,47 +1084,7 @@ const CustomerDetailsListPage: React.FC = () => {
         </div>
         )}
 
-        {/* pagination — bottom-center, First/Prev/[numbers]/Next/Last */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4 cust-divider-top">
-          <div className="flex items-center gap-2">
-            <span style={{ fontSize: 11, color: t.textSecondary }}>Rows per page:</span>
-            <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer', outline: 'none' }}>
-              {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          <div style={{ fontSize: 11, color: t.textSecondary }}>
-            Showing {total === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, total)} of {total}
-          </div>
-          <div className="flex-1 flex items-center justify-center gap-1.5">
-            <button type="button" disabled={safePage <= 1} onClick={() => setPage(1)}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage <= 1 ? 'not-allowed' : 'pointer', opacity: safePage <= 1 ? 0.5 : 1 }}>
-              <MdKeyboardDoubleArrowLeft size={16} />
-            </button>
-            <button type="button" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage <= 1 ? 'not-allowed' : 'pointer', opacity: safePage <= 1 ? 0.5 : 1 }}>
-              <MdChevronLeft size={18} />
-            </button>
-            {pageBtns()[0] > 1 && <span style={{ color: t.textSecondary, padding: '0 2px' }}>...</span>}
-            {pageBtns().map((n) => (
-              <button key={n} type="button" onClick={() => setPage(n)}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium"
-                style={{ background: n === safePage ? '#7c3aed' : t.insetBg, color: n === safePage ? '#fff' : t.textPrimary, border: `1px solid ${n === safePage ? '#7c3aed' : t.surfaceBorder}`, cursor: 'pointer' }}>
-                {n}
-              </button>
-            ))}
-            {pageBtns()[pageBtns().length - 1] < totalPages && <span style={{ color: t.textSecondary, padding: '0 2px' }}>...</span>}
-            <button type="button" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', opacity: safePage >= totalPages ? 0.5 : 1 }}>
-              <MdChevronRight size={18} />
-            </button>
-            <button type="button" disabled={safePage >= totalPages} onClick={() => setPage(totalPages)}
-              className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', opacity: safePage >= totalPages ? 0.5 : 1 }}>
-              <MdKeyboardDoubleArrowRight size={16} />
-            </button>
-          </div>
-          <div style={{ width: 90 }} />
-        </div>
+        <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={total} pageBtns={pageBtns} />
       </div>
 
       {/* ── Payment History modal ────────────────────────────────────── */}

@@ -318,14 +318,56 @@ html.dark .master-row-icon {
   color: #60a5fa;
 }
 
-/* ── Pagination footer ─────────────────────────────────────────────────── */
+/* ── Pagination footer ───────────────────────────────────────────────────
+   Single shared pagination layout, applied via PaginationFooter.tsx (and
+   any hand-rolled footer that reuses this same class) across every list
+   page: Master/Employee/Customer/Lead/Role AND the Payment Due/Approval/
+   Received pages. A 3-column grid rather than flex space-between, so
+   "Showing X–Y of Z" (the middle child) stays TRUE-centered on the row
+   regardless of how wide the rows-per-page control or the page-button
+   group on either side are — space-between only centers a middle item
+   when its neighbors happen to be equal width, which they never are here. */
 .master-pagination {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
+}
+
+.master-pagination > :first-child {
+  justify-self: start;
+}
+
+.master-pagination > :nth-child(2) {
+  justify-self: center;
+  text-align: center;
+}
+
+.master-pagination > :last-child {
+  justify-self: end;
+  flex-wrap: wrap;
+}
+
+/* Mobile: stack rows-per-page / showing / controls vertically, in that
+   same logical order, each centered — never a 3-up row that would force
+   horizontal overflow on a narrow screen. */
+@media (max-width: 640px) {
+  .master-pagination {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .master-pagination > :first-child,
+  .master-pagination > :last-child {
+    justify-self: center;
+    justify-content: center;
+  }
+
+  .master-pagination > :last-child {
+    flex-wrap: wrap;
+  }
 }
 
 .master-page-btn {
