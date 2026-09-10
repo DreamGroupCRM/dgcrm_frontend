@@ -195,6 +195,27 @@ export const fetchPaymentReceipt = async (transactionId: string | number): Promi
   };
 };
 
+// ── Monthly receipt — every approved payment one customer made in a given
+// calendar month, combined into one receipt (as opposed to
+// fetchPaymentReceipt above, which is always exactly one transaction). ──
+export interface MonthlyReceiptData {
+  customer: PaymentReceiptCustomer;
+  month: string;
+  transactions: PaymentListRow[];
+  total_amount: number;
+}
+/** GET /api/payments/customer/:customerId/monthly-receipt?month=YYYY-MM */
+export const fetchMonthlyReceipt = async (customerId: string | number, month: string): Promise<MonthlyReceiptData> => {
+  const res = await axiosInstance.get(`/payments/customer/${customerId}/monthly-receipt`, { params: { month } });
+  const d = res.data.data;
+  return {
+    customer: mapReceiptCustomer(d.customer as BackendReceiptCustomer),
+    month: d.month,
+    transactions: d.transactions ?? [],
+    total_amount: d.total_amount ?? 0,
+  };
+};
+
 // ── Per-installment Due grid for one customer (item 15) ─────────────────
 export type DueGridStatus = 'paid' | 'due' | 'upcoming';
 export interface DueGridRow {
@@ -282,6 +303,7 @@ export const paymentService = {
   customerDue      : fetchCustomerDue,
   customerRemaining: fetchCustomerRemaining,
   receipt          : fetchPaymentReceipt,
+  monthlyReceipt   : fetchMonthlyReceipt,
   customerDueGrid  : fetchCustomerDueGrid,
   list             : fetchPaymentList,
   approve          : approvePayment,

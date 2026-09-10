@@ -11,10 +11,11 @@
 // separate page for approval. Nothing about is_approved's effect on
 // due/EMI/remaining-balance math changed — those calculations still count
 // a payment the moment it's collected, exactly as before.
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
+import jsPDF from 'jspdf';
 import {
-  MdPayments, MdRefresh, MdSearch, MdDownload, MdReceiptLong,
+  MdPayments, MdRefresh, MdSearch, MdDownload, MdReceiptLong, MdClose, MdKeyboardArrowDown,
   MdChevronLeft, MdChevronRight, MdKeyboardDoubleArrowLeft, MdKeyboardDoubleArrowRight,
 } from 'react-icons/md';
 
@@ -24,13 +25,75 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
-import { fetchPaymentList, paymentForLabel, PaymentListRow } from '../../../../services/paymentService';
-import { formatLastLogin } from '../../../../utils';
+import {
+  fetchPaymentList, paymentForLabel, PaymentListRow, fetchMonthlyReceipt, MonthlyReceiptData,
+} from '../../../../services/paymentService';
+import { fetchAllCustomerDetails } from '../../../../services/customerDetailsService';
+import { Customer } from '../../../../types/index';
+import { formatLastLogin, formatDate } from '../../../../utils';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 type Theme = AppTheme;
 
 const rupee = (n: number): string => `₹ ${n.toLocaleString('en-IN')}`;
+
+// Month formatted for display, e.g. '2026-03' -> 'March 2026'.
+const monthLabel = (month: string): string => {
+  const [y, m] = month.split('-').map(Number);
+  if (!y || !m) return month;
+  return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+};
+
+// ── Small local searchable dropdown — same "type to filter, click to
+// pick" shape used on the Payment Dues/Customer List pages, kept local
+// since this page's only picker (Customer, for the Generate Receipt
+// modal) is its only user. ──────────────────────────────────────────────
+const SearchableSelect: React.FC<{
+  t: Theme; placeholder: string; options: string[]; value: string; onChange: (v: string) => void;
+}> = ({ t, placeholder, options, value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setQuery(value); }, [value]);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = options.filter((o) => o?.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, cursor: 'text' }}
+        onClick={() => setOpen(true)}>
+        <MdSearch size={15} style={{ color: t.textSecondary, flexShrink: 0 }} />
+        <input type="text" placeholder={placeholder} value={query}
+          onFocus={() => setOpen(true)}
+          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+          style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%' }} />
+        {value && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); onChange(''); setQuery(''); }}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 0, display: 'flex', flexShrink: 0 }}>
+            <MdClose size={15} />
+          </button>
+        )}
+        <MdKeyboardArrowDown size={16} style={{ color: t.textSecondary, flexShrink: 0 }} />
+      </div>
+      {open && filtered.length > 0 && (
+        <div style={{ position: 'absolute', top: '110%', left: 0, right: 0, zIndex: 30, maxHeight: 220, overflowY: 'auto', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0' }}>
+          {filtered.slice(0, 50).map((opt) => (
+            <button key={opt} type="button" onClick={() => { onChange(opt); setQuery(opt); setOpen(false); }}
+              className="w-full text-left px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -97,6 +160,120 @@ const PaymentReceivedPage: React.FC = () => {
     }
   };
 
+  // ── Generate Monthly Receipt — pick a customer + month, see every
+  // approved payment they made that month, and download a combined
+  // receipt PDF. Separate from the per-row "View Receipt" flow on
+  // Customer Details (always exactly one transaction). ────────────────────
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [grCustomerSearch, setGrCustomerSearch] = useState('');
+  const [grCustomerId, setGrCustomerId] = useState<string | null>(null);
+  const [grMonth, setGrMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [grLoading, setGrLoading] = useState(false);
+  const [grData, setGrData] = useState<MonthlyReceiptData | null>(null);
+
+  const openGenerateReceipt = () => {
+    setReceiptModalOpen(true);
+    setGrData(null);
+    if (customers.length === 0) {
+      fetchAllCustomerDetails(1, 1000).then((res) => { if (res.success) setCustomers(res.rows ?? []); }).catch(() => {});
+    }
+  };
+
+  const customerOptions = useMemo(
+    () => customers.map((c) => `${c.customer_name}${c.customer_code ? ` (${c.customer_code})` : ''}`),
+    [customers]
+  );
+  const handleGrCustomerChange = (v: string) => {
+    setGrCustomerSearch(v);
+    const exact = customers.find((c) => `${c.customer_name}${c.customer_code ? ` (${c.customer_code})` : ''}` === v);
+    setGrCustomerId(exact ? exact.id : null);
+    setGrData(null);
+  };
+
+  const handleGenerateReceipt = async () => {
+    if (!grCustomerId) { toast.error('Select a customer first.'); return; }
+    setGrLoading(true);
+    try {
+      const data = await fetchMonthlyReceipt(grCustomerId, grMonth);
+      setGrData(data);
+      if (data.transactions.length === 0) toast.info('No approved payments found for that customer in this month.');
+    } catch {
+      toast.error('Failed to generate the receipt. Please try again.');
+    } finally {
+      setGrLoading(false);
+    }
+  };
+
+  const handleDownloadMonthlyReceiptPdf = () => {
+    if (!grData || grData.transactions.length === 0) return;
+    const { customer, month, transactions, total_amount } = grData;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const marginX = 40;
+    let y = 50;
+
+    doc.setFontSize(17);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Dream Group CRM', marginX, y);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Monthly Payment Receipt — ${monthLabel(month)}`, marginX, y + 18);
+    y += 46;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(customer.customer_name || '—', marginX, y);
+    doc.setFont('helvetica', 'normal');
+    y += 15;
+    doc.setFontSize(9.5);
+    doc.text(`${customer.customer_code}${customer.mobile_number ? ` · ${customer.mobile_number}` : ''}`, marginX, y);
+    y += 13;
+    if (customer.building_name || customer.flat_no) {
+      doc.text([customer.building_name, customer.wing_name ? `Wing ${customer.wing_name}` : null, customer.flat_no ? `Flat ${customer.flat_no}` : null].filter(Boolean).join(' · '), marginX, y);
+      y += 13;
+    }
+    y += 14;
+
+    // Table header
+    const cols = [
+      { label: 'Receipt #', x: marginX, w: 100 },
+      { label: 'Date', x: marginX + 100, w: 70 },
+      { label: 'Payment For', x: marginX + 170, w: 140 },
+      { label: 'Mode', x: marginX + 310, w: 90 },
+      { label: 'Amount (Rs.)', x: marginX + 400, w: 95 },
+    ];
+    doc.setFillColor(124, 58, 237);
+    doc.rect(marginX, y - 12, 515, 20, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    cols.forEach((c) => doc.text(c.label, c.x + 4, y + 2));
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    y += 16;
+
+    transactions.forEach((tx, i) => {
+      if (y > 760) { doc.addPage(); y = 50; }
+      if (i % 2 === 1) { doc.setFillColor(245, 243, 255); doc.rect(marginX, y - 12, 515, 18, 'F'); }
+      doc.setFontSize(8.7);
+      doc.text(tx.receipt_number, cols[0].x + 4, y);
+      doc.text(formatDate(tx.created_at), cols[1].x + 4, y);
+      doc.text(paymentForLabel(tx.payment_type), cols[2].x + 4, y);
+      doc.text(tx.mode_of_payment || '—', cols[3].x + 4, y);
+      doc.text(tx.amount.toLocaleString('en-IN'), cols[4].x + 4, y);
+      y += 18;
+    });
+
+    y += 8;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(marginX, y - 10, marginX + 515, y - 10);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Received: Rs. ${total_amount.toLocaleString('en-IN')}`, marginX + 300, y + 8);
+
+    doc.save(`receipt-${customer.customer_code || customer.customer_name}-${month}.pdf`);
+  };
+
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
   const pageBtns = useMemo(() => {
@@ -133,6 +310,11 @@ const PaymentReceivedPage: React.FC = () => {
               style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%', minWidth: 0 }} />
           </div>
           <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
+            <button type="button" onClick={openGenerateReceipt}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+              style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <MdReceiptLong size={16} /> Generate Receipt
+            </button>
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
@@ -237,6 +419,86 @@ const PaymentReceivedPage: React.FC = () => {
           <div style={{ width: 90 }} />
         </div>
       </div>
+
+      {/* ── Generate Monthly Receipt modal ────────────────────────────── */}
+      {receiptModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setReceiptModalOpen(false)}>
+          <div className="rounded-2xl w-full" style={{ maxWidth: 560, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '88vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
+              <div className="flex items-center gap-2.5">
+                <MdReceiptLong size={19} style={{ color: '#7c3aed' }} />
+                <div style={{ fontSize: 15, fontWeight: 800, color: t.textPrimary }}>Generate Monthly Receipt</div>
+              </div>
+              <button type="button" onClick={() => setReceiptModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 4, display: 'flex' }}>
+                <MdClose size={20} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3.5">
+              <div>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>Customer</label>
+                <SearchableSelect t={t} placeholder="Search or select customer" options={customerOptions} value={grCustomerSearch} onChange={handleGrCustomerChange} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 }}>Month</label>
+                <input type="month" value={grMonth} onChange={(e) => { setGrMonth(e.target.value); setGrData(null); }}
+                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }} />
+              </div>
+              <button type="button" onClick={handleGenerateReceipt} disabled={grLoading || !grCustomerId}
+                className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+                style={{
+                  background: grLoading || !grCustomerId ? '#9ca3af' : 'var(--grad-purple)',
+                  border: 'none', cursor: grLoading || !grCustomerId ? 'not-allowed' : 'pointer',
+                }}>
+                {grLoading ? 'Generating...' : 'Generate'}
+              </button>
+
+              {grData && (
+                <div className="rounded-xl p-4 mt-2" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}` }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary }}>{grData.customer.customer_name}</div>
+                      <div style={{ fontSize: 10.5, color: t.textSecondary }}>{monthLabel(grData.month)}</div>
+                    </div>
+                    {grData.transactions.length > 0 && (
+                      <button type="button" onClick={handleDownloadMonthlyReceiptPdf}
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold text-white"
+                        style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <MdDownload size={14} /> Download PDF
+                      </button>
+                    )}
+                  </div>
+
+                  {grData.transactions.length === 0 ? (
+                    <p style={{ fontSize: 11.5, color: t.textSecondary, margin: 0 }}>No approved payments found for this customer in this month.</p>
+                  ) : (
+                    <>
+                      <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                        {grData.transactions.map((tx) => (
+                          <div key={tx.id} className="flex items-center justify-between py-1.5" style={{ borderBottom: `1px solid ${t.divider}` }}>
+                            <div>
+                              <div style={{ fontSize: 11.5, fontWeight: 600, color: t.textPrimary }}>{tx.receipt_number}</div>
+                              <div style={{ fontSize: 10, color: t.textSecondary }}>{paymentForLabel(tx.payment_type)} · {formatDate(tx.created_at)}</div>
+                            </div>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full font-semibold" style={{ background: '#dcfce7', color: '#16a34a', fontSize: 11 }}>
+                              {rupee(tx.amount)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between pt-3 mt-1" style={{ borderTop: `1px solid ${t.surfaceBorder}` }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary }}>Total Received</span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>{rupee(grData.total_amount)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
