@@ -14,6 +14,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FormField, getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
+import { PhoneInput } from '../../../../components/common/PhoneInput';
 import { showAlert } from '../../../../utils';
 import { companyService, CompanyPayload } from '../../../../services/companyService';
 import { Company } from '../../../../types';
@@ -49,7 +50,9 @@ interface Props { mode: Mode; }
 interface FormState {
   name: string;
   email: string;
+  phone_country_code: string;
   phone: string;
+  whatsapp_country_code: string;
   whatsapp_number: string;
   city: string;
   state: string;
@@ -78,14 +81,16 @@ const NUMERIC_REGEX = /^\d*$/;
 const FOOTER_HEIGHT = 76;
 
 const empty: FormState = {
-  name: '', email: '', phone: '', whatsapp_number: '',
+  name: '', email: '', phone_country_code: '+91', phone: '', whatsapp_country_code: '+91', whatsapp_number: '',
   city: '', state: '', country: '', pincode: '', pan: '', gst: '', company_code: '',
 };
 
 const fromCompany = (d: Company): FormState => ({
   name: d.name ?? '',
   email: d.email ?? '',
+  phone_country_code: d.phone_country_code ?? '+91',
   phone: d.phone === 'string' ? '' : (d.phone ?? ''),
+  whatsapp_country_code: d.whatsapp_country_code ?? '+91',
   whatsapp_number: d.whatsapp_number ?? '',
   city: d.city ?? '',
   state: d.state ?? '',
@@ -190,9 +195,11 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
       const fields: Record<string, string | boolean> = {
         name: form.name.trim(),
         email: form.email.trim(),
+        phone_country_code: form.phone_country_code,
         phone: form.phone.trim(),
         is_active: true,
         company_code: form.company_code,
+        whatsapp_country_code: form.whatsapp_country_code,
         whatsapp_number: form.whatsapp_number,
         city: form.city,
         state: form.state,
@@ -301,38 +308,20 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
 
           <Field label="Phone" required={!isView} t={t} error={errors.phone}>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Enter 10-digit phone number"
-              value={form.phone}
-              readOnly={isView}
-              disabled={isView}
-              maxLength={10}
-              onChange={(e) => {
-                if (!isView && NUMERIC_REGEX.test(e.target.value))
-                  handleChange('phone', e.target.value);
-              }}
-              onBlur={() => !isView && handleBlur('phone')}
-              style={fieldStyle(!!errors.phone)}
+            <PhoneInput
+              theme={t} disabled={isView} placeholder="Enter 10-digit phone number"
+              code={form.phone_country_code} onCodeChange={(v) => handleChange('phone_country_code', v)}
+              number={form.phone}
+              onNumberChange={(v) => { if (NUMERIC_REGEX.test(v) && v.length <= 10) handleChange('phone', v); }}
             />
           </Field>
 
           <Field label="WhatsApp Number" t={t} error={errors.whatsapp_number}>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Enter 10-digit WhatsApp number"
-              value={form.whatsapp_number}
-              readOnly={isView}
-              disabled={isView}
-              maxLength={10}
-              onChange={(e) => {
-                if (!isView && NUMERIC_REGEX.test(e.target.value))
-                  handleChange('whatsapp_number', e.target.value);
-              }}
-              onBlur={() => !isView && handleBlur('whatsapp_number')}
-              style={fieldStyle(!!errors.whatsapp_number)}
+            <PhoneInput
+              theme={t} disabled={isView} placeholder="Enter 10-digit WhatsApp number"
+              code={form.whatsapp_country_code} onCodeChange={(v) => handleChange('whatsapp_country_code', v)}
+              number={form.whatsapp_number}
+              onNumberChange={(v) => { if (NUMERIC_REGEX.test(v) && v.length <= 10) handleChange('whatsapp_number', v); }}
             />
           </Field>
 

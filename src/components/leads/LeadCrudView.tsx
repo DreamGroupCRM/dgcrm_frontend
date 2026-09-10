@@ -11,6 +11,7 @@ import { MdSave, MdArrowBack, MdReply, MdSend, MdPersonAdd } from 'react-icons/m
 
 import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import { getAccordionCardStyle, getAccordionHeaderStyle, getFormInputStyle, FormField } from '../../components/common/MasterListUI';
+import { PhoneInput } from '../../components/common/PhoneInput';
 import {
   fetchLeadById, createLead, updateLead, assignLead, fetchLeadActivities, addLeadComment,
 } from '../../services/leadService';
@@ -27,7 +28,8 @@ interface Props {
 }
 
 const EMPTY_FORM: CreateLeadPayload = {
-  name: '', mobile_number: '', whatsapp_number: '', alternate_number: '', email: '',
+  name: '', mobile_country_code: '+91', mobile_number: '', whatsapp_country_code: '+91', whatsapp_number: '',
+  alternate_country_code: '+91', alternate_number: '', email: '',
   address: '', city: '', state: '', pincode: '', occupation: '', company_name: '',
   source: 'other', category: 'cold', sub_category: '', budget: null, deal_amount: null,
   looking_for: '', carpet_size: '', how_will_fund: '', current_residence: '', purpose_buying: '',
@@ -80,8 +82,10 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
         const l = res.data;
         setLead(l);
         setForm({
-          name: l.name, mobile_number: l.mobile_number, whatsapp_number: l.whatsapp_number,
-          alternate_number: l.alternate_number, email: l.email, address: l.address, city: l.city,
+          name: l.name, mobile_country_code: l.mobile_country_code || '+91', mobile_number: l.mobile_number,
+          whatsapp_country_code: l.whatsapp_country_code || '+91', whatsapp_number: l.whatsapp_number,
+          alternate_country_code: l.alternate_country_code || '+91', alternate_number: l.alternate_number,
+          email: l.email, address: l.address, city: l.city,
           state: l.state, pincode: l.pincode, occupation: l.occupation, company_name: l.company_name,
           source: l.source, category: l.category, sub_category: l.sub_category,
           budget: l.budget, deal_amount: l.deal_amount, looking_for: l.looking_for,
@@ -229,9 +233,21 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
           <div style={headerStyle}><span style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary }}>Basic Info</span></div>
           <div style={gridStyle}>
             <FormField label="Name *" t={t}><input required disabled={isView} value={form.name} onChange={(e) => set('name', e.target.value)} style={getFormInputStyle(t)} /></FormField>
-            <FormField label="Mobile Number" t={t}><input disabled={isView} value={form.mobile_number ?? ''} onChange={(e) => set('mobile_number', e.target.value)} style={getFormInputStyle(t)} placeholder="10 digits" /></FormField>
-            <FormField label="WhatsApp Number" t={t}><input disabled={isView} value={form.whatsapp_number ?? ''} onChange={(e) => set('whatsapp_number', e.target.value)} style={getFormInputStyle(t)} /></FormField>
-            <FormField label="Alternate Number" t={t}><input disabled={isView} value={form.alternate_number ?? ''} onChange={(e) => set('alternate_number', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Mobile Number" t={t}>
+              <PhoneInput theme={t} disabled={isView} placeholder="10 digits"
+                code={form.mobile_country_code ?? '+91'} onCodeChange={(v) => set('mobile_country_code', v)}
+                number={form.mobile_number ?? ''} onNumberChange={(v) => set('mobile_number', v)} />
+            </FormField>
+            <FormField label="WhatsApp Number" t={t}>
+              <PhoneInput theme={t} disabled={isView}
+                code={form.whatsapp_country_code ?? '+91'} onCodeChange={(v) => set('whatsapp_country_code', v)}
+                number={form.whatsapp_number ?? ''} onNumberChange={(v) => set('whatsapp_number', v)} />
+            </FormField>
+            <FormField label="Alternate Number" t={t}>
+              <PhoneInput theme={t} disabled={isView}
+                code={form.alternate_country_code ?? '+91'} onCodeChange={(v) => set('alternate_country_code', v)}
+                number={form.alternate_number ?? ''} onNumberChange={(v) => set('alternate_number', v)} />
+            </FormField>
             <FormField label="Email" t={t}><input type="email" disabled={isView} value={form.email ?? ''} onChange={(e) => set('email', e.target.value)} style={getFormInputStyle(t)} /></FormField>
             <FormField label="Occupation" t={t}><input disabled={isView} value={form.occupation ?? ''} onChange={(e) => set('occupation', e.target.value)} style={getFormInputStyle(t)} /></FormField>
             <FormField label="Company Name" t={t}><input disabled={isView} value={form.company_name ?? ''} onChange={(e) => set('company_name', e.target.value)} style={getFormInputStyle(t)} /></FormField>

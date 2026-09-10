@@ -201,7 +201,9 @@ export interface Company {
   company_code?: string;
   sort_order?: number;
   email: string;
+  phone_country_code?: string | null;
   phone: string;
+  whatsapp_country_code?: string | null;
   whatsapp_number?: string | null;
   city?: string | null;
   state?: string | null;
@@ -1078,8 +1080,11 @@ export const LEAD_STATUSES = Object.keys(LEAD_STATUS_LABELS) as LeadStatus[];
 export interface Lead {
   id: string;
   name: string;
+  mobile_country_code: string;
   mobile_number: string;
+  whatsapp_country_code: string;
   whatsapp_number: string;
+  alternate_country_code: string;
   alternate_number: string;
   email: string;
   address: string;
