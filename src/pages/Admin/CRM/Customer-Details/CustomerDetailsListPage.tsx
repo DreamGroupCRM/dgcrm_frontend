@@ -60,7 +60,18 @@ const SearchableSelect: React.FC<{
   // has been chosen, instead of leaving the full dropdown open.
   onCommit?: () => void;
   autoFocus?: boolean;
-}> = ({ t, placeholder, options, value, onChange, disabled, labelFor, onCommit, autoFocus }) => {
+  // Loading/empty-state support (item 6's Assign Employee fix) — without
+  // this, a field whose `options` list is empty (still fetching, fetch
+  // failed, or genuinely zero results) rendered its dropdown as literally
+  // nothing when clicked: `filtered.length > 0` gated the whole panel, so
+  // there was no visual difference between "still loading" and "silently
+  // broken". `loading` shows an in-progress row instead of an empty panel;
+  // `emptyMessage`/`onRetry` show a real "nothing here" state with a way
+  // to recover instead of a dead field.
+  loading?: boolean;
+  emptyMessage?: string;
+  onRetry?: () => void;
+}> = ({ t, placeholder, options, value, onChange, disabled, labelFor, onCommit, autoFocus, loading, emptyMessage = 'No options found.', onRetry }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
@@ -105,7 +116,7 @@ const SearchableSelect: React.FC<{
         )}
         <MdKeyboardArrowDown size={16} style={{ color: t.textSecondary, flexShrink: 0 }} />
       </div>
-      {open && !disabled && filtered.length > 0 && (
+      {open && !disabled && (loading || filtered.length > 0 || emptyMessage) && (
         <div
           style={{
             position: 'absolute', top: '110%', left: 0, right: 0, zIndex: 30, maxHeight: 220, overflowY: 'auto',
@@ -113,16 +124,34 @@ const SearchableSelect: React.FC<{
             boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0',
           }}
         >
-          {filtered.map((opt) => (
-            <button
-              key={opt} type="button"
-              onClick={() => { onChange(opt); setQuery(opt); setOpen(false); onCommit?.(); }}
-              className="w-full text-left px-3.5 py-2 text-sm"
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}
-            >
-              {labelFor ? labelFor(opt) : opt}
-            </button>
-          ))}
+          {loading ? (
+            <div className="px-3.5 py-2 text-sm" style={{ color: t.textSecondary, fontFamily: t.fontFamily }}>Loading...</div>
+          ) : filtered.length === 0 ? (
+            <div className="px-3.5 py-2" style={{ fontFamily: t.fontFamily }}>
+              <div className="text-sm" style={{ color: t.textSecondary, marginBottom: onRetry ? 6 : 0 }}>{emptyMessage}</div>
+              {onRetry && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onRetry(); }}
+                  className="text-sm font-semibold"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#7c3aed', padding: 0 }}
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          ) : (
+            filtered.map((opt) => (
+              <button
+                key={opt} type="button"
+                onClick={() => { onChange(opt); setQuery(opt); setOpen(false); onCommit?.(); }}
+                className="w-full text-left px-3.5 py-2 text-sm"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}
+              >
+                {labelFor ? labelFor(opt) : opt}
+              </button>
+            ))
+          )}
         </div>
       )}
     </div>
@@ -952,7 +981,17 @@ const CustomerDetailsListPage: React.FC = () => {
         <div className="flex items-end gap-3" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
           <div style={{ width: 240 }}>
             <label className="cust-filter-label">Search Employee</label>
-            <SearchableSelect t={t} placeholder={loadingEmployees ? 'Loading employees...' : 'Select employee'} options={employeeOptions} value={employeeSearch} onChange={setEmployeeSearch} disabled={!assignmentEnabled || loadingEmployees} />
+            <SearchableSelect
+              t={t}
+              placeholder={loadingEmployees ? 'Loading employees...' : 'Select employee'}
+              options={employeeOptions}
+              value={employeeSearch}
+              onChange={setEmployeeSearch}
+              disabled={!assignmentEnabled}
+              loading={loadingEmployees}
+              emptyMessage={employees.length === 0 ? 'No employees found.' : 'No matching employees.'}
+              onRetry={employees.length === 0 && !loadingEmployees ? fetchEmployeesForAssignment : undefined}
+            />
           </div>
           <button
             type="button"
