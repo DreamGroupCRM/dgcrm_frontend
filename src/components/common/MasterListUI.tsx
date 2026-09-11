@@ -84,8 +84,13 @@ export const getFormLabelStyle = (t: AppTheme, overrides?: Partial<React.CSSProp
 export const FormField: React.FC<{
   label: string; t: AppTheme; labelStyle?: React.CSSProperties;
   required?: boolean; error?: string; errorStyle?: React.CSSProperties; children: React.ReactNode;
-}> = ({ label, t, labelStyle, required, error, errorStyle, children }) => (
-  <div>
+  // Global validation error summary (item 7) — lets a page's error-summary
+  // banner scroll+focus this exact field on click, same "reveal" pattern
+  // Customer/Employee CRUD already use for their own local Field wrapper.
+  // Optional and unused by every existing caller, so purely additive.
+  fieldRef?: React.Ref<HTMLDivElement>;
+}> = ({ label, t, labelStyle, required, error, errorStyle, children, fieldRef }) => (
+  <div ref={fieldRef}>
     <label style={labelStyle ?? getFormLabelStyle(t)}>
       {label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
     </label>

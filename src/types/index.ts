@@ -201,7 +201,9 @@ export interface Company {
   company_code?: string;
   sort_order?: number;
   email: string;
+  phone_country_code?: string | null;
   phone: string;
+  whatsapp_country_code?: string | null;
   whatsapp_number?: string | null;
   city?: string | null;
   state?: string | null;
@@ -716,15 +718,18 @@ export interface AssignCustomersResponse {
 }
 
 export interface CustomerPaymentRecord {
-  id           : string;
-  paid_on      : string;
-  inst_date?   : string;
-  amount       : number;
-  mode?        : string;
-  reference_no?: string;
-  notes?       : string;
-  is_approved  : boolean;
-  payment_type : string;
+  id             : string;
+  paid_on        : string;
+  inst_date?     : string;
+  amount         : number;
+  mode?          : string;
+  reference_no?  : string;
+  notes?         : string;
+  is_approved    : boolean;
+  payment_type   : string;
+  receipt_number?: string;
+  company?       : string;
+  maintenance?   : number;
 }
 
 export interface CustomerPaymentHistoryResponse {
@@ -808,6 +813,7 @@ export interface CustomerDetailFormValues {
   address                                     : string;
   date_of_birth                                 : string;
   alternate_person_name                           : string;
+  alternate_person_country_code                     : string;
   alternate_person_mobile                           : string;
 
   // Property Booking Details
@@ -1078,8 +1084,11 @@ export const LEAD_STATUSES = Object.keys(LEAD_STATUS_LABELS) as LeadStatus[];
 export interface Lead {
   id: string;
   name: string;
+  mobile_country_code: string;
   mobile_number: string;
+  whatsapp_country_code: string;
   whatsapp_number: string;
+  alternate_country_code: string;
   alternate_number: string;
   email: string;
   address: string;

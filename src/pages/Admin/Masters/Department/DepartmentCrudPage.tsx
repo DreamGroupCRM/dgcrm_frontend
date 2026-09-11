@@ -1,7 +1,7 @@
 // ==========================================
 // DREAM GROUP CRM - DEPARTMENT CRUD PAGE (Department + Designations)
 // ==========================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -10,6 +10,7 @@ import {
 
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
+import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { showAlert } from '../../../../utils';
 import { Designation, CreateDepartmentPayload } from '../../../../types/index';
 import { ViewDepartment, CreateDepartment, UpdateDepartment } from '../../../../services/departmentService';
@@ -189,10 +190,15 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
 
   // ── validation ────────────────────────────────────────────────────────
   const isFormValid = departmentName.trim() !== '';
+  const departmentNameRef = useRef<HTMLDivElement>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const departmentNameError = submitAttempted && !isFormValid ? 'Please enter a Department Name.' : undefined;
 
   const handleSubmit = async () => {
+    setSubmitAttempted(true);
     if (!isFormValid) {
-      toast.error('Please enter a Department Name.');
+      departmentNameRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      departmentNameRef.current?.querySelector<HTMLElement>('input, select, button, textarea')?.focus();
       return;
     }
     setSaving(true);
@@ -256,6 +262,14 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
+      <ValidationErrorSummary
+        t={t}
+        errors={departmentNameError ? [{ field: 'departmentName', message: departmentNameError }] : []}
+        onErrorClick={() => {
+          departmentNameRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          departmentNameRef.current?.querySelector<HTMLElement>('input, select, button, textarea')?.focus();
+        }}
+      />
 
         {/* ── Step 1: Department Details ───────────────────────────────── */}
       <div
@@ -274,7 +288,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
 
           <div className="flex flex-col md:flex-row md:items-end gap-4">
-            <div style={{ flex: '0 1 400px', minWidth: 220 }}>
+            <div ref={departmentNameRef} style={{ flex: '0 1 400px', minWidth: 220 }}>
               <label style={labelStyle}>
                 Department Name <span style={{ color: '#ef4444' }}>*</span>
               </label>
@@ -287,6 +301,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                 onChange={(e) => setDepartmentName(e.target.value)}
                 style={fieldStyle}
               />
+              {departmentNameError && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4, fontFamily: t.fontFamily }}>{departmentNameError}</p>}
             </div>
 
             <div

@@ -14,6 +14,8 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FormField, getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
+import { PhoneInput } from '../../../../components/common/PhoneInput';
+import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { showAlert } from '../../../../utils';
 import { companyService, CompanyPayload } from '../../../../services/companyService';
 import { Company } from '../../../../types';
@@ -31,11 +33,12 @@ interface FieldProps {
   error?: string;
   t: AppTheme;
   children: React.ReactNode;
+  fieldRef?: React.Ref<HTMLDivElement>;
 }
 
-const Field: React.FC<FieldProps> = ({ label, required, error, t, children }) => (
+const Field: React.FC<FieldProps> = ({ label, required, error, t, children, fieldRef }) => (
   <FormField
-    label={label} t={t} required={required} error={error}
+    label={label} t={t} required={required} error={error} fieldRef={fieldRef}
     labelStyle={getFormLabelStyle(t, { fontWeight: 700, fontSize: 12.5, marginBottom: 6, color: t.textPrimary })}
   >
     {children}
@@ -49,7 +52,9 @@ interface Props { mode: Mode; }
 interface FormState {
   name: string;
   email: string;
+  phone_country_code: string;
   phone: string;
+  whatsapp_country_code: string;
   whatsapp_number: string;
   city: string;
   state: string;
@@ -78,14 +83,16 @@ const NUMERIC_REGEX = /^\d*$/;
 const FOOTER_HEIGHT = 76;
 
 const empty: FormState = {
-  name: '', email: '', phone: '', whatsapp_number: '',
+  name: '', email: '', phone_country_code: '+91', phone: '', whatsapp_country_code: '+91', whatsapp_number: '',
   city: '', state: '', country: '', pincode: '', pan: '', gst: '', company_code: '',
 };
 
 const fromCompany = (d: Company): FormState => ({
   name: d.name ?? '',
   email: d.email ?? '',
+  phone_country_code: d.phone_country_code ?? '+91',
   phone: d.phone === 'string' ? '' : (d.phone ?? ''),
+  whatsapp_country_code: d.whatsapp_country_code ?? '+91',
   whatsapp_number: d.whatsapp_number ?? '',
   city: d.city ?? '',
   state: d.state ?? '',
@@ -119,6 +126,21 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
   const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(!isAdd);
   const fileRef = useRef<HTMLInputElement>(null);
+  const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const setFieldRef = (key: string) => (el: HTMLDivElement | null) => { fieldRefs.current[key] = el; };
+
+  // Field label text for each key — used by the top-of-form error summary
+  // (item 7) so its list reads like real sentences instead of raw keys.
+  const FIELD_LABELS: Record<keyof FormErrors, string> = {
+    name: 'Company Name', email: 'Email', phone: 'Phone', whatsapp_number: 'WhatsApp Number',
+    city: 'City', state: 'State', country: 'Country',
+  };
+
+  const revealInvalidField = (field: string) => {
+    const el = fieldRefs.current[field];
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el?.querySelector<HTMLElement>('input, select, button, textarea')?.focus();
+  };
 
   useEffect(() => { dispatch(setPageTitle(PAGE_TITLES[mode])); }, [dispatch, mode]);
 
@@ -183,16 +205,23 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
 
   const handleSubmit = async () => {
     const errs = validateAll();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      const firstField = (Object.keys(FIELD_LABELS) as (keyof FormErrors)[]).find((k) => errs[k]);
+      if (firstField) revealInvalidField(firstField);
+      return;
+    }
 
     setSaving(true);
     try {
       const fields: Record<string, string | boolean> = {
         name: form.name.trim(),
         email: form.email.trim(),
+        phone_country_code: form.phone_country_code,
         phone: form.phone.trim(),
         is_active: true,
         company_code: form.company_code,
+        whatsapp_country_code: form.whatsapp_country_code,
         whatsapp_number: form.whatsapp_number,
         city: form.city,
         state: form.state,
@@ -264,6 +293,13 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
+      <ValidationErrorSummary
+        t={t}
+        errors={(Object.keys(FIELD_LABELS) as (keyof FormErrors)[])
+          .filter((k) => errors[k])
+          .map((k) => ({ field: k, message: errors[k] as string }))}
+        onErrorClick={revealInvalidField}
+      />
       <div style={{
         background: t.surfaceBg,
         border: `1px solid ${t.surfaceBorder}`,
@@ -274,7 +310,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Field grid ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
 
-          <Field label="Company Name" required={!isView} t={t} error={errors.name}>
+          <Field label="Company Name" required={!isView} t={t} error={errors.name} fieldRef={setFieldRef('name')}>
             <input
               type="text"
               placeholder="Enter company name"
@@ -287,7 +323,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
 
-          <Field label="Email" required={!isView} t={t} error={errors.email}>
+          <Field label="Email" required={!isView} t={t} error={errors.email} fieldRef={setFieldRef('email')}>
             <input
               type="email"
               placeholder="Enter email address"
@@ -300,43 +336,25 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
 
-          <Field label="Phone" required={!isView} t={t} error={errors.phone}>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Enter 10-digit phone number"
-              value={form.phone}
-              readOnly={isView}
-              disabled={isView}
-              maxLength={10}
-              onChange={(e) => {
-                if (!isView && NUMERIC_REGEX.test(e.target.value))
-                  handleChange('phone', e.target.value);
-              }}
-              onBlur={() => !isView && handleBlur('phone')}
-              style={fieldStyle(!!errors.phone)}
+          <Field label="Phone" required={!isView} t={t} error={errors.phone} fieldRef={setFieldRef('phone')}>
+            <PhoneInput
+              theme={t} disabled={isView} placeholder="Enter 10-digit phone number"
+              code={form.phone_country_code} onCodeChange={(v) => handleChange('phone_country_code', v)}
+              number={form.phone}
+              onNumberChange={(v) => { if (NUMERIC_REGEX.test(v) && v.length <= 10) handleChange('phone', v); }}
             />
           </Field>
 
-          <Field label="WhatsApp Number" t={t} error={errors.whatsapp_number}>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Enter 10-digit WhatsApp number"
-              value={form.whatsapp_number}
-              readOnly={isView}
-              disabled={isView}
-              maxLength={10}
-              onChange={(e) => {
-                if (!isView && NUMERIC_REGEX.test(e.target.value))
-                  handleChange('whatsapp_number', e.target.value);
-              }}
-              onBlur={() => !isView && handleBlur('whatsapp_number')}
-              style={fieldStyle(!!errors.whatsapp_number)}
+          <Field label="WhatsApp Number" t={t} error={errors.whatsapp_number} fieldRef={setFieldRef('whatsapp_number')}>
+            <PhoneInput
+              theme={t} disabled={isView} placeholder="Enter 10-digit WhatsApp number"
+              code={form.whatsapp_country_code} onCodeChange={(v) => handleChange('whatsapp_country_code', v)}
+              number={form.whatsapp_number}
+              onNumberChange={(v) => { if (NUMERIC_REGEX.test(v) && v.length <= 10) handleChange('whatsapp_number', v); }}
             />
           </Field>
 
-          <Field label="City" t={t} error={errors.city}>
+          <Field label="City" t={t} error={errors.city} fieldRef={setFieldRef('city')}>
             <input
               type="text"
               placeholder="Enter city"
@@ -352,7 +370,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
 
-          <Field label="State" t={t} error={errors.state}>
+          <Field label="State" t={t} error={errors.state} fieldRef={setFieldRef('state')}>
             <input
               type="text"
               placeholder="Enter state"
@@ -368,7 +386,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
 
-          <Field label="Country" t={t} error={errors.country}>
+          <Field label="Country" t={t} error={errors.country} fieldRef={setFieldRef('country')}>
             <input
               type="text"
               placeholder="Enter country"

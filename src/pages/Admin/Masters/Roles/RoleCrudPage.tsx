@@ -21,6 +21,7 @@ import {
   createRole,
   updateRole,
 } from '../../../../services/roleService';
+import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Props
@@ -43,13 +44,14 @@ interface FieldProps {
   borderC: string;
   textPrim: string;
   textSec: string;
+  id?: string;
 }
 
 const Field: React.FC<FieldProps> = ({
   label, value, onChange, onBlur, error,
-  readOnly, isDark, borderC, textPrim,
+  readOnly, isDark, borderC, textPrim, id,
 }) => (
-  <Box sx={{ mb: 3 }}>
+  <Box id={id} sx={{ mb: 3 }}>
     <Typography
       variant="body2"
       sx={{
@@ -161,7 +163,10 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
 
   // ── submit ─────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!validateName()) return;
+    if (!validateName()) {
+      document.getElementById('role-name-field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     setSaving(true);
     try {
       if (mode === 'add') {
@@ -200,6 +205,11 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, minHeight: '100vh' }}>
+      <ValidationErrorSummary
+        t={{ textPrimary: textPrim, textSecondary: textSec, fontFamily: theme.typography.fontFamily || 'inherit' }}
+        errors={nameError ? [{ field: 'name', message: nameError }] : []}
+        onErrorClick={() => document.getElementById('role-name-field')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+      />
 
       {/* ── Page Header ─────────────────────────────────────────────────── */}
       <Box sx={{ mb: 3 }}>
@@ -272,6 +282,7 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
         {/* Form Body */}
         <Box sx={{ px: { xs: 2, sm: 3 }, pt: 3, pb: 2 }}>
           <Field
+            id="role-name-field"
             label="Role Name"
             value={name}
             onChange={(v) => { setName(v); if (nameError) setNameError(''); }}

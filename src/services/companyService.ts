@@ -12,12 +12,14 @@ const API_NAME_HEADER = 'X-Api-Name';
 
 // JSON payload shape for create and update
 export interface CompanyPayload {
-  name            : string;
-  email           : string;
-  phone           : string;
-  is_active       : boolean;
-  company_code?   : string;
-  whatsapp_number?: string;
+  name                  : string;
+  email                 : string;
+  phone_country_code?   : string;
+  phone                 : string;
+  is_active             : boolean;
+  company_code?         : string;
+  whatsapp_country_code?: string;
+  whatsapp_number?      : string;
   city?           : string;
   state?          : string;
   country?        : string;

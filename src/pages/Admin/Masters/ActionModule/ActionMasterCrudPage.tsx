@@ -1,6 +1,6 @@
 // src/pages/Admin/Masters/ActionModule/ActionMasterCrudPage.tsx
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MdArrowBack } from 'react-icons/md';
@@ -9,6 +9,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FormField, getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
+import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { fetchActionMasterById, createActionMaster, updateActionMaster } from '../../../../services/actionMasterService';
 
 interface FieldProps {
@@ -16,12 +17,13 @@ interface FieldProps {
   required?: boolean;
   error?   : string;
   t        : AppTheme;
+  fieldRef?: React.Ref<HTMLDivElement>;
   children : React.ReactNode;
 }
 
-const Field: React.FC<FieldProps> = ({ label, required, error, t, children }) => (
+const Field: React.FC<FieldProps> = ({ label, required, error, t, fieldRef, children }) => (
   <FormField
-    label={label} t={t} required={required} error={error}
+    label={label} t={t} required={required} error={error} fieldRef={fieldRef}
     labelStyle={getFormLabelStyle(t, { fontWeight: 700, fontSize: 12.5, marginBottom: 6, color: t.textPrimary })}
     errorStyle={{ color: '#ef4444', fontSize: 11.5, marginTop: 4, fontFamily: t.fontFamily }}
   >
@@ -95,9 +97,21 @@ const ActionMasterCrudPage: React.FC<Props> = ({ mode }) => {
 
   const isMandatoryValid = name.trim() !== '';
 
+  const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const setFieldRef = (key: string) => (el: HTMLDivElement | null) => { fieldRefs.current[key] = el; };
+  const revealInvalidField = (field: string) => {
+    const el = fieldRefs.current[field];
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el?.querySelector<HTMLElement>('input, select, button, textarea')?.focus();
+  };
+
   const handleSubmit = async () => {
     const errs = validateAll();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      revealInvalidField('name');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -146,11 +160,16 @@ const ActionMasterCrudPage: React.FC<Props> = ({ mode }) => {
 
   return (
     <div style={{ fontFamily: t.fontFamily }}>
+      <ValidationErrorSummary
+        t={t}
+        errors={errors.name ? [{ field: 'name', message: errors.name }] : []}
+        onErrorClick={revealInvalidField}
+      />
       <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 28 }}>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
 
-          <Field label="Action Name" required={!isView} t={t} error={errors.name}>
+          <Field label="Action Name" required={!isView} t={t} error={errors.name} fieldRef={setFieldRef('name')}>
             <input type="text" placeholder="e.g. View, Create, Delete"
               value={name} readOnly={isView} disabled={isView}
               onChange={(e) => { if (!isView) { setName(e.target.value); setErrors((p) => ({ ...p, name: undefined })); } }}

@@ -1,6 +1,6 @@
 // src/pages/Admin/Masters/BankAccount/BankAccountCrudPage.tsx
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MdArrowBack } from 'react-icons/md';
@@ -9,6 +9,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FormField, getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
+import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { showAlert } from '../../../../utils';
 import {
   ViewBankAccount,
@@ -26,11 +27,12 @@ interface FieldProps {
   error?   : string;
   t        : AppTheme;
   children : React.ReactNode;
+  fieldRef?: React.Ref<HTMLDivElement>;
 }
 
-const Field: React.FC<FieldProps> = ({ label, required, error, t, children }) => (
+const Field: React.FC<FieldProps> = ({ label, required, error, t, children, fieldRef }) => (
   <FormField
-    label={label} t={t} required={required} error={error}
+    label={label} t={t} required={required} error={error} fieldRef={fieldRef}
     labelStyle={getFormLabelStyle(t, { fontWeight: 700, fontSize: 12.5, marginBottom: 6, color: t.textPrimary })}
     errorStyle={{ color: '#ef4444', fontSize: 11.5, marginTop: 4, fontFamily: t.fontFamily }}
   >
@@ -174,6 +176,15 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
     setErrors((prev) => ({ ...prev, [field]: errs[field] }));
   };
 
+  const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const setFieldRef = (key: string) => (el: HTMLDivElement | null) => { fieldRefs.current[key] = el; };
+  const FIELD_ORDER: (keyof FormErrors)[] = ['company_id', 'name', 'account_holder_name', 'account_number', 'branch_name', 'ifsc_code'];
+  const revealInvalidField = (field: string) => {
+    const el = fieldRefs.current[field];
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el?.querySelector<HTMLElement>('input, select, button, textarea')?.focus();
+  };
+
   const handleChange = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -190,7 +201,12 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
   // ── submit ─────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     const errs = validateAll();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      const firstField = FIELD_ORDER.find((k) => errs[k]);
+      if (firstField) revealInvalidField(firstField);
+      return;
+    }
 
     setSaving(true);
     try {
@@ -276,12 +292,17 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
+      <ValidationErrorSummary
+        t={t}
+        errors={FIELD_ORDER.filter((k) => errors[k]).map((k) => ({ field: k, message: errors[k] as string }))}
+        onErrorClick={revealInvalidField}
+      />
       <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 28 }}>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
 
           {/* Company Name */}
-          <Field label="Company Name" required={!isView} t={t} error={errors.company_id}>
+          <Field label="Company Name" required={!isView} t={t} error={errors.company_id} fieldRef={setFieldRef('company_id')}>
             {isView ? (
               <input type="text" readOnly disabled
                 value={companies.find((c) => String(c.id) === String(form.company_id))?.name ?? form.company_id ?? '—'}
@@ -304,7 +325,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
 
           {/* Bank Name */}
-          <Field label="Bank Name" required={!isView} t={t} error={errors.name}>
+          <Field label="Bank Name" required={!isView} t={t} error={errors.name} fieldRef={setFieldRef('name')}>
             <input type="text" placeholder="Enter bank name"
               value={form.name} readOnly={isView} disabled={isView}
               onChange={(e) => !isView && handleChange('name', e.target.value)}
@@ -313,7 +334,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
 
           {/* Account Holder Name */}
-          <Field label="Bank Account Holder Name" required={!isView} t={t} error={errors.account_holder_name}>
+          <Field label="Bank Account Holder Name" required={!isView} t={t} error={errors.account_holder_name} fieldRef={setFieldRef('account_holder_name')}>
             <input type="text" placeholder="Enter account holder name"
               value={form.account_holder_name} readOnly={isView} disabled={isView}
               onChange={(e) => !isView && handleChange('account_holder_name', e.target.value)}
@@ -322,7 +343,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
 
           {/* Bank Account Number */}
-          <Field label="Bank Account Number" required={!isView} t={t} error={errors.account_number}>
+          <Field label="Bank Account Number" required={!isView} t={t} error={errors.account_number} fieldRef={setFieldRef('account_number')}>
             <input type="text" inputMode="numeric" placeholder="Enter bank account number"
               value={form.account_number} readOnly={isView} disabled={isView}
               onChange={(e) => !isView && handleChange('account_number', e.target.value)}
@@ -331,7 +352,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
 
           {/* Branch Name */}
-          <Field label="Branch Name" required={!isView} t={t} error={errors.branch_name}>
+          <Field label="Branch Name" required={!isView} t={t} error={errors.branch_name} fieldRef={setFieldRef('branch_name')}>
             <input type="text" placeholder="Enter branch name"
               value={form.branch_name} readOnly={isView} disabled={isView}
               onChange={(e) => !isView && handleChange('branch_name', e.target.value)}
@@ -340,7 +361,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
 
           {/* IFSC Code */}
-          <Field label="Bank IFSC Code" required={!isView} t={t} error={errors.ifsc_code}>
+          <Field label="Bank IFSC Code" required={!isView} t={t} error={errors.ifsc_code} fieldRef={setFieldRef('ifsc_code')}>
             <input type="text" placeholder="Enter IFSC code"
               value={form.ifsc_code} readOnly={isView} disabled={isView}
               onChange={(e) => !isView && handleChange('ifsc_code', e.target.value.toUpperCase())}

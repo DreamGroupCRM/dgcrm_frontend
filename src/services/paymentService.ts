@@ -161,6 +161,45 @@ export const fetchDueList = async (): Promise<DueListResponse> => {
   return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
 };
 
+// ── Flat, per-due-item list across every customer — one row per overdue
+// installment/one-time amount (Customer Code/Name, Assigned Employee,
+// Building/Wing/Flat, Mobile, Payment For, Amount, Due Status text).
+// Powers the Payment Dues table directly. ───────────────────────────────
+export interface DueListDetailRow {
+  customer_id: number;
+  customer_code: string;
+  customer_name: string;
+  assigned_employee_name: string | null;
+  building_name: string | null;
+  wing_name: string | null;
+  flat_no: string | null;
+  mobile_number: string | null;
+  payment_for: string;
+  amount: number;
+  due_status: string;
+}
+/** GET /api/payments/due-list-detailed */
+export const fetchDueListDetailed = async (): Promise<{ success: boolean; rows: DueListDetailRow[]; total: number }> => {
+  const res = await axiosInstance.get('/payments/due-list-detailed');
+  return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
+};
+
+// ── "Show Upcoming Amount" (item 7-9) — total of every customer's
+// upcoming (not-yet-due) installment amounts whose due date falls in
+// [from, to], reusing the same EMI schedule logic the Due grid already
+// uses server-side (see payment.service.ts's getUpcomingAmountInRange).
+export interface UpcomingAmountData {
+  from: string;
+  to: string;
+  total_amount: number;
+  customer_count: number;
+}
+/** GET /api/payments/upcoming-amount?from=YYYY-MM-DD&to=YYYY-MM-DD */
+export const fetchUpcomingAmount = async (from: string, to: string): Promise<UpcomingAmountData> => {
+  const res = await axiosInstance.get('/payments/upcoming-amount', { params: { from, to } });
+  return res.data.data;
+};
+
 // ── One customer's due amount, from the EMI schedule (independent of the
 // partial-payment ledger) ────────────────────────────────────────────────
 /** GET /api/payments/customer/:customerId/due */
@@ -245,6 +284,7 @@ export interface PaymentListRow {
   payment_type: PaymentFor;
   amount: number;
   customer_id: string;
+  customer_code: string | null;
   customer_name: string;
   company: string | null;
   mode_of_payment: string | null;
@@ -253,20 +293,75 @@ export interface PaymentListRow {
   approved_by_name: string | null;
   approved_at: string | null;
   created_at: string;
+  // Payment Approvals page (V_21.0) — building/wing/flat come from the
+  // customer's own booking; the rest are plain transaction columns.
+  building_name: string | null;
+  wing_name: string | null;
+  flat_no: string | null;
+  inst_date: string | null;
+  payment_date: string | null;
+  maintenance: number | null;
+  payment_tag: string | null; // "Extra Pay" — see PAYMENT_FOR_UI_OPTIONS' own use of this tag
 }
 export interface PaymentListFilters {
   approval?: 'approved' | 'pending';
   search?: string;
+  building_id?: string | number;
+  wing_id?: string | number;
+  flat_id?: string | number;
+  mode_of_payment?: string;
+  company?: string;
+  received_by?: string;
+  date_from?: string;
+  date_to?: string;
 }
-/** GET /api/payments?page=&limit=&approval=&search= */
+/** GET /api/payments?page=&limit=&approval=&search=&... */
 export const fetchPaymentList = async (
   page: number, limit: number, filters?: PaymentListFilters
 ): Promise<{ success: boolean; rows: PaymentListRow[]; total: number }> => {
   const params: Record<string, string | number> = { page, limit };
   if (filters?.approval) params.approval = filters.approval;
   if (filters?.search?.trim()) params.search = filters.search.trim();
+  if (filters?.building_id) params.building_id = filters.building_id;
+  if (filters?.wing_id) params.wing_id = filters.wing_id;
+  if (filters?.flat_id) params.flat_id = filters.flat_id;
+  if (filters?.mode_of_payment) params.mode_of_payment = filters.mode_of_payment;
+  if (filters?.company) params.company = filters.company;
+  if (filters?.received_by) params.received_by = filters.received_by;
+  if (filters?.date_from) params.date_from = filters.date_from;
+  if (filters?.date_to) params.date_to = filters.date_to;
   const res = await axiosInstance.get('/payments', { params });
   return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
+};
+
+// ── Payment Approvals top stat boxes (V_21.0) — Awaiting Approval, Total
+// Approved This Month, Total Approved Today. "Today"/"This month" measure
+// approved_at (when the approval action happened), not the payment's own
+// received date. ─────────────────────────────────────────────────────────
+export interface PaymentApprovalStats {
+  awaiting: number;
+  approved_today: number;
+  approved_this_month: number;
+}
+/** GET /api/payments/approval-stats */
+export const fetchApprovalStats = async (): Promise<PaymentApprovalStats> => {
+  const res = await axiosInstance.get('/payments/approval-stats');
+  return res.data.data;
+};
+
+// ── Payment Received top stat boxes (V_21.0) — Total Flat Sold (the total
+// sale value of every sold/active flat, not a count), Total Amount
+// Received (every approved payment), Total Pending Amount (the
+// difference — total contract value still outstanding). ─────────────────
+export interface PaymentReceivedSummary {
+  total_flat_sold: number;
+  total_amount_received: number;
+  total_pending_amount: number;
+}
+/** GET /api/payments/received-summary */
+export const fetchPaymentReceivedSummary = async (): Promise<PaymentReceivedSummary> => {
+  const res = await axiosInstance.get('/payments/received-summary');
+  return res.data.data;
 };
 /** PUT /api/payments/:id/approve */
 export const approvePayment = async (id: string | number): Promise<{ success: boolean; message: string }> => {
@@ -300,6 +395,8 @@ export const paymentService = {
   collect          : collectPayment,
   dueReport        : fetchDueReport,
   dueList          : fetchDueList,
+  dueListDetailed  : fetchDueListDetailed,
+  upcomingAmount   : fetchUpcomingAmount,
   customerDue      : fetchCustomerDue,
   customerRemaining: fetchCustomerRemaining,
   receipt          : fetchPaymentReceipt,

@@ -4,13 +4,15 @@
 // and the threaded comment/activity timeline (legacy LeadComment.
 // ParentCommentId — see leads.service.ts on the backend for how a comment
 // row's parent_id makes it a reply).
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MdSave, MdArrowBack, MdReply, MdSend, MdPersonAdd } from 'react-icons/md';
 
 import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import { getAccordionCardStyle, getAccordionHeaderStyle, getFormInputStyle, FormField } from '../../components/common/MasterListUI';
+import { PhoneInput } from '../../components/common/PhoneInput';
+import { ValidationErrorSummary } from '../../components/common/ValidationErrorSummary';
 import {
   fetchLeadById, createLead, updateLead, assignLead, fetchLeadActivities, addLeadComment,
 } from '../../services/leadService';
@@ -27,7 +29,8 @@ interface Props {
 }
 
 const EMPTY_FORM: CreateLeadPayload = {
-  name: '', mobile_number: '', whatsapp_number: '', alternate_number: '', email: '',
+  name: '', mobile_country_code: '+91', mobile_number: '', whatsapp_country_code: '+91', whatsapp_number: '',
+  alternate_country_code: '+91', alternate_number: '', email: '',
   address: '', city: '', state: '', pincode: '', occupation: '', company_name: '',
   source: 'other', category: 'cold', sub_category: '', budget: null, deal_amount: null,
   looking_for: '', carpet_size: '', how_will_fund: '', current_residence: '', purpose_buying: '',
@@ -71,6 +74,31 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
 
   const set = (field: keyof CreateLeadPayload, value: unknown) => setForm((f) => ({ ...f, [field]: value }));
 
+  const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const setFieldRef = (key: string) => (el: HTMLDivElement | null) => { fieldRefs.current[key] = el; };
+
+  // Global validation error summary (item 7) — Lead has almost no required
+  // fields server-side (CreateLeadSchema only hard-requires `name`;
+  // mobile_number/email are optional but must be valid IF provided), so
+  // this list stays intentionally short rather than inventing new
+  // required fields the backend doesn't actually enforce.
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const validationChecks: { field: string; message: string; failed: () => boolean }[] = [
+    { field: 'name', message: 'Please enter the Lead Name.', failed: () => !form.name?.trim() },
+    { field: 'mobile_number', message: 'Mobile Number must be exactly 10 digits.', failed: () => !!form.mobile_number && !/^\d{10}$/.test(form.mobile_number) },
+    { field: 'email', message: 'Please enter a valid Email address.', failed: () => !!form.email && !EMAIL_RE.test(form.email) },
+  ];
+  const getFirstInvalid = () => validationChecks.find((c) => c.failed()) ?? null;
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const activeErrors = submitAttempted ? validationChecks.filter((c) => c.failed()) : [];
+  const errorFor = (field: string): string | undefined =>
+    submitAttempted ? validationChecks.find((c) => c.field === field && c.failed())?.message : undefined;
+  const revealInvalidField = (field: string) => {
+    const el = fieldRefs.current[field];
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el?.querySelector<HTMLElement>('input, select, button, textarea')?.focus();
+  };
+
   const loadLead = useCallback(async () => {
     if (isAdd || !id) return;
     setLoading(true);
@@ -80,8 +108,10 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
         const l = res.data;
         setLead(l);
         setForm({
-          name: l.name, mobile_number: l.mobile_number, whatsapp_number: l.whatsapp_number,
-          alternate_number: l.alternate_number, email: l.email, address: l.address, city: l.city,
+          name: l.name, mobile_country_code: l.mobile_country_code || '+91', mobile_number: l.mobile_number,
+          whatsapp_country_code: l.whatsapp_country_code || '+91', whatsapp_number: l.whatsapp_number,
+          alternate_country_code: l.alternate_country_code || '+91', alternate_number: l.alternate_number,
+          email: l.email, address: l.address, city: l.city,
           state: l.state, pincode: l.pincode, occupation: l.occupation, company_name: l.company_name,
           source: l.source, category: l.category, sub_category: l.sub_category,
           budget: l.budget, deal_amount: l.deal_amount, looking_for: l.looking_for,
@@ -127,7 +157,9 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name?.trim()) { toast.error('Lead name is required.'); return; }
+    setSubmitAttempted(true);
+    const invalid = getFirstInvalid();
+    if (invalid) { revealInvalidField(invalid.field); return; }
     setSaving(true);
     try {
       if (isAdd) {
@@ -224,15 +256,37 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
         </div>
       </div>
 
+      <ValidationErrorSummary
+        t={t}
+        errors={activeErrors.map((c) => ({ field: c.field, message: c.message }))}
+        onErrorClick={revealInvalidField}
+      />
+
       <form onSubmit={handleSubmit}>
         <div style={cardStyle}>
           <div style={headerStyle}><span style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary }}>Basic Info</span></div>
           <div style={gridStyle}>
-            <FormField label="Name *" t={t}><input required disabled={isView} value={form.name} onChange={(e) => set('name', e.target.value)} style={getFormInputStyle(t)} /></FormField>
-            <FormField label="Mobile Number" t={t}><input disabled={isView} value={form.mobile_number ?? ''} onChange={(e) => set('mobile_number', e.target.value)} style={getFormInputStyle(t)} placeholder="10 digits" /></FormField>
-            <FormField label="WhatsApp Number" t={t}><input disabled={isView} value={form.whatsapp_number ?? ''} onChange={(e) => set('whatsapp_number', e.target.value)} style={getFormInputStyle(t)} /></FormField>
-            <FormField label="Alternate Number" t={t}><input disabled={isView} value={form.alternate_number ?? ''} onChange={(e) => set('alternate_number', e.target.value)} style={getFormInputStyle(t)} /></FormField>
-            <FormField label="Email" t={t}><input type="email" disabled={isView} value={form.email ?? ''} onChange={(e) => set('email', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Name *" t={t} error={errorFor('name')} fieldRef={setFieldRef('name')}>
+              <input required disabled={isView} value={form.name} onChange={(e) => set('name', e.target.value)} style={getFormInputStyle(t)} />
+            </FormField>
+            <FormField label="Mobile Number" t={t} error={errorFor('mobile_number')} fieldRef={setFieldRef('mobile_number')}>
+              <PhoneInput theme={t} disabled={isView} placeholder="10 digits"
+                code={form.mobile_country_code ?? '+91'} onCodeChange={(v) => set('mobile_country_code', v)}
+                number={form.mobile_number ?? ''} onNumberChange={(v) => set('mobile_number', v)} />
+            </FormField>
+            <FormField label="WhatsApp Number" t={t}>
+              <PhoneInput theme={t} disabled={isView}
+                code={form.whatsapp_country_code ?? '+91'} onCodeChange={(v) => set('whatsapp_country_code', v)}
+                number={form.whatsapp_number ?? ''} onNumberChange={(v) => set('whatsapp_number', v)} />
+            </FormField>
+            <FormField label="Alternate Number" t={t}>
+              <PhoneInput theme={t} disabled={isView}
+                code={form.alternate_country_code ?? '+91'} onCodeChange={(v) => set('alternate_country_code', v)}
+                number={form.alternate_number ?? ''} onNumberChange={(v) => set('alternate_number', v)} />
+            </FormField>
+            <FormField label="Email" t={t} error={errorFor('email')} fieldRef={setFieldRef('email')}>
+              <input type="email" disabled={isView} value={form.email ?? ''} onChange={(e) => set('email', e.target.value)} style={getFormInputStyle(t)} />
+            </FormField>
             <FormField label="Occupation" t={t}><input disabled={isView} value={form.occupation ?? ''} onChange={(e) => set('occupation', e.target.value)} style={getFormInputStyle(t)} /></FormField>
             <FormField label="Company Name" t={t}><input disabled={isView} value={form.company_name ?? ''} onChange={(e) => set('company_name', e.target.value)} style={getFormInputStyle(t)} /></FormField>
           </div>

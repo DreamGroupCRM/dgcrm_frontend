@@ -245,7 +245,7 @@ const EmployeeDetailsListPage: React.FC = () => {
   // same reasoning as Audit History/Leads/Customer — debounce it rather
   // than firing a network request on every keystroke.
   const debouncedSearch = useDebouncedValue(search, 400);
-  const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [view, setView] = useState<'grid' | 'list'>('list');
   const [loading, setLoading] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
   const [page, setPage] = useState(1);

@@ -14,6 +14,7 @@ export interface UserManagementRow {
   email: string;
   first_name: string;
   last_name: string | null;
+  phone_country_code: string | null;
   phone: string | null;
   base_role: string;
   is_active: boolean;
@@ -53,6 +54,7 @@ export interface CreateAdminPayload {
   first_name: string;
   last_name?: string;
   email: string;
+  phone_country_code?: string;
   phone?: string;
 }
 
@@ -74,6 +76,7 @@ export interface EditAdminPayload {
   first_name: string;
   last_name?: string;
   email: string;
+  phone_country_code?: string;
   phone?: string;
 }
 

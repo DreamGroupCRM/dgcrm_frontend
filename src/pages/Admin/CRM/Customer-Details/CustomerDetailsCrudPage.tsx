@@ -2,6 +2,7 @@
 // DREAM GROUP CRM - CUSTOMER DETAILS CRUD PAGE
 // ==========================================
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -26,6 +27,7 @@ import { showAlert } from '../../../../utils';
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
 import { DobPicker } from '../../../../components/common/DobPicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
+import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './CustomerDetails.css';
 
@@ -131,10 +133,11 @@ const SubHeading: React.FC<{ t: Theme; title: string }> = ({ t, title }) => (
   <p className="cust-subheading">{title}</p>
 );
 
-const Field: React.FC<{ t: Theme; label: string; required?: boolean; children: React.ReactNode; className?: string; fieldRef?: React.Ref<HTMLDivElement> }> = ({ t, label, required, children, className, fieldRef }) => (
+const Field: React.FC<{ t: Theme; label: string; required?: boolean; error?: string; children: React.ReactNode; className?: string; fieldRef?: React.Ref<HTMLDivElement> }> = ({ t, label, required, error, children, className, fieldRef }) => (
   <div className={className} ref={fieldRef}>
     <label className="cust-label">{label}{required && <span className="cust-required"> *</span>}</label>
     {children}
+    {error && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4, fontFamily: t.fontFamily }}>{error}</p>}
   </div>
 );
 
@@ -206,14 +209,47 @@ const SearchableSelect: React.FC<{
 }> = ({ t, placeholder, options, value, onChange, disabled, labelFor, isOptionDisabled }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setQuery(value); }, [value]);
   useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (ref.current && !ref.current.contains(target) && !(target as HTMLElement).closest?.('[data-searchable-select-menu]')) setOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Item 2: every dropdown inside an accordion section (Property Booking
+  // Details, Payment Details, ...) used to render as a plain
+  // position:absolute child, which AccordionSection's own overflow:hidden
+  // wrapper clips the moment it opens near a section's bottom edge. The
+  // menu is now portaled to document.body (position:fixed, computed from
+  // the trigger's own bounding rect on open) — same fix already used for
+  // the Customer List page's row-action menu (see
+  // CustomerDetailsListPage.tsx's RowActionMenu/createPortal) — so it
+  // always renders above every container instead of being cut off.
+  // Closing on scroll (rather than continuously repositioning) is enough
+  // here since the surrounding form is one long scrollable page, not a
+  // fixed-height panel the trigger could drift within while staying visible.
+  const openDropdown = () => {
+    if (disabled) return;
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    setOpen(true);
+  };
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
 
   const filtered = options.filter((o) => o.toLowerCase().includes(query.toLowerCase()));
 
@@ -222,12 +258,12 @@ const SearchableSelect: React.FC<{
       <div
         className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
         style={{ background: disabled ? t.insetBg : t.inputBg, border: `1px solid ${t.inputBorder}`, cursor: disabled ? 'not-allowed' : 'text' }}
-        onClick={() => !disabled && setOpen(true)}
+        onClick={openDropdown}
       >
         <input
           type="text" placeholder={placeholder} value={query} disabled={disabled}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+          onFocus={openDropdown}
+          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); openDropdown(); }}
           style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%' }}
         />
         {value && !disabled && (
@@ -238,9 +274,9 @@ const SearchableSelect: React.FC<{
         )}
         <MdKeyboardArrowDown size={16} style={{ color: t.textSecondary, flexShrink: 0 }} />
       </div>
-      {open && !disabled && filtered.length > 0 && (
-        <div style={{
-          position: 'absolute', top: '110%', left: 0, right: 0, zIndex: 30, maxHeight: 220, overflowY: 'auto',
+      {open && !disabled && filtered.length > 0 && menuPos && createPortal(
+        <div data-searchable-select-menu style={{
+          position: 'fixed', top: menuPos.top, left: menuPos.left, width: menuPos.width, zIndex: 200, maxHeight: 220, overflowY: 'auto',
           background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0',
         }}>
@@ -263,7 +299,8 @@ const SearchableSelect: React.FC<{
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -564,6 +601,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [address, setAddress] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [alternatePersonName, setAlternatePersonName] = useState('');
+  const [alternatePersonCountryCode, setAlternatePersonCountryCode] = useState('+91');
   const [alternatePersonMobile, setAlternatePersonMobile] = useState('');
 
   // ── Property Booking Details ──────────────────────────────────────────
@@ -654,6 +692,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           setAddress(c.address || '');
           setDateOfBirth(c.date_of_birth || '');
           setAlternatePersonName(c.alternate_person_name || '');
+          setAlternatePersonCountryCode(c.alternate_person_country_code || '+91');
           setAlternatePersonMobile(c.alternate_person_mobile || '');
 
           setCompanyName(c.company_name || '');
@@ -821,6 +860,19 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const getFirstInvalid = () => validationChecks.find((c) => c.failed()) ?? null;
   const isFormValid = getFirstInvalid() === null;
 
+  // Global validation error summary — validationChecks above already
+  // re-evaluates every field fresh on every render (each `failed()` reads
+  // live component state), so activeErrors is automatically just "whatever
+  // is still wrong right now": a field fixed since the last submit attempt
+  // simply stops appearing here and in its own inline message on the very
+  // next render, with no separate "clear this error" bookkeeping needed.
+  // Gated on submitAttempted so an untouched fresh form doesn't open with
+  // every required field already flagged red.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const activeErrors = submitAttempted ? validationChecks.filter((c) => c.failed()) : [];
+  const errorFor = (field: string): string | undefined =>
+    submitAttempted ? validationChecks.find((c) => c.field === field && c.failed())?.message : undefined;
+
   const revealInvalidField = (field: string, section: SectionKey) => {
     setOpenSections((prev) => ({ ...prev, [section]: true }));
     setTimeout(() => {
@@ -833,9 +885,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const handlePreview = () => setPreviewOpen(true);
 
   const handleSubmit = async () => {
+    setSubmitAttempted(true);
     const invalid = getFirstInvalid();
     if (invalid) {
-      toast.error(invalid.message);
       revealInvalidField(invalid.field, invalid.section);
       return;
     }
@@ -903,6 +955,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       formData.append('address', address.trim());
       formData.append('date_of_birth', dateOfBirth);
       formData.append('alternate_person_name', alternatePersonName.trim());
+      formData.append('alternate_person_country_code', alternatePersonCountryCode);
       formData.append('alternate_person_mobile', alternatePersonMobile.trim());
 
       // Property Booking Details
@@ -966,6 +1019,25 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         ? backendErrors.map((er) => `${er.field}: ${er.message}`).join('; ')
         : e?.response?.data?.message;
       toast.error(detail || (mode === 'edit' ? 'Failed to update customer.' : 'Failed to create customer.'));
+      // Item 8: a server-side (Zod) rejection reuses the SAME accordion
+      // auto-expand-and-scroll mechanism client-side validation already
+      // has above, instead of leaving the user to hunt for the offending
+      // field themselves after a toast-only error. Backend field names are
+      // this schema's own snake_case column names; this page's own
+      // validationChecks key everything by camelCase, so the mapping is a
+      // plain snake_case->camelCase conversion (true for every field here
+      // except `name`, aliased below) rather than a hand-maintained table
+      // per field — new fields need no update here as long as they follow
+      // that same naming convention.
+      if (backendErrors?.length) {
+        const FIELD_ALIASES: Record<string, string> = { name: 'firstName' };
+        const toFrontendField = (f: string) => FIELD_ALIASES[f] ?? f.replace(/_([a-z])/g, (_m, c) => c.toUpperCase());
+        for (const er of backendErrors) {
+          const frontendField = toFrontendField(er.field);
+          const match = validationChecks.find((c) => c.field === frontendField);
+          if (match) { revealInvalidField(match.field, match.section); break; }
+        }
+      }
     } finally {
       setSaving(false);
     }
@@ -1066,7 +1138,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <ViewValue label="Date of Birth" value={dateOfBirth ? `${dateOfBirth}${age ? ` (${age.years}y ${age.months}m)` : ''}` : ''} />
               <ViewValue label="Aadhar Number" value={aadharNumber} />
               <ViewValue label="PAN Number" value={pancardNumber} />
-              <ViewValue label="Alternate Contact" value={alternatePersonName ? `${alternatePersonName}${alternatePersonMobile ? ` · ${alternatePersonMobile}` : ''}` : ''} />
+              <ViewValue label="Alternate Contact" value={alternatePersonName ? `${alternatePersonName}${alternatePersonMobile ? ` · ${alternatePersonCountryCode} ${alternatePersonMobile}` : ''}` : ''} />
               <ViewValue label="Address" value={address} className="cust-view-field-wide" />
             </div>
           </div>
@@ -1162,6 +1234,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         )}
       </div>
 
+      <ValidationErrorSummary
+        t={t}
+        errors={activeErrors.map((c) => ({ field: c.field, message: c.message }))}
+        onErrorClick={(field) => {
+          const c = validationChecks.find((vc) => vc.field === field);
+          if (c) revealInvalidField(c.field, c.section);
+        }}
+      />
+
       {/* ── Customer Details (Personal Details) ──────────────────────── */}
       <AccordionSection theme={t} icon={<MdPerson size={16} />} title="Customer Details" gradient="var(--grad-sky)"
         open={openSections.personal} onToggle={() => setOpenSections((p) => ({ ...p, personal: !p.personal }))}
@@ -1170,23 +1251,23 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         {/* Row 1 of 3 — Name + Photo */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          <Field t={t} label="First Name" required fieldRef={setFieldRef('firstName') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="First Name" required error={errorFor('firstName')} fieldRef={setFieldRef('firstName') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter first name" value={firstName} readOnly={isView} disabled={isView}
               onChange={(e) => setFirstName(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Middle Name" required fieldRef={setFieldRef('middleName') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Middle Name" required error={errorFor('middleName')} fieldRef={setFieldRef('middleName') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter middle name" value={middleName} readOnly={isView} disabled={isView}
               onChange={(e) => setMiddleName(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Last Name" required fieldRef={setFieldRef('lastName') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Last Name" required error={errorFor('lastName')} fieldRef={setFieldRef('lastName') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter last name" value={lastName} readOnly={isView} disabled={isView}
               onChange={(e) => setLastName(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Email ID" required fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Email ID" required error={errorFor('email')} fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
             <input type="email" placeholder="Enter email address" value={email} readOnly={isView} disabled={isView}
               onChange={(e) => setEmail(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Customer Photo" required fieldRef={setFieldRef('customerPhoto') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Customer Photo" required error={errorFor('customerPhoto')} fieldRef={setFieldRef('customerPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} accept="image/*" value={customerPhoto} onChange={setCustomerPhoto} />
           </Field>
         </div>
@@ -1194,19 +1275,19 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* Row 2 of 3 — WhatsApp + ID proofs (each number immediately
             followed by its own upload field, no field between them) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          <Field t={t} label="WhatsApp Number" required fieldRef={setFieldRef('whatsappNumber') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="WhatsApp Number" required error={errorFor('whatsappNumber')} fieldRef={setFieldRef('whatsappNumber') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView} icon={<FaWhatsapp size={15} style={{ color: '#25D366', flexShrink: 0 }} />}
               code={whatsappCountryCode} onCodeChange={setWhatsappCountryCode} number={whatsappNumber} onNumberChange={setWhatsappNumber} />
           </Field>
-          <Field t={t} label="Upload Aadhar Card Photo" required fieldRef={setFieldRef('aadharPhoto') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Upload Aadhar Card Photo" required error={errorFor('aadharPhoto')} fieldRef={setFieldRef('aadharPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange} />
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
-          <Field t={t} label="Aadhar Number" required fieldRef={setFieldRef('aadharNumber') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Aadhar Number" required error={errorFor('aadharNumber')} fieldRef={setFieldRef('aadharNumber') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView}
               onChange={(e) => setAadharNumber(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
           </Field>
-          <Field t={t} label="Upload Pancard Photo" required fieldRef={setFieldRef('pancardPhoto') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Upload Pancard Photo" required error={errorFor('pancardPhoto')} fieldRef={setFieldRef('pancardPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange} />
             {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
@@ -1221,7 +1302,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             detail section") — placed right before Secondary Mobile Numbers
             below, since its own "+" button feeds that list. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          <Field t={t} label="Date of Birth" required fieldRef={setFieldRef('dateOfBirth') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Date of Birth" required error={errorFor('dateOfBirth')} fieldRef={setFieldRef('dateOfBirth') as React.Ref<HTMLDivElement>}>
             <div className="flex items-center gap-2">
               <div style={{ flex: 1, minWidth: 0 }}>
                 <DobPicker theme={t} value={dateOfBirth} disabled={isView} onChange={setDateOfBirth} />
@@ -1239,14 +1320,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => setAlternatePersonName(e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Alternate Contact Mobile">
-            <input type="tel" placeholder="Enter mobile number" value={alternatePersonMobile} readOnly={isView} disabled={isView}
-              onChange={(e) => setAlternatePersonMobile(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
+            <PhoneInput theme={t} disabled={isView}
+              code={alternatePersonCountryCode} onCodeChange={setAlternatePersonCountryCode}
+              number={alternatePersonMobile} onNumberChange={setAlternatePersonMobile} />
           </Field>
-          <Field t={t} label="Address" required fieldRef={setFieldRef('address') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Address" required error={errorFor('address')} fieldRef={setFieldRef('address') as React.Ref<HTMLDivElement>}>
             <textarea placeholder="Enter address" value={address} readOnly={isView} disabled={isView} rows={2}
               onChange={(e) => setAddress(e.target.value)} className={fieldClass} style={{ resize: 'vertical' }} />
           </Field>
-          <Field t={t} label="Mobile Number" required fieldRef={setFieldRef('mobileNumber') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Mobile Number" required error={errorFor('mobileNumber')} fieldRef={setFieldRef('mobileNumber') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber}
               onAdd={addSecondaryNumber} />
           </Field>
@@ -1298,11 +1380,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         {/* Row 1 of 2 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
-          <Field t={t} label="Company Name" required fieldRef={setFieldRef('companyName') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Company Name" required error={errorFor('companyName')} fieldRef={setFieldRef('companyName') as React.Ref<HTMLDivElement>}>
             <SearchableSelect t={t} placeholder="Select company" options={companyNameOptions} value={companyName} disabled={isView}
               onChange={setCompanyName} />
           </Field>
-          <Field t={t} label="Project Name" required fieldRef={setFieldRef('projectName') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Project Name" required error={errorFor('projectName')} fieldRef={setFieldRef('projectName') as React.Ref<HTMLDivElement>}>
             <SearchableSelect t={t} placeholder="Select project" options={projectNameOptions} value={projectName} disabled={isView}
               onChange={(v) => { setProjectName(v); setBuildingName(''); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
           </Field>
@@ -1355,7 +1437,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             </div>
           </Field>
           {wantsParking === 'yes' && (
-            <Field t={t} label="Parking No?" required fieldRef={setFieldRef('parkingNo') as React.Ref<HTMLDivElement>}>
+            <Field t={t} label="Parking No?" required error={errorFor('parkingNo')} fieldRef={setFieldRef('parkingNo') as React.Ref<HTMLDivElement>}>
               <input type="text" placeholder="Enter parking number" value={parkingNo} readOnly={isView} disabled={isView}
                 onChange={(e) => setParkingNo(e.target.value)} className={fieldClass} />
             </Field>
@@ -1372,19 +1454,22 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             own amount+date pair was squeezing into the same 1/5-width slot
             as every other single field here, cramming both inputs). */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
-          <Field t={t} label="Total Cost of Flat (₹)" required fieldRef={setFieldRef('totalCost') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Total Cost of Flat (₹)" required error={errorFor('totalCost')} fieldRef={setFieldRef('totalCost') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter total cost" value={totalCost} onChange={setTotalCost} />
           </Field>
-          <Field t={t} label="Booking Date" required fieldRef={setFieldRef('bookingDate') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Booking Date" required error={errorFor('bookingDate')} fieldRef={setFieldRef('bookingDate') as React.Ref<HTMLDivElement>}>
             <input type="date" value={bookingDate} readOnly={isView} disabled={isView}
               onClick={openPicker} onFocus={openPicker} onChange={(e) => setBookingDate(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Booking Amount (₹)" required fieldRef={setFieldRef('bookingAmount') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Booking Amount (₹)" required error={errorFor('bookingAmount')} fieldRef={setFieldRef('bookingAmount') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter booking amount" value={bookingAmount} onChange={setBookingAmount} />
           </Field>
           <Field t={t} label="Remaining Booking Amount & Date" className="lg:col-span-2">
+            {/* Amount narrowed to ~half the pair's width (was flex:1 1 auto,
+                stretching to fill everything left after the date field —
+                unnecessarily wide for what's usually a small remainder). */}
             <div className="flex items-center gap-2">
-              <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+              <div style={{ flex: '0 1 50%', minWidth: 0 }}>
                 <AmountField t={t} isView={isView} placeholder="Amount" value={remainingBookingAmount} onChange={setRemainingBookingAmount} />
               </div>
               <input type="date" value={remainingBookingDate} readOnly={isView} disabled={isView}
@@ -1392,41 +1477,42 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 style={{ flexShrink: 0, width: 150 }} />
             </div>
           </Field>
-          <Field t={t} label="Possession Amount (₹)" required fieldRef={setFieldRef('possessionAmount') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Possession Amount (₹)" required error={errorFor('possessionAmount')} fieldRef={setFieldRef('possessionAmount') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter possession amount" value={possessionAmount} onChange={setPossessionAmount} />
           </Field>
         </div>
 
-        {/* Row 2 of 3 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          <Field t={t} label="Installment Date" required fieldRef={setFieldRef('installmentDate') as React.Ref<HTMLDivElement>}>
+        {/* Row 2 of 3 — Installment Date, EMI Before/After, Total Tenure. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <Field t={t} label="Installment Date" required error={errorFor('installmentDate')} fieldRef={setFieldRef('installmentDate') as React.Ref<HTMLDivElement>}>
             <input type="date" value={installmentDate} readOnly={isView} disabled={isView}
               onClick={openPicker} onFocus={openPicker} onChange={(e) => setInstallmentDate(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Monthly EMI Before Possession (₹)" required fieldRef={setFieldRef('monthlyEmiBeforePossession') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Monthly EMI Before Possession (₹)" required error={errorFor('monthlyEmiBeforePossession')} fieldRef={setFieldRef('monthlyEmiBeforePossession') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} />
           </Field>
-          <Field t={t} label="Monthly EMI After Possession (₹)" required fieldRef={setFieldRef('monthlyEmiAfterPossession') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Monthly EMI After Possession (₹)" required error={errorFor('monthlyEmiAfterPossession')} fieldRef={setFieldRef('monthlyEmiAfterPossession') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} />
           </Field>
-          <Field t={t} label="Total EMI Tenure (Months)" required fieldRef={setFieldRef('totalEmiTenure') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Total EMI Tenure (Months)" required error={errorFor('totalEmiTenure')} fieldRef={setFieldRef('totalEmiTenure') as React.Ref<HTMLDivElement>}>
             {/* Max 99 / 2-digit cap (Task 6) — maxLength blocks typing a 3rd
                 digit, and the max clamp inside NumberField covers paste
                 edge cases so the stored value can never exceed 99. */}
             <NumberField t={t} isView={isView} placeholder="e.g. 60" value={totalEmiTenure} onChange={setTotalEmiTenure} max={99} maxLength={2} />
           </Field>
+        </div>
+
+        {/* Row 3 of 3 — all 4 Booster fields (Amount Before, Interval
+            Before, Amount After, Interval After). */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Field t={t} label="Booster Amount Before Possession (₹)">
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} />
           </Field>
-        </div>
-
-        {/* Row 3 of 3 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
-          <Field t={t} label="Booster Amount After Possession (₹)">
-            <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} />
-          </Field>
           <Field t={t} label="Booster Interval Before Possession (Months)">
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} />
+          </Field>
+          <Field t={t} label="Booster Amount After Possession (₹)">
+            <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} />
           </Field>
           <Field t={t} label="Booster Interval After Possession (Months)">
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} />
@@ -1440,13 +1526,13 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         sectionRef={(el) => (sectionRefs.current.documents = el)}>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Field t={t} label="Application Form" required fieldRef={setFieldRef('applicationForm') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Application Form" required error={errorFor('applicationForm')} fieldRef={setFieldRef('applicationForm') as React.Ref<HTMLDivElement>}>
             <DocumentDropCard t={t} isView={isView} label="Application Form" value={applicationForm} onChange={setApplicationForm} />
           </Field>
-          <Field t={t} label="Declaration Form" required fieldRef={setFieldRef('declarationForm') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Declaration Form" required error={errorFor('declarationForm')} fieldRef={setFieldRef('declarationForm') as React.Ref<HTMLDivElement>}>
             <DocumentDropCard t={t} isView={isView} label="Declaration Form" value={declarationForm} onChange={setDeclarationForm} />
           </Field>
-          <Field t={t} label="Allotment Letter" required fieldRef={setFieldRef('allotmentLetter') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Allotment Letter" required error={errorFor('allotmentLetter')} fieldRef={setFieldRef('allotmentLetter') as React.Ref<HTMLDivElement>}>
             <DocumentDropCard t={t} isView={isView} label="Allotment Letter" value={allotmentLetter} onChange={setAllotmentLetter} />
           </Field>
         </div>
@@ -1497,7 +1583,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             whatsapp: whatsappNumber ? `${whatsappCountryCode} ${whatsappNumber}` : '',
             aadhar: aadharNumber, pan: pancardNumber, address, dob: dateOfBirth,
             age: age ? `${age.years}y ${age.months}m` : '',
-            altName: alternatePersonName, altMobile: alternatePersonMobile,
+            altName: alternatePersonName, altMobile: alternatePersonMobile ? `${alternatePersonCountryCode} ${alternatePersonMobile}` : '',
             companyName, projectName, buildingName, wingName, floorLabel,
             flatNo: selectedFlat?.flat_no || flatNo,
             flatType: selectedFlat?.flat_type || '',

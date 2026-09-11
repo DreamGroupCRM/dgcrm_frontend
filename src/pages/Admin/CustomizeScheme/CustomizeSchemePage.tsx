@@ -502,6 +502,7 @@ const CustomizeSchemePage: React.FC = () => {
   // stays visible; only the long row-by-row Schedule table hides behind
   // this toggle.
   const [showSchedule, setShowSchedule] = useState(false);
+  const [showScheme, setShowScheme] = useState(false);
 
   // ── the whole EMI Scheme + EMI Schedule, recomputed live on every field
   //    change — see the file-header note on the direct-input + greedy-
@@ -696,12 +697,12 @@ const CustomizeSchemePage: React.FC = () => {
                   : 'linear-gradient(180deg, #ecfdf5 0%, #f0fdfa 45%, #ffffff 100%)',
               }}
             >
-              {/* One grid for every field — equal-width columns, however many
-                  fit the container per row, each row's inputs starting at the
-                  same Y (see getLabelStyle's fixed label height above). Narrower
-                  minmax (was 200px) fits more fields per row on wide screens —
-                  matches the "fewer, wider empty rows" complaint. */}
-              <div className="grid gap-x-3 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))' }}>
+              {/* Exactly 3 rows (4/4/3) — equal-width columns within each row,
+                  however many fit the container per row (see getLabelStyle's
+                  fixed label height above). Narrower minmax (was 200px) fits
+                  more fields per row on wide screens — matches the "fewer,
+                  wider empty rows" complaint. */}
+              <div className="grid gap-x-3 gap-y-3 mb-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))' }}>
                 <SliderField t={t} accent={accent} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" />
                 {/* Booking Date / Remaining Booking Date / Installment Date
                     inputs are hidden per the Customize Scheme overhaul — the
@@ -718,6 +719,8 @@ const CustomizeSchemePage: React.FC = () => {
                   date={remainingBookingDate} onDateChange={setRemainingBookingDate} hideDate
                 />
                 <SliderField t={t} accent={accent} label="Possession Amount (₹)" value={possessionAmount} onChange={setPossessionAmount} max={Math.max(totalCost, 100000)} step={10000} prefix="₹" noSlider />
+              </div>
+              <div className="grid gap-x-3 gap-y-3 mb-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))' }}>
                 <SliderField t={t} accent={accent} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" noSlider />
                 {/* Max 99 / 2-digit cap (Task 6) — maxLength blocks typing a 3rd
                     digit, and the onChange clamp covers paste/backspace-then-
@@ -726,6 +729,8 @@ const CustomizeSchemePage: React.FC = () => {
                   onChange={(v) => setTotalEmiTenure(Math.min(99, v))} max={99} step={1} suffix="months" noSlider maxLength={2} />
                 <SliderField t={t} accent={accent} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" noSlider />
                 <SliderField t={t} accent={accent} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" noSlider />
+              </div>
+              <div className="grid gap-x-3 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))' }}>
                 <SliderField t={t} accent={accent} label="Booster Interval Before Possession" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" noSlider />
                 <SliderField t={t} accent={accent} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" noSlider />
                 <SliderField t={t} accent={accent} label="Booster Interval After Possession" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" noSlider />
@@ -746,21 +751,35 @@ const CustomizeSchemePage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── EMI Scheme summary ──────────────────────────────────────── */}
+      {/* ── EMI Scheme summary — collapsed by default, same click-to-expand
+          convention as EMI Schedule below (item 6: both accordions,
+          independently collapsible, collapsed on load). ──────────────── */}
       <div className="rounded-2xl mb-4 overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <ResultPanelHeader
-          icon={<MdCalculate size={15} color="#fff" />} title="EMI Scheme"
-          gradient={`linear-gradient(135deg,${accent},#6366f1)`}
-          subtitle={`Total Cost of Flat: ${formatINR(totalCost)}`}
-        />
-        <div className="p-4">
-          <SummaryTable t={t} accent={accent} heading="A) Mode of Payment (Before Possession)" rows={computed.summaryA} total={computed.totalA} totalLabel="Total (A) (Before Possession)" />
-          <SummaryTable t={t} accent={accent} heading="B) After Possession" rows={computed.summaryB} total={computed.totalB} totalLabel="Total (B) (After Possession)" />
-          <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
-            <span style={{ fontSize: 11.5, fontWeight: 800, color: accent }}>{formatINR(computed.grandTotal)}</span>
+        <button
+          type="button" onClick={() => setShowScheme((v) => !v)}
+          className="w-full text-left" style={{ border: 'none', padding: 0, cursor: 'pointer', display: 'block' }}
+        >
+          <ResultPanelHeader
+            icon={<MdCalculate size={15} color="#fff" />} title="EMI Scheme"
+            gradient={`linear-gradient(135deg,${accent},#6366f1)`}
+            subtitle={
+              <span className="flex items-center gap-1.5">
+                {`Total Cost of Flat: ${formatINR(totalCost)}`}
+                {showScheme ? <MdExpandLess size={16} /> : <MdExpandMore size={16} />}
+              </span>
+            }
+          />
+        </button>
+        {showScheme && (
+          <div className="p-4">
+            <SummaryTable t={t} accent={accent} heading="A) Mode of Payment (Before Possession)" rows={computed.summaryA} total={computed.totalA} totalLabel="Total (A) (Before Possession)" />
+            <SummaryTable t={t} accent={accent} heading="B) After Possession" rows={computed.summaryB} total={computed.totalB} totalLabel="Total (B) (After Possession)" />
+            <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
+              <span style={{ fontSize: 11.5, fontWeight: 800, color: accent }}>{formatINR(computed.grandTotal)}</span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── EMI Schedule — full month-by-month breakdown, collapsed by

@@ -20,10 +20,14 @@ import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
-import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory } from '../../../../services/customerDetailsService';
+import {
+  fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory,
+  fetchCustomerFullDetails, fetchCustomerScheme,
+} from '../../../../services/customerDetailsService';
 import {
   collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, deletePayment, PAYMENT_FOR_OPTIONS, paymentForLabel,
 } from '../../../../services/paymentService';
+import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceiptPdf } from './paymentPdfExport';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import { fetchCustomerIntelligence, CustomerIntelligence } from '../../../../services/intelligenceService';
@@ -31,7 +35,6 @@ import {
   Customer, Building, CustomerPaymentRecord, CustomerListSummary, CustomerListFilters,
   PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload, isAdminRole,
 } from '../../../../types/index';
-import jsPDF from 'jspdf';
 import { formatDate, showAlert } from '../../../../utils';
 import './CustomerDetails.css';
 
@@ -60,20 +63,72 @@ const SearchableSelect: React.FC<{
   // has been chosen, instead of leaving the full dropdown open.
   onCommit?: () => void;
   autoFocus?: boolean;
-}> = ({ t, placeholder, options, value, onChange, disabled, labelFor, onCommit, autoFocus }) => {
+  // Loading/empty-state support (item 6's Assign Employee fix) — without
+  // this, a field whose `options` list is empty (still fetching, fetch
+  // failed, or genuinely zero results) rendered its dropdown as literally
+  // nothing when clicked: `filtered.length > 0` gated the whole panel, so
+  // there was no visual difference between "still loading" and "silently
+  // broken". `loading` shows an in-progress row instead of an empty panel;
+  // `emptyMessage`/`onRetry` show a real "nothing here" state with a way
+  // to recover instead of a dead field.
+  loading?: boolean;
+  emptyMessage?: string;
+  onRetry?: () => void;
+}> = ({ t, placeholder, options, value, onChange, disabled, labelFor, onCommit, autoFocus, loading, emptyMessage = 'No options found.', onRetry }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setQuery(value); }, [value]);
 
+  // Every dropdown here used to render as a plain position:absolute child
+  // of its own field wrapper (z-index 30) — nothing but that number kept it
+  // above the results grid/table right below it, and the grid's own cards/
+  // rows won a real browser's stacking order often enough that the
+  // Customer Name suggestions and the Assign Employee list both ended up
+  // visually and click-through BEHIND the table: options looked selectable
+  // but the click actually landed on whatever table row/cell was underneath.
+  // Portaling to document.body (position:fixed, computed from the field's
+  // own bounding rect on open) removes the ambiguity entirely — same fix
+  // already applied to RowActionMenu and to CustomerDetailsCrudPage.tsx's
+  // own SearchableSelect.
+  const openDropdown = () => {
+    if (disabled) return;
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    setOpen(true);
+  };
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); onCommit?.(); }
+      const target = e.target as Node;
+      if (ref.current && !ref.current.contains(target) && !(target as HTMLElement).closest?.('[data-searchable-select-menu]')) {
+        setOpen(false);
+        onCommit?.();
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [onCommit]);
+
+  // Reposition (rather than just closing) on scroll/resize while open — this
+  // page's filter row and results grid share one scroll container, so a
+  // stale position from an earlier openDropdown() would otherwise drift out
+  // from under the field the moment the page scrolls.
+  useEffect(() => {
+    if (!open) return;
+    const reposition = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    };
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open]);
 
   const filtered = options.filter((o) => o?.toLowerCase().includes(query.toLowerCase()));
 
@@ -82,7 +137,7 @@ const SearchableSelect: React.FC<{
       <div
         className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
         style={{ background: disabled ? t.insetBg : t.inputBg, border: `1px solid ${t.inputBorder}`, cursor: disabled ? 'not-allowed' : 'text' }}
-        onClick={() => !disabled && setOpen(true)}
+        onClick={openDropdown}
       >
         <input
           type="text"
@@ -90,8 +145,8 @@ const SearchableSelect: React.FC<{
           value={query}
           disabled={disabled}
           autoFocus={autoFocus}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+          onFocus={openDropdown}
+          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); openDropdown(); }}
           style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 11.5, width: '100%' }}
         />
         {value && !disabled && (
@@ -105,25 +160,45 @@ const SearchableSelect: React.FC<{
         )}
         <MdKeyboardArrowDown size={16} style={{ color: t.textSecondary, flexShrink: 0 }} />
       </div>
-      {open && !disabled && filtered.length > 0 && (
+      {open && !disabled && menuPos && (loading || filtered.length > 0 || emptyMessage) && createPortal(
         <div
+          data-searchable-select-menu
           style={{
-            position: 'absolute', top: '110%', left: 0, right: 0, zIndex: 30, maxHeight: 220, overflowY: 'auto',
+            position: 'fixed', top: menuPos.top, left: menuPos.left, width: menuPos.width, zIndex: 200, maxHeight: 220, overflowY: 'auto',
             background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10,
             boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0',
           }}
         >
-          {filtered.map((opt) => (
-            <button
-              key={opt} type="button"
-              onClick={() => { onChange(opt); setQuery(opt); setOpen(false); onCommit?.(); }}
-              className="w-full text-left px-3.5 py-2 text-sm"
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}
-            >
-              {labelFor ? labelFor(opt) : opt}
-            </button>
-          ))}
-        </div>
+          {loading ? (
+            <div className="px-3.5 py-2 text-sm" style={{ color: t.textSecondary, fontFamily: t.fontFamily }}>Loading...</div>
+          ) : filtered.length === 0 ? (
+            <div className="px-3.5 py-2" style={{ fontFamily: t.fontFamily }}>
+              <div className="text-sm" style={{ color: t.textSecondary, marginBottom: onRetry ? 6 : 0 }}>{emptyMessage}</div>
+              {onRetry && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onRetry(); }}
+                  className="text-sm font-semibold"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#7c3aed', padding: 0 }}
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          ) : (
+            filtered.map((opt) => (
+              <button
+                key={opt} type="button"
+                onClick={() => { onChange(opt); setQuery(opt); setOpen(false); onCommit?.(); }}
+                className="w-full text-left px-3.5 py-2 text-sm"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}
+              >
+                {labelFor ? labelFor(opt) : opt}
+              </button>
+            ))
+          )}
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -157,11 +232,12 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 const RowActionMenu: React.FC<{
   t: Theme; pos: { top: number; left: number };
   onView: () => void; onEdit: () => void; onDelete: () => void;
-}> = ({ t, pos, onView, onEdit, onDelete }) => createPortal(
+  onDownloadHistory: () => void; onDownloadSchedule: () => void;
+}> = ({ t, pos, onView, onEdit, onDelete, onDownloadHistory, onDownloadSchedule }) => createPortal(
   <div
     data-customer-row-menu
     style={{
-      position: 'fixed', top: pos.top, left: pos.left, zIndex: 100, minWidth: 118,
+      position: 'fixed', top: pos.top, left: pos.left, zIndex: 100, minWidth: 186,
       background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 8,
       boxShadow: '0 6px 16px rgba(0,0,0,0.16)', overflow: 'hidden',
     }}
@@ -178,8 +254,18 @@ const RowActionMenu: React.FC<{
     </button>
     <button type="button" onClick={onDelete}
       className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
-      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
+      style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
       <MdDelete size={14} /> Delete
+    </button>
+    <button type="button" onClick={onDownloadHistory}
+      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap"
+      style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+      <MdDownload size={13} color="#7c3aed" /> Download Payment History
+    </button>
+    <button type="button" onClick={onDownloadSchedule}
+      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap"
+      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+      <MdDownload size={13} color="#059669" /> Download Schedule
     </button>
   </div>,
   document.body
@@ -193,7 +279,8 @@ const CustomerCard: React.FC<{
   onOpenMenu: (e: React.MouseEvent<HTMLButtonElement>) => void;
   menuOpen: boolean; menuPos: { top: number; left: number } | null;
   onView: () => void; onEdit: () => void; onDelete: () => void;
-}> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onDelete }) => {
+  onDownloadHistory: () => void; onDownloadSchedule: () => void;
+}> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onDelete, onDownloadHistory, onDownloadSchedule }) => {
   const statusBg = c.status === 'active' ? '#dcfce7' : '#fee2e2';
   const statusColor = c.status === 'active' ? '#16a34a' : '#dc2626';
   return (
@@ -225,7 +312,10 @@ const CustomerCard: React.FC<{
           <button type="button" onClick={onOpenMenu} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}>
             <MdMoreVert size={18} />
           </button>
-          {menuOpen && menuPos && <RowActionMenu t={t} pos={menuPos} onView={onView} onEdit={onEdit} onDelete={onDelete} />}
+          {menuOpen && menuPos && (
+            <RowActionMenu t={t} pos={menuPos} onView={onView} onEdit={onEdit} onDelete={onDelete}
+              onDownloadHistory={onDownloadHistory} onDownloadSchedule={onDownloadSchedule} />
+          )}
         </div>
       </div>
 
@@ -329,6 +419,10 @@ const CustomerDetailsListPage: React.FC = () => {
     // AI Customer Intelligence — fetched alongside the above, same
     // allSettled defensive pattern (see openPaymentHistory below).
     ai?: CustomerIntelligence;
+    // Total Cost of Flat — the list's own Customer type doesn't carry
+    // flat_amount, so this is fetched alongside everything else above via
+    // the same allSettled call (fetchCustomerFullDetails), best-effort.
+    totalFlatCost?: number;
   } | null>(null);
 
   // same customer. ────────────────────────────────────────────────────
@@ -352,6 +446,39 @@ const CustomerDetailsListPage: React.FC = () => {
 
   useEffect(() => { dispatch(setPageTitle('Customer Details')); }, [dispatch]);
 
+  // ── Employee dropdown for "Assign to Employee" — root cause of the
+  // reported "select customer, open Assign, dropdown stays empty" bug:
+  // this fetch used to run exactly once on page mount with its failure
+  // silently swallowed (empty catch, no toast, no retry) and no way to
+  // notice it had failed, since the field itself stays disabled — and
+  // invisible — until a customer is actually selected. If that one
+  // mount-time request hit any transient failure (auth/token refresh
+  // race on initial load, a network blip), `employees` stayed `[]` for
+  // the rest of the page's life with zero visible sign anything was
+  // wrong, right up to the exact moment the user needed it. Fix: surface
+  // the failure with a toast, and retry automatically the moment the
+  // Assign row becomes usable (a customer gets checked) if the list is
+  // still empty, so a one-off failure self-heals instead of requiring a
+  // full page reload.
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const fetchEmployeesForAssignment = useCallback(async () => {
+    setLoadingEmployees(true);
+    try {
+      // activeOnly=true — don't offer a deactivated employee as an
+      // assignee for a customer.
+      const res = await FetchEmployeeDetails(1, 1000, undefined, true);
+      if (res.success) {
+        setEmployees((res.rows ?? []).map((e) => ({ id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})` })));
+      } else {
+        toast.error('Failed to load employees for assignment.');
+      }
+    } catch {
+      toast.error('Failed to load employees for assignment. Please try again.');
+    } finally {
+      setLoadingEmployees(false);
+    }
+  }, []);
+
   // ── fetch everything this page needs ────────────────────────────────
   useEffect(() => {
     (async () => {
@@ -360,17 +487,8 @@ const CustomerDetailsListPage: React.FC = () => {
         if (res.success) setBuildings(res.rows ?? []);
       } catch { /* dropdowns just stay empty if this fails */ }
     })();
-    (async () => {
-      try {
-        // activeOnly=true — don't offer a deactivated employee as an
-        // assignee for a customer.
-        const res = await FetchEmployeeDetails(1, 1000, undefined, true);
-        if (res.success) {
-          setEmployees((res.rows ?? []).map((e) => ({ id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})` })));
-        }
-      } catch { /* dropdown just stays empty if this fails */ }
-    })();
-  }, []);
+    fetchEmployeesForAssignment();
+  }, [fetchEmployeesForAssignment]);
 
   // Customer-name autocomplete — a small server search (top 25) that
   // re-runs as the user types, instead of one unfiltered fetch of up to
@@ -491,25 +609,21 @@ const CustomerDetailsListPage: React.FC = () => {
 
   const clearAllFilters = () => {
     setCustomerNameFilter(''); setBuildingFilter(''); setWingFilter(''); setFloorFilter(''); setFlatNoFilter('');
-    setFromDate(''); setToDate('');
+    setFromDate(''); setToDate(''); setAssignmentStatusFilter('all');
   };
   const anyFilterApplied =
-    !!customerNameFilter || !!buildingFilter || !!wingFilter || !!floorFilter || !!flatNoFilter || !!fromDate || !!toDate;
+    !!customerNameFilter || !!buildingFilter || !!wingFilter || !!floorFilter || !!flatNoFilter || !!fromDate || !!toDate
+    || assignmentStatusFilter !== 'all';
 
-  // Selecting an exact customer name (not just typing a partial match)
-  // auto-populates the Building/Wing/Floor/Flat No filters from that
-  // customer's own booking, narrowing the whole filter row to their flat
-  // in one action instead of four (item 11's "auto-populate related
-  // details... fast updates without manual actions").
+  // Every filter is fully independent — setting/typing into Customer Name
+  // touches ONLY customerNameFilter. An earlier version of this handler
+  // auto-populated Building/Wing/Floor/Flat No from the matched customer's
+  // own booking as a "convenience"; that is exactly the "other filters get
+  // automatically selected" behavior reported against this page, so it has
+  // been removed outright rather than merely guarded — the user must
+  // explicitly set every filter they want applied.
   const handleCustomerNameFilterChange = (v: string) => {
     setCustomerNameFilter(v);
-    const exact = customerDirectory.find((c) => c.customer_name === v);
-    if (exact) {
-      setBuildingFilter(exact.building_name || '');
-      setWingFilter(exact.wing_name || '');
-      setFloorFilter('');
-      setFlatNoFilter(exact.flat_no || '');
-    }
   };
 
   // allCustomers IS the current page now — the server already applied
@@ -518,7 +632,7 @@ const CustomerDetailsListPage: React.FC = () => {
   // do here. Resetting to page 1 on filter change still matters — a
   // filter narrowing the result set out from under an already-deep page
   // number would otherwise land on an empty or out-of-range page.
-  useEffect(() => { setPage(1); }, [debouncedCustomerNameFilter, buildingFilter, wingFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter]);
+  useEffect(() => { setPage(1); }, [debouncedCustomerNameFilter, buildingFilter, wingFilter, floorFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter]);
 
   const pageRows = allCustomers;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -556,6 +670,22 @@ const CustomerDetailsListPage: React.FC = () => {
   };
 
   const assignmentEnabled = selectedIds.size > 0;
+
+  // Self-healing retry: if the mount-time fetch above ever failed (or is
+  // still in flight when the user checks a customer), pick it back up the
+  // moment the Assign row actually becomes usable, instead of leaving the
+  // dropdown silently empty until a full page reload. Fires at most ONCE
+  // per selection (guarded by retriedForSelectionRef, reset when the
+  // selection is cleared) — a legitimately-empty employee table must not
+  // turn this into a tight fetch loop every time loadingEmployees flips.
+  const retriedForSelectionRef = useRef(false);
+  useEffect(() => {
+    if (!assignmentEnabled) { retriedForSelectionRef.current = false; return; }
+    if (employees.length === 0 && !loadingEmployees && !retriedForSelectionRef.current) {
+      retriedForSelectionRef.current = true;
+      fetchEmployeesForAssignment();
+    }
+  }, [assignmentEnabled, employees.length, loadingEmployees, fetchEmployeesForAssignment]);
 
   const handleAssign = async () => {
     const employee = employees.find((e) => e.label === employeeSearch);
@@ -595,14 +725,16 @@ const CustomerDetailsListPage: React.FC = () => {
     setInfoModal({ type: 'payment', customer: c, loading: true });
     try {
       // Payment History is unchanged; Customer Due (total_due/remaining_amount
-      // + the per-type remaining breakdown) is fetched alongside it so the
-      // one modal shows both — using allSettled so a due/remaining failure
-      // never blocks the existing payment history from rendering.
-      const [historyRes, dueRes, remainingRes, aiRes] = await Promise.allSettled([
+      // + the per-type remaining breakdown) and Total Flat Cost are fetched
+      // alongside it so the one modal shows all of it — using allSettled so
+      // a due/remaining/full-details failure never blocks the existing
+      // payment history from rendering.
+      const [historyRes, dueRes, remainingRes, aiRes, fullRes] = await Promise.allSettled([
         fetchCustomerPaymentHistory(c.id),
         fetchCustomerDue(c.id),
         fetchCustomerRemaining(c.id),
         fetchCustomerIntelligence(c.id),
+        fetchCustomerFullDetails(c.id),
       ]);
       if (historyRes.status === 'rejected') throw historyRes.reason;
       setInfoModal({
@@ -611,10 +743,44 @@ const CustomerDetailsListPage: React.FC = () => {
         due: dueRes.status === 'fulfilled' ? dueRes.value.data : undefined,
         remaining: remainingRes.status === 'fulfilled' ? remainingRes.value.data : undefined,
         ai: aiRes.status === 'fulfilled' ? aiRes.value : undefined,
+        totalFlatCost: fullRes.status === 'fulfilled' ? fullRes.value.data?.total_cost ?? undefined : undefined,
       });
     } catch {
       toast.error('Failed to load payment history.');
       setInfoModal(null);
+    }
+  };
+
+  // ── Download Payment History PDF — client-side (jsPDF), reuses the same
+  // data sources openPaymentHistory does. ─────────────────────────────────
+  const handleDownloadPaymentHistoryPdf = async (c: Customer) => {
+    try {
+      const [historyRes, dueRes, fullRes] = await Promise.allSettled([
+        fetchCustomerPaymentHistory(c.id),
+        fetchCustomerDue(c.id),
+        fetchCustomerFullDetails(c.id),
+      ]);
+      if (historyRes.status === 'rejected') throw historyRes.reason;
+      exportPaymentHistoryPdf(
+        c,
+        historyRes.value.rows,
+        fullRes.status === 'fulfilled' ? fullRes.value.data?.total_cost ?? null : null,
+        dueRes.status === 'fulfilled' ? dueRes.value.data.remaining_amount : null
+      );
+    } catch {
+      toast.error('Failed to generate the payment history PDF.');
+    }
+  };
+
+  // ── Download Schedule PDF — client-side (jsPDF), same EMI schedule data
+  // as the "Show Scheme" page (fetchCustomerScheme). ──────────────────────
+  const handleDownloadSchedulePdf = async (c: Customer) => {
+    try {
+      const res = await fetchCustomerScheme(c.id);
+      if (!res.success || !res.data) throw new Error('No scheme data');
+      exportPaymentSchedulePdf(res.data);
+    } catch {
+      toast.error('Failed to generate the payment schedule PDF.');
     }
   };
 
@@ -683,63 +849,29 @@ const CustomerDetailsListPage: React.FC = () => {
     }
   };
 
-  // ── Download Receipt PDF — client-side (jsPDF), same approach as the
-  // Executive Dashboard's export (dashboardExport.ts). Only reachable once
+  // ── Download Receipt PDF — client-side (jsPDF), matching the reference
+  // "PAYMENT RECEIPT" design (see paymentPdfExport.ts). Only reachable once
   // receiptModal.data exists at all, which itself required the approval
   // gate above to pass. ───────────────────────────────────────────────────
   const handleDownloadReceiptPdf = () => {
     if (!receiptModal?.data) return;
-    const { transaction: tx, customer, paid_emis, future_emis, total_emis, emi_number } = receiptModal.data;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a5' });
-    const marginX = 36;
-    let y = 40;
+    exportPaymentReceiptPdf(receiptModal.data);
+  };
 
-    doc.setFontSize(15);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Dream Group CRM', marginX, y);
-    doc.setFontSize(9.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Payment Receipt', marginX, y + 14);
-    y += 34;
-
-    doc.setFontSize(9.5);
-    const line = (label: string, value: string) => { doc.text(label, marginX, y); doc.setFont('helvetica', 'bold'); doc.text(value, 220, y); doc.setFont('helvetica', 'normal'); y += 15; };
-    line('Receipt No.', tx.receipt_number);
-    line('Date', formatDate(tx.date || tx.created_at));
-    line('Received By', tx.received_by || '—');
-    y += 6;
-
-    doc.setFont('helvetica', 'bold');
-    doc.text(customer.customer_name || '—', marginX, y);
-    doc.setFont('helvetica', 'normal');
-    y += 13;
-    doc.setFontSize(8.5);
-    doc.text(`${customer.customer_code}${customer.mobile_number ? ` · ${customer.mobile_number}` : ''}`, marginX, y);
-    y += 20;
-
-    doc.setFontSize(9.5);
-    doc.text(paymentForLabel(tx.payment_type), marginX, y);
-    y += 16;
-    doc.setFontSize(17);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Rs. ${tx.amount.toLocaleString('en-IN')}`, marginX, y);
-    doc.setFont('helvetica', 'normal');
-    y += 18;
-
-    if (tx.payment_type === 'EMIAmount' && emi_number > 0) {
-      doc.setFontSize(8.5);
-      doc.text(`EMI #${emi_number} of ${total_emis} total (${paid_emis} paid, ${future_emis} future)`, marginX, y);
-      y += 18;
+  // ── Download Receipt directly from the Payment History table's Action
+  // column — fetches the same approval-gated receipt data openReceipt does,
+  // without needing the View Receipt modal open first. ────────────────────
+  const handleDownloadReceiptForTransaction = async (transactionId: string) => {
+    try {
+      const res = await fetchPaymentReceipt(transactionId);
+      exportPaymentReceiptPdf(res.data);
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        toast.error('Receipt is not available until this payment is approved.');
+        return;
+      }
+      toast.error('Failed to download receipt.');
     }
-
-    doc.setFontSize(9);
-    if (tx.mode_of_payment) { line('Mode of Payment', tx.mode_of_payment); }
-    if (tx.cheque_number) { line('Cheque Number', tx.cheque_number); }
-    if (tx.clearance_date) { line('Clearance Date', formatDate(tx.clearance_date)); }
-    if (tx.company) { line('Company', tx.company); }
-    if (tx.payment_tag) { line('Tag', tx.payment_tag); }
-
-    doc.save(`receipt-${tx.receipt_number}.pdf`);
   };
 
   // ── Delete Payment (admin-only) — triggers the backend's EMI
@@ -850,8 +982,16 @@ const CustomerDetailsListPage: React.FC = () => {
         </div>
 
         {/* All filters always visible in one row (wraps on narrow screens) —
-            no click-to-reveal step. Wing/Floor/Flat No stay disabled until
-            their prerequisite is picked, same cascade as before. */}
+            no click-to-reveal step. Each filter below sets ONLY its own
+            state — no filter clears, overwrites, or disables another. The
+            option LIST a filter offers may still be narrowed by ones set
+            before it (Wing's options come from whichever Building is
+            selected, same as any real drill-down picker), but that's a
+            list of valid choices to show, never a value picked on the
+            user's behalf, and every field stays enabled and independently
+            usable — a genuinely empty option list surfaces via
+            SearchableSelect's own empty-state message, not by disabling
+            the field. */}
         <div className="flex flex-wrap items-end gap-3">
           <div style={{ flex: '1 1 170px', minWidth: 150 }}>
             <label className="cust-filter-label">Customer Name</label>
@@ -860,22 +1000,26 @@ const CustomerDetailsListPage: React.FC = () => {
           <div style={{ flex: '1 1 170px', minWidth: 150 }}>
             <label className="cust-filter-label">Building</label>
             <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter}
-              onChange={(v) => { setBuildingFilter(v); setWingFilter(''); setFloorFilter(''); setFlatNoFilter(''); }} />
+              onChange={setBuildingFilter} />
           </div>
           <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Wing</label>
             <SearchableSelect t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingFilter}
-              disabled={!selectedBuilding || loadingBuildingDetail}
-              onChange={(v) => { setWingFilter(v); setFloorFilter(''); setFlatNoFilter(''); }} />
+              loading={loadingBuildingDetail}
+              emptyMessage={selectedBuilding ? 'No wings found for this building.' : 'Select a Building first to see its wings.'}
+              onChange={setWingFilter} />
           </div>
           <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Floor</label>
-            <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter} disabled={!selectedWing}
-              onChange={(v) => { setFloorFilter(v); setFlatNoFilter(''); }} />
+            <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter}
+              emptyMessage={selectedWing ? 'No floors found for this wing.' : 'Select a Wing first to see its floors.'}
+              onChange={setFloorFilter} />
           </div>
           <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Flat No</label>
-            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter} disabled={!selectedFloor} onChange={setFlatNoFilter} labelFor={flatLabelFor} />
+            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter}
+              emptyMessage={selectedFloor ? 'No flats found for this floor.' : 'Select a Floor first to see its flats.'}
+              onChange={setFlatNoFilter} labelFor={flatLabelFor} />
           </div>
           <div style={{ flex: '1 1 140px', minWidth: 130 }}>
             <label className="cust-filter-label">From Date</label>
@@ -899,12 +1043,25 @@ const CustomerDetailsListPage: React.FC = () => {
 
       {/* ── Toolbar — Search Employee + Assign to Employee together on the
           left, Add Customer / Grid-List / Export CSV / Refresh always on
-          the right, all in one row. ─────────────────────────────────── */}
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
-        <div className="flex flex-wrap items-end gap-3">
-          <div style={{ flex: '1 1 200px', maxWidth: 320 }}>
+          the right, all in one single row — flex-nowrap (not flex-wrap)
+          so this never splits into two rows on desktop; the row scrolls
+          horizontally instead of wrapping if the viewport is too narrow
+          to fit everything (e.g. on mobile). ───────────────────────────── */}
+      <div className="flex items-end justify-between gap-3 mb-2" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+        <div className="flex items-end gap-3" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
+          <div style={{ width: 240 }}>
             <label className="cust-filter-label">Search Employee</label>
-            <SearchableSelect t={t} placeholder="Select employee" options={employeeOptions} value={employeeSearch} onChange={setEmployeeSearch} disabled={!assignmentEnabled} />
+            <SearchableSelect
+              t={t}
+              placeholder={loadingEmployees ? 'Loading employees...' : 'Select employee'}
+              options={employeeOptions}
+              value={employeeSearch}
+              onChange={setEmployeeSearch}
+              disabled={!assignmentEnabled}
+              loading={loadingEmployees}
+              emptyMessage={employees.length === 0 ? 'No employees found.' : 'No matching employees.'}
+              onRetry={employees.length === 0 && !loadingEmployees ? fetchEmployeesForAssignment : undefined}
+            />
           </div>
           <button
             type="button"
@@ -922,17 +1079,17 @@ const CustomerDetailsListPage: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5" style={{ flexShrink: 0 }}>
-          <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            <MdAdd size={18} /> Add Customer
-          </button>
+        <div className="flex items-center gap-2.5" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
             title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
             className="flex items-center justify-center rounded-xl"
             style={{ width: 40, height: 40, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
+          </button>
+          <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+            style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <MdAdd size={18} /> Add Customer
           </button>
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
@@ -972,6 +1129,8 @@ const CustomerDetailsListPage: React.FC = () => {
                     onView={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/view/${c.id}`); }}
                     onEdit={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/edit/${c.id}`); }}
                     onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
+                    onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
+                    onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                   />
                 ))}
               </div>
@@ -1025,6 +1184,8 @@ const CustomerDetailsListPage: React.FC = () => {
                               onView={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/view/${c.id}`); }}
                               onEdit={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/edit/${c.id}`); }}
                               onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
+                              onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
+                              onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                             />
                           )}
                         </div>
@@ -1097,17 +1258,14 @@ const CustomerDetailsListPage: React.FC = () => {
         >
           <div
             className="rounded-2xl w-full"
-            style={{ maxWidth: 480, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '80vh', overflowY: 'auto' }}
+            style={{ maxWidth: 920, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '88vh', overflowY: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-5 cust-divider-bottom">
-              <div>
-                <div className="cust-modal-title">
-                  Payment History
-                </div>
-                <div className="cust-modal-subtitle">{infoModal.customer.customer_name}</div>
+            <div className="flex items-center justify-between px-5 py-3.5" style={{ background: 'linear-gradient(135deg,#6d28d9,#d97706)', borderRadius: '16px 16px 0 0' }}>
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#fff' }}>
+                Payments History - Total Transaction ({(infoModal.payments || []).length})
               </div>
-              <button type="button" onClick={() => setInfoModal(null)} className="cust-modal-close">
+              <button type="button" onClick={() => setInfoModal(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#fff', padding: 4, display: 'flex' }}>
                 <MdClose size={20} />
               </button>
             </div>
@@ -1116,6 +1274,20 @@ const CustomerDetailsListPage: React.FC = () => {
                 <p style={{ color: t.textSecondary, fontSize: 12 }}>Loading...</p>
               ) : (
                 <>
+                  {/* ── Customer info block — matches the reference Payment
+                      History PDF's own layout (Name/Building/Mobile left,
+                      Address/Email/Total Flat Cost/Pending Amount right). ── */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 mb-4">
+                    <div style={{ fontSize: 12, color: t.textPrimary }}>Name: <strong>{infoModal.customer.customer_name}</strong></div>
+                    <div style={{ fontSize: 12, color: t.textPrimary }}>Address: <strong>{infoModal.customer.address || '—'}</strong></div>
+                    <div style={{ fontSize: 12, color: t.textPrimary }}>Building: <strong>{[infoModal.customer.building_name, infoModal.customer.wing_name].filter(Boolean).join(' / ')}</strong></div>
+                    <div style={{ fontSize: 12, color: t.textPrimary }}>Email: <strong>{infoModal.customer.email || 'no'}</strong></div>
+                    <div style={{ fontSize: 12, color: t.textPrimary }}>Mobile No.: <strong>{infoModal.customer.mobile_number}</strong></div>
+                    <div style={{ fontSize: 12, color: '#16a34a' }}>Total Flat Cost: <strong>{infoModal.totalFlatCost != null ? `₹ ${infoModal.totalFlatCost.toLocaleString('en-IN')}` : '—'}</strong></div>
+                    <div />
+                    <div style={{ fontSize: 12, color: '#dc2626' }}>Pending Amount: <strong>{infoModal.due ? `₹ ${infoModal.due.remaining_amount.toLocaleString('en-IN')}` : '—'}</strong></div>
+                  </div>
+
                   {/* ── 🤖 AI Customer Intelligence — engagement/risk
                       computed server-side from this customer's own payment
                       history (see intelligenceService.ts /
@@ -1193,50 +1365,60 @@ const CustomerDetailsListPage: React.FC = () => {
                   {(infoModal.payments || []).length === 0 ? (
                     <p style={{ color: t.textSecondary, fontSize: 12 }}>No payment history found.</p>
                   ) : (
-                    <div className="space-y-3">
-                      {infoModal.payments!.map((p) => (
-                        <div key={p.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: t.insetBg }}>
-                          <div>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span style={{ fontSize: 12, fontWeight: 600, color: t.textPrimary }}>₹ {p.amount.toLocaleString('en-IN')}</span>
-                              <span
-                                style={{
-                                  fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 999,
-                                  color: p.is_approved ? '#16a34a' : '#d97706',
-                                  background: p.is_approved ? (isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7') : (isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7'),
-                                }}>
-                                {p.is_approved ? 'Approved' : 'Pending'}
-                              </span>
-                              <span
-                                style={{
-                                  fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 999,
-                                  color: '#2563eb', background: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
-                                }}>
-                                {paymentForLabel(p.payment_type)}
-                              </span>
-                            </div>
-                            <div style={{ fontSize: 10.5, color: t.textSecondary }}>
-                              Paid on {formatDate(p.paid_on)}{p.mode ? ` · ${p.mode}` : ''}
-                              {p.inst_date && p.inst_date !== p.paid_on ? ` · Installment due ${formatDate(p.inst_date)}` : ''}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {p.reference_no && <div style={{ fontSize: 10, color: t.textSecondary }}>Ref: {p.reference_no}</div>}
-                            <button type="button" title="View Receipt" onClick={() => openReceipt(p.id)}
-                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold"
-                              style={{ background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff', border: 'none', color: '#2563eb', cursor: 'pointer' }}>
-                              <MdDescription size={13} /> Receipt
-                            </button>
-                            {isAdmin && (
-                              <button type="button" title="Delete Payment" onClick={() => handleDeletePayment(p, infoModal.customer)}
-                                className="flex items-center justify-center rounded-lg"
-                                style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
-                                <MdDelete size={13} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                    <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+                        <thead>
+                          <tr style={{ background: 'linear-gradient(135deg,#6d28d9,#d97706)' }}>
+                            {['Actions', 'Rec Number', 'Installment Date', 'Received Date', 'Mode Of Payment', 'Payment For', 'Maintenance', 'Amount', 'Company'].map((h) => (
+                              <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {infoModal.payments!.map((p) => (
+                            <tr key={p.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                              <td style={{ padding: '8px 12px' }}>
+                                <div className="flex items-center gap-1.5">
+                                  <button type="button" title="Download Receipt" onClick={() => handleDownloadReceiptForTransaction(p.id)}
+                                    className="flex items-center justify-center rounded-lg"
+                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', border: 'none', color: '#16a34a', cursor: 'pointer' }}>
+                                    <MdDownload size={13} />
+                                  </button>
+                                  <button type="button" title="View Receipt" onClick={() => openReceipt(p.id)}
+                                    className="flex items-center justify-center rounded-lg"
+                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe', border: 'none', color: '#2563eb', cursor: 'pointer' }}>
+                                    <MdVisibility size={13} />
+                                  </button>
+                                  {isAdmin && (
+                                    <button type="button" title="Delete Payment" onClick={() => handleDeletePayment(p, infoModal.customer)}
+                                      className="flex items-center justify-center rounded-lg"
+                                      style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
+                                      <MdDelete size={13} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.receipt_number || '—'}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.inst_date ? formatDate(p.inst_date) : '—'}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(p.paid_on)}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.mode || '—'}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{paymentForLabel(p.payment_type)}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: '#16a34a', fontWeight: 600 }}>{p.maintenance ? `₹ ${p.maintenance.toLocaleString('en-IN')}` : '0'}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>₹ {p.amount.toLocaleString('en-IN')}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.company || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {(infoModal.payments || []).length > 0 && (
+                    <div className="flex items-center justify-between rounded-xl px-4 py-3 mt-4" style={{ background: t.insetBg }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#2563eb' }}>Grand Total:</span>
+                      <span className="rounded-lg px-3 py-1.5" style={{ border: '1px solid #16a34a', fontSize: 13, fontWeight: 800, color: '#16a34a' }}>
+                        ₹ {infoModal.payments!.reduce((s, p) => s + p.amount, 0).toLocaleString('en-IN')}
+                      </span>
                     </div>
                   )}
                 </>
