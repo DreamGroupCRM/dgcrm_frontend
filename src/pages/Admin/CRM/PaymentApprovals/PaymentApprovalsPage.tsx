@@ -16,10 +16,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify';
 import {
   MdPayments, MdRefresh, MdCheckCircle, MdHourglassEmpty, MdDownload,
-  MdVisibility, MdDelete, MdClose, MdKeyboardArrowDown, MdFilterAlt,
+  MdVisibility, MdDelete, MdClose, MdKeyboardArrowDown, MdFilterAlt, MdSearch,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
+import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
@@ -192,9 +193,20 @@ const PaymentApprovalsPage: React.FC = () => {
   // ── Applied filters — what the table actually queries by. ────────────
   interface AppliedFilters {
     received_by?: string; building_id?: string; wing_id?: string; flat_id?: string;
-    mode_of_payment?: string; company?: string; date_from?: string; date_to?: string;
+    mode_of_payment?: string; company?: string; date_from?: string; date_to?: string; search?: string;
   }
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>({});
+
+  // ── Search by Customer ID/Name — a standalone, live field on the toolbar
+  // row (left of Export CSV/Refresh), independent of the Filter/Reset panel
+  // above. Debounced so it doesn't fire a request on every keystroke; hits
+  // the same backend `search` param the panel-driven filters use (matches
+  // customer_code and customer name — see findPaymentList). ──────────────
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebouncedValue(searchQuery, 400);
+  useEffect(() => {
+    setAppliedFilters((prev) => ({ ...prev, search: debouncedSearch.trim() || undefined }));
+  }, [debouncedSearch]);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -218,7 +230,7 @@ const PaymentApprovalsPage: React.FC = () => {
 
   const handleFilter = () => {
     const flat = flatsInScope.find((f) => f.flat_no === draftFlatNo);
-    setAppliedFilters({
+    setAppliedFilters((prev) => ({
       received_by: draftReceivedBy || undefined,
       building_id: selectedBuilding?.id,
       wing_id: selectedWing?.id,
@@ -227,13 +239,14 @@ const PaymentApprovalsPage: React.FC = () => {
       company: draftCompany || undefined,
       date_from: draftFromDate || undefined,
       date_to: draftToDate || undefined,
-    });
+      search: prev.search,
+    }));
   };
 
   const handleResetFilters = () => {
     setDraftReceivedBy(''); setDraftBuildingName(''); setDraftWingName(''); setDraftFlatNo('');
     setDraftMode(''); setDraftCompany(''); setDraftDateRange(''); setDraftFromDate(''); setDraftToDate('');
-    setAppliedFilters({});
+    setAppliedFilters((prev) => ({ search: prev.search }));
   };
 
   const handleApprove = async (row: PaymentListRow) => {
@@ -427,7 +440,19 @@ const PaymentApprovalsPage: React.FC = () => {
       )}
 
       <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex items-center justify-end gap-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 280, flexShrink: 0 }}>
+            <MdSearch size={17} style={{ color: t.textSecondary, flexShrink: 0 }} />
+            <input type="text" placeholder="Search by Customer ID and Customer Name" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%' }} />
+            {searchQuery && (
+              <button type="button" onClick={() => setSearchQuery('')}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 0, display: 'flex', flexShrink: 0 }}>
+                <MdClose size={15} />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2.5">
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
             style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
@@ -438,6 +463,7 @@ const PaymentApprovalsPage: React.FC = () => {
             style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
             <MdRefresh size={18} />
           </button>
+          </div>
         </div>
       </div>
 
