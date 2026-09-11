@@ -438,16 +438,21 @@ const PaymentApprovalsPage: React.FC = () => {
             <label style={labelStyle}>Payment Date To</label>
             <input type="date" value={draftToDate} onChange={(e) => { setDraftToDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
           </div>
-          <button type="button" onClick={handleFilter}
-            className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'linear-gradient(135deg,#f97316,#fb923c)', border: 'none', cursor: 'pointer', height: 38 }}>
-            <MdFilterAlt size={16} /> Filter
-          </button>
-          <button type="button" onClick={handleResetFilters}
-            className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', height: 38 }}>
-            <MdClose size={16} /> Reset
-          </button>
+          {/* Compact, content-width buttons in fresh light tints — was a
+              full-column-wide orange gradient + gray pair, which read as
+              oversized next to the fields beside it. ─────────────────── */}
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={handleFilter}
+              className="inline-flex items-center gap-1.5 rounded-xl text-xs font-bold"
+              style={{ padding: '0 14px', height: 38, background: isDark ? 'rgba(37,99,235,0.18)' : '#dbeafe', color: isDark ? '#93c5fd' : '#1d4ed8', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <MdFilterAlt size={15} /> Filter
+            </button>
+            <button type="button" onClick={handleResetFilters}
+              className="inline-flex items-center gap-1.5 rounded-xl text-xs font-bold"
+              style={{ padding: '0 14px', height: 38, background: isDark ? 'rgba(148,163,184,0.15)' : '#f1f5f9', color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <MdClose size={15} /> Reset
+            </button>
+          </div>
         </div>
       </div>
 

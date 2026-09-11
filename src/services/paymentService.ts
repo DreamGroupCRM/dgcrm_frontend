@@ -348,6 +348,21 @@ export const fetchApprovalStats = async (): Promise<PaymentApprovalStats> => {
   const res = await axiosInstance.get('/payments/approval-stats');
   return res.data.data;
 };
+
+// ── Payment Received top stat boxes (V_21.0) — Total Flat Sold (the total
+// sale value of every sold/active flat, not a count), Total Amount
+// Received (every approved payment), Total Pending Amount (the
+// difference — total contract value still outstanding). ─────────────────
+export interface PaymentReceivedSummary {
+  total_flat_sold: number;
+  total_amount_received: number;
+  total_pending_amount: number;
+}
+/** GET /api/payments/received-summary */
+export const fetchPaymentReceivedSummary = async (): Promise<PaymentReceivedSummary> => {
+  const res = await axiosInstance.get('/payments/received-summary');
+  return res.data.data;
+};
 /** PUT /api/payments/:id/approve */
 export const approvePayment = async (id: string | number): Promise<{ success: boolean; message: string }> => {
   const res = await axiosInstance.put(`/payments/${id}/approve`);
