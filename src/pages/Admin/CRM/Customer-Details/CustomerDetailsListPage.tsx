@@ -20,10 +20,14 @@ import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
-import { fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory } from '../../../../services/customerDetailsService';
+import {
+  fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory,
+  fetchCustomerFullDetails, fetchCustomerScheme,
+} from '../../../../services/customerDetailsService';
 import {
   collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, deletePayment, PAYMENT_FOR_OPTIONS, paymentForLabel,
 } from '../../../../services/paymentService';
+import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceiptPdf } from './paymentPdfExport';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import { fetchCustomerIntelligence, CustomerIntelligence } from '../../../../services/intelligenceService';
@@ -31,7 +35,6 @@ import {
   Customer, Building, CustomerPaymentRecord, CustomerListSummary, CustomerListFilters,
   PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload, isAdminRole,
 } from '../../../../types/index';
-import jsPDF from 'jspdf';
 import { formatDate, showAlert } from '../../../../utils';
 import './CustomerDetails.css';
 
@@ -229,11 +232,12 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 const RowActionMenu: React.FC<{
   t: Theme; pos: { top: number; left: number };
   onView: () => void; onEdit: () => void; onDelete: () => void;
-}> = ({ t, pos, onView, onEdit, onDelete }) => createPortal(
+  onDownloadHistory: () => void; onDownloadSchedule: () => void;
+}> = ({ t, pos, onView, onEdit, onDelete, onDownloadHistory, onDownloadSchedule }) => createPortal(
   <div
     data-customer-row-menu
     style={{
-      position: 'fixed', top: pos.top, left: pos.left, zIndex: 100, minWidth: 118,
+      position: 'fixed', top: pos.top, left: pos.left, zIndex: 100, minWidth: 186,
       background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 8,
       boxShadow: '0 6px 16px rgba(0,0,0,0.16)', overflow: 'hidden',
     }}
@@ -250,8 +254,18 @@ const RowActionMenu: React.FC<{
     </button>
     <button type="button" onClick={onDelete}
       className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
-      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
+      style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
       <MdDelete size={14} /> Delete
+    </button>
+    <button type="button" onClick={onDownloadHistory}
+      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap"
+      style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+      <MdDownload size={13} color="#7c3aed" /> Download Payment History
+    </button>
+    <button type="button" onClick={onDownloadSchedule}
+      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap"
+      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+      <MdDownload size={13} color="#059669" /> Download Schedule
     </button>
   </div>,
   document.body
@@ -265,7 +279,8 @@ const CustomerCard: React.FC<{
   onOpenMenu: (e: React.MouseEvent<HTMLButtonElement>) => void;
   menuOpen: boolean; menuPos: { top: number; left: number } | null;
   onView: () => void; onEdit: () => void; onDelete: () => void;
-}> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onDelete }) => {
+  onDownloadHistory: () => void; onDownloadSchedule: () => void;
+}> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onDelete, onDownloadHistory, onDownloadSchedule }) => {
   const statusBg = c.status === 'active' ? '#dcfce7' : '#fee2e2';
   const statusColor = c.status === 'active' ? '#16a34a' : '#dc2626';
   return (
@@ -297,7 +312,10 @@ const CustomerCard: React.FC<{
           <button type="button" onClick={onOpenMenu} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}>
             <MdMoreVert size={18} />
           </button>
-          {menuOpen && menuPos && <RowActionMenu t={t} pos={menuPos} onView={onView} onEdit={onEdit} onDelete={onDelete} />}
+          {menuOpen && menuPos && (
+            <RowActionMenu t={t} pos={menuPos} onView={onView} onEdit={onEdit} onDelete={onDelete}
+              onDownloadHistory={onDownloadHistory} onDownloadSchedule={onDownloadSchedule} />
+          )}
         </div>
       </div>
 
@@ -401,6 +419,10 @@ const CustomerDetailsListPage: React.FC = () => {
     // AI Customer Intelligence — fetched alongside the above, same
     // allSettled defensive pattern (see openPaymentHistory below).
     ai?: CustomerIntelligence;
+    // Total Cost of Flat — the list's own Customer type doesn't carry
+    // flat_amount, so this is fetched alongside everything else above via
+    // the same allSettled call (fetchCustomerFullDetails), best-effort.
+    totalFlatCost?: number;
   } | null>(null);
 
   // same customer. ────────────────────────────────────────────────────
@@ -703,14 +725,16 @@ const CustomerDetailsListPage: React.FC = () => {
     setInfoModal({ type: 'payment', customer: c, loading: true });
     try {
       // Payment History is unchanged; Customer Due (total_due/remaining_amount
-      // + the per-type remaining breakdown) is fetched alongside it so the
-      // one modal shows both — using allSettled so a due/remaining failure
-      // never blocks the existing payment history from rendering.
-      const [historyRes, dueRes, remainingRes, aiRes] = await Promise.allSettled([
+      // + the per-type remaining breakdown) and Total Flat Cost are fetched
+      // alongside it so the one modal shows all of it — using allSettled so
+      // a due/remaining/full-details failure never blocks the existing
+      // payment history from rendering.
+      const [historyRes, dueRes, remainingRes, aiRes, fullRes] = await Promise.allSettled([
         fetchCustomerPaymentHistory(c.id),
         fetchCustomerDue(c.id),
         fetchCustomerRemaining(c.id),
         fetchCustomerIntelligence(c.id),
+        fetchCustomerFullDetails(c.id),
       ]);
       if (historyRes.status === 'rejected') throw historyRes.reason;
       setInfoModal({
@@ -719,10 +743,44 @@ const CustomerDetailsListPage: React.FC = () => {
         due: dueRes.status === 'fulfilled' ? dueRes.value.data : undefined,
         remaining: remainingRes.status === 'fulfilled' ? remainingRes.value.data : undefined,
         ai: aiRes.status === 'fulfilled' ? aiRes.value : undefined,
+        totalFlatCost: fullRes.status === 'fulfilled' ? fullRes.value.data?.total_cost ?? undefined : undefined,
       });
     } catch {
       toast.error('Failed to load payment history.');
       setInfoModal(null);
+    }
+  };
+
+  // ── Download Payment History PDF — client-side (jsPDF), reuses the same
+  // data sources openPaymentHistory does. ─────────────────────────────────
+  const handleDownloadPaymentHistoryPdf = async (c: Customer) => {
+    try {
+      const [historyRes, dueRes, fullRes] = await Promise.allSettled([
+        fetchCustomerPaymentHistory(c.id),
+        fetchCustomerDue(c.id),
+        fetchCustomerFullDetails(c.id),
+      ]);
+      if (historyRes.status === 'rejected') throw historyRes.reason;
+      exportPaymentHistoryPdf(
+        c,
+        historyRes.value.rows,
+        fullRes.status === 'fulfilled' ? fullRes.value.data?.total_cost ?? null : null,
+        dueRes.status === 'fulfilled' ? dueRes.value.data.remaining_amount : null
+      );
+    } catch {
+      toast.error('Failed to generate the payment history PDF.');
+    }
+  };
+
+  // ── Download Schedule PDF — client-side (jsPDF), same EMI schedule data
+  // as the "Show Scheme" page (fetchCustomerScheme). ──────────────────────
+  const handleDownloadSchedulePdf = async (c: Customer) => {
+    try {
+      const res = await fetchCustomerScheme(c.id);
+      if (!res.success || !res.data) throw new Error('No scheme data');
+      exportPaymentSchedulePdf(res.data);
+    } catch {
+      toast.error('Failed to generate the payment schedule PDF.');
     }
   };
 
@@ -791,63 +849,29 @@ const CustomerDetailsListPage: React.FC = () => {
     }
   };
 
-  // ── Download Receipt PDF — client-side (jsPDF), same approach as the
-  // Executive Dashboard's export (dashboardExport.ts). Only reachable once
+  // ── Download Receipt PDF — client-side (jsPDF), matching the reference
+  // "PAYMENT RECEIPT" design (see paymentPdfExport.ts). Only reachable once
   // receiptModal.data exists at all, which itself required the approval
   // gate above to pass. ───────────────────────────────────────────────────
   const handleDownloadReceiptPdf = () => {
     if (!receiptModal?.data) return;
-    const { transaction: tx, customer, paid_emis, future_emis, total_emis, emi_number } = receiptModal.data;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a5' });
-    const marginX = 36;
-    let y = 40;
+    exportPaymentReceiptPdf(receiptModal.data);
+  };
 
-    doc.setFontSize(15);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Dream Group CRM', marginX, y);
-    doc.setFontSize(9.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Payment Receipt', marginX, y + 14);
-    y += 34;
-
-    doc.setFontSize(9.5);
-    const line = (label: string, value: string) => { doc.text(label, marginX, y); doc.setFont('helvetica', 'bold'); doc.text(value, 220, y); doc.setFont('helvetica', 'normal'); y += 15; };
-    line('Receipt No.', tx.receipt_number);
-    line('Date', formatDate(tx.date || tx.created_at));
-    line('Received By', tx.received_by || '—');
-    y += 6;
-
-    doc.setFont('helvetica', 'bold');
-    doc.text(customer.customer_name || '—', marginX, y);
-    doc.setFont('helvetica', 'normal');
-    y += 13;
-    doc.setFontSize(8.5);
-    doc.text(`${customer.customer_code}${customer.mobile_number ? ` · ${customer.mobile_number}` : ''}`, marginX, y);
-    y += 20;
-
-    doc.setFontSize(9.5);
-    doc.text(paymentForLabel(tx.payment_type), marginX, y);
-    y += 16;
-    doc.setFontSize(17);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Rs. ${tx.amount.toLocaleString('en-IN')}`, marginX, y);
-    doc.setFont('helvetica', 'normal');
-    y += 18;
-
-    if (tx.payment_type === 'EMIAmount' && emi_number > 0) {
-      doc.setFontSize(8.5);
-      doc.text(`EMI #${emi_number} of ${total_emis} total (${paid_emis} paid, ${future_emis} future)`, marginX, y);
-      y += 18;
+  // ── Download Receipt directly from the Payment History table's Action
+  // column — fetches the same approval-gated receipt data openReceipt does,
+  // without needing the View Receipt modal open first. ────────────────────
+  const handleDownloadReceiptForTransaction = async (transactionId: string) => {
+    try {
+      const res = await fetchPaymentReceipt(transactionId);
+      exportPaymentReceiptPdf(res.data);
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        toast.error('Receipt is not available until this payment is approved.');
+        return;
+      }
+      toast.error('Failed to download receipt.');
     }
-
-    doc.setFontSize(9);
-    if (tx.mode_of_payment) { line('Mode of Payment', tx.mode_of_payment); }
-    if (tx.cheque_number) { line('Cheque Number', tx.cheque_number); }
-    if (tx.clearance_date) { line('Clearance Date', formatDate(tx.clearance_date)); }
-    if (tx.company) { line('Company', tx.company); }
-    if (tx.payment_tag) { line('Tag', tx.payment_tag); }
-
-    doc.save(`receipt-${tx.receipt_number}.pdf`);
   };
 
   // ── Delete Payment (admin-only) — triggers the backend's EMI
@@ -1105,6 +1129,8 @@ const CustomerDetailsListPage: React.FC = () => {
                     onView={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/view/${c.id}`); }}
                     onEdit={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/edit/${c.id}`); }}
                     onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
+                    onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
+                    onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                   />
                 ))}
               </div>
@@ -1158,6 +1184,8 @@ const CustomerDetailsListPage: React.FC = () => {
                               onView={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/view/${c.id}`); }}
                               onEdit={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/edit/${c.id}`); }}
                               onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
+                              onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
+                              onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                             />
                           )}
                         </div>
@@ -1230,17 +1258,14 @@ const CustomerDetailsListPage: React.FC = () => {
         >
           <div
             className="rounded-2xl w-full"
-            style={{ maxWidth: 480, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '80vh', overflowY: 'auto' }}
+            style={{ maxWidth: 920, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '88vh', overflowY: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-5 cust-divider-bottom">
-              <div>
-                <div className="cust-modal-title">
-                  Payment History
-                </div>
-                <div className="cust-modal-subtitle">{infoModal.customer.customer_name}</div>
+            <div className="flex items-center justify-between px-5 py-3.5" style={{ background: 'linear-gradient(135deg,#6d28d9,#d97706)', borderRadius: '16px 16px 0 0' }}>
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#fff' }}>
+                Payments History - Total Transaction ({(infoModal.payments || []).length})
               </div>
-              <button type="button" onClick={() => setInfoModal(null)} className="cust-modal-close">
+              <button type="button" onClick={() => setInfoModal(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#fff', padding: 4, display: 'flex' }}>
                 <MdClose size={20} />
               </button>
             </div>
@@ -1249,6 +1274,20 @@ const CustomerDetailsListPage: React.FC = () => {
                 <p style={{ color: t.textSecondary, fontSize: 12 }}>Loading...</p>
               ) : (
                 <>
+                  {/* ── Customer info block — matches the reference Payment
+                      History PDF's own layout (Name/Building/Mobile left,
+                      Address/Email/Total Flat Cost/Pending Amount right). ── */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 mb-4">
+                    <div style={{ fontSize: 12, color: t.textPrimary }}>Name: <strong>{infoModal.customer.customer_name}</strong></div>
+                    <div style={{ fontSize: 12, color: t.textPrimary }}>Address: <strong>{infoModal.customer.address || '—'}</strong></div>
+                    <div style={{ fontSize: 12, color: t.textPrimary }}>Building: <strong>{[infoModal.customer.building_name, infoModal.customer.wing_name].filter(Boolean).join(' / ')}</strong></div>
+                    <div style={{ fontSize: 12, color: t.textPrimary }}>Email: <strong>{infoModal.customer.email || 'no'}</strong></div>
+                    <div style={{ fontSize: 12, color: t.textPrimary }}>Mobile No.: <strong>{infoModal.customer.mobile_number}</strong></div>
+                    <div style={{ fontSize: 12, color: '#16a34a' }}>Total Flat Cost: <strong>{infoModal.totalFlatCost != null ? `₹ ${infoModal.totalFlatCost.toLocaleString('en-IN')}` : '—'}</strong></div>
+                    <div />
+                    <div style={{ fontSize: 12, color: '#dc2626' }}>Pending Amount: <strong>{infoModal.due ? `₹ ${infoModal.due.remaining_amount.toLocaleString('en-IN')}` : '—'}</strong></div>
+                  </div>
+
                   {/* ── 🤖 AI Customer Intelligence — engagement/risk
                       computed server-side from this customer's own payment
                       history (see intelligenceService.ts /
@@ -1326,50 +1365,60 @@ const CustomerDetailsListPage: React.FC = () => {
                   {(infoModal.payments || []).length === 0 ? (
                     <p style={{ color: t.textSecondary, fontSize: 12 }}>No payment history found.</p>
                   ) : (
-                    <div className="space-y-3">
-                      {infoModal.payments!.map((p) => (
-                        <div key={p.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: t.insetBg }}>
-                          <div>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span style={{ fontSize: 12, fontWeight: 600, color: t.textPrimary }}>₹ {p.amount.toLocaleString('en-IN')}</span>
-                              <span
-                                style={{
-                                  fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 999,
-                                  color: p.is_approved ? '#16a34a' : '#d97706',
-                                  background: p.is_approved ? (isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7') : (isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7'),
-                                }}>
-                                {p.is_approved ? 'Approved' : 'Pending'}
-                              </span>
-                              <span
-                                style={{
-                                  fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 999,
-                                  color: '#2563eb', background: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
-                                }}>
-                                {paymentForLabel(p.payment_type)}
-                              </span>
-                            </div>
-                            <div style={{ fontSize: 10.5, color: t.textSecondary }}>
-                              Paid on {formatDate(p.paid_on)}{p.mode ? ` · ${p.mode}` : ''}
-                              {p.inst_date && p.inst_date !== p.paid_on ? ` · Installment due ${formatDate(p.inst_date)}` : ''}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {p.reference_no && <div style={{ fontSize: 10, color: t.textSecondary }}>Ref: {p.reference_no}</div>}
-                            <button type="button" title="View Receipt" onClick={() => openReceipt(p.id)}
-                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold"
-                              style={{ background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff', border: 'none', color: '#2563eb', cursor: 'pointer' }}>
-                              <MdDescription size={13} /> Receipt
-                            </button>
-                            {isAdmin && (
-                              <button type="button" title="Delete Payment" onClick={() => handleDeletePayment(p, infoModal.customer)}
-                                className="flex items-center justify-center rounded-lg"
-                                style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
-                                <MdDelete size={13} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                    <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+                        <thead>
+                          <tr style={{ background: 'linear-gradient(135deg,#6d28d9,#d97706)' }}>
+                            {['Actions', 'Rec Number', 'Installment Date', 'Received Date', 'Mode Of Payment', 'Payment For', 'Maintenance', 'Amount', 'Company'].map((h) => (
+                              <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {infoModal.payments!.map((p) => (
+                            <tr key={p.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                              <td style={{ padding: '8px 12px' }}>
+                                <div className="flex items-center gap-1.5">
+                                  <button type="button" title="Download Receipt" onClick={() => handleDownloadReceiptForTransaction(p.id)}
+                                    className="flex items-center justify-center rounded-lg"
+                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', border: 'none', color: '#16a34a', cursor: 'pointer' }}>
+                                    <MdDownload size={13} />
+                                  </button>
+                                  <button type="button" title="View Receipt" onClick={() => openReceipt(p.id)}
+                                    className="flex items-center justify-center rounded-lg"
+                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe', border: 'none', color: '#2563eb', cursor: 'pointer' }}>
+                                    <MdVisibility size={13} />
+                                  </button>
+                                  {isAdmin && (
+                                    <button type="button" title="Delete Payment" onClick={() => handleDeletePayment(p, infoModal.customer)}
+                                      className="flex items-center justify-center rounded-lg"
+                                      style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
+                                      <MdDelete size={13} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.receipt_number || '—'}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.inst_date ? formatDate(p.inst_date) : '—'}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(p.paid_on)}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.mode || '—'}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{paymentForLabel(p.payment_type)}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: '#16a34a', fontWeight: 600 }}>{p.maintenance ? `₹ ${p.maintenance.toLocaleString('en-IN')}` : '0'}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>₹ {p.amount.toLocaleString('en-IN')}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.company || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {(infoModal.payments || []).length > 0 && (
+                    <div className="flex items-center justify-between rounded-xl px-4 py-3 mt-4" style={{ background: t.insetBg }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#2563eb' }}>Grand Total:</span>
+                      <span className="rounded-lg px-3 py-1.5" style={{ border: '1px solid #16a34a', fontSize: 13, fontWeight: 800, color: '#16a34a' }}>
+                        ₹ {infoModal.payments!.reduce((s, p) => s + p.amount, 0).toLocaleString('en-IN')}
+                      </span>
                     </div>
                   )}
                 </>

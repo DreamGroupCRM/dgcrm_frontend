@@ -161,6 +161,29 @@ export const fetchDueList = async (): Promise<DueListResponse> => {
   return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
 };
 
+// ── Flat, per-due-item list across every customer — one row per overdue
+// installment/one-time amount (Customer Code/Name, Assigned Employee,
+// Building/Wing/Flat, Mobile, Payment For, Amount, Due Status text).
+// Powers the Payment Dues table directly. ───────────────────────────────
+export interface DueListDetailRow {
+  customer_id: number;
+  customer_code: string;
+  customer_name: string;
+  assigned_employee_name: string | null;
+  building_name: string | null;
+  wing_name: string | null;
+  flat_no: string | null;
+  mobile_number: string | null;
+  payment_for: string;
+  amount: number;
+  due_status: string;
+}
+/** GET /api/payments/due-list-detailed */
+export const fetchDueListDetailed = async (): Promise<{ success: boolean; rows: DueListDetailRow[]; total: number }> => {
+  const res = await axiosInstance.get('/payments/due-list-detailed');
+  return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
+};
+
 // ── "Show Upcoming Amount" (item 7-9) — total of every customer's
 // upcoming (not-yet-due) installment amounts whose due date falls in
 // [from, to], reusing the same EMI schedule logic the Due grid already
@@ -317,6 +340,7 @@ export const paymentService = {
   collect          : collectPayment,
   dueReport        : fetchDueReport,
   dueList          : fetchDueList,
+  dueListDetailed  : fetchDueListDetailed,
   upcomingAmount   : fetchUpcomingAmount,
   customerDue      : fetchCustomerDue,
   customerRemaining: fetchCustomerRemaining,

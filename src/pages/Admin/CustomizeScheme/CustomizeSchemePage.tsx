@@ -697,12 +697,12 @@ const CustomizeSchemePage: React.FC = () => {
                   : 'linear-gradient(180deg, #ecfdf5 0%, #f0fdfa 45%, #ffffff 100%)',
               }}
             >
-              {/* One grid for every field — equal-width columns, however many
-                  fit the container per row, each row's inputs starting at the
-                  same Y (see getLabelStyle's fixed label height above). Narrower
-                  minmax (was 200px) fits more fields per row on wide screens —
-                  matches the "fewer, wider empty rows" complaint. */}
-              <div className="grid gap-x-3 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))' }}>
+              {/* Exactly 2 rows — equal-width columns within each row, however
+                  many fit the container per row (see getLabelStyle's fixed
+                  label height above). Narrower minmax (was 200px) fits more
+                  fields per row on wide screens — matches the "fewer, wider
+                  empty rows" complaint. */}
+              <div className="grid gap-x-3 gap-y-3 mb-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))' }}>
                 <SliderField t={t} accent={accent} label="Total Cost of Flat (₹)" value={totalCost} onChange={setTotalCost} max={10000000} step={10000} prefix="₹" />
                 {/* Booking Date / Remaining Booking Date / Installment Date
                     inputs are hidden per the Customize Scheme overhaul — the
@@ -725,6 +725,8 @@ const CustomizeSchemePage: React.FC = () => {
                     retype edge cases so the stored value can never exceed 99. */}
                 <SliderField t={t} accent={accent} label="Total EMI Tenure Before Possession" value={totalEmiTenure}
                   onChange={(v) => setTotalEmiTenure(Math.min(99, v))} max={99} step={1} suffix="months" noSlider maxLength={2} />
+              </div>
+              <div className="grid gap-x-3 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))' }}>
                 <SliderField t={t} accent={accent} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" noSlider />
                 <SliderField t={t} accent={accent} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" noSlider />
                 <SliderField t={t} accent={accent} label="Booster Interval Before Possession" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" noSlider />

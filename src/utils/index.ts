@@ -166,6 +166,41 @@ export const formatLastLogin = (isoString: string | null): string => {
 };
 
 
+// ── Indian-numbering amount-in-words (Crore/Lakh/Thousand, not
+// Million/Billion) — shared by the Payment Receipt PDF/view and any other
+// place that needs to spell out a rupee amount the way a printed receipt
+// does ("Eighty Thousand Only"). Whole rupees only — payment amounts here
+// are always whole numbers, so no paise handling is needed.
+const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+  'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+const threeDigitsToWords = (n: number): string => {
+  let words = '';
+  if (n >= 100) { words += `${ONES[Math.floor(n / 100)]} Hundred `; n %= 100; }
+  if (n >= 20) { words += `${TENS[Math.floor(n / 10)]} `; n %= 10; }
+  if (n > 0) words += `${ONES[n]} `;
+  return words.trim();
+};
+
+export const numberToIndianWords = (amount: number): string => {
+  const n = Math.round(Math.abs(amount));
+  if (n === 0) return 'Zero Rupees Only';
+
+  const crore = Math.floor(n / 10000000);
+  const lakh = Math.floor((n % 10000000) / 100000);
+  const thousand = Math.floor((n % 100000) / 1000);
+  const rest = n % 1000;
+
+  const parts: string[] = [];
+  if (crore) parts.push(`${threeDigitsToWords(crore)} Crore`);
+  if (lakh) parts.push(`${threeDigitsToWords(lakh)} Lakh`);
+  if (thousand) parts.push(`${threeDigitsToWords(thousand)} Thousand`);
+  if (rest) parts.push(threeDigitsToWords(rest));
+
+  return `${parts.join(' ')} Only`.replace(/\s+/g, ' ').trim();
+};
+
 /**
  * Get user initials for avatar
  */

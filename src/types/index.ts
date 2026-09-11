@@ -718,15 +718,18 @@ export interface AssignCustomersResponse {
 }
 
 export interface CustomerPaymentRecord {
-  id           : string;
-  paid_on      : string;
-  inst_date?   : string;
-  amount       : number;
-  mode?        : string;
-  reference_no?: string;
-  notes?       : string;
-  is_approved  : boolean;
-  payment_type : string;
+  id             : string;
+  paid_on        : string;
+  inst_date?     : string;
+  amount         : number;
+  mode?          : string;
+  reference_no?  : string;
+  notes?         : string;
+  is_approved    : boolean;
+  payment_type   : string;
+  receipt_number?: string;
+  company?       : string;
+  maintenance?   : number;
 }
 
 export interface CustomerPaymentHistoryResponse {

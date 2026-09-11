@@ -157,6 +157,8 @@ interface BackendAmountTransaction {
   annual_amount1: number | null;
   is_approved: boolean;
   created_at: string;
+  company: string | null;
+  maintanance1: number | null;
 }
 
 // Backend Customer (+ building/wing/flat relations) -> the flat `Customer`
@@ -275,6 +277,9 @@ const mapTransactionToPaymentRecord = (t: BackendAmountTransaction): CustomerPay
   reference_no: t.receipt_number || t.cheque_number || undefined,
   is_approved: t.is_approved,
   payment_type: t.payment_type,
+  receipt_number: t.receipt_number || undefined,
+  company: t.company ?? undefined,
+  maintenance: t.maintanance1 ?? undefined,
 });
 
 // Text-field renames from this app's form-field names to the backend's

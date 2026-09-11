@@ -1482,11 +1482,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
         </div>
 
-        {/* Row 2 of 2 — Installment Date/EMI/Tenure plus all 4 Booster
-            fields grouped together in the requested order (Amount Before,
-            Interval Before, Amount After, Interval After), instead of split
-            across a 3rd row with the Amount/Interval pairs interleaved. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-3">
+        {/* Row 2 of 3 — Installment Date, EMI Before/After, Total Tenure. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <Field t={t} label="Installment Date" required error={errorFor('installmentDate')} fieldRef={setFieldRef('installmentDate') as React.Ref<HTMLDivElement>}>
             <input type="date" value={installmentDate} readOnly={isView} disabled={isView}
               onClick={openPicker} onFocus={openPicker} onChange={(e) => setInstallmentDate(e.target.value)} className={fieldClass} />
@@ -1503,6 +1500,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 edge cases so the stored value can never exceed 99. */}
             <NumberField t={t} isView={isView} placeholder="e.g. 60" value={totalEmiTenure} onChange={setTotalEmiTenure} max={99} maxLength={2} />
           </Field>
+        </div>
+
+        {/* Row 3 of 3 — all 4 Booster fields (Amount Before, Interval
+            Before, Amount After, Interval After). */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Field t={t} label="Booster Amount Before Possession (₹)">
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} />
           </Field>
