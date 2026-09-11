@@ -333,6 +333,21 @@ export const fetchPaymentList = async (
   const res = await axiosInstance.get('/payments', { params });
   return { success: res.data.success, rows: res.data.rows ?? [], total: res.data.total ?? 0 };
 };
+
+// ── Payment Approvals top stat boxes (V_21.0) — Awaiting Approval, Total
+// Approved This Month, Total Approved Today. "Today"/"This month" measure
+// approved_at (when the approval action happened), not the payment's own
+// received date. ─────────────────────────────────────────────────────────
+export interface PaymentApprovalStats {
+  awaiting: number;
+  approved_today: number;
+  approved_this_month: number;
+}
+/** GET /api/payments/approval-stats */
+export const fetchApprovalStats = async (): Promise<PaymentApprovalStats> => {
+  const res = await axiosInstance.get('/payments/approval-stats');
+  return res.data.data;
+};
 /** PUT /api/payments/:id/approve */
 export const approvePayment = async (id: string | number): Promise<{ success: boolean; message: string }> => {
   const res = await axiosInstance.put(`/payments/${id}/approve`);

@@ -17,6 +17,7 @@ import { toast } from 'react-toastify';
 import {
   MdPayments, MdRefresh, MdCheckCircle, MdHourglassEmpty, MdDownload,
   MdVisibility, MdDelete, MdClose, MdKeyboardArrowDown, MdFilterAlt, MdSearch,
+  MdEventAvailable, MdToday,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -29,7 +30,7 @@ import PaginationFooter from '../../../../components/common/PaginationFooter';
 import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
 import {
   fetchPaymentList, approvePayment, bulkApprovePayments, deletePayment, fetchPaymentReceipt,
-  paymentForLabel, PaymentListRow,
+  fetchApprovalStats, paymentForLabel, PaymentListRow, PaymentApprovalStats,
 } from '../../../../services/paymentService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
@@ -221,7 +222,21 @@ const PaymentApprovalsPage: React.FC = () => {
     }
   }, [page, limit, appliedFilters]);
 
-  useEffect(() => { fetchRows(); }, [fetchRows]);
+  // ── Top stat boxes — Awaiting Approval (already existed) plus Total
+  // Approved This Month / Total Approved Today. Independent of the table's
+  // own filters — always reflects the whole payments ledger, so it's
+  // refetched alongside the table rather than derived from `total` (which
+  // is scoped to the pending/filtered view). ──────────────────────────────
+  const [stats, setStats] = useState<PaymentApprovalStats | null>(null);
+  const fetchStats = useCallback(async () => {
+    try {
+      setStats(await fetchApprovalStats());
+    } catch {
+      // Stat boxes just stay at their last known value on failure.
+    }
+  }, []);
+
+  useEffect(() => { fetchRows(); fetchStats(); }, [fetchRows, fetchStats]);
   useEffect(() => { setPage(1); }, [appliedFilters]);
   // Selection is page-scoped — clear it whenever the visible rows change
   // under it (new page, filter, refresh, or an approve removes rows) so a
@@ -255,6 +270,7 @@ const PaymentApprovalsPage: React.FC = () => {
       await approvePayment(row.id);
       toast.success(`Payment ${row.receipt_number} approved.`);
       fetchRows();
+      fetchStats();
     } catch {
       toast.error('Failed to approve payment.');
     } finally {
@@ -273,6 +289,7 @@ const PaymentApprovalsPage: React.FC = () => {
       await deletePayment(row.id);
       toast.success('Payment deleted.');
       fetchRows();
+      fetchStats();
     } catch {
       toast.error('Failed to delete payment.');
     } finally {
@@ -298,6 +315,7 @@ const PaymentApprovalsPage: React.FC = () => {
       toast.success(`${res.approved} payment(s) approved.`);
       setSelectedIds(new Set());
       fetchRows();
+      fetchStats();
     } catch {
       toast.error('Failed to approve selected payments.');
     } finally {
@@ -382,9 +400,15 @@ const PaymentApprovalsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Top stat box — left exactly as it already was. ─────────────── */}
+      {/* ── Top stat boxes — Awaiting Approval kept exactly as it already
+          was, plus Total Approved This Month / Today (approved_at-based,
+          independent of the table's own filters). ─────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         <StatCard label="Awaiting Approval" value={total} icon={MdHourglassEmpty} color="#ea580c" bg="" loading={loading}
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        <StatCard label="Total Approved This Month" value={stats?.approved_this_month ?? 0} icon={MdEventAvailable} color="#16a34a" bg="" loading={!stats}
+          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        <StatCard label="Total Approved Today" value={stats?.approved_today ?? 0} icon={MdToday} color="#2563eb" bg="" loading={!stats}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
@@ -458,7 +482,7 @@ const PaymentApprovalsPage: React.FC = () => {
             style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
             <MdDownload size={16} /> {exportingCsv ? 'Exporting…' : 'Export CSV'}
           </button>
-          <button type="button" onClick={fetchRows} title="Refresh"
+          <button type="button" onClick={() => { fetchRows(); fetchStats(); }} title="Refresh"
             className="flex items-center justify-center rounded-xl"
             style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
             <MdRefresh size={18} />
