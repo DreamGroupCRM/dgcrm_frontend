@@ -12,7 +12,11 @@
 // that hand-off; it's how collectPayment already behaves everywhere else.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown } from 'react-icons/md';
+import { IconType } from 'react-icons';
+import {
+  MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
+  MdReceiptLong, MdSchedule, MdVpnKey, MdEvent, MdAccountBalanceWallet,
+} from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
@@ -20,8 +24,9 @@ import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
+import StatCard from '../../../../components/masters/StatCard';
 import {
-  fetchDueListDetailed, collectPayment, fetchDefaultAmount, DueListDetailRow,
+  fetchDueListDetailed, collectPayment, fetchDefaultAmount, fetchUpcomingAmount, DueListDetailRow, UpcomingAmountData,
 } from '../../../../services/paymentService';
 import { fetchAllCustomerDetails } from '../../../../services/customerDetailsService';
 import { companyService } from '../../../../services/companyService';
@@ -86,16 +91,10 @@ const formatAmountDisplay = (v: string): string => {
   return Number.isFinite(n) ? n.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : v;
 };
 
-// ── Stat box — colored left-accent card matching the reference design
-// (a distinct shape from the icon+value StatCard used elsewhere: centered
-// text, no icon, a tinted background + matching left border per box). ───
-interface StatBoxSpec { label: string; value: number; accent: string; bg: string; }
-const PaymentDueStatBox: React.FC<{ t: Theme; spec: StatBoxSpec; loading: boolean }> = ({ t, spec, loading }) => (
-  <div className="rounded-2xl" style={{ background: spec.bg, borderLeft: `4px solid ${spec.accent}`, padding: '18px 16px', textAlign: 'center' }}>
-    <div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary, marginBottom: 6 }}>{spec.label}</div>
-    <div style={{ fontSize: 20, fontWeight: 800, color: spec.accent }}>{loading ? '—' : rupee(spec.value)}</div>
-  </div>
-);
+// ── Stat box spec — feeds the shared gradient StatCard component (same
+// saturated-gradient look used site-wide, e.g. Building Master's summary
+// row) instead of a bespoke flat card. ──────────────────────────────────
+interface StatBoxSpec { label: string; value: number; color: string; icon: IconType; }
 
 // ── "Payment For" options shown on the Add Payment Details form — richer,
 // friendlier labels than PAYMENT_FOR_OPTIONS (used elsewhere for the raw
@@ -174,18 +173,25 @@ const DueReportPage: React.FC = () => {
     [dueRows]
   );
 
-  // ── Toolbar filters — Building + Employee, both narrowing the same flat
-  // due-item list. ──────────────────────────────────────────────────────
+  // ── Toolbar filters — Payment For + Building + Employee, all narrowing
+  // the same flat due-item list, in that left-to-right order. ─────────────
+  const [filterPaymentFor, setFilterPaymentFor] = useState('');
   const [filterBuilding, setFilterBuilding] = useState('');
   const [filterEmployee, setFilterEmployee] = useState('');
 
+  const paymentForFilterOptions = useMemo(
+    () => Array.from(new Set(dueRows.map((r) => r.payment_for).filter((v): v is string => !!v))),
+    [dueRows]
+  );
+
   const filteredDueRows = useMemo(() => {
     return dueRows.filter((r) => {
+      if (filterPaymentFor && r.payment_for !== filterPaymentFor) return false;
       if (filterBuilding && r.building_name !== filterBuilding) return false;
       if (filterEmployee && r.assigned_employee_name !== filterEmployee) return false;
       return true;
     });
-  }, [dueRows, filterBuilding, filterEmployee]);
+  }, [dueRows, filterPaymentFor, filterBuilding, filterEmployee]);
 
   // ── Stat boxes — sums across the (unfiltered) full due-item list, one
   // per payment-for category, plus a grand Total. ─────────────────────────
@@ -231,7 +237,7 @@ const DueReportPage: React.FC = () => {
   // ── Client-side pagination over the filtered due-item list. ─────────────
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  useEffect(() => { setPage(1); }, [filterBuilding, filterEmployee]);
+  useEffect(() => { setPage(1); }, [filterPaymentFor, filterBuilding, filterEmployee]);
   const totalPages = Math.max(1, Math.ceil(filteredDueRows.length / limit));
   const safePage = Math.min(page, totalPages);
   const from = filteredDueRows.length === 0 ? 0 : (safePage - 1) * limit + 1;
@@ -259,6 +265,44 @@ const DueReportPage: React.FC = () => {
 
   const apSelectedCustomer = useMemo(() => customers.find((c) => c.id === apCustomerId) ?? null, [customers, apCustomerId]);
   const apSelectedPaymentFor = useMemo(() => PAYMENT_FOR_UI_OPTIONS.find((o) => o.key === apPaymentForKey) ?? null, [apPaymentForKey]);
+
+  // ── "Show Upcoming Amount" — checkbox reveals a From/To date range; OK
+  // enables only once both dates are picked (and To isn't before From),
+  // and totals every customer's upcoming (not-yet-due) installment amount
+  // in that range via the pre-existing GET /payments/upcoming-amount. ────
+  const [showUpcoming, setShowUpcoming] = useState(false);
+  const [upcomingFrom, setUpcomingFrom] = useState('');
+  const [upcomingTo, setUpcomingTo] = useState('');
+  const [upcomingLoading, setUpcomingLoading] = useState(false);
+  const [upcomingResult, setUpcomingResult] = useState<UpcomingAmountData | null>(null);
+
+  const upcomingRangeValid = !!upcomingFrom && !!upcomingTo && upcomingTo >= upcomingFrom;
+  const upcomingDays = upcomingRangeValid
+    ? Math.round((new Date(upcomingTo).getTime() - new Date(upcomingFrom).getTime()) / 86400000) + 1
+    : 0;
+
+  const handleToggleUpcoming = (checked: boolean) => {
+    setShowUpcoming(checked);
+    if (!checked) {
+      setUpcomingFrom('');
+      setUpcomingTo('');
+      setUpcomingResult(null);
+    }
+  };
+
+  const handleCalculateUpcoming = async () => {
+    if (!upcomingRangeValid) return;
+    setUpcomingLoading(true);
+    setUpcomingResult(null);
+    try {
+      const data = await fetchUpcomingAmount(upcomingFrom, upcomingTo);
+      setUpcomingResult(data);
+    } catch {
+      toast.error('Failed to calculate upcoming amount.');
+    } finally {
+      setUpcomingLoading(false);
+    }
+  };
 
   const handleCustomerSearchChange = (v: string) => {
     setApCustomerSearch(v);
@@ -353,12 +397,12 @@ const DueReportPage: React.FC = () => {
   const readOnlyInputStyle: React.CSSProperties = { ...fieldInputStyle(false), background: t.insetBg, cursor: 'not-allowed', color: t.textSecondary };
 
   const statBoxSpecs: StatBoxSpec[] = [
-    { label: 'Booking Amount', value: boxSums.booking, accent: '#dc2626', bg: isDark ? 'rgba(220,38,38,0.12)' : '#fdeaea' },
-    { label: 'Pay After Booking', value: boxSums.payAfterBooking, accent: '#d97706', bg: isDark ? 'rgba(217,119,6,0.12)' : '#fdf3e3' },
-    { label: 'Possession Amount', value: boxSums.possession, accent: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f1eafd' },
-    { label: 'EMI', value: boxSums.emi, accent: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#e9f1fd' },
-    { label: 'Annual Amount', value: boxSums.annual, accent: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#e9f7ec' },
-    { label: 'Total', value: boxSums.total, accent: '#2563eb', bg: isDark ? 'rgba(37,99,235,0.12)' : '#e9f1fd' },
+    { label: 'Booking Amount', value: boxSums.booking, color: '#dc2626', icon: MdReceiptLong },
+    { label: 'Pay After Booking', value: boxSums.payAfterBooking, color: '#ea580c', icon: MdSchedule },
+    { label: 'Possession Amount', value: boxSums.possession, color: '#7c3aed', icon: MdVpnKey },
+    { label: 'EMI', value: boxSums.emi, color: '#2563eb', icon: MdPayments },
+    { label: 'Annual Amount', value: boxSums.annual, color: '#16a34a', icon: MdEvent },
+    { label: 'Total', value: boxSums.total, color: '#0891b2', icon: MdAccountBalanceWallet },
   ];
 
   return (
@@ -373,10 +417,13 @@ const DueReportPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Stat boxes — always 6, always one row on desktop. ─────────── */}
+      {/* ── Stat boxes — always 6, always one row on desktop, same
+          saturated-gradient StatCard used site-wide (Building Master etc). */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
         {statBoxSpecs.map((spec) => (
-          <PaymentDueStatBox key={spec.label} t={t} spec={spec} loading={loadingDueList} />
+          <StatCard key={spec.label} label={spec.label} value={rupee(spec.value)} icon={spec.icon} color={spec.color}
+            bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loadingDueList} compact labelFontSize={12.5}
+            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
       </div>
 
@@ -448,22 +495,63 @@ const DueReportPage: React.FC = () => {
               </select>
               {errorFor('mode_of_payment') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('mode_of_payment')}</p>}
             </div>
+            <div className="flex items-end">
+              <button type="button" onClick={handleSubmitAddPayment} disabled={submitting}
+                className="w-full px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
+                style={{ background: submitting ? '#6b7280' : 'linear-gradient(135deg,#16a34a,#22c55e)', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer' }}>
+                {submitting ? 'Submitting...' : 'Submit'}
+              </button>
+            </div>
           </div>
-          <div className="flex justify-end mt-4">
-            <button type="button" onClick={handleSubmitAddPayment} disabled={submitting}
-              className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
-              style={{ background: submitting ? '#6b7280' : 'linear-gradient(135deg,#16a34a,#22c55e)', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer' }}>
-              {submitting ? 'Submitting...' : 'Submit'}
-            </button>
+
+          {/* ── Row 3 — Show Upcoming Amount: checkbox reveals a date
+              range whose total upcoming (not-yet-due) installment amount
+              can be calculated on demand. ─────────────────────────────── */}
+          <div className="flex flex-wrap items-end gap-3.5 mt-4 pt-4" style={{ borderTop: `1px dashed ${t.divider}` }}>
+            <label className="flex items-center gap-2" style={{ cursor: 'pointer', paddingBottom: 9 }}>
+              <input type="checkbox" checked={showUpcoming} onChange={(e) => handleToggleUpcoming(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Show Upcoming Payment</span>
+            </label>
+            {showUpcoming && (
+              <>
+                <div>
+                  <label style={fieldLabelStyle}>From Date</label>
+                  <input type="date" value={upcomingFrom} onChange={(e) => { setUpcomingFrom(e.target.value); setUpcomingResult(null); }} style={{ ...fieldInputStyle(), width: 160 }} />
+                </div>
+                <div>
+                  <label style={fieldLabelStyle}>To Date</label>
+                  <input type="date" value={upcomingTo} onChange={(e) => { setUpcomingTo(e.target.value); setUpcomingResult(null); }} style={{ ...fieldInputStyle(), width: 160 }} />
+                </div>
+                <button type="button" onClick={handleCalculateUpcoming} disabled={!upcomingRangeValid || upcomingLoading}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
+                  style={{
+                    background: !upcomingRangeValid || upcomingLoading ? '#6b7280' : 'linear-gradient(135deg,#2563eb,#3b82f6)',
+                    border: 'none', cursor: !upcomingRangeValid || upcomingLoading ? 'not-allowed' : 'pointer',
+                  }}>
+                  {upcomingLoading ? 'Calculating…' : 'OK'}
+                </button>
+                {upcomingResult && (
+                  <div className="rounded-xl" style={{ background: isDark ? 'rgba(37,99,235,0.14)' : '#eff6ff', border: `1px solid ${isDark ? 'rgba(37,99,235,0.3)' : '#bfdbfe'}`, padding: '8px 16px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                      Upcoming Amount — {upcomingDays} Day{upcomingDays === 1 ? '' : 's'}
+                    </div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: '#2563eb' }}>{rupee(upcomingResult.total_amount)}</div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── Toolbar — Building + Employee filters (left), Export CSV +
-          Refresh (right), always one row. ─────────────────────────────── */}
+      {/* ── Toolbar — Payment For + Building + Employee filters (left),
+          Export CSV + Refresh (right), always one row. ─────────────────── */}
       <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
           <div className="flex items-center gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto', minWidth: 0 }}>
+            <div style={{ width: 200, flexShrink: 0 }}>
+              <SearchableSelect t={t} placeholder="Select Payment For" options={paymentForFilterOptions} value={filterPaymentFor} onChange={setFilterPaymentFor} />
+            </div>
             <div style={{ width: 200, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Select Building" options={buildingNames} value={filterBuilding} onChange={setFilterBuilding} />
             </div>
