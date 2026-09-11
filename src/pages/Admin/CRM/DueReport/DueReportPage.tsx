@@ -11,6 +11,7 @@
 // here already moves it into Payment Approvals — no extra wiring needed for
 // that hand-off; it's how collectPayment already behaves everywhere else.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import { IconType } from 'react-icons';
 import {
@@ -36,30 +37,66 @@ import { Customer, PaymentFor, CollectPaymentPayload } from '../../../../types/i
 type Theme = AppTheme;
 
 // ── Small local searchable dropdown — same "type to filter, click to
-// pick" shape used across this app's other pickers. ─────────────────────
+// pick" shape used across this app's other pickers. Its options panel used
+// to render `position:absolute` inside the toolbar's own `overflowX:'auto'`
+// wrapper — setting only overflow-x (leaving overflow-y at its default)
+// makes the browser clip BOTH axes per the CSS spec, so the panel was
+// getting clipped/hidden behind the table below it. Portaling to
+// document.body (position:fixed, computed from the field's own bounding
+// rect on open) escapes that clipped container entirely — same fix already
+// applied to CustomerDetailsListPage's/CustomerDetailsCrudPage's own
+// SearchableSelect. ───────────────────────────────────────────────────────
 const SearchableSelect: React.FC<{
   t: Theme; placeholder: string; options: string[]; value: string; onChange: (v: string) => void; disabled?: boolean;
 }> = ({ t, placeholder, options, value, onChange, disabled }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setQuery(value); }, [value]);
+
+  const openDropdown = () => {
+    if (disabled) return;
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    setOpen(true);
+  };
+
   useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (ref.current && !ref.current.contains(target) && !(target as HTMLElement).closest?.('[data-due-report-select-menu]')) {
+        setOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const reposition = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    };
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open]);
 
   const filtered = options.filter((o) => o?.toLowerCase().includes(query.toLowerCase()));
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: disabled ? t.insetBg : t.inputBg, border: `1px solid ${t.inputBorder}`, cursor: disabled ? 'not-allowed' : 'text' }}
-        onClick={() => !disabled && setOpen(true)}>
+        onClick={openDropdown}>
         <input type="text" placeholder={placeholder} value={query} disabled={disabled}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+          onFocus={openDropdown}
+          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); openDropdown(); }}
           style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%' }} />
         {value && !disabled && (
           <button type="button" onClick={(e) => { e.stopPropagation(); onChange(''); setQuery(''); }}
@@ -69,15 +106,17 @@ const SearchableSelect: React.FC<{
         )}
         <MdKeyboardArrowDown size={16} style={{ color: t.textSecondary, flexShrink: 0 }} />
       </div>
-      {open && !disabled && filtered.length > 0 && (
-        <div style={{ position: 'absolute', top: '110%', left: 0, right: 0, zIndex: 30, maxHeight: 240, overflowY: 'auto', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0' }}>
+      {open && !disabled && menuPos && filtered.length > 0 && createPortal(
+        <div data-due-report-select-menu
+          style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, width: menuPos.width, zIndex: 200, maxHeight: 240, overflowY: 'auto', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0' }}>
           {filtered.slice(0, 50).map((opt) => (
             <button key={opt} type="button" onClick={() => { onChange(opt); setQuery(opt); setOpen(false); }}
               className="w-full text-left px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
               {opt}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
