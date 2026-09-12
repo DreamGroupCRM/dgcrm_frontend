@@ -33,16 +33,6 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff, Email, Lock, Person, Phone, KeyboardBackspace } from '@mui/icons-material';
 
-import img1 from '../../assets/images/carousel_1.png';
-import img2 from '../../assets/images/carousel_2.png';
-import img3 from '../../assets/images/carousel_3.png';
-import img4 from '../../assets/images/carousel_4.png';
-import img5 from '../../assets/images/carousel_5.png';
-import img6 from '../../assets/images/carousel_6.png';
-import img7 from '../../assets/images/carousel_7.png';
-
-const carouselImages = [img1, img2, img3, img4, img5, img6, img7];
-
 // ──────────────────────────────────────────
 // SMART VALIDATION — Returns specific error messages
 // ──────────────────────────────────────────
@@ -136,21 +126,6 @@ const LoginPage: React.FC = () => {
   const [newPasswordError, setNewPasswordError] = useState('');
   const [newPasswordTouched, setNewPasswordTouched] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-
-  // ── Auto-slide carousel ──
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentSlide((prev) => (prev + 1) % carouselImages.length);
-        setIsTransitioning(false);
-      }, 500);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
 
   // ── Redirect if already authenticated ──
   useEffect(() => {
@@ -392,11 +367,6 @@ const LoginPage: React.FC = () => {
     [forgotEmail]
   );
 
-  const goToSlide = (index: number) => {
-    setIsTransitioning(true);
-    setTimeout(() => { setCurrentSlide(index); setIsTransitioning(false); }, 300);
-  };
-
   return (
     <div className="login-page-container">
 
@@ -404,63 +374,17 @@ const LoginPage: React.FC = () => {
         <div className="login-pattern"></div>
       </div>
 
-      <div className="login-frame login-grid-layout">
-        {/* ═══ LEFT — Carousel (60%) ═══ */}
-        <div className="login-left">
-          <div className="carousel-card shadow-2xl" >
-            {carouselImages.map((img, index) => (
-              <div
-                key={index}
-                className={`carousel-image-wrapper transition-opacity duration-700 ${currentSlide === index ? "active-slide" : ""
-                  }`}
-                style={{
-                  opacity: currentSlide === index ? (isTransitioning ? 0 : 1) : 0,
-                  zIndex: currentSlide === index ? 1 : 0,
-                }}
-              >
-                <img
-                  src={img}
-                  alt={`Dream Group Slide ${index + 1}`}
-                  className="carousel-image"
-                  loading="lazy"
-                  draggable={false}
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/30" />
-              </div>
-            ))}
-
-            {/* Dots */}
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-              {carouselImages.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => goToSlide(i)}
-                  className={`rounded-full transition-all duration-300 cursor-pointer ${currentSlide === i
-                    ? 'bg-blue-400 w-8 h-2.5'
-                    : 'bg-white/50 hover:bg-white/80 w-2.5 h-2.5'
-                    }`}
-                />
-              ))}
-            </div>
-
-            {/* Counter */}
-            <div className="absolute top-6 right-6 z-20 bg-black/40 backdrop-blur-sm text-white text-sm px-3 py-1 rounded-full font-mono">
-              {String(currentSlide + 1).padStart(2, '0')} / {String(carouselImages.length).padStart(2, '0')}
-            </div>
-          </div>
-        </div>
-
-        {/* ═══ RIGHT — Login Form (40%) ═══ */}
-        <div className="login-right">
-          <div
-            className="login-card animate-fade-in"
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
-            }}
-          >
+      {/* Centered, standalone login card — no carousel/side panel. */}
+      <div style={{ position: 'relative', zIndex: 5, width: '100%', display: 'flex', justifyContent: 'center' }}>
+        <div
+          className="login-card animate-fade-in"
+          style={{
+            background: 'rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+          }}
+        >
             {/* ── Logo + Title (real image) ── */}
             <div className="text-center mb-7">
               <div className="flex justify-center mb-3">
@@ -470,9 +394,6 @@ const LoginPage: React.FC = () => {
               <h1 className="font-display text-3xl font-bold text-white mb-1">
                 Dream Group CRM
               </h1>
-              <p className="text-lg text-yellow-300/90 font-body tracking-wide px-4 leading-relaxed">
-                Interest Free Home For All Community People
-              </p>
             </div>
 
             {/* Divider */}
@@ -812,7 +733,6 @@ const LoginPage: React.FC = () => {
             <p className="text-center text-white/30 text-xs mt-5 font-body">
               © {new Date().getFullYear()} Dream Group. All rights reserved.
             </p>
-          </div>
         </div>
       </div>
     </div>

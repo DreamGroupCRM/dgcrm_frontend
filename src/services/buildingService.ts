@@ -40,6 +40,7 @@ interface WizardBuilding {
   // directly onto the response — see building.service.ts's projectOf() —
   // so this stays snake_case to match, same as has_parking already does.
   id: number; name: string; code: string | null; has_parking: boolean; parking_count: number | null;
+  business_company_id?: number | null;
   is_active: boolean; sort_order: number; created_at: string; updated_at?: string;
   project: { projectName: string; location: string | null } | null;
 }
@@ -58,9 +59,10 @@ interface WizardFullResponse {
 // keys seen from auth's raw queries.
 interface BuildingListRow {
   b_id: number; b_name: string; b_code: string | null; b_address: string | null; b_location: string | null;
-  b_has_parking: boolean; b_parking_count: number | null; b_is_active: boolean; b_sort_order: number;
+  b_has_parking: boolean; b_parking_count: number | null; b_business_company_id: number | null; b_is_active: boolean; b_sort_order: number;
   b_created_at: string; b_updated_at: string;
   project: string | null;
+  business_company_name?: string | null;
   wing_count: number; floor_count: number; flat_count: number;
   // Building List page's summary cards — enabled/disabled counts for both
   // flats and shops, combined into single "Enabled Units"/"Disabled Units"
@@ -119,6 +121,7 @@ function fromWizardResponse(data: WizardFullResponse): Building {
     shop_count: (shops || []).length,
     has_parking: !!b.has_parking,
     parking_count: b.parking_count ?? null,
+    business_company_id: b.business_company_id ?? null,
     is_active: b.is_active,
     created_at: b.created_at,
     updated_at: b.updated_at,
@@ -159,6 +162,8 @@ function fromListRow(row: BuildingListRow): Building {
     wing_names: row.wing_names ?? '',
     has_parking: !!row.b_has_parking,
     parking_count: row.b_parking_count ?? null,
+    business_company_id: row.b_business_company_id ?? null,
+    business_company_name: row.business_company_name ?? null,
     is_active: row.b_is_active,
     created_at: row.b_created_at,
     updated_at: row.b_updated_at,
@@ -177,6 +182,7 @@ function toWizardPayload(payload: CreateBuildingPayload) {
       buildingCode: null,
       hasParking: payload.has_parking,
       parkingCount: payload.has_parking ? payload.parking_count : null,
+      businessCompanyId: payload.business_company_id,
     },
     wings: payload.wings.map((w) => ({
       id: toServerId(w.id),

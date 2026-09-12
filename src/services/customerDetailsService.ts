@@ -92,9 +92,10 @@ interface BackendCustomer {
   last_name: string | null;
   mobile_number: string | null;
   mobile_country_code: string | null;
+  mobile_is_whatsapp: boolean;
   whatsapp_number: string | null;
   whatsapp_country_code: string | null;
-  secondary_numbers?: { id: number | string; country_code: string; number: string }[];
+  secondary_numbers?: { id: number | string; country_code: string; number: string; is_whatsapp: boolean }[];
   email: string | null;
   address: string | null;
   date_of_birth: string | null;
@@ -209,9 +210,8 @@ const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
   email: bc.email ?? '',
   mobile_country_code: bc.mobile_country_code || '+91',
   mobile_number: bc.mobile_number ?? '',
-  whatsapp_country_code: bc.whatsapp_country_code || '+91',
-  whatsapp_number: bc.whatsapp_number ?? '',
-  secondary_numbers: (bc.secondary_numbers ?? []).map((p) => ({ country_code: p.country_code || '+91', number: p.number })),
+  mobile_is_whatsapp: bc.mobile_is_whatsapp ?? false,
+  secondary_numbers: (bc.secondary_numbers ?? []).map((p) => ({ country_code: p.country_code || '+91', number: p.number, is_whatsapp: p.is_whatsapp ?? false })),
   aadhar_number: bc.aadhar_card_no ?? '',
   aadhar_photo_url: bc.aadhar_card,
   pancard_number: bc.pan_card_no ?? '',

@@ -11,7 +11,7 @@ import {
 
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
-import { formatDate } from '../../../../utils';
+import { formatDate, resolveFileUrl } from '../../../../utils';
 import {
   ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
   fetchEmployeePermissions, FetchEmployeeDetails,
@@ -1011,7 +1011,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Identity strip — photo + name + email, above the 4 boxes ──── */}
         <div className="flex items-center gap-3 mb-5">
           {existingUrls.profile_photo ? (
-            <img src={existingUrls.profile_photo} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover' }} />
+            <img src={resolveFileUrl(existingUrls.profile_photo)} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover' }} />
           ) : (
             <div className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ width: 56, height: 56, background: `linear-gradient(135deg,${accent},${accentFocus})`, fontSize: 18 }}>
               {(form.first_name[0] || '')}{(form.last_name[0] || '')}

@@ -510,6 +510,11 @@ export interface Building {
   wing_names?    : string;       // comma-separated wing names, e.g. "A, B, C" (fromListRow)
   has_parking? : boolean;
   parking_count?: number | null;
+  // V_22.0 — the business Company master this building is linked to
+  // (distinct from tenant scoping, which never surfaces here) — used to
+  // auto-derive Add Payment's Company field.
+  business_company_id?: number | null;
+  business_company_name?: string | null;
   is_active    : boolean;
   created_at   : string;
   updated_at?  : string;
@@ -561,6 +566,7 @@ export interface CreateBuildingPayload {
   shops        : BuildingShop[];
   has_parking  : boolean;
   parking_count: number | null;
+  business_company_id: number | null;
   is_active    : boolean;
 }
 
@@ -801,11 +807,13 @@ export interface CustomerDetailFormValues {
   email                       : string;
   mobile_country_code          : string;
   mobile_number                  : string;
-  whatsapp_country_code            : string;
-  whatsapp_number                    : string;
-  // Secondary mobile numbers beyond the primary Mobile Number above — a
-  // "+" control on the Add/Edit form appends to this list (item 6).
-  secondary_numbers                    : { country_code: string; number: string }[];
+  // V_22.0 — "this number is also on WhatsApp" checkbox, replacing the old
+  // separate WhatsApp Number field.
+  mobile_is_whatsapp               : boolean;
+  // Secondary mobile number (V_22.0: exactly one, previously an open-ended
+  // "+"-added list) — still shaped as an array (0 or 1 entries) to match
+  // the backend's storage/JSON shape without a wider type change.
+  secondary_numbers                    : { country_code: string; number: string; is_whatsapp: boolean }[];
   aadhar_number                        : string;
   aadhar_photo                          : File | null;
   pancard_number                          : string;

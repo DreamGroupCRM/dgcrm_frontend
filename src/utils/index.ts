@@ -21,6 +21,33 @@ export const homeRouteForRole = (role: BaseRole | null): string => {
 export const roleLabelFor = (role: BaseRole | null): string =>
   role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Admin' : role === 'customer' ? 'Customer' : 'Employee';
 
+// V_22.0 — the backend now stores uploaded file URLs (customer/employee
+// photos, ID scans, company logos) as relative paths ('/files/...') instead
+// of an absolute URL baked in at upload time — that absolute-URL approach
+// silently produced `http://` links on the live HTTPS site whenever a
+// reverse proxy sat in front of the app (req.protocol reports the proxy's
+// internal connection, not what the browser actually used), and browsers
+// refuse to load `http://` images as mixed content on an `https://` page —
+// the "images not showing" bug. A relative path has no scheme/host to get
+// wrong on the production site itself (VITE_API_BASE_URL is also relative
+// there, '/api', same origin as the page). This resolver exists only for
+// local dev, where the frontend (Vite) and backend run on different
+// origins/ports, so a bare relative path would otherwise resolve against
+// the frontend dev server instead of the API. Also passes through any
+// already-absolute URL unchanged, so legacy rows saved before this fix
+// keep working until they're backfilled.
+export const resolveFileUrl = (url: string | null | undefined): string => {
+  if (!url) return '';
+  // Only a root-relative path ('/files/...') needs resolving — anything
+  // else (an already-absolute http(s) URL from a legacy row, a blob: URL
+  // from a freshly-picked local file preview, a data: URI, or a
+  // protocol-relative '//host/...') is left exactly as it is.
+  if (!url.startsWith('/') || url.startsWith('//')) return url;
+  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+  if (/^https?:\/\//i.test(apiBase)) return new URL(apiBase).origin + url;
+  return url;
+};
+
 /**
  * SweetAlert2 notifications
  */

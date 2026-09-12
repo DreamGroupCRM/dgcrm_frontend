@@ -22,7 +22,8 @@ import {
   CreateBuilding,
   UpdateBuilding,
 } from '../../../../services/buildingService';
-import { CreateBuildingPayload, BuildingShop } from '../../../../types/index';
+import { CreateBuildingPayload, BuildingShop, Company } from '../../../../types/index';
+import { companyService } from '../../../../services/companyService';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Local (string-friendly, form-editable) shapes
@@ -445,6 +446,20 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   const [hasParking, setHasParking] = useState<boolean | null>(mode === 'add' ? null : false);
   const [parkingCountInput, setParkingCountInput] = useState('');
 
+  // V_22.0 — business Company this building belongs to (Company Master),
+  // distinct from tenant scoping. Optional — existing buildings have none.
+  const [companyOptions, setCompanyOptions] = useState<Company[]>([]);
+  const [businessCompanyId, setBusinessCompanyId] = useState<string>('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await companyService.FetchCompanyList(1, 1000);
+        if (res.success) setCompanyOptions(res.rows ?? []);
+      } catch { /* dropdown just stays empty if this fails */ }
+    })();
+  }, []);
+
   // Refs so a newly-added wing's name input gets focus automatically
   const wingInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
   const newlyAddedWingIdRef = React.useRef<string | null>(null);
@@ -515,6 +530,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           setShopCountInput(loadedShops.length ? String(loadedShops.length) : '');
           setHasParking(b.has_parking ?? false);
           setParkingCountInput(b.parking_count != null ? String(b.parking_count) : '');
+          setBusinessCompanyId(b.business_company_id != null ? String(b.business_company_id) : '');
         } else {
           toast.error('Failed to load building');
           navigate('/admin/masters/building');
@@ -827,6 +843,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           : [],
         has_parking: hasParking === true,
         parking_count: hasParking ? parseInt(parkingCountInput, 10) : null,
+        business_company_id: businessCompanyId ? Number(businessCompanyId) : null,
       };
 
       const res = isEdit
@@ -1419,6 +1436,35 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             </div>
           </div>
         )}
+      </SectionCard>
+
+      {/* ── Step 7: Company (V_22.0) — links this building to a business
+          Company (Company Master), so Add Payment can auto-derive its
+          Company field from the customer's building instead of free-typing
+          it. Optional — existing buildings simply have none linked. ──── */}
+      <SectionCard t={t}>
+        <div className="flex items-center gap-2.5 mb-4">
+          <StepBadge n={7} accent={accent} />
+          <div>
+            <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Company</h2>
+            <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Which company does this building belong to?</p>
+          </div>
+        </div>
+
+        <div>
+          <label style={labelStyle}>Company</label>
+          <select
+            value={businessCompanyId}
+            disabled={isView}
+            onChange={(e) => { setBusinessCompanyId(e.target.value); markDirty(); }}
+            style={{ ...fieldStyle, maxWidth: 320, cursor: isView ? 'default' : 'pointer' }}
+          >
+            <option value="">Select company (optional)</option>
+            {companyOptions.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
       </SectionCard>
 
       {/* ── Action Buttons ───────────────────────────────────────────────── */}

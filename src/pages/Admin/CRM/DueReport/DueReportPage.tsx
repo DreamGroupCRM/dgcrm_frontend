@@ -16,7 +16,7 @@ import { toast } from 'react-toastify';
 import { IconType } from 'react-icons';
 import {
   MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
-  MdReceiptLong, MdSchedule, MdVpnKey, MdEvent, MdAccountBalanceWallet,
+  MdReceiptLong, MdSchedule, MdVpnKey, MdEvent, MdAccountBalanceWallet, MdNoteAdd,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -30,9 +30,10 @@ import {
   fetchDueListDetailed, collectPayment, fetchDefaultAmount, fetchUpcomingAmount, DueListDetailRow, UpcomingAmountData,
 } from '../../../../services/paymentService';
 import { fetchAllCustomerDetails } from '../../../../services/customerDetailsService';
-import { companyService } from '../../../../services/companyService';
 import { FetchBuildingList } from '../../../../services/buildingService';
-import { Customer, PaymentFor, CollectPaymentPayload } from '../../../../types/index';
+import { FetchEmployeeDetails, Employee } from '../../../../services/employeeDetailsService';
+import { tasksService } from '../../../../services/tasksService';
+import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../../types/index';
 
 type Theme = AppTheme;
 
@@ -159,12 +160,69 @@ const DueReportPage: React.FC = () => {
   const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [buildingNames, setBuildingNames] = useState<string[]>([]);
-  const [companyNameOptions, setCompanyNameOptions] = useState<string[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const buildingNames = useMemo(() => Array.from(new Set(buildings.map((b) => b.building_name))), [buildings]);
 
   const [dueRows, setDueRows] = useState<DueListDetailRow[]>([]);
   const [loadingDueList, setLoadingDueList] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
+
+  // ── Follow-up (V_22.0) — per-row note + date + assigned employee, backed
+  // by the Task entity's customer_id link. Plus an in-app-only badge for
+  // how many open follow-ups (across the team) are due today/tomorrow.
+  const [followUpEmployees, setFollowUpEmployees] = useState<Employee[]>([]);
+  const [followUpRow, setFollowUpRow] = useState<DueListDetailRow | null>(null);
+  const [followUpNote, setFollowUpNote] = useState('');
+  const [followUpDate, setFollowUpDate] = useState('');
+  const [followUpAssignedTo, setFollowUpAssignedTo] = useState('');
+  const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
+  const [followUpCounts, setFollowUpCounts] = useState({ today: 0, tomorrow: 0 });
+
+  const ymd = (d: Date) => d.toISOString().slice(0, 10);
+
+  const fetchFollowUpCounts = useCallback(async () => {
+    try {
+      const today = new Date();
+      const tomorrow = new Date(today.getTime() + 86400000);
+      const [todayTasks, tomorrowTasks] = await Promise.all([
+        tasksService.fetchTasks({ status: 'pending', due_date: ymd(today) }),
+        tasksService.fetchTasks({ status: 'pending', due_date: ymd(tomorrow) }),
+      ]);
+      setFollowUpCounts({ today: todayTasks.length, tomorrow: tomorrowTasks.length });
+    } catch { /* badge just stays at its last known count if this fails */ }
+  }, []);
+
+  useEffect(() => { fetchFollowUpCounts(); }, [fetchFollowUpCounts]);
+
+  const openFollowUp = (row: DueListDetailRow) => {
+    setFollowUpRow(row);
+    setFollowUpNote('');
+    const tomorrow = new Date(Date.now() + 86400000);
+    setFollowUpDate(ymd(tomorrow));
+    setFollowUpAssignedTo('');
+  };
+  const closeFollowUp = () => setFollowUpRow(null);
+
+  const handleSubmitFollowUp = async () => {
+    if (!followUpRow) return;
+    setFollowUpSubmitting(true);
+    try {
+      await tasksService.createTask({
+        title: `Follow-up: ${followUpRow.customer_name}`,
+        description: followUpNote.trim() || null,
+        due_date: followUpDate || null,
+        assigned_to: followUpAssignedTo || null,
+        customer_id: followUpRow.customer_id,
+      });
+      toast.success('Follow-up scheduled.');
+      closeFollowUp();
+      fetchFollowUpCounts();
+    } catch {
+      toast.error('Failed to schedule the follow-up.');
+    } finally {
+      setFollowUpSubmitting(false);
+    }
+  };
 
   useEffect(() => { dispatch(setPageTitle('Payment Dues')); }, [dispatch]);
 
@@ -191,15 +249,19 @@ const DueReportPage: React.FC = () => {
     })();
     (async () => {
       try {
-        const res = await companyService.FetchCompanyList(1, 1000);
-        if (res.success) setCompanyNameOptions(Array.from(new Set((res.rows ?? []).map((c: { name: string }) => c.name))));
-      } catch { /* company dropdown just stays empty if this fails */ }
+        const res = await FetchBuildingList(1, 1000);
+        // Kept as full rows (not just names) — the Add Payment section
+        // looks up the selected customer's building here to auto-derive
+        // its Company display (business_company_name), replacing the old
+        // free-typed Company field.
+        if (res.success) setBuildings(res.rows ?? []);
+      } catch { /* building filter/company lookup just stays empty if this fails */ }
     })();
     (async () => {
       try {
-        const res = await FetchBuildingList(1, 1000);
-        if (res.success) setBuildingNames(Array.from(new Set((res.rows ?? []).map((b) => b.building_name))));
-      } catch { /* building filter just stays empty if this fails */ }
+        const res = await FetchEmployeeDetails(1, 1000, undefined, true);
+        if (res.success) setFollowUpEmployees(res.rows ?? []);
+      } catch { /* follow-up assignee dropdown just stays empty if this fails */ }
     })();
   }, []);
 
@@ -297,13 +359,20 @@ const DueReportPage: React.FC = () => {
   const [apPaymentDate, setApPaymentDate] = useState('');
   const [apPaymentForKey, setApPaymentForKey] = useState('');
   const [apAmount, setApAmount] = useState('');
-  const [apCompany, setApCompany] = useState('');
   const [apModeOfPayment, setApModeOfPayment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [apSuggestLoading, setApSuggestLoading] = useState(false);
 
   const apSelectedCustomer = useMemo(() => customers.find((c) => c.id === apCustomerId) ?? null, [customers, apCustomerId]);
   const apSelectedPaymentFor = useMemo(() => PAYMENT_FOR_UI_OPTIONS.find((o) => o.key === apPaymentForKey) ?? null, [apPaymentForKey]);
+  // V_22.0 — Company is no longer free-typed; it's read straight off the
+  // selected customer's building's linked business Company (see
+  // Building.entity.ts's business_company_id / buildingService.ts), same
+  // as collectPayment now derives it server-side.
+  const apDerivedCompanyName = useMemo(
+    () => buildings.find((b) => b.id === apSelectedCustomer?.building_id)?.business_company_name || '',
+    [buildings, apSelectedCustomer]
+  );
 
   // ── "Show Upcoming Amount" — checkbox reveals a From/To date range; OK
   // enables only once both dates are picked (and To isn't before From),
@@ -353,12 +422,15 @@ const DueReportPage: React.FC = () => {
     setApPaymentForKey(key);
     setApAmount('');
     const opt = PAYMENT_FOR_UI_OPTIONS.find((o) => o.key === key);
+    // Extra Pay has no Installment Date at all (see the field's own comment
+    // below) — clear any stale value left over from a prior selection.
+    if (opt?.isAdvance) setApInstDate('');
     if (!opt || !apCustomerId) return;
     setApSuggestLoading(true);
     try {
       const suggestion = await fetchDefaultAmount(apCustomerId, opt.value);
       setApAmount(suggestion.amount > 0 ? String(suggestion.amount) : '');
-      if (suggestion.date) setApInstDate(suggestion.date);
+      if (suggestion.date && !opt.isAdvance) setApInstDate(suggestion.date);
     } catch {
       // A convenience prefill only — leave the field blank on failure.
     } finally {
@@ -373,7 +445,6 @@ const DueReportPage: React.FC = () => {
     setApPaymentDate('');
     setApPaymentForKey('');
     setApAmount('');
-    setApCompany('');
     setApModeOfPayment('');
     setSubmitAttempted(false);
   };
@@ -390,9 +461,8 @@ const DueReportPage: React.FC = () => {
     { field: 'customer', message: 'Please select a customer.', failed: () => !apCustomerId },
     { field: 'payment_for', message: 'Payment type is required.', failed: () => !apPaymentForKey },
     { field: 'amount', message: 'Please enter a valid amount.', failed: () => !apAmount.trim() || Number(apAmount) <= 0 },
-    { field: 'company', message: 'Company is required.', failed: () => !apCompany.trim() },
     { field: 'mode_of_payment', message: 'Payment method is required.', failed: () => !apModeOfPayment.trim() },
-  ], [apCustomerId, apPaymentForKey, apAmount, apCompany, apModeOfPayment]);
+  ], [apCustomerId, apPaymentForKey, apAmount, apModeOfPayment]);
 
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const activeErrors = submitAttempted ? validationChecks.filter((c) => c.failed()) : [];
@@ -413,7 +483,6 @@ const DueReportPage: React.FC = () => {
         payment_for: apSelectedPaymentFor.value,
         inst_date: apInstDate || undefined,
         payment_date: apPaymentDate || undefined,
-        company: apCompany.trim(),
         mode_of_payment: apModeOfPayment,
         is_advance_pay: apSelectedPaymentFor.isAdvance || undefined,
       };
@@ -495,10 +564,19 @@ const DueReportPage: React.FC = () => {
               <label style={fieldLabelStyle}>Flat Number</label>
               <input type="text" readOnly value={apSelectedCustomer?.flat_no || ''} placeholder="—" style={readOnlyInputStyle} />
             </div>
-            <div>
-              <label style={fieldLabelStyle}>Installment Date</label>
-              <input type="date" value={apInstDate} onChange={(e) => setApInstDate(e.target.value)} style={fieldInputStyle()} />
-            </div>
+            {/* Extra Pay is an advance against future EMIs, not tied to any
+                one installment — it has no Installment Date at all (takes
+                today's date via Payment Date instead), so the field is
+                hidden rather than shown blank/disabled. */}
+            {!apSelectedPaymentFor?.isAdvance && (
+              <div>
+                <label style={fieldLabelStyle}>Installment Date</label>
+                {/* Read-only — auto-filled from the suggested default date
+                    for the selected Payment For, same as Building/Wing/Flat
+                    above. Not employee-editable. */}
+                <input type="date" readOnly value={apInstDate} style={readOnlyInputStyle} />
+              </div>
+            )}
             <div>
               <label style={fieldLabelStyle}>Payment Date</label>
               <input type="date" value={apPaymentDate} onChange={(e) => setApPaymentDate(e.target.value)} style={fieldInputStyle()} />
@@ -521,10 +599,11 @@ const DueReportPage: React.FC = () => {
                 {errorFor('amount') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('amount')}</p>}
               </div>
             )}
-            <div ref={setFieldRef('company')}>
+            <div>
+              {/* V_22.0 — no longer free-typed; read straight off the
+                  selected customer's building's linked business Company. */}
               <label style={fieldLabelStyle}>Company</label>
-              <SearchableSelect t={t} placeholder="Select company" options={companyNameOptions} value={apCompany} onChange={setApCompany} />
-              {errorFor('company') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('company')}</p>}
+              <input type="text" readOnly value={apDerivedCompanyName} placeholder="—" style={readOnlyInputStyle} />
             </div>
             <div ref={setFieldRef('mode_of_payment')}>
               <label style={fieldLabelStyle}>Mode of Payment</label>
@@ -599,6 +678,14 @@ const DueReportPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
+            {/* In-app-only badge — open follow-ups due today/tomorrow across
+                the whole team (no email/WhatsApp sending, out of scope). */}
+            <div title="Open follow-ups due today / tomorrow"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+              <MdNoteAdd size={15} style={{ color: '#0284c7' }} />
+              Follow-ups — Today: {followUpCounts.today} · Tomorrow: {followUpCounts.tomorrow}
+            </div>
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
@@ -619,7 +706,7 @@ const DueReportPage: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Customer Code', 'Customer Name', 'Assigned Employee', 'Building', 'Wing', 'Flat No', 'Mobile No', 'Payment For', 'Amount', 'Due Status'].map((h) => (
+                {['Customer Code', 'Customer Name', 'Assigned Employee', 'Building / Wing / Flat', 'Mobile No', 'Payment For', 'Amount', 'Status', 'Overdue By', 'Follow Up'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -632,20 +719,49 @@ const DueReportPage: React.FC = () => {
                   {dueRows.length === 0 ? 'No customers currently have a payment due.' : 'No dues match the selected filters.'}
                 </td></tr>
               ) : (
-                pagedDueRows.map((r, i) => (
-                  <tr key={`${r.customer_id}-${r.payment_for}-${i}`} style={{ borderTop: `1px solid ${t.divider}` }}>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.customer_code}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 600, color: '#000', whiteSpace: 'nowrap' }}>{r.customer_name}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.assigned_employee_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.building_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.wing_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.flat_no || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.mobile_number || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.payment_for}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#000', whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: '#dc2626', minWidth: 260 }}>{r.due_status}</td>
-                  </tr>
-                ))
+                pagedDueRows.map((r, i) => {
+                  // Every row in this list is, by definition, overdue (see
+                  // getDueListDetailed) — so the chip is always "Overdue".
+                  // The detail column keeps the rest of the backend's
+                  // already-computed duration/date/amount text, just with
+                  // the leading "Overdue" word stripped since the chip now
+                  // says that.
+                  const overdueDetail = r.due_status.replace(/^Overdue\s+/, '');
+                  return (
+                    <tr key={`${r.customer_id}-${r.payment_for}-${i}`} style={{ borderTop: `1px solid ${t.divider}` }}>
+                      <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.customer_code}</td>
+                      <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 600, color: '#000', whiteSpace: 'nowrap' }}>{r.customer_name}</td>
+                      <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.assigned_employee_name || '—'}</td>
+                      <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
+                        {(r.wing_name || r.flat_no) && (
+                          <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
+                            {r.wing_name ? `Wing ${r.wing_name}` : ''}{r.wing_name && r.flat_no ? ' • ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.mobile_number || '—'}</td>
+                      <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.payment_for}</td>
+                      <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#000', whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
+                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                        <span style={{
+                          display: 'inline-block', padding: '3px 10px', borderRadius: 999,
+                          fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#dc2626',
+                        }}>
+                          Overdue
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: '#dc2626', minWidth: 260 }}>{overdueDetail}</td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <button type="button" onClick={() => openFollowUp(r)} title="Schedule a follow-up"
+                          className="flex items-center justify-center rounded-lg"
+                          style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: '#0284c7', cursor: 'pointer' }}>
+                          <MdNoteAdd size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -654,6 +770,51 @@ const DueReportPage: React.FC = () => {
           <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={filteredDueRows.length} pageBtns={pageBtns} />
         )}
       </div>
+
+      {/* ── Follow-up modal (V_22.0) — note + follow-up date + assigned
+          employee for the row's customer, backed by the Task entity. ──── */}
+      {followUpRow && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={closeFollowUp}>
+          <div className="rounded-2xl w-full" style={{ maxWidth: 440, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
+              <div>
+                <div style={{ fontSize: 14.5, fontWeight: 800, color: t.textPrimary }}>Schedule Follow-up</div>
+                <div style={{ fontSize: 11, color: t.textSecondary }}>{followUpRow.customer_name} · {followUpRow.customer_code}</div>
+              </div>
+              <button type="button" onClick={closeFollowUp} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary }}>
+                <MdClose size={20} />
+              </button>
+            </div>
+            <div className="p-5" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={fieldLabelStyle}>Note</label>
+                <textarea rows={3} value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)}
+                  placeholder="What needs to be followed up on?" style={{ ...fieldInputStyle(), resize: 'vertical' }} />
+              </div>
+              <div>
+                <label style={fieldLabelStyle}>Follow-up Date</label>
+                <input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} style={fieldInputStyle()} />
+              </div>
+              <div>
+                <label style={fieldLabelStyle}>Assign To</label>
+                <select value={followUpAssignedTo} onChange={(e) => setFollowUpAssignedTo(e.target.value)} style={fieldInputStyle()}>
+                  <option value="">-- Unassigned --</option>
+                  {followUpEmployees.map((e) => (
+                    <option key={e.id} value={e.id}>{[e.first_name, e.last_name].filter(Boolean).join(' ')}</option>
+                  ))}
+                </select>
+              </div>
+              <button type="button" onClick={handleSubmitFollowUp} disabled={followUpSubmitting}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
+                style={{ background: followUpSubmitting ? '#6b7280' : 'linear-gradient(135deg,#16a34a,#22c55e)', border: 'none', cursor: followUpSubmitting ? 'not-allowed' : 'pointer' }}>
+                {followUpSubmitting ? 'Scheduling...' : 'Schedule Follow-up'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

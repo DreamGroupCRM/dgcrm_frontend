@@ -19,6 +19,8 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CircularProgress } from '@mui/material';
 import PublicRoute from './PublicRoute';
+import IdleLogoutWatcher from '../components/common/IdleLogoutWatcher';
+import VersionWatcher from '../components/common/VersionWatcher';
 
 const LoginPage     = lazy(() => import('../pages/Login/LoginPage'));
 const ResetPasswordPage = lazy(() => import('../pages/Login/ResetPasswordPage'));
@@ -37,6 +39,8 @@ const PageLoader = () => (
 
 const AppRoutes: React.FC = () => (
   <BrowserRouter>
+    <IdleLogoutWatcher />
+    <VersionWatcher />
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public: /login */}

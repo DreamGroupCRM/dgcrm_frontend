@@ -23,7 +23,7 @@ import {
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { companyService } from '../../../../services/companyService';
 import { Building, Company, ParkingChoice } from '../../../../types/index';
-import { showAlert } from '../../../../utils';
+import { showAlert, resolveFileUrl } from '../../../../utils';
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
 import { DobPicker } from '../../../../components/common/DobPicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
@@ -480,7 +480,7 @@ const PreviewSection: React.FC<{ icon: React.ReactNode; title: string; gradient:
 );
 
 interface PreviewData {
-  photoUrl: string | null; fullName: string; email: string; mobile: string; whatsapp: string;
+  photoUrl: string | null; fullName: string; email: string; mobile: string; secondaryMobile: string;
   aadhar: string; pan: string; address: string; dob: string; age: string;
   altName: string; altMobile: string;
   companyName: string; projectName: string; buildingName: string; wingName: string; floorLabel: string;
@@ -498,7 +498,7 @@ const CustomerPreviewModal: React.FC<{ data: PreviewData; onClose: () => void }>
       <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--cust-divider)' }}>
         <div className="flex items-center gap-3">
           {data.photoUrl ? (
-            <img src={data.photoUrl} alt="" className="rounded-full" style={{ width: 44, height: 44, objectFit: 'cover' }} />
+            <img src={resolveFileUrl(data.photoUrl)} alt="" className="rounded-full" style={{ width: 44, height: 44, objectFit: 'cover' }} />
           ) : (
             <div className="flex items-center justify-center rounded-full text-white font-bold" style={{ width: 44, height: 44, background: 'var(--grad-purple)' }}>
               {(data.fullName || '—').slice(0, 1).toUpperCase()}
@@ -519,7 +519,7 @@ const CustomerPreviewModal: React.FC<{ data: PreviewData; onClose: () => void }>
           <PreviewRow label="Full Name" value={data.fullName} />
           <PreviewRow label="Email ID" value={data.email} />
           <PreviewRow label="Mobile Number" value={data.mobile} />
-          <PreviewRow label="WhatsApp Number" value={data.whatsapp} />
+          <PreviewRow label="Secondary Mobile Number" value={data.secondaryMobile} />
           <PreviewRow label="Aadhar Number" value={data.aadhar} />
           <PreviewRow label="PAN Number" value={data.pan} />
           <PreviewRow label="Date of Birth" value={data.dob ? `${data.dob}${data.age ? ` (${data.age})` : ''}` : ''} />
@@ -589,11 +589,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [email, setEmail] = useState('');
   const [mobileCountryCode, setMobileCountryCode] = useState('+91');
   const [mobileNumber, setMobileNumber] = useState('');
-  const [whatsappCountryCode, setWhatsappCountryCode] = useState('+91');
-  const [whatsappNumber, setWhatsappNumber] = useState('');
-  // Secondary mobile numbers beyond the primary Mobile Number above (item
-  // 6) — "+" appends a blank row, each row removable.
-  const [secondaryNumbers, setSecondaryNumbers] = useState<{ country_code: string; number: string }[]>([]);
+  // V_22.0 — "this number is also on WhatsApp" checkbox, replacing the old
+  // separate WhatsApp Number field.
+  const [mobileIsWhatsapp, setMobileIsWhatsapp] = useState(false);
+  // Secondary mobile number — exactly one (V_22.0; previously an open-ended
+  // "+"-added list), with its own WhatsApp checkbox.
+  const [secondaryCountryCode, setSecondaryCountryCode] = useState('+91');
+  const [secondaryNumber, setSecondaryNumber] = useState('');
+  const [secondaryIsWhatsapp, setSecondaryIsWhatsapp] = useState(false);
   const [aadharNumber, setAadharNumber] = useState('');
   const [aadharPhoto, setAadharPhoto] = useState<FileValue>(null);
   const [pancardNumber, setPancardNumber] = useState('');
@@ -682,9 +685,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           setEmail(c.email || '');
           setMobileCountryCode(c.mobile_country_code || '+91');
           setMobileNumber(c.mobile_number || '');
-          setWhatsappCountryCode(c.whatsapp_country_code || '+91');
-          setWhatsappNumber(c.whatsapp_number || '');
-          setSecondaryNumbers((c.secondary_numbers || []).map((p) => ({ country_code: p.country_code || '+91', number: p.number || '' })));
+          setMobileIsWhatsapp(c.mobile_is_whatsapp || false);
+          const firstSecondary = (c.secondary_numbers || [])[0];
+          setSecondaryCountryCode(firstSecondary?.country_code || '+91');
+          setSecondaryNumber(firstSecondary?.number || '');
+          setSecondaryIsWhatsapp(firstSecondary?.is_whatsapp || false);
           setAadharNumber(c.aadhar_number || '');
           setAadharPhoto(c.aadhar_photo_url || null);
           setPancardNumber(c.pancard_number || '');
@@ -785,12 +790,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
   const age = useMemo(() => calcAge(dateOfBirth), [dateOfBirth]);
 
-  // ── Secondary mobile numbers (item 6) ───────────────────────────────────
-  const addSecondaryNumber = () => setSecondaryNumbers((prev) => [...prev, { country_code: '+91', number: '' }]);
-  const removeSecondaryNumber = (idx: number) => setSecondaryNumbers((prev) => prev.filter((_, i) => i !== idx));
-  const updateSecondaryNumber = (idx: number, patch: Partial<{ country_code: string; number: string }>) =>
-    setSecondaryNumbers((prev) => prev.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
-
   // ── OCR auto-fill from Aadhar/PAN photo (item 7) — client-side, open-
   // source (Tesseract.js), never auto-submits: it only pre-fills the
   // number field, which stays fully editable so the admin can correct a
@@ -835,7 +834,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     { field: 'customerPhoto', section: 'personal', message: 'Please upload the Customer Photo.', failed: () => !customerPhoto },
     { field: 'email', section: 'personal', message: 'Please enter the Email.', failed: () => email.trim() === '' },
     { field: 'mobileNumber', section: 'personal', message: 'Please enter the Mobile Number.', failed: () => mobileNumber.trim() === '' },
-    { field: 'whatsappNumber', section: 'personal', message: 'Please enter the WhatsApp Number.', failed: () => whatsappNumber.trim() === '' },
     { field: 'aadharPhoto', section: 'personal', message: 'Please upload the Aadhar Card.', failed: () => !aadharPhoto },
     { field: 'aadharNumber', section: 'personal', message: 'Please enter the Aadhar Number.', failed: () => aadharNumber.trim() === '' },
     { field: 'pancardPhoto', section: 'personal', message: 'Please upload the PAN Card.', failed: () => !pancardPhoto },
@@ -943,10 +941,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       formData.append('email', email.trim());
       formData.append('mobile_country_code', mobileCountryCode);
       formData.append('mobile_number', mobileNumber.trim());
-      formData.append('whatsapp_country_code', whatsappCountryCode);
-      formData.append('whatsapp_number', whatsappNumber.trim());
+      formData.append('mobile_is_whatsapp', String(mobileIsWhatsapp));
       formData.append('secondary_numbers', JSON.stringify(
-        secondaryNumbers.map((p) => ({ country_code: p.country_code, number: p.number.trim() })).filter((p) => p.number)
+        secondaryNumber.trim()
+          ? [{ country_code: secondaryCountryCode, number: secondaryNumber.trim(), is_whatsapp: secondaryIsWhatsapp }]
+          : []
       ));
       formData.append('aadhar_number', aadharNumber.trim());
       if (aadharPhoto instanceof File) formData.append('aadhar_photo', aadharPhoto);
@@ -1100,7 +1099,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Identity strip — photo + name + email, above the boxes ─────── */}
         <div className="flex items-center gap-3 mb-5">
           {typeof customerPhoto === 'string' && customerPhoto ? (
-            <img src={customerPhoto} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover' }} />
+            <img src={resolveFileUrl(customerPhoto)} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover' }} />
           ) : (
             <div className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ width: 56, height: 56, background: 'var(--grad-purple)', fontSize: 18 }}>
               {(firstName[0] || '')}{(lastName[0] || '')}
@@ -1128,12 +1127,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <ViewValue label="First Name" value={firstName} />
               <ViewValue label="Middle Name" value={middleName} />
               <ViewValue label="Last Name" value={lastName} />
-              <ViewValue label="Mobile Number" value={mobileNumber ? `${mobileCountryCode} ${mobileNumber}` : ''} />
-              <ViewValue label="WhatsApp Number" value={whatsappNumber ? `${whatsappCountryCode} ${whatsappNumber}` : ''} />
+              <ViewValue label="Mobile Number" value={mobileNumber ? `${mobileCountryCode} ${mobileNumber}${mobileIsWhatsapp ? ' (WhatsApp)' : ''}` : ''} />
               <ViewValue
-                label="Secondary Mobile Numbers"
-                value={secondaryNumbers.length ? secondaryNumbers.map((p) => `${p.country_code} ${p.number}`).join(', ') : ''}
-                className="cust-view-field-wide"
+                label="Secondary Mobile Number"
+                value={secondaryNumber ? `${secondaryCountryCode} ${secondaryNumber}${secondaryIsWhatsapp ? ' (WhatsApp)' : ''}` : ''}
               />
               <ViewValue label="Date of Birth" value={dateOfBirth ? `${dateOfBirth}${age ? ` (${age.years}y ${age.months}m)` : ''}` : ''} />
               <ViewValue label="Aadhar Number" value={aadharNumber} />
@@ -1272,12 +1269,19 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
         </div>
 
-        {/* Row 2 of 3 — WhatsApp + ID proofs (each number immediately
-            followed by its own upload field, no field between them) */}
+        {/* Row 2 of 3 — Secondary Mobile Number + ID proofs (each number
+            immediately followed by its own upload field, no field between
+            them). V_22.0 — the old separate WhatsApp Number field is gone;
+            "also on WhatsApp" is now a checkbox on each number instead. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          <Field t={t} label="WhatsApp Number" required error={errorFor('whatsappNumber')} fieldRef={setFieldRef('whatsappNumber') as React.Ref<HTMLDivElement>}>
-            <PhoneInput theme={t} disabled={isView} icon={<FaWhatsapp size={15} style={{ color: '#25D366', flexShrink: 0 }} />}
-              code={whatsappCountryCode} onCodeChange={setWhatsappCountryCode} number={whatsappNumber} onNumberChange={setWhatsappNumber} />
+          <Field t={t} label="Secondary Mobile Number">
+            <PhoneInput theme={t} disabled={isView}
+              code={secondaryCountryCode} onCodeChange={setSecondaryCountryCode} number={secondaryNumber} onNumberChange={setSecondaryNumber} />
+            <label className="flex items-center gap-1.5 mt-1.5" style={{ fontSize: 10.5, color: t.textSecondary, cursor: isView ? 'default' : 'pointer' }}>
+              <input type="checkbox" checked={secondaryIsWhatsapp} disabled={isView}
+                onChange={(e) => setSecondaryIsWhatsapp(e.target.checked)} style={{ width: 13, height: 13, cursor: isView ? 'default' : 'pointer' }} />
+              <FaWhatsapp size={12} style={{ color: '#25D366', flexShrink: 0 }} /> Also on WhatsApp
+            </label>
           </Field>
           <Field t={t} label="Upload Aadhar Card Photo" required error={errorFor('aadharPhoto')} fieldRef={setFieldRef('aadharPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange} />
@@ -1329,47 +1333,13 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => setAddress(e.target.value)} className={fieldClass} style={{ resize: 'vertical' }} />
           </Field>
           <Field t={t} label="Mobile Number" required error={errorFor('mobileNumber')} fieldRef={setFieldRef('mobileNumber') as React.Ref<HTMLDivElement>}>
-            <PhoneInput theme={t} disabled={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber}
-              onAdd={addSecondaryNumber} />
+            <PhoneInput theme={t} disabled={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber} />
+            <label className="flex items-center gap-1.5 mt-1.5" style={{ fontSize: 10.5, color: t.textSecondary, cursor: isView ? 'default' : 'pointer' }}>
+              <input type="checkbox" checked={mobileIsWhatsapp} disabled={isView}
+                onChange={(e) => setMobileIsWhatsapp(e.target.checked)} style={{ width: 13, height: 13, cursor: isView ? 'default' : 'pointer' }} />
+              <FaWhatsapp size={12} style={{ color: '#25D366', flexShrink: 0 }} /> Also on WhatsApp
+            </label>
           </Field>
-        </div>
-
-        {/* Secondary Mobile Numbers — item 6: primary Mobile Number above
-            (its own "+" adds a row here too), each row independently
-            removable. */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="cust-label" style={{ marginBottom: 0 }}>Secondary Mobile Numbers</label>
-            {!isView && (
-              <button type="button" onClick={addSecondaryNumber}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold"
-                style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}`, color: '#0284c7', cursor: 'pointer' }}>
-                <MdAdd size={14} /> Add Number
-              </button>
-            )}
-          </div>
-          {secondaryNumbers.length === 0 ? (
-            <p style={{ fontSize: 11, color: t.textSecondary, margin: 0 }}>{isView ? 'None added.' : 'No secondary numbers added yet.'}</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {secondaryNumbers.map((p, idx) => (
-                <div key={idx} className="flex items-center gap-1.5">
-                  <div style={{ flex: 1 }}>
-                    <PhoneInput theme={t} disabled={isView} code={p.country_code}
-                      onCodeChange={(v) => updateSecondaryNumber(idx, { country_code: v })}
-                      number={p.number} onNumberChange={(v) => updateSecondaryNumber(idx, { number: v })} />
-                  </div>
-                  {!isView && (
-                    <button type="button" onClick={() => removeSecondaryNumber(idx)} title="Remove this number"
-                      className="flex items-center justify-center rounded-lg flex-shrink-0"
-                      style={{ width: 34, height: 34, background: t.insetBg, border: `1px solid ${t.inputBorder}`, color: '#dc2626', cursor: 'pointer' }}>
-                      <MdClose size={15} />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </AccordionSection>
 
@@ -1579,8 +1549,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           data={{
             photoUrl: typeof customerPhoto === 'string' ? customerPhoto : null,
             fullName: [firstName, middleName, lastName].filter(Boolean).join(' '),
-            email, mobile: mobileNumber ? `${mobileCountryCode} ${mobileNumber}` : '',
-            whatsapp: whatsappNumber ? `${whatsappCountryCode} ${whatsappNumber}` : '',
+            email, mobile: mobileNumber ? `${mobileCountryCode} ${mobileNumber}${mobileIsWhatsapp ? ' (WhatsApp)' : ''}` : '',
+            secondaryMobile: secondaryNumber ? `${secondaryCountryCode} ${secondaryNumber}${secondaryIsWhatsapp ? ' (WhatsApp)' : ''}` : '',
             aadhar: aadharNumber, pan: pancardNumber, address, dob: dateOfBirth,
             age: age ? `${age.years}y ${age.months}m` : '',
             altName: alternatePersonName, altMobile: alternatePersonMobile ? `${alternatePersonCountryCode} ${alternatePersonMobile}` : '',
