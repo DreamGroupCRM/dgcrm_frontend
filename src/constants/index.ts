@@ -53,6 +53,7 @@ export const ROUTES = {
     PAYMENT_RECEIVED: '/admin/crm/payment-received',
     PAYMENT_APPROVALS: '/admin/crm/payment-approvals',
     PAYMENT_DUES: '/admin/crm/payment-dues',
+    PAYMENT_UPCOMING: '/admin/crm/payment-upcoming',
 
     // Standalone
     AUDIT_HISTORY: '/admin/audit-history',

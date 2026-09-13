@@ -27,7 +27,7 @@ import PaginationFooter from '../../../../components/common/PaginationFooter';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import StatCard from '../../../../components/masters/StatCard';
 import {
-  fetchDueListDetailed, collectPayment, fetchDefaultAmount, fetchUpcomingAmount, DueListDetailRow, UpcomingAmountData,
+  fetchDueListDetailed, collectPayment, fetchDefaultAmount, DueListDetailRow,
 } from '../../../../services/paymentService';
 import { fetchAllCustomerDetails } from '../../../../services/customerDetailsService';
 import { FetchBuildingList } from '../../../../services/buildingService';
@@ -375,44 +375,6 @@ const DueReportPage: React.FC = () => {
     [buildings, apSelectedCustomer]
   );
 
-  // ── "Show Upcoming Amount" — checkbox reveals a From/To date range; OK
-  // enables only once both dates are picked (and To isn't before From),
-  // and totals every customer's upcoming (not-yet-due) installment amount
-  // in that range via the pre-existing GET /payments/upcoming-amount. ────
-  const [showUpcoming, setShowUpcoming] = useState(false);
-  const [upcomingFrom, setUpcomingFrom] = useState('');
-  const [upcomingTo, setUpcomingTo] = useState('');
-  const [upcomingLoading, setUpcomingLoading] = useState(false);
-  const [upcomingResult, setUpcomingResult] = useState<UpcomingAmountData | null>(null);
-
-  const upcomingRangeValid = !!upcomingFrom && !!upcomingTo && upcomingTo >= upcomingFrom;
-  const upcomingDays = upcomingRangeValid
-    ? Math.round((new Date(upcomingTo).getTime() - new Date(upcomingFrom).getTime()) / 86400000) + 1
-    : 0;
-
-  const handleToggleUpcoming = (checked: boolean) => {
-    setShowUpcoming(checked);
-    if (!checked) {
-      setUpcomingFrom('');
-      setUpcomingTo('');
-      setUpcomingResult(null);
-    }
-  };
-
-  const handleCalculateUpcoming = async () => {
-    if (!upcomingRangeValid) return;
-    setUpcomingLoading(true);
-    setUpcomingResult(null);
-    try {
-      const data = await fetchUpcomingAmount(upcomingFrom, upcomingTo);
-      setUpcomingResult(data);
-    } catch {
-      toast.error('Failed to calculate upcoming amount.');
-    } finally {
-      setUpcomingLoading(false);
-    }
-  };
-
   const handleCustomerSearchChange = (v: string) => {
     setApCustomerSearch(v);
     const exact = customers.find((c) => `${c.customer_name}${c.customer_code ? ` (${c.customer_code})` : ''}` === v);
@@ -621,44 +583,6 @@ const DueReportPage: React.FC = () => {
                 {submitting ? 'Submitting...' : 'Submit'}
               </button>
             </div>
-          </div>
-
-          {/* ── Row 3 — Show Upcoming Amount: checkbox reveals a date
-              range whose total upcoming (not-yet-due) installment amount
-              can be calculated on demand. ─────────────────────────────── */}
-          <div className="due-report-upcoming-row flex flex-wrap items-end gap-3.5 mt-4 pt-4" style={{ borderTop: `1px dashed ${t.divider}` }}>
-            <label className="flex items-center gap-2" style={{ cursor: 'pointer', paddingBottom: 9 }}>
-              <input type="checkbox" checked={showUpcoming} onChange={(e) => handleToggleUpcoming(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Show Upcoming Payment</span>
-            </label>
-            {showUpcoming && (
-              <>
-                <div>
-                  <label style={fieldLabelStyle}>From Date</label>
-                  <input type="date" value={upcomingFrom} onChange={(e) => { setUpcomingFrom(e.target.value); setUpcomingResult(null); }} style={{ ...fieldInputStyle(), width: 160 }} />
-                </div>
-                <div>
-                  <label style={fieldLabelStyle}>To Date</label>
-                  <input type="date" value={upcomingTo} onChange={(e) => { setUpcomingTo(e.target.value); setUpcomingResult(null); }} style={{ ...fieldInputStyle(), width: 160 }} />
-                </div>
-                <button type="button" onClick={handleCalculateUpcoming} disabled={!upcomingRangeValid || upcomingLoading}
-                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-                  style={{
-                    background: !upcomingRangeValid || upcomingLoading ? '#6b7280' : 'linear-gradient(135deg,#2563eb,#3b82f6)',
-                    border: 'none', cursor: !upcomingRangeValid || upcomingLoading ? 'not-allowed' : 'pointer',
-                  }}>
-                  {upcomingLoading ? 'Calculating…' : 'OK'}
-                </button>
-                {upcomingResult && (
-                  <div className="rounded-xl" style={{ background: isDark ? 'rgba(37,99,235,0.14)' : '#eff6ff', border: `1px solid ${isDark ? 'rgba(37,99,235,0.3)' : '#bfdbfe'}`, padding: '8px 16px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 10.5, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                      Upcoming Amount — {upcomingDays} Day{upcomingDays === 1 ? '' : 's'}
-                    </div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: '#2563eb' }}>{rupee(upcomingResult.total_amount)}</div>
-                  </div>
-                )}
-              </>
-            )}
           </div>
         </div>
       </div>

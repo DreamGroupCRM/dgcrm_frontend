@@ -28,7 +28,6 @@
 
   .due-report-form-card-head { padding: 10px 14px !important; }
   .due-report-form-grid { gap: 8px !important; }
-  .due-report-upcoming-row { gap: 8px !important; }
 
   /* Toolbar: filters and actions each keep exactly one row, stacked on
      top of one another instead of fighting for the same row — same
@@ -70,9 +69,6 @@
 
   .due-report-form-card-head span { font-size: 12px !important; }
   .due-report-form-grid { gap: 6px !important; }
-
-  .due-report-upcoming-row { gap: 6px !important; }
-  .due-report-upcoming-row input[type="date"] { width: 128px !important; }
 
   .due-report-toolbar { padding: 10px !important; }
   .due-report-toolbar-filters { gap: 6px !important; }

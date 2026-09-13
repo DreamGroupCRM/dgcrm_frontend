@@ -22,6 +22,7 @@ import {
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
   MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
   MdAdminPanelSettings, MdManageAccounts, MdPendingActions, MdBeachAccess,
+  MdUpcoming,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -109,6 +110,7 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
       { label: 'Payment Dues', path: ROUTES.ADMIN.PAYMENT_DUES, icon: <MdPayment /> },
       { label: 'Payment Approvals', path: ROUTES.ADMIN.PAYMENT_APPROVALS, icon: <MdPendingActions /> },
       { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
+      { label: 'Payment Upcoming', path: ROUTES.ADMIN.PAYMENT_UPCOMING, icon: <MdUpcoming /> },
       { label: 'Leads', path: ROUTES.ADMIN.LEADS, icon: <MdLeaderboard /> },
     ],
   },

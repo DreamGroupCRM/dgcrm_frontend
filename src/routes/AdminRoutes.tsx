@@ -51,6 +51,11 @@ import PaymentReceivedPage from '../pages/Admin/CRM/PaymentReceived/PaymentRecei
 // Payment Approvals — dedicated review queue split out of Payment Received
 // (V_21.0, see that page's own header comment).
 const PaymentApprovalsPage = lazy(() => import('../pages/Admin/CRM/PaymentApprovals/PaymentApprovalsPage'));
+// Payment Upcoming — dedicated page split out of Payment Dues' old "Show
+// Upcoming Payment" checkbox (V_22.0, see PaymentUpcomingPage's own header
+// comment): a date-range total plus a detailed, per-installment follow-up
+// table, instead of a total-only number.
+const PaymentUpcomingPage = lazy(() => import('../pages/Admin/CRM/PaymentUpcoming/PaymentUpcomingPage'));
 // Attendance — replaces its former PlaceholderPage, backed by the existing
 // working attendance API (V_21.0).
 const AttendancePage = lazy(() => import('../pages/Admin/Employee/Attendance/AttendancePage'));
@@ -134,6 +139,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="crm/payment-dues" element={<DueReportPage />} />
       <Route path="crm/payment-received" element={<PaymentReceivedPage />} />
       <Route path="crm/payment-approvals" element={<PaymentApprovalsPage />} />
+      <Route path="crm/payment-upcoming" element={<PaymentUpcomingPage />} />
       <Route path="crm/leads" element={<LeadListPage />} />
       <Route path="crm/leads/add" element={<LeadCrudPage mode="add" />} />
       <Route path="crm/leads/view/:id" element={<LeadCrudPage mode="view" />} />

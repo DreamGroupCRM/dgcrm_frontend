@@ -1,0 +1,58 @@
+/* ==========================================================================
+   PaymentUpcomingPage — responsive rules only (V_22.0)
+   Layered on top of the page's existing inline styles / Tailwind utility
+   classes — nothing in the JSX's inline style={{}} props is overridden here
+   except with an explicit !important, which is required to beat inline
+   style specificity. Breakpoints (mobile-first labels, max-width cuts):
+     xxl : >=1536px   xl : 1280-1535px   lg : 1024-1279px
+     md  : 768-1023px  sm : 480-767px    xs : <=479px (with a 359px sub-cut)
+   ========================================================================== */
+
+/* Side gutter is owned by DashboardLayout's <main> (px-2.5/sm:px-4/lg:px-6)
+   so every page gets it consistently — not repeated per-page here. */
+
+/* ---------- md: 768-1023px ---------- */
+@media (max-width: 1023px) {
+  .payment-upcoming-range-row { gap: 8px !important; }
+  .payment-upcoming-range-field input { width: 140px !important; }
+  .payment-upcoming-result-box { margin-left: 0 !important; width: 100%; }
+}
+
+/* ---------- sm: 480-767px ---------- */
+@media (max-width: 767px) {
+  .payment-upcoming-header { gap: 8px !important; }
+  .payment-upcoming-header h1 { font-size: 16.5px !important; }
+  .payment-upcoming-header p { font-size: 10.5px !important; }
+
+  .payment-upcoming-range-row {
+    flex-wrap: wrap !important;
+  }
+  .payment-upcoming-range-field { width: calc(50% - 6px); }
+  .payment-upcoming-range-field input { width: 100% !important; }
+  .payment-upcoming-ok-btn { flex: 1; }
+  .payment-upcoming-result-box { margin-left: 0 !important; width: 100%; order: 3; }
+
+  .payment-upcoming-table th { padding: 10px 10px !important; font-size: 10.5px !important; }
+  .payment-upcoming-table td { padding: 10px 10px !important; font-size: 11px !important; }
+}
+
+/* ---------- xs: <=479px ---------- */
+@media (max-width: 479px) {
+  .payment-upcoming-header { gap: 6px !important; }
+  .payment-upcoming-header > div:first-child { width: 34px !important; height: 34px !important; }
+  .payment-upcoming-header svg { width: 17px !important; height: 17px !important; }
+  .payment-upcoming-header h1 { font-size: 14.5px !important; }
+  .payment-upcoming-header p { font-size: 9.5px !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  .payment-upcoming-range-card { padding: 10px !important; }
+  .payment-upcoming-range-row { gap: 6px !important; }
+  .payment-upcoming-range-field { width: 100%; }
+  .payment-upcoming-ok-btn { width: 100%; }
+  .payment-upcoming-refresh-btn { width: 34px !important; height: 34px !important; }
+
+  .payment-upcoming-search-card { padding: 10px !important; }
+  .payment-upcoming-search-row { gap: 6px !important; }
+
+  .payment-upcoming-table th { padding: 8px 8px !important; font-size: 10px !important; }
+  .payment-upcoming-table td { padding: 8px 8px !important; font-size: 10.5px !important; }
+}
