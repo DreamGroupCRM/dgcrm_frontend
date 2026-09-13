@@ -44,6 +44,7 @@ interface WizardBuilding {
   // so this stays snake_case to match, same as has_parking already does.
   id: number; name: string; code: string | null; has_parking: boolean; parking_count: number | null;
   business_company_id?: number | null;
+  business_company_name?: string | null;
   is_active: boolean; sort_order: number; created_at: string; updated_at?: string;
   project: { projectName: string; location: string | null } | null;
 }
@@ -129,6 +130,7 @@ function fromWizardResponse(data: WizardFullResponse): Building {
     has_parking: !!b.has_parking,
     parking_count: b.parking_count ?? null,
     business_company_id: b.business_company_id ?? null,
+    business_company_name: b.business_company_name ?? null,
     is_active: b.is_active,
     created_at: b.created_at,
     updated_at: b.updated_at,

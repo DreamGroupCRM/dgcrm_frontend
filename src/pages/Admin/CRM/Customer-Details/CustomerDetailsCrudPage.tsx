@@ -3,17 +3,18 @@
 // ==========================================
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdArrowBack, MdSave, MdPerson, MdApartment, MdClose, MdKeyboardArrowDown, MdAdd,
-  MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew,
+  MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew, MdViewInAr,
   MdPayments, MdDescription, MdVisibility, MdRadioButtonChecked, MdRadioButtonUnchecked,
 } from 'react-icons/md';
 import { FaWhatsapp } from 'react-icons/fa';
 
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
+import { ROUTES } from '../../../../constants';
 import {
   fetchCustomerFullDetails,
   createCustomerWithDetails,
@@ -23,6 +24,10 @@ import {
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { companyService } from '../../../../services/companyService';
 import { Building, Company, ParkingChoice } from '../../../../types/index';
+// Type-only import — never pulls Building3DViewPage's actual module (and
+// its heavy three.js dependency) into this page's bundle; only the shape
+// of the payload it navigates back with.
+import type { SelectedUnitForCustomer } from '../../Building3D/Building3DViewPage';
 import { showAlert, resolveFileUrl } from '../../../../utils';
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
 import { DobPicker } from '../../../../components/common/DobPicker';
@@ -576,6 +581,10 @@ const CustomerPreviewModal: React.FC<{ data: PreviewData; onClose: () => void }>
 const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  // Named routerLocation, not location — this page already has a `location`
+  // state variable (the Property Booking Details "Location" field, derived
+  // from the selected Building) that a same-named binding would shadow.
+  const routerLocation = useLocation();
   const { isDark, t, cssVars: appearanceCssVars } = useAppearanceTokens();
   const isView = mode === 'view';
 
@@ -679,6 +688,36 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       } catch { /* dropdown just stays empty if this fails */ }
     })();
   }, []);
+
+  // 3D Building View "Select Flat" integration — when returning from the
+  // picker (see Building3DViewPage's handleConfirmSelect), routerLocation.
+  // state.selectedUnit carries the chosen unit's NAMES, not ids: the
+  // cascading Company/Project/Building/Wing/Floor/Flat selects below
+  // re-resolve the real ids themselves once buildings/buildingDetail load,
+  // exactly as if those names had been picked by hand one at a time.
+  // Applied once, then cleared from history state so a refresh or
+  // back/forward navigation doesn't reapply a stale selection.
+  useEffect(() => {
+    const selectedUnit = (routerLocation.state as { selectedUnit?: SelectedUnitForCustomer } | null)?.selectedUnit;
+    if (!selectedUnit) return;
+    setCompanyName(selectedUnit.companyName);
+    setProjectName(selectedUnit.projectName);
+    setBuildingName(selectedUnit.buildingName);
+    if (selectedUnit.unitType === 'shop') {
+      setUnitType('shop');
+      setShopNo(selectedUnit.no);
+      setWingName(''); setFloorLabel(''); setFlatNo('');
+    } else {
+      setUnitType('flat');
+      setWingName(selectedUnit.wingName);
+      setFloorLabel(selectedUnit.floorLabel);
+      setFlatNo(selectedUnit.no);
+      setShopNo('');
+    }
+    navigate(routerLocation.pathname, { replace: true, state: {} });
+    toast.success(`${selectedUnit.unitType === 'shop' ? 'Shop' : 'Flat'} ${selectedUnit.no} selected from 3D Building View.`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routerLocation.state]);
 
   useEffect(() => {
     if (mode === 'add' || !id) return;
@@ -1401,6 +1440,22 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       <AccordionSection theme={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="var(--grad-teal)"
         open={openSections.property} onToggle={() => setOpenSections((p) => ({ ...p, property: !p.property }))}
         sectionRef={(el) => (sectionRefs.current.property = el)}>
+
+        {/* Select Flat (3D View) — opens the 3D Building View in picker
+            mode; on confirming an available flat/shop there, it navigates
+            back here (see the routerLocation.state.selectedUnit effect
+            above) with every field below already filled in. Hidden in View
+            mode — nothing here is editable there anyway. */}
+        {!isView && (
+          <div className="flex justify-end mb-4">
+            <button type="button"
+              onClick={() => navigate(ROUTES.ADMIN.BUILDING_3D_VIEW, { state: { pickerMode: true, returnPath: routerLocation.pathname } })}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold"
+              style={{ background: t.insetBg, color: '#0284c7', border: `1px solid ${t.inputBorder}`, cursor: 'pointer' }}>
+              <MdViewInAr size={16} /> Select Flat (3D View)
+            </button>
+          </div>
+        )}
 
         {/* Row 1 of 2 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-4">

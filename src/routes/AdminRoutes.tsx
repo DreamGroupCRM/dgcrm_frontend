@@ -43,6 +43,11 @@ import DueReportPage from '../pages/Admin/CRM/DueReport/DueReportPage';
 // Customize Scheme — replaces the former "Interest Free Calculator"
 // placeholder with a real EMI Scheme & Schedule builder.
 import CustomizeSchemePage from '../pages/Admin/CustomizeScheme/CustomizeSchemePage';
+// 3D Building View — pulls in three.js/@react-three/fiber, a heavy library
+// most sessions never touch, so it's lazy-loaded (same pattern as
+// PaymentApprovalsPage etc. below) rather than bloating every admin page's
+// shared bundle with a 3D engine nobody asked for.
+const Building3DViewPage = lazy(() => import('../pages/Admin/Building3D/Building3DViewPage'));
 // Audit History — replaces its former PlaceholderPage now that
 // GET /api/audit-logs exists (item 11).
 import AuditHistoryPage from '../pages/Admin/AuditHistory/AuditHistoryPage';
@@ -150,6 +155,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="pending-approvals" element={<PendingApprovalsPage />} />
       <Route path="change-requests" element={<ChangeRequestsPage />} />
       <Route path="customize-scheme" element={<CustomizeSchemePage />} />
+      <Route path="building-3d-view" element={<Building3DViewPage />} />
 
       {/* SuperAdmin-only — see Sidebar.tsx / backend's requireSuperAdmin */}
       <Route path="backup-database" element={<ProtectedRoute allowedRoles={['superadmin']}><BackupDatabasePage /></ProtectedRoute>} />

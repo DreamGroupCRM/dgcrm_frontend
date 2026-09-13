@@ -58,6 +58,7 @@ export const ROUTES = {
     // Standalone
     AUDIT_HISTORY: '/admin/audit-history',
     CUSTOMIZE_SCHEME: '/admin/customize-scheme',
+    BUILDING_3D_VIEW: '/admin/building-3d-view',
     BACKUP_DATABASE: '/admin/backup-database',
     EXECUTIVE_DASHBOARD: '/admin/reports/executive-dashboard',
     PENDING_APPROVALS: '/admin/pending-approvals',

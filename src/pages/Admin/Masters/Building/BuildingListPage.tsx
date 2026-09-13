@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import {
   MdAdd, MdDownload, MdRefresh,
   MdSearch, MdApartment,
-  MdBusiness, MdLayers, MdHome, MdStorefront,
+  MdBusiness, MdLayers, MdHome, MdStorefront, MdViewInAr,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
@@ -22,10 +22,11 @@ import MultiStatCard from '../../../../components/masters/MultiStatCard';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
-// Fixed width for the Actions column — sized for exactly 3 icon buttons
-// + gaps + cell padding, so it never grows/shrinks with the number of
-// other columns in the table.
-const ACTION_COL_WIDTH = 96;
+// Fixed width for the Actions column — sized for the 3 MasterIconButtons
+// icons plus the standalone "View 3D Structure" button added alongside
+// them, + gaps + cell padding, so it never grows/shrinks with the number
+// of other columns in the table.
+const ACTION_COL_WIDTH = 128;
 
 // ── derived helpers ──────────────────────────────────────────────────────────
 const totalFlatsOf = (b: Building): number =>
@@ -313,11 +314,17 @@ const BuildingListPage: React.FC = () => {
                         zIndex: 1, background: isDark ? t.surfaceBg : '#ffffff',
                         borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                       }}>
-                        <MasterIconButtons
-                          onView={() => navigate(`/admin/masters/building/view/${b.id}`)}
-                          onEdit={() => navigate(`/admin/masters/building/edit/${b.id}`)}
-                          onDelete={() => handleDelete(b)}
-                        />
+                        <div className="flex items-center justify-center gap-1">
+                          <MasterIconButtons
+                            onView={() => navigate(`/admin/masters/building/view/${b.id}`)}
+                            onEdit={() => navigate(`/admin/masters/building/edit/${b.id}`)}
+                            onDelete={() => handleDelete(b)}
+                          />
+                          <button type="button" title="View 3D Structure" className="master-icon-btn"
+                            onClick={() => navigate(`/admin/building-3d-view?buildingId=${b.id}`)}>
+                            <MdViewInAr size={15} />
+                          </button>
+                        </div>
                       </td>
                       <td>{b.id}</td>
                       <td>

@@ -51,7 +51,15 @@ const Field: React.FC<FieldProps> = ({
   label, value, onChange, onBlur, error,
   readOnly, isDark, borderC, textPrim, id,
 }) => (
-  <Box id={id} sx={{ mb: 3 }}>
+  // component="div" pins MUI Box's polymorphic `component` prop explicitly
+  // (it already renders a div by default — this changes no behavior).
+  // TypeScript-only fix: once @react-three/fiber's global JSX.
+  // IntrinsicElements augmentation is loaded anywhere in the program (see
+  // src/pages/Admin/Building3D), resolving Box's `id` prop against the
+  // unpinned, unioned-over-every-possible-`component` overload blows past
+  // TS2590's complexity limit; pinning it to the one overload actually
+  // used here sidesteps that resolution.
+  <Box component="div" id={id} sx={{ mb: 3 }}>
     <Typography
       variant="body2"
       sx={{
@@ -68,7 +76,7 @@ const Field: React.FC<FieldProps> = ({
     </Typography>
 
     {readOnly ? (
-      <Box
+      <Box component="div"
         sx={{
           px: 2, py: 1.5, borderRadius: 2,
           border: `1px solid ${borderC}`,
@@ -197,14 +205,14 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
 
   if (fetching) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+      <Box component="div" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <CircularProgress sx={{ color: '#3b82f6' }} />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, minHeight: '100vh' }}>
+    <Box component="div" sx={{ p: { xs: 2, sm: 3 }, minHeight: '100vh' }}>
       <ValidationErrorSummary
         t={{ textPrimary: textPrim, textSecondary: textSec, fontFamily: theme.typography.fontFamily || 'inherit' }}
         errors={nameError ? [{ field: 'name', message: nameError }] : []}
@@ -212,7 +220,7 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
       />
 
       {/* ── Page Header ─────────────────────────────────────────────────── */}
-      <Box sx={{ mb: 3 }}>
+      <Box component="div" sx={{ mb: 3 }}>
         <Typography
           variant="h5" fontWeight={700}
           sx={{ color: textPrim, fontFamily: 'Cambria, Georgia, serif' }}
@@ -237,7 +245,7 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
         }}
       >
         {/* Card Header */}
-        <Box
+        <Box component="div"
           sx={{
             px: { xs: 2, sm: 3 }, py: 2,
             background: headerBg,
@@ -247,8 +255,8 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
             flexWrap: 'wrap', gap: 1,
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
+          <Box component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box component="div"
               sx={{
                 width: 36, height: 36, borderRadius: 2,
                 background: 'linear-gradient(135deg,#3b82f6,#2563eb)',
@@ -280,7 +288,7 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
         </Box>
 
         {/* Form Body */}
-        <Box sx={{ px: { xs: 2, sm: 3 }, pt: 3, pb: 2 }}>
+        <Box component="div" sx={{ px: { xs: 2, sm: 3 }, pt: 3, pb: 2 }}>
           <Field
             id="role-name-field"
             label="Role Name"
@@ -299,7 +307,7 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
         <Divider sx={{ borderColor: borderC }} />
 
         {/* ── Action Buttons ───────────────────────────────────────────── */}
-        <Box
+        <Box component="div"
           sx={{
             px: { xs: 2, sm: 3 }, py: 2.5,
             display: 'flex', justifyContent: 'center',
