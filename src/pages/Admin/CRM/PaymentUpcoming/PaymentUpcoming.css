@@ -15,6 +15,7 @@
 @media (max-width: 1023px) {
   .payment-upcoming-range-row { gap: 8px !important; }
   .payment-upcoming-range-field input { width: 140px !important; }
+  .payment-upcoming-result-box { margin-left: 0 !important; width: 100%; }
   .payment-upcoming-stat-grid { gap: 8px !important; }
 }
 
@@ -30,6 +31,7 @@
   .payment-upcoming-range-field { width: calc(50% - 6px); }
   .payment-upcoming-range-field input { width: 100% !important; }
   .payment-upcoming-ok-btn { flex: 1; }
+  .payment-upcoming-result-box { margin-left: 0 !important; width: 100%; order: 3; }
 
   .payment-upcoming-stat-grid { gap: 8px !important; }
 

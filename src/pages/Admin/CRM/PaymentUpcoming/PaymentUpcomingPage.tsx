@@ -5,16 +5,20 @@
 // Payment" checkbox+result-box UI. Pick a date range and press OK (GET
 // /payments/upcoming-amount for the grand total, GET /payments/upcoming-
 // list-detailed for the per-installment rows) — nothing loads until then.
-// Above the table: one stat box per Payment For category (Monthly
-// Installment / Booking / Pay After Booking / Possession / Booster Before
-// / Booster After Possession, same categories the Add Payment Details
-// "Payment For" dropdown offers) plus a grand Total, all summed from the
-// unfiltered detailed list for the applied range — same "boxes sum the
-// whole range, search only narrows the table" convention DueReportPage's
-// own stat row uses. Below that: the table itself (consolidated Company/
-// Project/Location and Building/Wing/Flat columns, Customer Code+Name,
-// Employee Code+Name, Contact) plus 3 client-side search fields over the
-// fetched list — Customer ID/Name/Email/Mobile, Employee Name/Code,
+// Right at the top of the page (above the date-range card itself): one
+// stat box per Payment For category (Monthly Installment / Booking / Pay
+// After Booking / Possession / Booster Before / Booster After Possession
+// — the same options the Add Payment Details "Payment For" dropdown
+// offers), each summed from the unfiltered detailed list for the applied
+// range so a glance at the top tells you exactly what's coming and how
+// much. The date-range card itself keeps a single combined "Upcoming
+// Amount" total box next to OK/Refresh, same as the original design
+// before the per-category boxes existed — the category breakdown lives
+// only in the top row now, not duplicated here. The table's own Payment
+// For column shows the same category label (color-coded) plus the exact
+// schedule line (e.g. "12th EMI") underneath, so each row's type is
+// unambiguous at a glance. Below that: 3 client-side search fields over
+// the fetched list — Customer ID/Name/Email/Mobile, Employee Name/Code,
 // Building Name.
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
@@ -31,7 +35,7 @@ import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
 import StatCard from '../../../../components/masters/StatCard';
 import { fetchUpcomingAmount, fetchUpcomingListDetailed } from '../../../../services/paymentUpcomingService';
-import { UpcomingAmountData, UpcomingListDetailRow } from '../../../../types/paymentUpcoming';
+import { PaymentForKey, UpcomingAmountData, UpcomingListDetailRow } from '../../../../types/paymentUpcoming';
 import './PaymentUpcoming.css';
 
 type Theme = AppTheme;
@@ -41,6 +45,17 @@ const rupee = (n: number): string => `₹${n.toLocaleString('en-IN')}`;
 const todayYmd = (): string => new Date().toISOString().slice(0, 10);
 
 interface StatBoxSpec { label: string; value: number; color: string; icon: IconType; }
+
+// Friendly label + color per payment_for_key, reused by both the top
+// category boxes and the table's own Payment For column badge.
+const PAYMENT_FOR_KEY_META: Record<PaymentForKey, { label: string; color: string; icon: IconType }> = {
+  EMIAmount: { label: 'Monthly Installment', color: '#2563eb', icon: MdPayments },
+  BookingAmount: { label: 'Booking Amount', color: '#dc2626', icon: MdReceiptLong },
+  PayAfterbooking: { label: 'Payment After Booking', color: '#ea580c', icon: MdSchedule },
+  PossessionAmount: { label: 'Possession Amount', color: '#7c3aed', icon: MdVpnKey },
+  AnnualAmount: { label: 'Booster Before Possession', color: '#16a34a', icon: MdStars },
+  AnnualAmount1: { label: 'Booster After Possession', color: '#0d9488', icon: MdWorkspacePremium },
+};
 
 const PaymentUpcomingPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -88,34 +103,28 @@ const PaymentUpcomingPage: React.FC = () => {
 
   const handleRefresh = () => { if (applied) handleApply(); };
 
-  // ── Per-category stat boxes — same "Payment For" categories the Add
+  // ── Per-category stat boxes — every "Payment For" option the Add
   // Payment Details dropdown offers, summed across the whole (unfiltered)
   // detailed list for the applied range, exactly like DueReportPage's own
   // boxSums does for Payment Dues. Extra Pay is not a schedule-generated
   // payment type (it's a manual advance-collection option on the Add
-  // Payment form) so it can never appear here and has no box. ────────────
+  // Payment form) so it can never appear here and has no box. The grand
+  // Total is deliberately NOT one of these — it stays its own single box
+  // next to the date range's OK/Refresh, unchanged from the original
+  // design. ─────────────────────────────────────────────────────────────
+  const PAYMENT_FOR_KEY_ORDER: PaymentForKey[] = ['EMIAmount', 'BookingAmount', 'PayAfterbooking', 'PossessionAmount', 'AnnualAmount', 'AnnualAmount1'];
   const boxSums = useMemo(() => {
-    let emi = 0, booking = 0, payAfterBooking = 0, possession = 0, boosterBefore = 0, boosterAfter = 0;
-    for (const r of listRows) {
-      if (r.payment_for_key === 'EMIAmount') emi += r.amount;
-      else if (r.payment_for_key === 'BookingAmount') booking += r.amount;
-      else if (r.payment_for_key === 'PayAfterbooking') payAfterBooking += r.amount;
-      else if (r.payment_for_key === 'PossessionAmount') possession += r.amount;
-      else if (r.payment_for_key === 'AnnualAmount') boosterBefore += r.amount;
-      else if (r.payment_for_key === 'AnnualAmount1') boosterAfter += r.amount;
-    }
-    return { emi, booking, payAfterBooking, possession, boosterBefore, boosterAfter };
+    const sums: Record<PaymentForKey, number> = { EMIAmount: 0, BookingAmount: 0, PayAfterbooking: 0, PossessionAmount: 0, AnnualAmount: 0, AnnualAmount1: 0 };
+    for (const r of listRows) sums[r.payment_for_key] += r.amount;
+    return sums;
   }, [listRows]);
 
-  const statBoxSpecs: StatBoxSpec[] = [
-    { label: 'Monthly Installment', value: boxSums.emi, color: '#2563eb', icon: MdPayments },
-    { label: 'Booking Amount', value: boxSums.booking, color: '#dc2626', icon: MdReceiptLong },
-    { label: 'Payment After Booking', value: boxSums.payAfterBooking, color: '#ea580c', icon: MdSchedule },
-    { label: 'Possession Amount', value: boxSums.possession, color: '#7c3aed', icon: MdVpnKey },
-    { label: 'Booster Before Possession', value: boxSums.boosterBefore, color: '#16a34a', icon: MdStars },
-    { label: 'Booster After Possession', value: boxSums.boosterAfter, color: '#0d9488', icon: MdWorkspacePremium },
-    { label: `Total — ${rangeDays} Day${rangeDays === 1 ? '' : 's'}`, value: amountResult?.total_amount ?? 0, color: '#4f46e5', icon: MdAccountBalanceWallet },
-  ];
+  const statBoxSpecs: StatBoxSpec[] = PAYMENT_FOR_KEY_ORDER.map((key) => ({
+    label: PAYMENT_FOR_KEY_META[key].label,
+    value: boxSums[key],
+    color: PAYMENT_FOR_KEY_META[key].color,
+    icon: PAYMENT_FOR_KEY_META[key].icon,
+  }));
 
   // ── 3 search fields — client-side, same convention as DueReportPage's
   // own Payment For / Building / Employee filters over one fetched list.
@@ -179,8 +188,23 @@ const PaymentUpcomingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Date range + OK — same look/behaviour as the removed Payment
-          Dues "Show Upcoming Payment" checkbox. ─────────────────────────── */}
+      {/* ── Per-category stat boxes — every Payment For option, moved to
+          the very top of the page so a glance tells you exactly what's
+          coming and how much, before even looking at the table. Only
+          meaningful once a range has been applied. ──────────────────────── */}
+      {applied && (
+        <div className="payment-upcoming-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
+          {statBoxSpecs.map((spec) => (
+            <StatCard key={spec.label} label={spec.label} value={rupee(spec.value)} icon={spec.icon} color={spec.color}
+              bg={isDark ? 'rgba(79,70,229,0.12)' : '#eef2ff'} loading={loadingAmount || loadingList} compact labelFontSize={11.5}
+              surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+          ))}
+        </div>
+      )}
+
+      {/* ── Date range + OK + single combined Total box — same look/
+          behaviour as the original "Show Upcoming Payment" checkbox
+          (before the per-category boxes existed). ──────────────────────── */}
       <div className="payment-upcoming-range-card rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="payment-upcoming-range-row flex items-end gap-3 flex-wrap">
           <div className="payment-upcoming-range-field">
@@ -203,20 +227,19 @@ const PaymentUpcomingPage: React.FC = () => {
               <MdRefresh size={18} />
             </button>
           )}
+          {applied && amountResult && (
+            <div className="payment-upcoming-result-box" style={{ marginLeft: 'auto' }}>
+              <StatCard
+                label={`Upcoming Amount — ${rangeDays} Day${rangeDays === 1 ? '' : 's'}`}
+                value={rupee(amountResult.total_amount)}
+                icon={MdAccountBalanceWallet} color="#4f46e5"
+                bg={isDark ? 'rgba(79,70,229,0.12)' : '#eef2ff'} loading={loadingAmount} compact labelFontSize={12.5}
+                surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary}
+              />
+            </div>
+          )}
         </div>
       </div>
-
-      {/* ── Per-category stat boxes — one per Payment For option, plus a
-          grand Total. Only meaningful once a range has been applied. ────── */}
-      {applied && (
-        <div className="payment-upcoming-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-5">
-          {statBoxSpecs.map((spec) => (
-            <StatCard key={spec.label} label={spec.label} value={rupee(spec.value)} icon={spec.icon} color={spec.color}
-              bg={isDark ? 'rgba(79,70,229,0.12)' : '#eef2ff'} loading={loadingAmount || loadingList} compact labelFontSize={11.5}
-              surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-          ))}
-        </div>
-      )}
 
       {/* ── 3 search fields — Customer ID/Name/Email/Mobile, Employee
           Name/Code, Building Name. Only meaningful once a range has been
@@ -297,7 +320,15 @@ const PaymentUpcomingPage: React.FC = () => {
                       <div>{r.email || '—'}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.mobile_number || '—'}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.payment_for}</td>
+                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        display: 'inline-block', padding: '3px 9px', borderRadius: 999,
+                        fontSize: 10.5, fontWeight: 700, color: '#fff', background: PAYMENT_FOR_KEY_META[r.payment_for_key].color,
+                      }}>
+                        {PAYMENT_FOR_KEY_META[r.payment_for_key].label}
+                      </span>
+                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>{r.payment_for}</div>
+                    </td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
                       <div className="flex items-center gap-1.5">
                         <MdEvent size={13} style={{ color: t.textSecondary }} />
