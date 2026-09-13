@@ -15,7 +15,7 @@
 @media (max-width: 1023px) {
   .payment-upcoming-range-row { gap: 8px !important; }
   .payment-upcoming-range-field input { width: 140px !important; }
-  .payment-upcoming-result-box { margin-left: 0 !important; width: 100%; }
+  .payment-upcoming-stat-grid { gap: 8px !important; }
 }
 
 /* ---------- sm: 480-767px ---------- */
@@ -30,7 +30,8 @@
   .payment-upcoming-range-field { width: calc(50% - 6px); }
   .payment-upcoming-range-field input { width: 100% !important; }
   .payment-upcoming-ok-btn { flex: 1; }
-  .payment-upcoming-result-box { margin-left: 0 !important; width: 100%; order: 3; }
+
+  .payment-upcoming-stat-grid { gap: 8px !important; }
 
   .payment-upcoming-table th { padding: 10px 10px !important; font-size: 10.5px !important; }
   .payment-upcoming-table td { padding: 10px 10px !important; font-size: 11px !important; }
@@ -49,6 +50,8 @@
   .payment-upcoming-range-field { width: 100%; }
   .payment-upcoming-ok-btn { width: 100%; }
   .payment-upcoming-refresh-btn { width: 34px !important; height: 34px !important; }
+
+  .payment-upcoming-stat-grid { gap: 6px !important; }
 
   .payment-upcoming-search-card { padding: 10px !important; }
   .payment-upcoming-search-row { gap: 6px !important; }
