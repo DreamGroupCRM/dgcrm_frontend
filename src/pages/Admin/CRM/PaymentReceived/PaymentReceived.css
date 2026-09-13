@@ -7,16 +7,8 @@
    sm 480-767  xs <=479 (with a 359px sub-cut)
    ========================================================================== */
 
-.pr-page {
-  padding-left: 10px;
-  padding-right: 10px;
-  box-sizing: border-box;
-}
-
-/* ---------- lg: 1024-1279px ---------- */
-@media (max-width: 1279px) {
-  .pr-page { padding-left: 8px; padding-right: 8px; }
-}
+/* Side gutter is owned by DashboardLayout's <main> (px-2.5/sm:px-4/lg:px-6)
+   so every page gets it consistently — not repeated per-page here. */
 
 /* ---------- md: 768-1023px ---------- */
 @media (max-width: 1023px) {
@@ -26,8 +18,6 @@
 
 /* ---------- sm: 480-767px ---------- */
 @media (max-width: 767px) {
-  .pr-page { padding-left: 6px; padding-right: 6px; }
-
   .pr-header { gap: 8px !important; }
   .pr-header h1 { font-size: 16.5px !important; }
   .pr-header p { font-size: 10.5px !important; }
@@ -52,8 +42,6 @@
 
 /* ---------- xs: <=479px ---------- */
 @media (max-width: 479px) {
-  .pr-page { padding-left: 5px; padding-right: 5px; }
-
   .pr-header { gap: 6px !important; }
   .pr-header > div:first-child { width: 34px !important; height: 34px !important; }
   .pr-header svg { width: 17px !important; height: 17px !important; }

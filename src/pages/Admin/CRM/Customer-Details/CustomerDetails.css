@@ -350,17 +350,8 @@
    md 768-1023  sm 480-767  xs <=479 (with a 359px sub-cut)
    ========================================================================== */
 
-.cust-list-page,
-.cust-crud-page {
-  padding-left: 10px;
-  padding-right: 10px;
-  box-sizing: border-box;
-}
-
-/* ---------- lg: 1024-1279px ---------- */
-@media (max-width: 1279px) {
-  .cust-list-page, .cust-crud-page { padding-left: 8px; padding-right: 8px; }
-}
+/* Side gutter is owned by DashboardLayout's <main> (px-2.5/sm:px-4/lg:px-6)
+   so every page gets it consistently — not repeated per-page here. */
 
 /* ---------- md: 768-1023px ---------- */
 @media (max-width: 1023px) {
@@ -372,8 +363,6 @@
 
 /* ---------- sm: 480-767px ---------- */
 @media (max-width: 767px) {
-  .cust-list-page, .cust-crud-page { padding-left: 6px; padding-right: 6px; }
-
   .cust-list-title { font-size: 16.5px !important; }
   .cust-list-subtitle { font-size: 10.5px !important; }
   .cust-crud-title { font-size: 15px !important; }
@@ -400,8 +389,6 @@
 
 /* ---------- xs: <=479px ---------- */
 @media (max-width: 479px) {
-  .cust-list-page, .cust-crud-page { padding-left: 5px; padding-right: 5px; }
-
   .cust-list-title { font-size: 14.5px !important; }
   .cust-crud-title { font-size: 13.5px !important; }
   .cust-id-badge { padding: 5px 10px !important; }

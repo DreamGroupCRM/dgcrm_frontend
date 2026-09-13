@@ -43,7 +43,7 @@ const DashboardLayout: React.FC = () => {
         <Header onMobileMenuToggle={() => setMobileOpen((prev) => !prev)} />
 
         <main
-          className="flex-1 overflow-y-auto p-5 lg:p-6"
+          className="flex-1 overflow-y-auto px-2.5 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6"
           style={{
             background : t.subtleBg,
             color      : t.textPrimary,

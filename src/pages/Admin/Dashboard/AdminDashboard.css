@@ -5,26 +5,17 @@
    Recent Leads table already scrolls via the shared .responsive-table
    class) — nothing in the JSX's inline style={{}} props is overridden here
    except with an explicit !important, needed to beat inline specificity.
+   Side gutter is owned by DashboardLayout's <main> (px-2.5/sm:px-4/lg:px-6)
+   so every page gets it consistently — not repeated per-page here.
    Breakpoints: sm 480-767  xs <=479
    ========================================================================== */
-.admin-dash-page {
-  padding-left: 10px;
-  padding-right: 10px;
-  box-sizing: border-box;
-}
-
-@media (max-width: 1279px) {
-  .admin-dash-page { padding-left: 8px; padding-right: 8px; }
-}
 
 @media (max-width: 767px) {
-  .admin-dash-page { padding-left: 6px; padding-right: 6px; }
   .admin-dash-stat-grid { gap: 8px !important; }
   .admin-dash-card { padding: 12px !important; }
 }
 
 @media (max-width: 479px) {
-  .admin-dash-page { padding-left: 5px; padding-right: 5px; }
   .admin-dash-stat-grid { gap: 6px !important; }
   .admin-dash-card { padding: 10px !important; }
   .admin-dash-card p.text-2xl { font-size: 17px !important; }

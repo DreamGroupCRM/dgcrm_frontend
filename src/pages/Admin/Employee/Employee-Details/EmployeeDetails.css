@@ -417,18 +417,10 @@
    gutter added there) — nothing further is needed for it here. This block
    only covers the Crud/View page's own header, which isn't master.css-based.
    Breakpoints: sm 480-767  xs <=479. ========================================================================== */
-.emp-crud-page {
-  padding-left: 10px;
-  padding-right: 10px;
-  box-sizing: border-box;
-}
-
-@media (max-width: 1279px) {
-  .emp-crud-page { padding-left: 8px; padding-right: 8px; }
-}
+/* Side gutter is owned by DashboardLayout's <main> (px-2.5/sm:px-4/lg:px-6)
+   so every page gets it consistently — not repeated per-page here. */
 
 @media (max-width: 767px) {
-  .emp-crud-page { padding-left: 6px; padding-right: 6px; }
   .emp-crud-header { gap: 8px !important; }
   .emp-crud-title { font-size: 15px !important; }
   .emp-id-badge { padding: 6px 12px !important; }
@@ -438,7 +430,6 @@
 }
 
 @media (max-width: 479px) {
-  .emp-crud-page { padding-left: 5px; padding-right: 5px; }
   .emp-crud-title { font-size: 13.5px !important; }
   .emp-crud-subtitle { font-size: 10px !important; }
   .emp-id-badge { padding: 5px 10px !important; }
