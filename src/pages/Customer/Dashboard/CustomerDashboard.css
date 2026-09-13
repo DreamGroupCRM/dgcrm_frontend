@@ -1,0 +1,31 @@
+/* ==========================================================================
+   CustomerDashboard (customer portal) — responsive rules only (V_22.0).
+   This page has its own shell (deliberately NOT wrapped in DashboardLayout),
+   so it needs its own small side gutter, unlike the staff pages. Additive
+   on top of the page's existing inline styles / Tailwind utility classes;
+   nothing in the JSX's inline style={{}} props is overridden here except
+   with an explicit !important, needed to beat inline-style specificity.
+   Breakpoints: sm 480-767  xs <=479
+   ========================================================================== */
+
+.cd-content {
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .cd-topbar { padding-left: 12px !important; padding-right: 12px !important; }
+  .cd-content { padding-left: 10px !important; padding-right: 10px !important; }
+  .cd-stat-grid { gap: 8px !important; }
+  .cd-table th { padding: 8px 10px !important; font-size: 10.5px !important; }
+  .cd-table td { padding: 8px 10px !important; font-size: 12px !important; }
+}
+
+@media (max-width: 479px) {
+  .cd-topbar { padding-left: 10px !important; padding-right: 10px !important; gap: 6px !important; }
+  .cd-content { padding-left: 8px !important; padding-right: 8px !important; }
+  .cd-topbar-right { gap: 8px !important; }
+  .cd-welcome-text { font-size: 11.5px !important; }
+  .cd-logout-btn { padding: 6px 10px !important; gap: 4px !important; }
+  .cd-logout-btn-text { font-size: 12px !important; }
+  .cd-stat-grid { gap: 6px !important; }
+}

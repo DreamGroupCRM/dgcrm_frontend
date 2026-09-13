@@ -34,6 +34,7 @@ import {
   fetchMyBookings, fetchMyBookingDetail, fetchMyBookingPayments, fetchMyBookingDueGrid,
   PortalBookingSummary, PortalBookingDetail, PortalPaymentRow, PortalDueGrid,
 } from '../../../services/customerPortalService';
+import './CustomerDashboard.css';
 
 type Theme = AppTheme;
 
@@ -176,19 +177,19 @@ const CustomerDashboard: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: t.subtleBg, fontFamily: t.fontFamily }}>
       {/* Top bar */}
-      <div className="flex items-center justify-between px-5 py-3" style={{ background: t.pageBg, borderBottom: `1px solid ${t.divider}` }}>
+      <div className="cd-topbar flex items-center justify-between gap-2 px-5 py-3" style={{ background: t.pageBg, borderBottom: `1px solid ${t.divider}` }}>
         <Logo size="sm" withText textColor={isDark ? 'text-white' : 'text-gray-900'} />
-        <div className="flex items-center gap-3">
-          <span style={{ fontSize: 13.5, color: t.textSecondary, fontWeight: 500 }}>
+        <div className="cd-topbar-right flex items-center gap-3">
+          <span className="cd-welcome-text" style={{ fontSize: 13.5, color: t.textSecondary, fontWeight: 500 }}>
             {firstName ? `Welcome, ${firstName}` : 'Welcome'}
           </span>
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold"
+            className="cd-logout-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold"
             style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: 'none', cursor: 'pointer' }}
           >
-            <MdLogout size={16} /> Logout
+            <MdLogout size={16} /> <span className="cd-logout-btn-text">Logout</span>
           </button>
         </div>
       </div>
@@ -203,7 +204,7 @@ const CustomerDashboard: React.FC = () => {
           <p style={{ fontSize: 13.5, color: t.textMuted, marginTop: 6 }}>Your account isn't linked to any booking yet. Contact your relationship manager if this looks wrong.</p>
         </div>
       ) : (
-        <div style={{ maxWidth: 980, margin: '0 auto', width: '100%', padding: '20px 16px 40px' }}>
+        <div className="cd-content" style={{ maxWidth: 980, margin: '0 auto', width: '100%', padding: '20px 16px 40px' }}>
           {/* Multi-flat tab strip — only shown when there's something to switch between */}
           {bookings.length > 1 && (
             <div className="flex gap-2 flex-wrap" style={{ marginBottom: 18 }}>
@@ -237,7 +238,7 @@ const CustomerDashboard: React.FC = () => {
               {/* Payment summary — Total Amount / Total Paid / Total Due, the
                   headline numbers a customer needs to understand where they
                   stand at a glance. */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ marginBottom: 18 }}>
+              <div className="cd-stat-grid grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ marginBottom: 18 }}>
                 <StatCard label="Total Amount" value={rupee(totalAmount)} icon={MdApartment} color="#2563eb" bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
                 <StatCard label="Total Paid" value={rupee(totalPaid)} icon={MdCheckCircle} color="#16a34a" bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
                 <StatCard label="Total Due" value={rupee(totalDue)} icon={MdErrorOutline} color={totalDue > 0 ? '#dc2626' : '#16a34a'} bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
@@ -298,7 +299,7 @@ const CustomerDashboard: React.FC = () => {
                   {dueCounts.due} due now &middot; {dueCounts.upcoming} upcoming &middot; {dueCounts.paid} paid
                 </p>
                 <div className="overflow-x-auto">
-                  <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+                  <table className="cd-table w-full" style={{ borderCollapse: 'collapse', minWidth: 620 }}>
                     <thead>
                       <tr style={{ background: t.tableHeaderBg }}>
                         {['#', 'Installment', 'Date', 'Amount', 'Status'].map((h) => (
@@ -327,7 +328,7 @@ const CustomerDashboard: React.FC = () => {
                   <p style={{ fontSize: 13, color: t.textMuted, textAlign: 'center', padding: '20px 0' }}>No payments recorded yet.</p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+                    <table className="cd-table w-full" style={{ borderCollapse: 'collapse', minWidth: 720 }}>
                       <thead>
                         <tr style={{ background: t.tableHeaderBg }}>
                           {['Receipt #', 'Payment For', 'Amount', 'Mode', 'Date', 'Status'].map((h) => (
