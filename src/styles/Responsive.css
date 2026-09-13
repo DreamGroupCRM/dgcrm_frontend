@@ -371,6 +371,24 @@
    scattering @media blocks across each page. Desktop layout/logic is
    untouched — everything below only fires under its max-width. */
 
+/* Small side gutter at every width (V_22.0) — so every master-based page
+   stays visually centered with a bit of breathing room from the screen
+   edge on mobile, instead of content running flush to it. Base rule
+   applies everywhere; tightened progressively on phones. */
+.master-page {
+  padding-left: 10px;
+  padding-right: 10px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+  .master-page { padding-left: 8px; padding-right: 8px; }
+}
+
+@media (max-width: 480px) {
+  .master-page { padding-left: 5px; padding-right: 5px; }
+}
+
 /* Tablet and below — search box gets full width instead of a fixed max,
    action buttons wrap under it instead of overflowing off-screen. */
 @media (max-width: 900px) {

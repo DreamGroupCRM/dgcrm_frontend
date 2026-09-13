@@ -1,0 +1,92 @@
+/* ==========================================================================
+   PaymentReceivedPage — responsive rules only (V_22.0). Layered on top of
+   the page's existing inline styles / Tailwind utility classes; nothing in
+   the JSX's inline style={{}} props is overridden here except with an
+   explicit !important, needed to beat inline-style specificity.
+   Breakpoints: xxl >=1536  xl 1280-1535  lg 1024-1279  md 768-1023
+   sm 480-767  xs <=479 (with a 359px sub-cut)
+   ========================================================================== */
+
+.pr-page {
+  padding-left: 10px;
+  padding-right: 10px;
+  box-sizing: border-box;
+}
+
+/* ---------- lg: 1024-1279px ---------- */
+@media (max-width: 1279px) {
+  .pr-page { padding-left: 8px; padding-right: 8px; }
+}
+
+/* ---------- md: 768-1023px ---------- */
+@media (max-width: 1023px) {
+  .pr-toolbar-row { gap: 8px !important; }
+  .pr-filter-grid { gap: 8px !important; }
+}
+
+/* ---------- sm: 480-767px ---------- */
+@media (max-width: 767px) {
+  .pr-page { padding-left: 6px; padding-right: 6px; }
+
+  .pr-header { gap: 8px !important; }
+  .pr-header h1 { font-size: 16.5px !important; }
+  .pr-header p { font-size: 10.5px !important; }
+
+  .pr-stat-grid { gap: 8px !important; }
+  .pr-filter-card { padding: 10px !important; }
+  .pr-filter-grid { gap: 8px !important; }
+  .pr-filter-actions button { padding: 0 10px !important; font-size: 11.5px !important; height: 34px !important; }
+
+  .pr-toolbar { padding: 10px !important; }
+  .pr-toolbar-row { flex-wrap: wrap !important; }
+  .pr-toolbar-search { width: 100% !important; order: 1; }
+  .pr-toolbar-actions { width: 100%; order: 2; justify-content: space-between !important; }
+  .pr-export-btn { padding: 8px 12px !important; font-size: 12px !important; }
+  .pr-refresh-btn { width: 34px !important; height: 34px !important; }
+
+  .pr-table th { padding: 10px 10px !important; font-size: 10.5px !important; }
+  .pr-table td { padding: 10px 10px !important; font-size: 11px !important; }
+
+  .pr-modal-backdrop { padding: 10px !important; }
+}
+
+/* ---------- xs: <=479px ---------- */
+@media (max-width: 479px) {
+  .pr-page { padding-left: 5px; padding-right: 5px; }
+
+  .pr-header { gap: 6px !important; }
+  .pr-header > div:first-child { width: 34px !important; height: 34px !important; }
+  .pr-header svg { width: 17px !important; height: 17px !important; }
+  .pr-header h1 { font-size: 14.5px !important; }
+  .pr-header p { font-size: 9.5px !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  .pr-stat-grid { gap: 6px !important; }
+  .pr-filter-grid { gap: 6px !important; }
+  .pr-filter-actions { gap: 6px !important; }
+  .pr-filter-actions button { padding: 0 8px !important; font-size: 11px !important; height: 32px !important; gap: 4px !important; }
+  .pr-filter-actions button svg { width: 12px !important; height: 12px !important; }
+
+  .pr-toolbar-search { padding: 6px 8px !important; }
+  .pr-toolbar-actions { gap: 6px !important; }
+  .pr-export-btn { padding: 7px 10px !important; font-size: 11px !important; gap: 4px !important; }
+  .pr-export-btn svg { width: 13px !important; height: 13px !important; }
+  .pr-export-btn-text { font-size: 11px !important; }
+  .pr-refresh-btn { width: 30px !important; height: 30px !important; }
+  .pr-refresh-btn svg { width: 15px !important; height: 15px !important; }
+
+  .pr-row-actions { gap: 4px !important; }
+  .pr-row-actions button { width: 22px !important; height: 22px !important; }
+  .pr-row-actions button svg { width: 11px !important; height: 11px !important; }
+
+  .pr-table th { padding: 8px 8px !important; font-size: 10px !important; }
+  .pr-table td { padding: 8px 8px !important; font-size: 10.5px !important; }
+
+  .pr-modal { max-width: 100% !important; }
+  .pr-modal-backdrop { padding: 8px !important; }
+}
+
+/* ---------- xs (small phones): <=359px ---------- */
+@media (max-width: 359px) {
+  .pr-export-btn-text { font-size: 10px !important; }
+  .pr-export-btn { padding: 6px 8px !important; }
+}

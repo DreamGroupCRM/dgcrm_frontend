@@ -985,10 +985,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     const fullName = [form.first_name, form.middle_name, form.last_name].filter(Boolean).join(' ');
 
     return (
-      <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40, ...cssVars }}>
+      <div className="emp-crud-page" style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40, ...cssVars }}>
 
         {/* ── Page header ─────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="emp-crud-header flex flex-wrap items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -1155,10 +1155,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40, ...cssVars }}>
+    <div className="emp-crud-page" style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40, ...cssVars }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div className="emp-crud-header flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <button
             type="button"

@@ -38,6 +38,7 @@ import { companyService } from '../../../../services/companyService';
 import { exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport';
 import { Building, PaymentReceipt } from '../../../../types/index';
 import { formatLastLogin, showAlert } from '../../../../utils';
+import './PaymentApprovals.css';
 
 type Theme = AppTheme;
 
@@ -389,8 +390,8 @@ const PaymentApprovalsPage: React.FC = () => {
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 };
 
   return (
-    <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="flex items-center gap-3 mb-6">
+    <div className="pa-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
+      <div className="pa-header flex items-center gap-3 mb-6">
         <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
           <MdPayments size={22} style={{ color: '#4f46e5' }} />
         </div>
@@ -403,7 +404,7 @@ const PaymentApprovalsPage: React.FC = () => {
       {/* ── Top stat boxes — Awaiting Approval kept exactly as it already
           was, plus Total Approved This Month / Today (approved_at-based,
           independent of the table's own filters). ─────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+      <div className="pa-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         <StatCard label="Awaiting Approval" value={total} icon={MdHourglassEmpty} color="#ea580c" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Approved This Month" value={stats?.approved_this_month ?? 0} icon={MdEventAvailable} color="#16a34a" bg="" loading={!stats}
@@ -413,8 +414,8 @@ const PaymentApprovalsPage: React.FC = () => {
       </div>
 
       {/* ── Filter panel ─────────────────────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-3.5">
+      <div className="pa-filter-card rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="pa-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-3.5">
           <FilterSelect t={t} label="Received By" value={draftReceivedBy} onChange={setDraftReceivedBy}
             placeholder="--All--" options={employeeNameOptions.map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Building Name" value={draftBuildingName} onChange={handleBuildingChange}
@@ -428,7 +429,7 @@ const PaymentApprovalsPage: React.FC = () => {
           <FilterSelect t={t} label="Company" value={draftCompany} onChange={setDraftCompany}
             placeholder="--Select--" options={companyNameOptions.map((n) => ({ value: n, label: n }))} />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
+        <div className="pa-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
             <label style={labelStyle}>Payment Date From</label>
@@ -441,7 +442,7 @@ const PaymentApprovalsPage: React.FC = () => {
           {/* Compact, content-width buttons in fresh light tints — was a
               full-column-wide orange gradient + gray pair, which read as
               oversized next to the fields beside it. ─────────────────── */}
-          <div className="flex items-center gap-2">
+          <div className="pa-filter-actions flex items-center gap-2">
             <button type="button" onClick={handleFilter}
               className="inline-flex items-center gap-1.5 rounded-xl text-xs font-bold"
               style={{ padding: '0 14px', height: 38, background: isDark ? 'rgba(37,99,235,0.18)' : '#dbeafe', color: isDark ? '#93c5fd' : '#1d4ed8', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -458,19 +459,19 @@ const PaymentApprovalsPage: React.FC = () => {
 
       {/* ── Bulk-approve bar — only while rows are selected. ────────────── */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl mb-3 p-3" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="pa-bulk-bar flex items-center justify-between gap-3 rounded-2xl mb-3 p-3" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
           <span style={{ fontSize: 11.5, color: t.textSecondary }}>{selectedIds.size} payment(s) selected</span>
           <button type="button" disabled={bulkApproving} onClick={handleBulkApprove}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white"
+            className="pa-bulk-approve-btn flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white"
             style={{ background: '#16a34a', border: 'none', cursor: bulkApproving ? 'not-allowed' : 'pointer', opacity: bulkApproving ? 0.7 : 1, whiteSpace: 'nowrap' }}>
             <MdCheckCircle size={15} /> {bulkApproving ? 'Approving...' : `Approve Selected Payment (${selectedIds.size})`}
           </button>
         </div>
       )}
 
-      <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 280, flexShrink: 0 }}>
+      <div className="pa-toolbar rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="pa-toolbar-row flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+          <div className="pa-toolbar-search flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 280, flexShrink: 0 }}>
             <MdSearch size={17} style={{ color: t.textSecondary, flexShrink: 0 }} />
             <input type="text" placeholder="Search by Customer ID and Customer Name" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%' }} />
@@ -481,14 +482,14 @@ const PaymentApprovalsPage: React.FC = () => {
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="pa-toolbar-actions flex items-center gap-2.5" style={{ flexShrink: 0 }}>
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
+            className="pa-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
             style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-            <MdDownload size={16} /> {exportingCsv ? 'Exporting…' : 'Export CSV'}
+            <MdDownload size={16} /> <span className="pa-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
           </button>
           <button type="button" onClick={() => { fetchRows(); fetchStats(); }} title="Refresh"
-            className="flex items-center justify-center rounded-xl"
+            className="pa-refresh-btn flex items-center justify-center rounded-xl"
             style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
             <MdRefresh size={18} />
           </button>
@@ -496,9 +497,9 @@ const PaymentApprovalsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      <div className="pa-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="master-table-scroll">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
+          <table className="pa-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <th style={{ padding: '12px 14px', width: 36 }}>
@@ -522,7 +523,7 @@ const PaymentApprovalsPage: React.FC = () => {
                       <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelectRow(r.id)} style={{ cursor: 'pointer' }} />
                     </td>
                     <td style={{ padding: '12px 14px' }}>
-                      <div className="flex items-center gap-1.5">
+                      <div className="pa-row-actions flex items-center gap-1.5">
                         <button type="button" title="View" onClick={() => openViewModal(r)}
                           className="flex items-center justify-center rounded-lg"
                           style={{ width: 26, height: 26, background: isDark ? 'rgba(234,88,12,0.15)' : '#ffedd5', border: 'none', color: '#ea580c', cursor: 'pointer' }}>
@@ -581,8 +582,8 @@ const PaymentApprovalsPage: React.FC = () => {
 
       {/* ── Receipt Details (View) popup ─────────────────────────────────── */}
       {viewModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setViewModal(null)}>
-          <div className="rounded-2xl w-full overflow-hidden" style={{ maxWidth: 560, background: t.surfaceBg, maxHeight: '88vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+        <div className="pa-modal-backdrop fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setViewModal(null)}>
+          <div className="pa-modal rounded-2xl w-full overflow-hidden" style={{ maxWidth: 560, background: t.surfaceBg, maxHeight: '88vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3.5" style={{ background: 'linear-gradient(135deg,#f97316,#ec4899)' }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>Receipt Details - {viewModal.row.receipt_number}</div>
               <button type="button" onClick={() => setViewModal(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#fff', padding: 4, display: 'flex' }}>
@@ -620,7 +621,7 @@ const PaymentApprovalsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2.5 flex-wrap" style={{ borderTop: `1px solid ${t.divider}`, paddingTop: 16 }}>
+                  <div className="pa-modal-footer flex items-center justify-end gap-2.5 flex-wrap" style={{ borderTop: `1px solid ${t.divider}`, paddingTop: 16 }}>
                     <button type="button" onClick={() => setViewModal(null)}
                       className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
                       Close

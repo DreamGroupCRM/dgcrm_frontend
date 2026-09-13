@@ -18,6 +18,7 @@ import {
   MdPeople, MdLeaderboard, MdPayment, MdAttachMoney,
   MdHome, MdEventAvailable,
 } from 'react-icons/md';
+import './AdminDashboard.css';
 
 type Theme = AppTheme;
 
@@ -78,14 +79,14 @@ const AdminDashboard: React.FC = () => {
   ] : [];
 
   return (
-    <div className="space-y-6" style={{ fontFamily: t.fontFamily }}>
+    <div className="admin-dash-page space-y-6" style={{ fontFamily: t.fontFamily }}>
 
       {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 stat-card-grid">
+      <div className="admin-dash-stat-grid grid grid-cols-2 lg:grid-cols-3 gap-4 stat-card-grid">
         {(loading ? Array.from({ length: 6 }) : cards).map((card, i) => (
           <div
             key={i}
-            className="rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+            className="admin-dash-card rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
             style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = t.hoverBorder)}
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = t.surfaceBorder)}

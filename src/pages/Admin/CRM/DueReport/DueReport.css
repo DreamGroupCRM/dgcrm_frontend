@@ -1,0 +1,120 @@
+/* ==========================================================================
+   DueReportPage — responsive rules only (V_22.0)
+   Layered on top of the page's existing inline styles / Tailwind utility
+   classes — nothing in the JSX's inline style={{}} props is overridden here
+   except with an explicit !important, which is required to beat inline
+   style specificity. Breakpoints (mobile-first labels, max-width cuts):
+     xxl : >=1536px   xl : 1280-1535px   lg : 1024-1279px
+     md  : 768-1023px  sm : 480-767px    xs : <=479px (with a 359px sub-cut)
+   ========================================================================== */
+
+/* Small side gutter at every width so the page never touches the screen
+   edge and stays visually centered — "1px ki padding" per spec. */
+.due-report-page {
+  padding-left: 10px;
+  padding-right: 10px;
+  box-sizing: border-box;
+}
+
+/* ---------- lg: 1024-1279px ---------- */
+@media (max-width: 1279px) {
+  .due-report-page { padding-left: 8px; padding-right: 8px; }
+}
+
+/* ---------- md: 768-1023px ---------- */
+@media (max-width: 1023px) {
+  .due-report-toolbar-row { gap: 8px !important; }
+  .due-report-toolbar-filters { gap: 8px !important; }
+  .due-report-filter-item { width: 170px !important; }
+}
+
+/* ---------- sm: 480-767px ---------- */
+@media (max-width: 767px) {
+  .due-report-page { padding-left: 6px; padding-right: 6px; }
+
+  .due-report-header { gap: 8px !important; }
+  .due-report-header h1 { font-size: 16.5px !important; }
+  .due-report-header p { font-size: 10.5px !important; }
+
+  .due-report-stat-grid { gap: 8px !important; }
+
+  .due-report-form-card-head { padding: 10px 14px !important; }
+  .due-report-form-grid { gap: 8px !important; }
+  .due-report-upcoming-row { gap: 8px !important; }
+
+  /* Toolbar: filters and actions each keep exactly one row, stacked on
+     top of one another instead of fighting for the same row — same
+     stacking convention already used by .master-topbar site-wide. */
+  .due-report-toolbar-row {
+    flex-wrap: wrap !important;
+  }
+  .due-report-toolbar-filters {
+    width: 100%;
+    order: 1;
+  }
+  .due-report-toolbar-actions {
+    width: 100%;
+    order: 2;
+    justify-content: space-between !important;
+  }
+  .due-report-filter-item { width: 150px !important; }
+
+  .due-report-export-btn { padding: 8px 12px !important; font-size: 12px !important; }
+  .due-report-refresh-btn { width: 34px !important; height: 34px !important; }
+  .due-report-followup-badge { padding: 6px 10px !important; }
+  .due-report-followup-badge-text { font-size: 10.5px !important; }
+
+  .due-report-table th { padding: 10px 10px !important; font-size: 10.5px !important; }
+  .due-report-table td { padding: 10px 10px !important; font-size: 11px !important; }
+
+  .due-report-modal-backdrop { padding: 10px !important; }
+}
+
+/* ---------- xs: <=479px ---------- */
+@media (max-width: 479px) {
+  .due-report-page { padding-left: 5px; padding-right: 5px; }
+
+  .due-report-header { gap: 6px !important; }
+  .due-report-header > div:first-child { width: 34px !important; height: 34px !important; }
+  .due-report-header svg { width: 17px !important; height: 17px !important; }
+  .due-report-header h1 { font-size: 14.5px !important; }
+  .due-report-header p { font-size: 9.5px !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  .due-report-stat-grid { gap: 6px !important; }
+
+  .due-report-form-card-head span { font-size: 12px !important; }
+  .due-report-form-grid { gap: 6px !important; }
+
+  .due-report-upcoming-row { gap: 6px !important; }
+  .due-report-upcoming-row input[type="date"] { width: 128px !important; }
+
+  .due-report-toolbar { padding: 10px !important; }
+  .due-report-toolbar-filters { gap: 6px !important; }
+  .due-report-filter-item { width: 128px !important; }
+  .due-report-toolbar-actions { gap: 6px !important; }
+
+  .due-report-followup-badge { padding: 5px 8px !important; gap: 4px !important; }
+  .due-report-followup-badge svg { width: 12px !important; height: 12px !important; }
+  .due-report-followup-badge-text { font-size: 9.5px !important; }
+
+  .due-report-export-btn { padding: 7px 10px !important; font-size: 11px !important; gap: 4px !important; }
+  .due-report-export-btn svg { width: 13px !important; height: 13px !important; }
+  .due-report-export-btn-text { font-size: 11px !important; }
+
+  .due-report-refresh-btn { width: 30px !important; height: 30px !important; }
+  .due-report-refresh-btn svg { width: 15px !important; height: 15px !important; }
+
+  .due-report-table th { padding: 8px 8px !important; font-size: 10px !important; }
+  .due-report-table td { padding: 8px 8px !important; font-size: 10.5px !important; }
+
+  .due-report-modal { max-width: 100% !important; }
+  .due-report-modal-backdrop { padding: 8px !important; }
+}
+
+/* ---------- xs (small phones): <=359px ---------- */
+@media (max-width: 359px) {
+  .due-report-filter-item { width: 108px !important; }
+  .due-report-followup-badge-text { font-size: 8.5px !important; }
+  .due-report-export-btn-text { display: inline; font-size: 10px !important; }
+  .due-report-export-btn { padding: 6px 8px !important; }
+}

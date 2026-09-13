@@ -1,0 +1,38 @@
+/* ==========================================================================
+   ExecutiveDashboardPage — responsive rules only (V_22.0). Additive on top
+   of the page's existing inline styles / Tailwind utility classes — the
+   page is chart/grid-heavy and already reflows section grids via
+   Tailwind's grid-cols-1/sm:/lg:/xl: classes, and the header/filter bar
+   already wrap gracefully (flex-wrap) since this is a data-dense report
+   page rather than a fixed icon toolbar. This file only tightens spacing
+   and shrinks the export/preset buttons so they read cleanly on phones.
+   Nothing in the JSX's inline style={{}} props is overridden here except
+   with an explicit !important, needed to beat inline specificity.
+   Breakpoints: sm 480-767  xs <=479
+   ========================================================================== */
+.exec-dash-page {
+  padding-left: 10px;
+  padding-right: 10px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1279px) {
+  .exec-dash-page { padding-left: 8px; padding-right: 8px; }
+}
+
+@media (max-width: 767px) {
+  .exec-dash-page { padding-left: 6px; padding-right: 6px; }
+  .exec-dash-header { gap: 8px !important; }
+  .exec-dash-export-actions { gap: 6px !important; }
+  .exec-dash-action-btn { padding: 6px 10px !important; font-size: 11px !important; }
+  .exec-dash-filter-bar { padding: 10px !important; }
+  .exec-dash-preset-group button { padding: 5px 8px !important; font-size: 11px !important; }
+}
+
+@media (max-width: 479px) {
+  .exec-dash-page { padding-left: 5px; padding-right: 5px; }
+  .exec-dash-action-btn { padding: 6px 8px !important; gap: 3px !important; }
+  .exec-dash-action-btn svg { width: 13px !important; height: 13px !important; }
+  .exec-dash-action-btn-text { font-size: 10px !important; }
+  .exec-dash-preset-group button { padding: 4px 7px !important; font-size: 10px !important; }
+}

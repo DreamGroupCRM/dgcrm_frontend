@@ -44,6 +44,7 @@ import { companyService } from '../../../../services/companyService';
 import { exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport';
 import { Building, Customer, PaymentReceipt } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
+import './PaymentReceived.css';
 
 type Theme = AppTheme;
 
@@ -546,8 +547,8 @@ const PaymentReceivedPage: React.FC = () => {
   const actionBtnBase: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 14px', height: 38, borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' };
 
   return (
-    <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="flex items-center gap-3 mb-6">
+    <div className="pr-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
+      <div className="pr-header flex items-center gap-3 mb-6">
         <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
           <MdPayments size={22} style={{ color: '#4f46e5' }} />
         </div>
@@ -558,7 +559,7 @@ const PaymentReceivedPage: React.FC = () => {
       </div>
 
       {/* ── Top stat boxes — gradient StatCard, same look used site-wide. ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+      <div className="pr-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         <StatCard label="Total Flat Sold" value={rupee(summary?.total_flat_sold ?? 0)} icon={MdHome} color="#7c3aed" bg="" loading={!summary}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Amount Received" value={rupee(summary?.total_amount_received ?? 0)} icon={MdPayments} color="#16a34a" bg="" loading={!summary}
@@ -570,8 +571,8 @@ const PaymentReceivedPage: React.FC = () => {
       {/* ── Filter panel — Received By/Building/Wing/Flat/Mode/Company in
           row 1, Date Range/From/To + action buttons in row 2 (exactly 2
           rows, no Payment For field). ────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-3.5">
+      <div className="pr-filter-card rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="pr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-3.5">
           <FilterSelect t={t} label="Received By" value={draftReceivedBy} onChange={setDraftReceivedBy}
             placeholder="--All--" options={employeeNameOptions.map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Building Name" value={draftBuildingName} onChange={handleBuildingChange}
@@ -585,7 +586,7 @@ const PaymentReceivedPage: React.FC = () => {
           <FilterSelect t={t} label="Company" value={draftCompany} onChange={setDraftCompany}
             placeholder="--Select--" options={companyNameOptions.map((n) => ({ value: n, label: n }))} />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
+        <div className="pr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
             <label style={labelStyle}>Payment Date From</label>
@@ -595,7 +596,7 @@ const PaymentReceivedPage: React.FC = () => {
             <label style={labelStyle}>Payment Date To</label>
             <input type="date" value={draftToDate} onChange={(e) => { setDraftToDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
           </div>
-          <div className="flex items-center gap-2 flex-wrap" style={{ gridColumn: 'span 3 / span 3' }}>
+          <div className="pr-filter-actions flex items-center gap-2 flex-wrap" style={{ gridColumn: 'span 3 / span 3' }}>
             <button type="button" onClick={openGenerateReceipt}
               style={{ ...actionBtnBase, background: isDark ? 'rgba(124,58,237,0.18)' : '#ede9fe', color: isDark ? '#c4b5fd' : '#6d28d9', border: 'none' }}>
               <MdReceiptLong size={15} /> Generate Receipt
@@ -613,9 +614,9 @@ const PaymentReceivedPage: React.FC = () => {
       </div>
 
       {/* ── Toolbar — Search (left), Export CSV + Refresh (right). ──────── */}
-      <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
-          <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 280, flexShrink: 0 }}>
+      <div className="pr-toolbar rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="pr-toolbar-row flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+          <div className="pr-toolbar-search flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 280, flexShrink: 0 }}>
             <MdSearch size={17} style={{ color: t.textSecondary, flexShrink: 0 }} />
             <input type="text" placeholder="Search by Customer ID and Customer Name" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%' }} />
@@ -626,14 +627,14 @@ const PaymentReceivedPage: React.FC = () => {
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
+          <div className="pr-toolbar-actions flex items-center gap-2.5" style={{ flexShrink: 0 }}>
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
+              className="pr-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-              <MdDownload size={16} /> {exportingCsv ? 'Exporting…' : 'Export CSV'}
+              <MdDownload size={16} /> <span className="pr-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
             </button>
             <button type="button" onClick={() => { fetchRows(); fetchSummary(); }} title="Refresh"
-              className="flex items-center justify-center rounded-xl"
+              className="pr-refresh-btn flex items-center justify-center rounded-xl"
               style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
               <MdRefresh size={18} />
             </button>
@@ -641,9 +642,9 @@ const PaymentReceivedPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      <div className="pr-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="master-table-scroll">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
+          <table className="pr-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <th style={{ padding: '12px 14px', width: 36 }}>
@@ -667,7 +668,7 @@ const PaymentReceivedPage: React.FC = () => {
                       <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelectRow(r.id)} style={{ cursor: 'pointer' }} />
                     </td>
                     <td style={{ padding: '12px 14px' }}>
-                      <div className="flex items-center gap-1.5">
+                      <div className="pr-row-actions flex items-center gap-1.5">
                         <button type="button" title="View Receipt" onClick={() => handleViewReceipt(r)}
                           className="flex items-center justify-center rounded-lg"
                           style={{ width: 26, height: 26, background: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe', border: 'none', color: '#2563eb', cursor: 'pointer' }}>
@@ -735,8 +736,8 @@ const PaymentReceivedPage: React.FC = () => {
 
       {/* ── Generate Monthly Receipt modal ────────────────────────────── */}
       {receiptModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setReceiptModalOpen(false)}>
-          <div className="rounded-2xl w-full" style={{ maxWidth: 560, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '88vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+        <div className="pr-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setReceiptModalOpen(false)}>
+          <div className="pr-modal rounded-2xl w-full" style={{ maxWidth: 560, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '88vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
               <div className="flex items-center gap-2.5">
                 <MdReceiptLong size={19} style={{ color: '#7c3aed' }} />

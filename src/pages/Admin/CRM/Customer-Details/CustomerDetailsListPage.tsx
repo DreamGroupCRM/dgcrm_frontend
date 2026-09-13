@@ -948,7 +948,7 @@ const CustomerDetailsListPage: React.FC = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
+    <div className="cust-list-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
 
       {/* ── KPI cards — All/Assigned/Un Assigned Customer, doubling as the
           assignment filter (item 3): clicking a box applies that filter to
@@ -957,7 +957,7 @@ const CustomerDetailsListPage: React.FC = () => {
           "inactive customer" concept anyway (see getCustomerListSummary's
           comment) and duplicated the separate Assigned/Unassigned toggle
           that used to sit further down this page. ─────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+      <div className="cust-stat-grid grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         {([
           { filterKey: 'all', label: 'All Customers', value: summary.total_customers, icon: MdGroups, color: '#7c3aed' },
           { filterKey: 'assigned', label: 'Assigned Customers', value: summary.assigned_customers, icon: MdPersonAddAlt1, color: '#16a34a' },
@@ -1047,9 +1047,9 @@ const CustomerDetailsListPage: React.FC = () => {
           so this never splits into two rows on desktop; the row scrolls
           horizontally instead of wrapping if the viewport is too narrow
           to fit everything (e.g. on mobile). ───────────────────────────── */}
-      <div className="flex items-end justify-between gap-3 mb-2" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
-        <div className="flex items-end gap-3" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
-          <div style={{ width: 240 }}>
+      <div className="cust-toolbar-row flex items-end justify-between gap-3 mb-2" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+        <div className="cust-toolbar-left flex items-end gap-3" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
+          <div className="cust-assign-select" style={{ width: 240 }}>
             <label className="cust-filter-label">Search Employee</label>
             <SearchableSelect
               t={t}
@@ -1067,7 +1067,7 @@ const CustomerDetailsListPage: React.FC = () => {
             type="button"
             onClick={handleAssign}
             disabled={!assignmentEnabled || !employeeSearch || assigning}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold"
+            className="cust-assign-btn px-5 py-2.5 rounded-xl text-sm font-semibold"
             style={{
               background: !assignmentEnabled || !employeeSearch || assigning ? t.insetBg : 'var(--grad-purple)',
               color: !assignmentEnabled || !employeeSearch || assigning ? t.textSecondary : '#fff',
@@ -1079,25 +1079,25 @@ const CustomerDetailsListPage: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex items-center gap-2.5" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
+        <div className="cust-toolbar-right flex items-center gap-2.5" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
             title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
-            className="flex items-center justify-center rounded-xl"
+            className="cust-view-toggle-btn flex items-center justify-center rounded-xl"
             style={{ width: 40, height: 40, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
           </button>
           <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+            className="cust-add-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
             style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            <MdAdd size={18} /> Add Customer
+            <MdAdd size={18} /> <span className="cust-add-btn-text">Add Customer</span>
           </button>
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
+            className="cust-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
             style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1 }}>
-            <MdDownload size={17} /> {exportingCsv ? 'Exporting…' : 'Export CSV'}
+            <MdDownload size={17} /> <span className="cust-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
           </button>
           <button type="button" onClick={fetchCustomers} title="Refresh"
-            className="flex items-center justify-center rounded-xl"
+            className="cust-refresh-btn flex items-center justify-center rounded-xl"
             style={{ width: 40, height: 40, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
             <MdRefresh size={18} />
           </button>
@@ -1137,8 +1137,8 @@ const CustomerDetailsListPage: React.FC = () => {
             )}
           </div>
         ) : (
-        <div className="master-table-scroll">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1250 }}>
+        <div className="master-table-scroll cust-list-table-scroll">
+          <table className="cust-list-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1250 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <th style={{ padding: '12px 14px', width: 40 }}>

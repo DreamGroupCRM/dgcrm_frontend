@@ -1075,10 +1075,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   if (isView) {
     const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
     return (
-      <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16, ...cssVars }}>
+      <div className="cust-crud-page" style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16, ...cssVars }}>
 
         {/* ── Page header ───────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+        <div className="cust-crud-header flex items-center justify-between flex-wrap gap-3 mb-6">
           <div className="flex items-center gap-3">
             <button type="button" onClick={() => navigate('/admin/crm/customer-details')}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, padding: 6 }}>
@@ -1200,10 +1200,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16, ...cssVars }}>
+    <div className="cust-crud-page" style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16, ...cssVars }}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+      <div className="cust-crud-header flex items-center justify-between flex-wrap gap-3 mb-6">
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => navigate('/admin/crm/customer-details')}
             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, padding: 6 }}>

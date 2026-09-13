@@ -338,3 +338,101 @@
   background: #9ca3af;
   cursor: not-allowed;
 }
+
+/* ==========================================================================
+   RESPONSIVE RULES (V_22.0) — additive only. The rest of this file's
+   classes already carry every page's structural styling (this page was
+   already extracted out of inline styles), so most breakpoints below just
+   add/override sizing on those same classes; a small number of NEW hook
+   classes were added to the List/Crud page JSX purely to anchor the
+   toolbar's "always one row" behavior — no existing inline style prop was
+   touched. Breakpoints: xxl >=1536  xl 1280-1535  lg 1024-1279
+   md 768-1023  sm 480-767  xs <=479 (with a 359px sub-cut)
+   ========================================================================== */
+
+.cust-list-page,
+.cust-crud-page {
+  padding-left: 10px;
+  padding-right: 10px;
+  box-sizing: border-box;
+}
+
+/* ---------- lg: 1024-1279px ---------- */
+@media (max-width: 1279px) {
+  .cust-list-page, .cust-crud-page { padding-left: 8px; padding-right: 8px; }
+}
+
+/* ---------- md: 768-1023px ---------- */
+@media (max-width: 1023px) {
+  .cust-toolbar-row { gap: 8px !important; }
+  .cust-toolbar-left { gap: 8px !important; }
+  .cust-toolbar-right { gap: 8px !important; }
+  .cust-assign-select { width: 190px !important; }
+}
+
+/* ---------- sm: 480-767px ---------- */
+@media (max-width: 767px) {
+  .cust-list-page, .cust-crud-page { padding-left: 6px; padding-right: 6px; }
+
+  .cust-list-title { font-size: 16.5px !important; }
+  .cust-list-subtitle { font-size: 10.5px !important; }
+  .cust-crud-title { font-size: 15px !important; }
+  .cust-id-badge { padding: 6px 12px !important; }
+  .cust-id-value { font-size: 20px !important; }
+
+  .cust-stat-grid { gap: 8px !important; }
+
+  /* Toolbar: left (search+assign) and right (view/add/export/refresh)
+     groups each keep exactly one row, stacked on top of one another —
+     same convention used on the Payment pages' toolbars. */
+  .cust-toolbar-row { flex-wrap: wrap !important; }
+  .cust-toolbar-left { width: 100%; order: 1; }
+  .cust-toolbar-right { width: 100%; order: 2; justify-content: space-between !important; }
+  .cust-assign-select { width: 100% !important; flex: 1 1 auto !important; }
+
+  .cust-add-btn { padding: 8px 12px !important; font-size: 12px !important; }
+  .cust-export-btn { padding: 8px 12px !important; font-size: 12px !important; }
+  .cust-view-toggle-btn, .cust-refresh-btn { width: 34px !important; height: 34px !important; }
+
+  .cust-list-table th { padding: 10px 10px !important; font-size: 10.5px !important; }
+  .cust-list-table td { padding: 10px 10px !important; font-size: 11px !important; }
+}
+
+/* ---------- xs: <=479px ---------- */
+@media (max-width: 479px) {
+  .cust-list-page, .cust-crud-page { padding-left: 5px; padding-right: 5px; }
+
+  .cust-list-title { font-size: 14.5px !important; }
+  .cust-crud-title { font-size: 13.5px !important; }
+  .cust-id-badge { padding: 5px 10px !important; }
+  .cust-id-value { font-size: 16px !important; }
+
+  .cust-stat-grid { gap: 6px !important; }
+
+  .cust-toolbar-left { gap: 6px !important; }
+  .cust-toolbar-right { gap: 6px !important; }
+  .cust-assign-btn { padding: 0 12px !important; font-size: 11.5px !important; }
+
+  .cust-add-btn { padding: 7px 10px !important; font-size: 11px !important; gap: 4px !important; }
+  .cust-add-btn svg { width: 14px !important; height: 14px !important; }
+  .cust-add-btn-text { font-size: 11px !important; }
+  .cust-export-btn { padding: 7px 10px !important; font-size: 11px !important; gap: 4px !important; }
+  .cust-export-btn svg { width: 13px !important; height: 13px !important; }
+  .cust-export-btn-text { font-size: 11px !important; }
+  .cust-view-toggle-btn, .cust-refresh-btn { width: 30px !important; height: 30px !important; }
+  .cust-view-toggle-btn svg, .cust-refresh-btn svg { width: 15px !important; height: 15px !important; }
+
+  .cust-list-table th { padding: 8px 8px !important; font-size: 10px !important; }
+  .cust-list-table td { padding: 8px 8px !important; font-size: 10.5px !important; }
+
+  .cust-view-grid { gap: 10px 12px !important; }
+  .cust-doc-grid { gap: 8px !important; }
+}
+
+/* ---------- xs (small phones): <=359px ---------- */
+@media (max-width: 359px) {
+  .cust-add-btn-text { font-size: 10px !important; }
+  .cust-export-btn-text { font-size: 10px !important; }
+  .cust-add-btn { padding: 6px 8px !important; }
+  .cust-export-btn { padding: 6px 8px !important; }
+}

@@ -34,6 +34,7 @@ import {
 import { FetchBuildingList } from '../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../services/employeeDetailsService';
 import { exportDashboardToPdf, exportDashboardToExcel } from './dashboardExport';
+import './ExecutiveDashboard.css';
 import {
   fetchSalesInsights, fetchPatterns, fetchPriorityQueue,
   SalesInsights, DetectedPattern, PriorityQueueItem,
@@ -290,38 +291,38 @@ const ExecutiveDashboardPage: React.FC = () => {
   };
 
   return (
-    <div style={{ fontFamily: t.fontFamily }} ref={exportRef}>
+    <div className="exec-dash-page" style={{ fontFamily: t.fontFamily }} ref={exportRef}>
       {/* ── Header + export actions ─────────────────────────────────── */}
-      <div className="flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 16 }}>
+      <div className="exec-dash-header flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 16 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Executive Dashboard</h1>
           <p style={{ fontSize: 12, color: t.textSecondary, margin: '3px 0 0' }}>
             {data ? `${formatDate(range.from)} – ${formatDate(range.to)}` : 'Loading…'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="exec-dash-export-actions flex items-center gap-2">
           <button type="button" onClick={loadDashboard} disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+            className="exec-dash-action-btn flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
             style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: `1px solid ${t.surfaceBorder}`, cursor: loading ? 'default' : 'pointer' }}>
-            <MdRefresh size={15} className={loading ? 'animate-spin' : ''} /> Refresh
+            <MdRefresh size={15} className={loading ? 'animate-spin' : ''} /> <span className="exec-dash-action-btn-text">Refresh</span>
           </button>
           <button type="button" onClick={handleExportPdf} disabled={!data}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+            className="exec-dash-action-btn flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
             style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: `1px solid ${t.surfaceBorder}`, cursor: data ? 'pointer' : 'not-allowed', opacity: data ? 1 : 0.5 }}>
-            <MdPictureAsPdf size={15} /> PDF
+            <MdPictureAsPdf size={15} /> <span className="exec-dash-action-btn-text">PDF</span>
           </button>
           <button type="button" onClick={handleExportExcel} disabled={!data}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+            className="exec-dash-action-btn flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
             style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: `1px solid ${t.surfaceBorder}`, cursor: data ? 'pointer' : 'not-allowed', opacity: data ? 1 : 0.5 }}>
-            <MdGridOn size={15} /> Excel
+            <MdGridOn size={15} /> <span className="exec-dash-action-btn-text">Excel</span>
           </button>
         </div>
       </div>
 
       {/* ── Filter bar ───────────────────────────────────────────────── */}
-      <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 14, marginBottom: 18 }}>
+      <div className="exec-dash-filter-bar" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 14, marginBottom: 18 }}>
         <div className="flex items-center flex-wrap gap-2">
-          <div className="flex items-center gap-1.5 flex-wrap" style={{ marginRight: 8 }}>
+          <div className="exec-dash-preset-group flex items-center gap-1.5 flex-wrap" style={{ marginRight: 8 }}>
             <MdCalendarToday size={14} style={{ color: t.textMuted }} />
             {(Object.keys(PRESET_LABELS) as PresetKey[]).map((k) => (
               <button key={k} type="button" onClick={() => setPreset(k)}

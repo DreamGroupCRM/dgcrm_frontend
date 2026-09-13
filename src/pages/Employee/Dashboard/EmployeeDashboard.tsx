@@ -12,6 +12,7 @@ import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { fetchEmployeeDashboardSummary, EmployeeDashboardSummary } from '../../../services/dashboardService';
 import { MdLeaderboard, MdEventAvailable, MdPayment, MdContactPage } from 'react-icons/md';
+import './EmployeeDashboard.css';
 
 const rupeeCompact = (n: number): string => {
   const v = Math.round(n);
@@ -68,7 +69,7 @@ const EmployeeDashboard: React.FC = () => {
   ] : [];
 
   return (
-    <div className="space-y-6" style={{ fontFamily: t.fontFamily }}>
+    <div className="emp-dash-page space-y-6" style={{ fontFamily: t.fontFamily }}>
 
       {error && (
         <div className="rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', color: '#b91c1c', fontSize: 12.5 }}>
@@ -77,11 +78,11 @@ const EmployeeDashboard: React.FC = () => {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="emp-dash-stat-grid grid grid-cols-2 gap-4">
         {(loading ? Array.from({ length: 4 }) : cards).map((card, i) => (
           <div
             key={i}
-            className="rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+            className="emp-dash-card rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
             style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = t.hoverBorder)}
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = t.surfaceBorder)}
@@ -108,15 +109,15 @@ const EmployeeDashboard: React.FC = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="rounded-2xl p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      <div className="emp-dash-quick-actions-card rounded-2xl p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <h2 className="font-semibold text-lg mb-4" style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>
           Quick Actions
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="emp-dash-quick-actions-grid grid grid-cols-2 sm:grid-cols-4 gap-3">
           {quickActions.map((action) => (
             <button
               key={action.label}
-              className="rounded-xl p-4 flex flex-col items-center gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg text-white"
+              className="emp-dash-quick-action-btn rounded-xl p-4 flex flex-col items-center gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg text-white"
               style={{ background: tintColor(action.color), border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
             >
               {action.icon}

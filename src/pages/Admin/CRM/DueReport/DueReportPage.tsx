@@ -34,6 +34,7 @@ import { FetchBuildingList } from '../../../../services/buildingService';
 import { FetchEmployeeDetails, Employee } from '../../../../services/employeeDetailsService';
 import { tasksService } from '../../../../services/tasksService';
 import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../../types/index';
+import './DueReport.css';
 
 type Theme = AppTheme;
 
@@ -514,8 +515,8 @@ const DueReportPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="flex items-center gap-3 mb-5">
+    <div className="due-report-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
+      <div className="due-report-header flex items-center gap-3 mb-5">
         <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
           <MdPayments size={22} style={{ color: '#4f46e5' }} />
         </div>
@@ -527,7 +528,7 @@ const DueReportPage: React.FC = () => {
 
       {/* ── Stat boxes — always 6, always one row on desktop, same
           saturated-gradient StatCard used site-wide (Building Master etc). */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
+      <div className="due-report-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
         {statBoxSpecs.map((spec) => (
           <StatCard key={spec.label} label={spec.label} value={rupee(spec.value)} icon={spec.icon} color={spec.color}
             bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loadingDueList} compact labelFontSize={12.5}
@@ -536,17 +537,17 @@ const DueReportPage: React.FC = () => {
       </div>
 
       {/* ── Add Payment Details ─────────────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div style={{ background: 'linear-gradient(135deg,#f97316,#fbbf24)', padding: '12px 18px' }}>
+      <div className="due-report-form-card rounded-2xl mb-5 overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="due-report-form-card-head" style={{ background: 'linear-gradient(135deg,#f97316,#fbbf24)', padding: '12px 18px' }}>
           <span style={{ fontSize: 13.5, fontWeight: 800, color: '#fff' }}>Add Payment Details</span>
         </div>
-        <div className="p-5">
+        <div className="due-report-form-card-body p-5">
           <ValidationErrorSummary
             t={t}
             errors={activeErrors.map((c) => ({ field: c.field, message: c.message }))}
             onErrorClick={revealInvalidField}
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-3.5">
+          <div className="due-report-form-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-3.5">
             <div ref={setFieldRef('customer')}>
               <label style={fieldLabelStyle}>Customer Name</label>
               <SearchableSelect t={t} placeholder="Select or type customer name" options={customerOptions} value={apCustomerSearch} onChange={handleCustomerSearchChange} />
@@ -582,7 +583,7 @@ const DueReportPage: React.FC = () => {
               <input type="date" value={apPaymentDate} onChange={(e) => setApPaymentDate(e.target.value)} style={fieldInputStyle()} />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
+          <div className="due-report-form-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
             <div ref={setFieldRef('payment_for')}>
               <label style={fieldLabelStyle}>Payment For</label>
               <select value={apPaymentForKey} onChange={(e) => handlePaymentForChange(e.target.value)} style={fieldInputStyle(!!errorFor('payment_for'))}>
@@ -625,7 +626,7 @@ const DueReportPage: React.FC = () => {
           {/* ── Row 3 — Show Upcoming Amount: checkbox reveals a date
               range whose total upcoming (not-yet-due) installment amount
               can be calculated on demand. ─────────────────────────────── */}
-          <div className="flex flex-wrap items-end gap-3.5 mt-4 pt-4" style={{ borderTop: `1px dashed ${t.divider}` }}>
+          <div className="due-report-upcoming-row flex flex-wrap items-end gap-3.5 mt-4 pt-4" style={{ borderTop: `1px dashed ${t.divider}` }}>
             <label className="flex items-center gap-2" style={{ cursor: 'pointer', paddingBottom: 9 }}>
               <input type="checkbox" checked={showUpcoming} onChange={(e) => handleToggleUpcoming(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Show Upcoming Payment</span>
@@ -664,35 +665,35 @@ const DueReportPage: React.FC = () => {
 
       {/* ── Toolbar — Payment For + Building + Employee filters (left),
           Export CSV + Refresh (right), always one row. ─────────────────── */}
-      <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
-          <div className="flex items-center gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto', minWidth: 0 }}>
-            <div style={{ width: 200, flexShrink: 0 }}>
+      <div className="due-report-toolbar rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="due-report-toolbar-row flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+          <div className="due-report-toolbar-filters flex items-center gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto', minWidth: 0 }}>
+            <div className="due-report-filter-item" style={{ width: 200, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Select Payment For" options={paymentForFilterOptions} value={filterPaymentFor} onChange={setFilterPaymentFor} />
             </div>
-            <div style={{ width: 200, flexShrink: 0 }}>
+            <div className="due-report-filter-item" style={{ width: 200, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Select Building" options={buildingNames} value={filterBuilding} onChange={setFilterBuilding} />
             </div>
-            <div style={{ width: 200, flexShrink: 0 }}>
+            <div className="due-report-filter-item" style={{ width: 200, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Select Employee" options={employeeNameOptions} value={filterEmployee} onChange={setFilterEmployee} />
             </div>
           </div>
-          <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
+          <div className="due-report-toolbar-actions flex items-center gap-2.5" style={{ flexShrink: 0 }}>
             {/* In-app-only badge — open follow-ups due today/tomorrow across
                 the whole team (no email/WhatsApp sending, out of scope). */}
             <div title="Open follow-ups due today / tomorrow"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
+              className="due-report-followup-badge flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, whiteSpace: 'nowrap' }}>
               <MdNoteAdd size={15} style={{ color: '#0284c7' }} />
-              Follow-ups — Today: {followUpCounts.today} · Tomorrow: {followUpCounts.tomorrow}
+              <span className="due-report-followup-badge-text">Follow-ups — Today: {followUpCounts.today} · Tomorrow: {followUpCounts.tomorrow}</span>
             </div>
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
+              className="due-report-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-              <MdDownload size={16} /> {exportingCsv ? 'Exporting…' : 'Export CSV'}
+              <MdDownload size={16} /> <span className="due-report-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
             </button>
             <button type="button" onClick={handleRefresh} title="Refresh"
-              className="flex items-center justify-center rounded-xl"
+              className="due-report-refresh-btn flex items-center justify-center rounded-xl"
               style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
               <MdRefresh size={18} />
             </button>
@@ -701,9 +702,9 @@ const DueReportPage: React.FC = () => {
       </div>
 
       {/* ── Payment Due table ────────────────────────────────────────────── */}
-      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
+      <div className="due-report-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="due-report-table-scroll" style={{ overflowX: 'auto' }}>
+          <table className="due-report-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['Customer Code', 'Customer Name', 'Assigned Employee', 'Building / Wing / Flat', 'Mobile No', 'Payment For', 'Amount', 'Status', 'Overdue By', 'Follow Up'].map((h) => (
@@ -774,8 +775,8 @@ const DueReportPage: React.FC = () => {
       {/* ── Follow-up modal (V_22.0) — note + follow-up date + assigned
           employee for the row's customer, backed by the Task entity. ──── */}
       {followUpRow && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={closeFollowUp}>
-          <div className="rounded-2xl w-full" style={{ maxWidth: 440, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
+        <div className="due-report-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={closeFollowUp}>
+          <div className="due-report-modal rounded-2xl w-full" style={{ maxWidth: 440, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
               <div>
