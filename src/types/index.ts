@@ -465,6 +465,12 @@ export interface BuildingFlat {
   flat_type: string;            // '1 BHK' | '2 BHK' | '3 BHK' | 'Studio' | 'Other'
   area_sqft: number | null;
   is_active: boolean;
+  // V_22.0 item 9 — which active customer (if any) already booked this
+  // flat, so Customer Create/Edit can show it as unselectable with their
+  // name instead of just "Unavailable" (that's is_active above, a
+  // separate admin-controlled Enabled/Disabled toggle).
+  booked_by_customer_id?  : string | null;
+  booked_by_customer_name?: string | null;
 }
 
 export interface BuildingFloor {
@@ -489,6 +495,9 @@ export interface BuildingShop {
   shop_no  : string;
   area_sqft: number | null;
   is_active: boolean;           // true = Available, false = Booked
+  // V_22.0 item 9 — same as BuildingFlat's booked_by_customer_* above.
+  booked_by_customer_id?  : string | null;
+  booked_by_customer_name?: string | null;
 }
 
 export interface Building {
@@ -838,6 +847,13 @@ export interface CustomerDetailFormValues {
   flat_no      : string;
   flat_type    : string;
   area_sqft    : number | null;
+  // V_22.0 item 9 — mutually exclusive with wing_id/floor_id/flat_id above:
+  // a booking is for a flat (wing/floor hierarchy) OR a commercial shop,
+  // never both. unit_type says which one this booking picked.
+  unit_type?   : 'flat' | 'shop';
+  shop_id?     : string;
+  shop_no?     : string;
+  shop_area?   : number | null;
   wants_parking: ParkingChoice;
   parking_no   : string;
 

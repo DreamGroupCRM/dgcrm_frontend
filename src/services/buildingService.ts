@@ -31,10 +31,13 @@ import {
 const API_NAME_HEADER = 'X-Api-Name';
 
 // ── Backend wire shapes (wizard) ────────────────────────────────────────────
-interface WizardFlat { id: number; flatNo: string; flatType: string | null; flatArea: number | null; enabled: boolean; }
+// V_22.0 item 9 — bookedByCustomerId/bookedByCustomerName come from
+// building.repository.ts's getFullBuildingTree/getShops LEFT JOIN
+// customers, absent (undefined) on any response that predates this.
+interface WizardFlat { id: number; flatNo: string; flatType: string | null; flatArea: number | null; enabled: boolean; bookedByCustomerId?: number | string | null; bookedByCustomerName?: string | null; }
 interface WizardFloor { id: number; floorName: string; flats: WizardFlat[]; }
 interface WizardWing { id: number; wingName: string; withGroundFloor: boolean; numberOfFloors: number | null; floors: WizardFloor[]; }
-interface WizardShop { id: number; shopNo: string; shopArea: number | null; enabled: boolean; }
+interface WizardShop { id: number; shopNo: string; shopArea: number | null; enabled: boolean; bookedByCustomerId?: number | string | null; bookedByCustomerName?: string | null; }
 interface WizardBuilding {
   // Backend spreads the Building entity's raw (snake_case) columns
   // directly onto the response — see building.service.ts's projectOf() —
@@ -108,6 +111,8 @@ function fromWizardResponse(data: WizardFullResponse): Building {
           flat_type: fl.flatType || '',
           area_sqft: fl.flatArea,
           is_active: fl.enabled,
+          booked_by_customer_id: fl.bookedByCustomerId != null ? String(fl.bookedByCustomerId) : null,
+          booked_by_customer_name: fl.bookedByCustomerName || null,
         })),
       })),
     })),
@@ -117,6 +122,8 @@ function fromWizardResponse(data: WizardFullResponse): Building {
       shop_no: s.shopNo,
       area_sqft: s.shopArea,
       is_active: s.enabled,
+      booked_by_customer_id: s.bookedByCustomerId != null ? String(s.bookedByCustomerId) : null,
+      booked_by_customer_name: s.bookedByCustomerName || null,
     })),
     shop_count: (shops || []).length,
     has_parking: !!b.has_parking,

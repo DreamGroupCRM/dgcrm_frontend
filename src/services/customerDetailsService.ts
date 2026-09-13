@@ -84,6 +84,8 @@ interface BackendWing { id: number | string; name: string; }
 // only place to recover which floor a customer's flat is on.
 interface BackendFloor { id: number | string; name: string; }
 interface BackendFlat { id: number | string; flat_number: string; flat_type: string | null; area_sqft: number | string | null; floor: BackendFloor | null; }
+// V_22.0 item 9 — commercial shop, sibling of BackendFlat (no floor/wing).
+interface BackendShop { id: number | string; shop_no: string; area_sqft: number | string | null; }
 interface BackendCustomer {
   id: number | string;
   customer_code: string;
@@ -111,6 +113,9 @@ interface BackendCustomer {
   wing: BackendWing | null;
   flat_id: number | string | null;
   flat: BackendFlat | null;
+  // V_22.0 item 9 — mutually exclusive with wing/flat above.
+  shop_id: number | string | null;
+  shop: BackendShop | null;
   assigned_employee_id: number | string | null;
   assigned_employee_code: string | null;
   assigned_employee_name: string | null;
@@ -237,6 +242,12 @@ const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
   flat_no: bc.flat?.flat_number ?? '',
   flat_type: bc.flat?.flat_type ?? '',
   area_sqft: bc.flat?.area_sqft != null ? Number(bc.flat.area_sqft) : null,
+  // V_22.0 item 9 — unit_type is inferred from which of shop_id/flat_id
+  // this customer actually has (no separate backend column for it).
+  unit_type: bc.shop_id != null ? 'shop' : 'flat',
+  shop_id: bc.shop_id != null ? String(bc.shop_id) : '',
+  shop_no: bc.shop?.shop_no ?? '',
+  shop_area: bc.shop?.area_sqft != null ? Number(bc.shop.area_sqft) : null,
   wants_parking: bc.has_parking ? 'yes' : 'no',
   parking_no: bc.parking_no ?? '',
 

@@ -206,7 +206,11 @@ const SearchableSelect: React.FC<{
   // can't be picked) but can't actually be selected: no onClick, grayed
   // out, not-allowed cursor. Unused by every other SearchableSelect caller.
   isOptionDisabled?: (opt: string) => boolean;
-}> = ({ t, placeholder, options, value, onChange, disabled, labelFor, isOptionDisabled }) => {
+  // V_22.0 item 9 — overrides the disabled-option suffix text (default
+  // ' — Unavailable') so a flat/shop already booked by another customer
+  // can say " — Booked by <name>" instead of the generic wording.
+  disabledLabelFor?: (opt: string) => string;
+}> = ({ t, placeholder, options, value, onChange, disabled, labelFor, isOptionDisabled, disabledLabelFor }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -286,7 +290,7 @@ const SearchableSelect: React.FC<{
               <button
                 key={opt} type="button" disabled={optDisabled}
                 onClick={() => { if (optDisabled) return; onChange(opt); setQuery(opt); setOpen(false); }}
-                title={optDisabled ? 'This flat has been marked unavailable and cannot be selected.' : undefined}
+                title={optDisabled ? (disabledLabelFor ? disabledLabelFor(opt) : 'This option has been marked unavailable and cannot be selected.') : undefined}
                 className="w-full text-left px-3.5 py-2 text-sm"
                 style={{
                   background: 'transparent', border: 'none', fontFamily: t.fontFamily,
@@ -295,7 +299,7 @@ const SearchableSelect: React.FC<{
                   opacity: optDisabled ? 0.55 : 1,
                 }}
               >
-                {labelFor ? labelFor(opt) : opt}{optDisabled && ' — Unavailable'}
+                {labelFor ? labelFor(opt) : opt}{optDisabled && (disabledLabelFor ? ` — ${disabledLabelFor(opt)}` : ' — Unavailable')}
               </button>
             );
           })}
@@ -615,6 +619,13 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [wingName, setWingName] = useState('');
   const [floorLabel, setFloorLabel] = useState('');
   const [flatNo, setFlatNo] = useState('');
+  // V_22.0 item 9 — a building can offer commercial shops alongside (or
+  // instead of) its wing/floor/flat hierarchy; unitType picks which one
+  // this booking is for. Defaults to 'flat' — the pre-existing, only
+  // option before this — and only ever offers 'shop' once the selected
+  // building actually has any (see buildingHasShops below).
+  const [unitType, setUnitType] = useState<'flat' | 'shop'>('flat');
+  const [shopNo, setShopNo] = useState('');
   const [wantsParking, setWantsParking] = useState<ParkingChoice>('yes');
   const [parkingNo, setParkingNo] = useState('');
 
@@ -707,6 +718,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           setWingName(c.wing_name || '');
           setFloorLabel(c.floor_label || '');
           setFlatNo(c.flat_no || '');
+          setUnitType(c.unit_type || 'flat');
+          setShopNo(c.shop_no || '');
           setWantsParking(c.wants_parking || 'yes');
           setParkingNo(c.parking_no || '');
 
@@ -783,6 +796,29 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const selectedFloor = useMemo(() => selectedWing?.floors.find((f) => f.label === floorLabel), [selectedWing, floorLabel]);
   const flatNoOptions = useMemo(() => (selectedFloor ? selectedFloor.flats.map((fl) => fl.flat_no) : []), [selectedFloor]);
   const selectedFlat = useMemo(() => selectedFloor?.flats.find((fl) => fl.flat_no === flatNo), [selectedFloor, flatNo]);
+
+  // ── V_22.0 item 9 — commercial shops, sibling of the wing/floor/flat tree
+  // above (same buildingDetail fetch, no separate request). Only offered as
+  // a choice once the selected building actually has any real shop rows. ──
+  const buildingHasShops = !!buildingDetail && (buildingDetail.shops?.length ?? 0) > 0;
+  const shopNoOptions = useMemo(() => (buildingDetail?.shops ?? []).map((s) => s.shop_no), [buildingDetail]);
+  const selectedShop = useMemo(() => buildingDetail?.shops?.find((s) => s.shop_no === shopNo), [buildingDetail, shopNo]);
+  // A building without shops can't back a 'shop' selection at all — once its
+  // detail has actually loaded and confirms no shops, fall back to 'flat'.
+  // Guarded on `buildingDetail` being non-null so this never fires while a
+  // just-loaded Edit/View record's unitType is still waiting on the async
+  // building-detail fetch to resolve.
+  useEffect(() => {
+    if (buildingDetail && !buildingHasShops) { setUnitType('flat'); setShopNo(''); }
+  }, [buildingDetail, buildingHasShops]);
+
+  // A flat/shop already booked by ANOTHER active customer is unselectable —
+  // but not by the customer this Edit screen is currently editing (their
+  // own existing booking must stay selectable). `id` (route param) is only
+  // set in Edit/View, so a brand-new Create always treats any booked unit
+  // as someone else's, exactly as it should.
+  const isBookedByOther = (bookedByCustomerId: string | null | undefined): boolean =>
+    !!bookedByCustomerId && bookedByCustomerId !== id;
 
   // Location is informational and auto-filled from the selected Building —
   // it has no dropdown of its own in the design.
@@ -970,14 +1006,28 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       // submission that didn't pick a Building/Wing/Flat No.
       if (selectedBuilding?.id) formData.append('building_id', selectedBuilding.id);
       formData.append('building_name', selectedBuilding?.building_name || buildingName.trim());
-      if (selectedWing?.id) formData.append('wing_id', selectedWing.id);
-      formData.append('wing_name', selectedWing?.name || wingName.trim());
-      formData.append('floor_id', selectedFloor?.id || '');
-      formData.append('floor_label', selectedFloor?.label || floorLabel.trim());
-      if (selectedFlat?.id) formData.append('flat_id', selectedFlat.id);
-      formData.append('flat_no', selectedFlat?.flat_no || flatNo.trim());
-      formData.append('flat_type', selectedFlat?.flat_type || '');
-      formData.append('area_sqft', selectedFlat?.area_sqft != null ? String(selectedFlat.area_sqft) : '');
+      // V_22.0 item 9 — tells the backend which side (flat vs shop) to keep
+      // and which to null out; see CreateCustomerSchema's unit_type comment.
+      formData.append('unit_type', unitType);
+      // wing/floor/flat and shop are mutually exclusive:
+      // only the fields for whichever unitType is currently selected are
+      // sent, so switching from a previously-saved flat to a shop (or vice
+      // versa) on Edit actually clears the other side server-side instead
+      // of leaving a stale flat_id AND a new shop_id both set.
+      if (unitType === 'flat') {
+        if (selectedWing?.id) formData.append('wing_id', selectedWing.id);
+        formData.append('wing_name', selectedWing?.name || wingName.trim());
+        formData.append('floor_id', selectedFloor?.id || '');
+        formData.append('floor_label', selectedFloor?.label || floorLabel.trim());
+        if (selectedFlat?.id) formData.append('flat_id', selectedFlat.id);
+        formData.append('flat_no', selectedFlat?.flat_no || flatNo.trim());
+        formData.append('flat_type', selectedFlat?.flat_type || '');
+        formData.append('area_sqft', selectedFlat?.area_sqft != null ? String(selectedFlat.area_sqft) : '');
+      } else {
+        if (selectedShop?.id) formData.append('shop_id', selectedShop.id);
+        formData.append('shop_no', selectedShop?.shop_no || shopNo.trim());
+        formData.append('shop_area', selectedShop?.area_sqft != null ? String(selectedShop.area_sqft) : '');
+      }
       formData.append('wants_parking', wantsParking);
       formData.append('parking_no', wantsParking === 'yes' ? parkingNo.trim() : '');
 
@@ -1147,9 +1197,13 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <ViewValue label="Project Name" value={projectName} />
               <ViewValue label="Building" value={buildingName} />
               <ViewValue label="Wing / Floor" value={[wingName, floorLabel].filter(Boolean).join(' / ')} />
-              <ViewValue label="Flat No" value={selectedFlat?.flat_no || flatNo} />
-              <ViewValue label="Flat Type" value={selectedFlat?.flat_type} />
-              <ViewValue label="Flat Area" value={selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : ''} />
+              {/* V_22.0 item 9 — Flat No/Type/Area become Shop No/Type/Area
+                  when this customer's booking is a shop, not a flat. */}
+              <ViewValue label={unitType === 'shop' ? 'Shop No' : 'Flat No'} value={unitType === 'shop' ? (selectedShop?.shop_no || shopNo) : (selectedFlat?.flat_no || flatNo)} />
+              <ViewValue label={unitType === 'shop' ? 'Unit Type' : 'Flat Type'} value={unitType === 'shop' ? 'Shop' : selectedFlat?.flat_type} />
+              <ViewValue label={unitType === 'shop' ? 'Shop Area' : 'Flat Area'} value={unitType === 'shop'
+                ? (selectedShop?.area_sqft != null ? `${selectedShop.area_sqft} Sqft` : '')
+                : (selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : '')} />
               <ViewValue label="Parking" value={wantsParking === 'yes' ? `Yes${parkingNo ? ` · ${parkingNo}` : ''}` : 'No'} />
             </div>
           </div>
@@ -1360,46 +1414,104 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Building Name">
             <SearchableSelect t={t} placeholder="Select building" options={buildingNameOptions} value={buildingName} disabled={isView}
-              onChange={(v) => { setBuildingName(v); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
+              onChange={(v) => { setBuildingName(v); setWingName(''); setFloorLabel(''); setFlatNo(''); setShopNo(''); }} />
           </Field>
           <Field t={t} label="Location">
             <input type="text" readOnly value={location || '—'} className="cust-field cust-field-view" />
           </Field>
-          <Field t={t} label="Wing">
-            <SearchableSelect
-              t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingName}
-              disabled={isView || !selectedBuilding || loadingBuildingDetail}
-              onChange={(v) => { setWingName(v); setFloorLabel(''); setFlatNo(''); }} />
-          </Field>
-          <Field t={t} label="Floor">
-            <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorLabel} disabled={isView || !selectedWing}
-              onChange={(v) => { setFloorLabel(v); setFlatNo(''); }} />
-          </Field>
+          {/* V_22.0 item 9 — only shown once the selected building actually
+              has shops; a building with no shops keeps this exact row
+              (Wing/Floor unconditionally next) untouched. */}
+          {buildingHasShops && (
+            <Field t={t} label="Unit Type" required>
+              <div className="flex items-center gap-4" style={{ height: 38 }}>
+                <RadioOption t={t} label="Flat" selected={unitType === 'flat'} disabled={isView}
+                  onSelect={() => { setUnitType('flat'); setShopNo(''); }} />
+                <RadioOption t={t} label="Shop" selected={unitType === 'shop'} disabled={isView}
+                  onSelect={() => { setUnitType('shop'); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
+              </div>
+            </Field>
+          )}
+          {unitType === 'flat' && (
+            <>
+              <Field t={t} label="Wing">
+                <SearchableSelect
+                  t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingName}
+                  disabled={isView || !selectedBuilding || loadingBuildingDetail}
+                  onChange={(v) => { setWingName(v); setFloorLabel(''); setFlatNo(''); }} />
+              </Field>
+              <Field t={t} label="Floor">
+                <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorLabel} disabled={isView || !selectedWing}
+                  onChange={(v) => { setFloorLabel(v); setFlatNo(''); }} />
+              </Field>
+            </>
+          )}
         </div>
 
         {/* Row 2 of 2 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-          <Field t={t} label="Flat No">
-            <SearchableSelect
-              t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNo} disabled={isView || !selectedFloor}
-              onChange={setFlatNo}
-              labelFor={(no) => {
-                const fl = selectedFloor?.flats.find((f) => f.flat_no === no);
-                if (!fl) return no;
-                return [no, fl.flat_type, fl.area_sqft != null ? `${fl.area_sqft} Sqft` : null].filter(Boolean).join(' · ');
-              }}
-              // Item 1.2 — a flat marked Disabled/Unavailable in the
-              // Building Master (is_active: false) still shows in the list
-              // (so it's clear it exists) but can't be selected.
-              isOptionDisabled={(no) => selectedFloor?.flats.find((f) => f.flat_no === no)?.is_active === false}
-            />
-          </Field>
-          <Field t={t} label="Flat Type">
-            <input type="text" readOnly value={selectedFlat?.flat_type || '—'} className="cust-field cust-field-view" />
-          </Field>
-          <Field t={t} label="Flat Area">
-            <input type="text" readOnly value={selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : '—'} className="cust-field cust-field-view" />
-          </Field>
+          {unitType === 'flat' ? (
+            <>
+              <Field t={t} label="Flat No">
+                <SearchableSelect
+                  t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNo} disabled={isView || !selectedFloor}
+                  onChange={setFlatNo}
+                  labelFor={(no) => {
+                    const fl = selectedFloor?.flats.find((f) => f.flat_no === no);
+                    if (!fl) return no;
+                    return [no, fl.flat_type, fl.area_sqft != null ? `${fl.area_sqft} Sqft` : null].filter(Boolean).join(' · ');
+                  }}
+                  // Item 1.2 — a flat marked Disabled/Unavailable in the
+                  // Building Master (is_active: false) still shows in the
+                  // list (so it's clear it exists) but can't be selected.
+                  // V_22.0 item 9 — same for a flat already booked by
+                  // another active customer, shown with their name instead
+                  // of the generic "Unavailable" wording.
+                  isOptionDisabled={(no) => {
+                    const fl = selectedFloor?.flats.find((f) => f.flat_no === no);
+                    return !fl ? false : fl.is_active === false || isBookedByOther(fl.booked_by_customer_id);
+                  }}
+                  disabledLabelFor={(no) => {
+                    const fl = selectedFloor?.flats.find((f) => f.flat_no === no);
+                    return fl && isBookedByOther(fl.booked_by_customer_id) ? `Booked by ${fl.booked_by_customer_name || 'another customer'}` : 'Unavailable';
+                  }}
+                />
+              </Field>
+              <Field t={t} label="Flat Type">
+                <input type="text" readOnly value={selectedFlat?.flat_type || '—'} className="cust-field cust-field-view" />
+              </Field>
+              <Field t={t} label="Flat Area">
+                <input type="text" readOnly value={selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : '—'} className="cust-field cust-field-view" />
+              </Field>
+            </>
+          ) : (
+            <>
+              <Field t={t} label="Shop No">
+                <SearchableSelect
+                  t={t} placeholder="Select shop number" options={shopNoOptions} value={shopNo} disabled={isView || !selectedBuilding}
+                  onChange={setShopNo}
+                  labelFor={(no) => {
+                    const s = buildingDetail?.shops?.find((x) => x.shop_no === no);
+                    if (!s) return no;
+                    return [no, s.area_sqft != null ? `${s.area_sqft} Sqft` : null].filter(Boolean).join(' · ');
+                  }}
+                  // Same two guards as Flat No above: disabled in the
+                  // Building Master, or already booked by another customer.
+                  isOptionDisabled={(no) => {
+                    const s = buildingDetail?.shops?.find((x) => x.shop_no === no);
+                    return !s ? false : s.is_active === false || isBookedByOther(s.booked_by_customer_id);
+                  }}
+                  disabledLabelFor={(no) => {
+                    const s = buildingDetail?.shops?.find((x) => x.shop_no === no);
+                    return s && isBookedByOther(s.booked_by_customer_id) ? `Booked by ${s.booked_by_customer_name || 'another customer'}` : 'Unavailable';
+                  }}
+                />
+              </Field>
+              <Field t={t} label="Shop Area">
+                <input type="text" readOnly value={selectedShop?.area_sqft != null ? `${selectedShop.area_sqft} Sqft` : '—'} className="cust-field cust-field-view" />
+              </Field>
+            </>
+          )}
           <Field t={t} label="Purchase Parking?" required>
             <div className="flex items-center gap-4" style={{ height: 38 }}>
               <RadioOption t={t} label="Yes" selected={wantsParking === 'yes'} disabled={isView} onSelect={() => setWantsParking('yes')} />
@@ -1555,9 +1667,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             age: age ? `${age.years}y ${age.months}m` : '',
             altName: alternatePersonName, altMobile: alternatePersonMobile ? `${alternatePersonCountryCode} ${alternatePersonMobile}` : '',
             companyName, projectName, buildingName, wingName, floorLabel,
-            flatNo: selectedFlat?.flat_no || flatNo,
-            flatType: selectedFlat?.flat_type || '',
-            flatArea: selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : '',
+            // V_22.0 item 9 — these 3 preview rows describe whichever unit
+            // type is actually selected, so a shop booking's preview shows
+            // its shop no/area instead of blank Flat No/Type/Area rows.
+            flatNo: unitType === 'shop' ? (selectedShop?.shop_no || shopNo) : (selectedFlat?.flat_no || flatNo),
+            flatType: unitType === 'shop' ? 'Shop' : (selectedFlat?.flat_type || ''),
+            flatArea: unitType === 'shop'
+              ? (selectedShop?.area_sqft != null ? `${selectedShop.area_sqft} Sqft` : '')
+              : (selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : ''),
             parking: wantsParking === 'yes' ? `Yes${parkingNo ? ` · ${parkingNo}` : ''}` : 'No',
             totalCost, bookingDate, bookingAmount, remainingAmount: remainingBookingAmount, remainingDate: remainingBookingDate,
             possessionAmount, installmentDate, emiBefore: monthlyEmiBeforePossession, emiAfter: monthlyEmiAfterPossession, tenure: totalEmiTenure,

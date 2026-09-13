@@ -13,6 +13,7 @@
 // requireAdmin gate. The top "Awaiting Approval" stat box is left exactly
 // as it already was, per explicit request.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdPayments, MdRefresh, MdCheckCircle, MdHourglassEmpty, MdDownload,
@@ -23,6 +24,7 @@ import {
 import { useAppDispatch } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
+import { ROUTES } from '../../../../constants';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
@@ -52,7 +54,7 @@ const formatDMY = (iso: string | null | undefined): string => {
 };
 
 const SHORT_PAYMENT_TYPE_LABEL: Record<string, string> = {
-  EMIAmount: 'EMI', BookingAmount: 'Booking', PayAfterbooking: 'Pay After Booking',
+  EMIAmount: 'EMI', BookingAmount: 'Booking', PayAfterbooking: 'Remaining Booking Amount',
   PossessionAmount: 'Possession', AnnualAmount: 'Booster Before', AnnualAmount1: 'Booster After',
 };
 
@@ -94,6 +96,7 @@ const FilterSelect: React.FC<{
 
 const PaymentApprovalsPage: React.FC = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [rows, setRows] = useState<PaymentListRow[]>([]);
@@ -402,14 +405,20 @@ const PaymentApprovalsPage: React.FC = () => {
       </div>
 
       {/* ── Top stat boxes — Awaiting Approval kept exactly as it already
-          was, plus Total Approved This Month / Today (approved_at-based,
-          independent of the table's own filters). ─────────────────────── */}
+          was, per explicit request (still not clickable). Total Approved
+          This Month / Today count APPROVED payments — which this table,
+          by definition, never shows (it's the pending-only queue) — so
+          "filtering" them here would always empty the table; instead they
+          navigate to Payment Received, where those approved payments
+          actually live. ─────────────────────────────────────────────── */}
       <div className="pa-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         <StatCard label="Awaiting Approval" value={total} icon={MdHourglassEmpty} color="#ea580c" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Approved This Month" value={stats?.approved_this_month ?? 0} icon={MdEventAvailable} color="#16a34a" bg="" loading={!stats}
+          onClick={() => navigate(ROUTES.ADMIN.PAYMENT_RECEIVED)}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Approved Today" value={stats?.approved_today ?? 0} icon={MdToday} color="#2563eb" bg="" loading={!stats}
+          onClick={() => navigate(ROUTES.ADMIN.PAYMENT_RECEIVED)}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 

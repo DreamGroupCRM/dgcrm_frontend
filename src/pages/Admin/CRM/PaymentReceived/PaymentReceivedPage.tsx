@@ -18,6 +18,7 @@
 // Approvals' (checkbox + Actions first) with View Receipt/Download
 // Receipt/Delete instead of View/Approve/Delete.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import jsPDF from 'jspdf';
 import {
@@ -28,6 +29,7 @@ import {
 import { useAppDispatch } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
+import { ROUTES } from '../../../../constants';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
@@ -58,7 +60,7 @@ const formatDMY = (iso: string | null | undefined): string => {
 };
 
 const SHORT_PAYMENT_TYPE_LABEL: Record<string, string> = {
-  EMIAmount: 'EMI', BookingAmount: 'Booking', PayAfterbooking: 'Pay After Booking',
+  EMIAmount: 'EMI', BookingAmount: 'Booking', PayAfterbooking: 'Remaining Booking Amount',
   PossessionAmount: 'Possession', AnnualAmount: 'Booster Before', AnnualAmount1: 'Booster After',
 };
 
@@ -158,6 +160,7 @@ const SearchableSelect: React.FC<{
 
 const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [rows, setRows] = useState<PaymentListRow[]>([]);
@@ -324,6 +327,14 @@ const PaymentReceivedPage: React.FC = () => {
     setDraftReceivedBy(''); setDraftBuildingName(''); setDraftWingName(''); setDraftFlatNo('');
     setDraftMode(''); setDraftCompany(''); setDraftDateRange(''); setDraftFromDate(''); setDraftToDate('');
     setAppliedFilters((prev) => ({ search: prev.search }));
+  };
+
+  // Same as handleResetFilters, plus clears the search box too — used by
+  // the "Total Amount Received" stat box's click, since that number
+  // represents every approved payment with nothing filtered out at all.
+  const handleShowAllReceived = () => {
+    setSearchQuery('');
+    handleResetFilters();
   };
 
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
@@ -558,13 +569,23 @@ const PaymentReceivedPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Top stat boxes — gradient StatCard, same look used site-wide. ── */}
+      {/* ── Top stat boxes — gradient StatCard, same look used site-wide.
+          Total Flat Sold isn't a filterable dimension of this table (it's
+          a sale-value total, not a payment) so it stays non-clickable.
+          Total Amount Received represents every approved payment with
+          nothing filtered — clicking it clears the filter panel + search.
+          Total Pending Amount lives on a different page entirely (pending
+          payments are reviewed on Payment Approvals, never here) — clicking
+          it navigates there instead of trying to "filter" a page that, by
+          definition, never shows pending rows. ─────────────────────────── */}
       <div className="pr-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         <StatCard label="Total Flat Sold" value={rupee(summary?.total_flat_sold ?? 0)} icon={MdHome} color="#7c3aed" bg="" loading={!summary}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Amount Received" value={rupee(summary?.total_amount_received ?? 0)} icon={MdPayments} color="#16a34a" bg="" loading={!summary}
+          onClick={handleShowAllReceived}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Pending Amount" value={rupee(summary?.total_pending_amount ?? 0)} icon={MdHourglassEmpty} color="#ea580c" bg="" loading={!summary}
+          onClick={() => navigate(ROUTES.ADMIN.PAYMENT_APPROVALS)}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 

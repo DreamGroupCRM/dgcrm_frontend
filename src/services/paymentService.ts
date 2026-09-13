@@ -128,7 +128,7 @@ export const PAYMENT_FOR_OPTIONS: { value: PaymentFor; label: string }[] = [
   { value: 'EMIAmount', label: 'EMI Amount' },
   { value: 'BookingAmount', label: 'Booking Amount' },
   { value: 'PossessionAmount', label: 'Possession Amount' },
-  { value: 'PayAfterbooking', label: 'Pay After Booking' },
+  { value: 'PayAfterbooking', label: 'Remaining Booking Amount' },
   { value: 'AnnualAmount', label: 'Annual Amount (Before Possession)' },
   { value: 'AnnualAmount1', label: 'Annual Amount (After Possession)' },
 ];
@@ -162,21 +162,29 @@ export const fetchDueList = async (): Promise<DueListResponse> => {
 };
 
 // ── Flat, per-due-item list across every customer — one row per overdue
-// installment/one-time amount (Customer Code/Name, Assigned Employee,
-// Building/Wing/Flat, Mobile, Payment For, Amount, Due Status text).
-// Powers the Payment Dues table directly. ───────────────────────────────
+// (or due-today) installment/one-time amount (Customer Code/Name, Company/
+// Project/Location, Assigned Employee+Code, Building/Wing/Flat, Contact
+// (Email/Mobile), Payment For, Amount, Due Status text). Powers the
+// Payment Dues table directly. ───────────────────────────────────────────
 export interface DueListDetailRow {
   customer_id: number;
   customer_code: string;
   customer_name: string;
+  email: string | null;
   assigned_employee_name: string | null;
+  assigned_employee_code: string | null;
+  company_name: string | null;
+  project_name: string | null;
+  location: string | null;
   building_name: string | null;
   wing_name: string | null;
   flat_no: string | null;
   mobile_number: string | null;
   payment_for: string;
+  payment_for_key: PaymentFor;
   amount: number;
   due_status: string;
+  due_category: 'overdue' | 'due_today';
 }
 /** GET /api/payments/due-list-detailed */
 export const fetchDueListDetailed = async (): Promise<{ success: boolean; rows: DueListDetailRow[]; total: number }> => {

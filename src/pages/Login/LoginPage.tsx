@@ -24,6 +24,13 @@ import { ROUTES } from '../../constants';
 import { showAlert, homeRouteForRole } from '../../utils';
 import { authService } from '../../services/authService';
 import Logo from '../../components/ui/Logo';
+// V_22.0 — low-opacity background banner + tagline. Reuses one of the
+// existing marketing carousel images (already sitting unused in assets
+// since the login page's own carousel/side-panel was simplified away —
+// see this file's own header comment) rather than adding a new asset;
+// "Your Dream Home Without Interest" is exactly the 0%-interest/loan-
+// free messaging asked for.
+import loginBgImage from '../../assets/images/carousel_1.png';
 
 import {
   TextField,
@@ -371,11 +378,18 @@ const LoginPage: React.FC = () => {
     <div className="login-page-container">
 
       <div className="login-background">
+        <img src={loginBgImage} alt="" aria-hidden="true" className="login-bg-image" />
         <div className="login-pattern"></div>
       </div>
 
-      {/* Centered, standalone login card — no carousel/side panel. */}
-      <div style={{ position: 'relative', zIndex: 5, width: '100%', display: 'flex', justifyContent: 'center' }}>
+      {/* Centered, standalone login card — no carousel/side panel. Tagline +
+          Hindi slogan sit above it as part of the same low-opacity
+          background messaging (item 8, V_22.0). ─────────────────────────── */}
+      <div style={{ position: 'relative', zIndex: 5, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
+        <div className="login-tagline text-center">
+          <p className="login-tagline-en">0% Interest · Loan Free Home for Every Indian</p>
+          <p className="login-tagline-hi" lang="hi">हमारा सपना, हर हिंदुस्तानी का घर हो अपना</p>
+        </div>
         <div
           className="login-card animate-fade-in"
           style={{

@@ -16,7 +16,8 @@ import { toast } from 'react-toastify';
 import { IconType } from 'react-icons';
 import {
   MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
-  MdReceiptLong, MdSchedule, MdVpnKey, MdEvent, MdAccountBalanceWallet, MdNoteAdd,
+  MdReceiptLong, MdSchedule, MdVpnKey, MdAccountBalanceWallet, MdNoteAdd,
+  MdSearch, MdStars, MdWorkspacePremium,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -29,6 +30,8 @@ import StatCard from '../../../../components/masters/StatCard';
 import {
   fetchDueListDetailed, collectPayment, fetchDefaultAmount, DueListDetailRow,
 } from '../../../../services/paymentService';
+import { fetchUpcomingListDetailed } from '../../../../services/paymentUpcomingService';
+import { UpcomingListDetailRow } from '../../../../types/paymentUpcoming';
 import { fetchAllCustomerDetails } from '../../../../services/customerDetailsService';
 import { FetchBuildingList } from '../../../../services/buildingService';
 import { FetchEmployeeDetails, Employee } from '../../../../services/employeeDetailsService';
@@ -148,13 +151,48 @@ interface PaymentForUiOption { key: string; label: string; value: PaymentFor; is
 const PAYMENT_FOR_UI_OPTIONS: PaymentForUiOption[] = [
   { key: 'emi', label: 'Monthly Installment', value: 'EMIAmount' },
   { key: 'booking', label: 'Booking Amount', value: 'BookingAmount' },
-  { key: 'pay_after_booking', label: 'Payment After Booking', value: 'PayAfterbooking' },
+  { key: 'pay_after_booking', label: 'Remaining Booking Amount', value: 'PayAfterbooking' },
   { key: 'possession', label: 'Possession Amount', value: 'PossessionAmount' },
   { key: 'booster_before', label: 'Booster Before Possession', value: 'AnnualAmount' },
   { key: 'booster_after', label: 'Booster After Possession', value: 'AnnualAmount1' },
   { key: 'extra_pay', label: 'Extra Pay', value: 'EMIAmount', isAdvance: true },
 ];
 const MODE_OF_PAYMENT_OPTIONS = ['Cash', 'Cheque', 'Online', 'Other'];
+
+// Friendly label + color per payment_for_key, reused by both the top
+// category boxes (click-to-filter) and the table's own Payment For column
+// badge — same convention PaymentUpcomingPage uses.
+const PAYMENT_FOR_KEY_META: Record<PaymentFor, { label: string; color: string; icon: IconType }> = {
+  EMIAmount: { label: 'Monthly Installment', color: '#2563eb', icon: MdPayments },
+  BookingAmount: { label: 'Booking Amount', color: '#dc2626', icon: MdReceiptLong },
+  PayAfterbooking: { label: 'Remaining Booking Amount', color: '#ea580c', icon: MdSchedule },
+  PossessionAmount: { label: 'Possession Amount', color: '#7c3aed', icon: MdVpnKey },
+  AnnualAmount: { label: 'Booster Before Possession', color: '#16a34a', icon: MdStars },
+  AnnualAmount1: { label: 'Booster After Possession', color: '#0d9488', icon: MdWorkspacePremium },
+};
+const PAYMENT_FOR_KEY_ORDER: PaymentFor[] = ['EMIAmount', 'BookingAmount', 'PayAfterbooking', 'PossessionAmount', 'AnnualAmount', 'AnnualAmount1'];
+
+type DueStatusFilter = 'all' | 'overdue' | 'due_today' | 'upcoming';
+
+// ── Unified row shape the table renders — either an overdue/due-today row
+// (DueListDetailRow) or, when the Status filter is set to Upcoming, an
+// upcoming-installment row (UpcomingListDetailRow, reusing the already-
+// built Payment Upcoming endpoint for a rolling 30-day window rather than
+// duplicating that logic here). `dueRow` is set only for the former —
+// Follow-Up only makes sense against something actually due. ────────────
+interface DisplayRow {
+  key: string;
+  customer_id: number; customer_code: string; customer_name: string;
+  email: string | null; mobile_number: string | null;
+  assigned_employee_name: string | null; assigned_employee_code: string | null;
+  company_name: string | null; project_name: string | null; location: string | null;
+  building_name: string | null; wing_name: string | null; flat_no: string | null;
+  payment_for: string; payment_for_key: PaymentFor;
+  amount: number;
+  statusLabel: string; statusColor: string;
+  detailText: string;
+  dueRow?: DueListDetailRow;
+}
 
 const DueReportPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -280,33 +318,106 @@ const DueReportPage: React.FC = () => {
   const [filterPaymentFor, setFilterPaymentFor] = useState('');
   const [filterBuilding, setFilterBuilding] = useState('');
   const [filterEmployee, setFilterEmployee] = useState('');
+  // ── New (V_22.0): global search across every field, and a Status filter
+  // (All / Overdue / Due Today / Upcoming). Category-box click-to-filter
+  // (below) is a separate, ANDed narrowing on top of all of these. ────────
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<DueStatusFilter>('all');
+  const [categoryFilter, setCategoryFilter] = useState<PaymentFor | null>(null);
+  const toggleCategoryFilter = (key: PaymentFor) => setCategoryFilter((prev) => (prev === key ? null : key));
+
+  // ── Upcoming (Status = Upcoming) — lazily fetched once, reusing the
+  // already-built Payment Upcoming endpoint for a rolling next-30-days
+  // window rather than duplicating that logic here. ───────────────────────
+  const [upcomingRows, setUpcomingRows] = useState<UpcomingListDetailRow[]>([]);
+  const [loadingUpcoming, setLoadingUpcoming] = useState(false);
+  useEffect(() => {
+    if (statusFilter !== 'upcoming' || upcomingRows.length > 0) return;
+    (async () => {
+      setLoadingUpcoming(true);
+      try {
+        const from = ymd(new Date());
+        const to = ymd(new Date(Date.now() + 30 * 86400000));
+        const res = await fetchUpcomingListDetailed(from, to);
+        setUpcomingRows(res.rows);
+      } catch {
+        toast.error('Failed to load upcoming payments.');
+      } finally {
+        setLoadingUpcoming(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
 
   const paymentForFilterOptions = useMemo(
     () => Array.from(new Set(dueRows.map((r) => r.payment_for).filter((v): v is string => !!v))),
     [dueRows]
   );
 
+  // ── Normalize both data sources into one display shape the table
+  // renders — see DisplayRow's own comment. ───────────────────────────────
+  const dueDisplayRows: DisplayRow[] = useMemo(() => dueRows.map((r, i) => ({
+    key: `due-${r.customer_id}-${r.payment_for}-${i}`,
+    customer_id: r.customer_id, customer_code: r.customer_code, customer_name: r.customer_name,
+    email: r.email, mobile_number: r.mobile_number,
+    assigned_employee_name: r.assigned_employee_name, assigned_employee_code: r.assigned_employee_code,
+    company_name: r.company_name, project_name: r.project_name, location: r.location,
+    building_name: r.building_name, wing_name: r.wing_name, flat_no: r.flat_no,
+    payment_for: r.payment_for, payment_for_key: r.payment_for_key,
+    amount: r.amount,
+    statusLabel: r.due_category === 'due_today' ? 'Due Today' : 'Overdue',
+    statusColor: r.due_category === 'due_today' ? '#d97706' : '#dc2626',
+    detailText: r.due_status.replace(/^Overdue\s+/, '').replace(/^Due Today\s*\|\s*/, ''),
+    dueRow: r,
+  })), [dueRows]);
+
+  const upcomingDisplayRows: DisplayRow[] = useMemo(() => upcomingRows.map((r, i) => ({
+    key: `up-${r.customer_id}-${r.due_date}-${i}`,
+    customer_id: r.customer_id, customer_code: r.customer_code, customer_name: r.customer_name,
+    email: r.email, mobile_number: r.mobile_number,
+    assigned_employee_name: r.assigned_employee_name, assigned_employee_code: r.assigned_employee_code,
+    company_name: r.company_name, project_name: r.project_name, location: r.location,
+    building_name: r.building_name, wing_name: r.wing_name, flat_no: r.flat_no,
+    payment_for: r.payment_for, payment_for_key: r.payment_for_key,
+    amount: r.amount,
+    statusLabel: 'Upcoming', statusColor: '#4f46e5',
+    detailText: `Due on ${new Date(r.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+  })), [upcomingRows]);
+
+  const baseDisplayRows: DisplayRow[] = useMemo(() => {
+    if (statusFilter === 'upcoming') return upcomingDisplayRows;
+    if (statusFilter === 'overdue') return dueDisplayRows.filter((r) => r.dueRow?.due_category === 'overdue');
+    if (statusFilter === 'due_today') return dueDisplayRows.filter((r) => r.dueRow?.due_category === 'due_today');
+    return dueDisplayRows;
+  }, [statusFilter, dueDisplayRows, upcomingDisplayRows]);
+
   const filteredDueRows = useMemo(() => {
-    return dueRows.filter((r) => {
+    const q = globalSearch.trim().toLowerCase();
+    return baseDisplayRows.filter((r) => {
       if (filterPaymentFor && r.payment_for !== filterPaymentFor) return false;
       if (filterBuilding && r.building_name !== filterBuilding) return false;
       if (filterEmployee && r.assigned_employee_name !== filterEmployee) return false;
+      if (categoryFilter && r.payment_for_key !== categoryFilter) return false;
+      if (q && ![
+        r.customer_code, r.customer_name, r.email, r.mobile_number,
+        r.assigned_employee_name, r.assigned_employee_code,
+        r.company_name, r.project_name, r.location,
+        r.building_name, r.wing_name, r.flat_no, r.payment_for,
+      ].some((v) => (v || '').toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [dueRows, filterPaymentFor, filterBuilding, filterEmployee]);
+  }, [baseDisplayRows, filterPaymentFor, filterBuilding, filterEmployee, categoryFilter, globalSearch]);
 
   // ── Stat boxes — sums across the (unfiltered) full due-item list, one
-  // per payment-for category, plus a grand Total. ─────────────────────────
+  // per payment-for category, plus a grand Total. Always reflect current
+  // Due/Overdue amounts regardless of the Status filter above — the boxes
+  // are the page's own headline numbers, not a view of whatever the table
+  // happens to be showing. ─────────────────────────────────────────────────
   const boxSums = useMemo(() => {
-    let booking = 0, payAfterBooking = 0, possession = 0, emi = 0, annual = 0;
-    for (const r of dueRows) {
-      if (r.payment_for === 'Booking Amount') booking += r.amount;
-      else if (r.payment_for === 'Remaining Booking Amount') payAfterBooking += r.amount;
-      else if (r.payment_for === 'Possession Amount') possession += r.amount;
-      else if (r.payment_for === 'EMI Before' || r.payment_for === 'EMI After') emi += r.amount;
-      else if (r.payment_for === 'Annual Amount' || r.payment_for === 'Annual Amount (After)') annual += r.amount;
-    }
-    return { booking, payAfterBooking, possession, emi, annual, total: booking + payAfterBooking + possession + emi + annual };
+    const sums: Record<PaymentFor, number> = { EMIAmount: 0, BookingAmount: 0, PayAfterbooking: 0, PossessionAmount: 0, AnnualAmount: 0, AnnualAmount1: 0 };
+    for (const r of dueRows) sums[r.payment_for_key] += r.amount;
+    const total = Object.values(sums).reduce((s, v) => s + v, 0);
+    return { ...sums, total };
   }, [dueRows]);
 
   const handleRefresh = () => fetchDueRows();
@@ -318,10 +429,10 @@ const DueReportPage: React.FC = () => {
         toast.error('No dues to export.');
         return;
       }
-      const header = ['Customer Code', 'Customer Name', 'Assigned Employee', 'Building', 'Wing', 'Flat No', 'Mobile No', 'Payment For', 'Amount', 'Due Status'];
+      const header = ['Customer Code', 'Customer Name', 'Company', 'Assigned Employee', 'Building', 'Wing', 'Flat No', 'Email', 'Mobile No', 'Payment For', 'Amount', 'Status', 'Detail'];
       const rows = filteredDueRows.map((r) => [
-        r.customer_code, r.customer_name, r.assigned_employee_name || '', r.building_name || '', r.wing_name || '',
-        r.flat_no || '', r.mobile_number || '', r.payment_for, r.amount, r.due_status,
+        r.customer_code, r.customer_name, r.company_name || '', r.assigned_employee_name || '', r.building_name || '', r.wing_name || '',
+        r.flat_no || '', r.email || '', r.mobile_number || '', r.payment_for, r.amount, r.statusLabel, r.detailText,
       ]);
       const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -339,7 +450,7 @@ const DueReportPage: React.FC = () => {
   // ── Client-side pagination over the filtered due-item list. ─────────────
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  useEffect(() => { setPage(1); }, [filterPaymentFor, filterBuilding, filterEmployee]);
+  useEffect(() => { setPage(1); }, [filterPaymentFor, filterBuilding, filterEmployee, statusFilter, categoryFilter, globalSearch]);
   const totalPages = Math.max(1, Math.ceil(filteredDueRows.length / limit));
   const safePage = Math.min(page, totalPages);
   const from = filteredDueRows.length === 0 ? 0 : (safePage - 1) * limit + 1;
@@ -467,13 +578,11 @@ const DueReportPage: React.FC = () => {
   });
   const readOnlyInputStyle: React.CSSProperties = { ...fieldInputStyle(false), background: t.insetBg, cursor: 'not-allowed', color: t.textSecondary };
 
-  const statBoxSpecs: StatBoxSpec[] = [
-    { label: 'Booking Amount', value: boxSums.booking, color: '#dc2626', icon: MdReceiptLong },
-    { label: 'Pay After Booking', value: boxSums.payAfterBooking, color: '#ea580c', icon: MdSchedule },
-    { label: 'Possession Amount', value: boxSums.possession, color: '#7c3aed', icon: MdVpnKey },
-    { label: 'EMI', value: boxSums.emi, color: '#2563eb', icon: MdPayments },
-    { label: 'Annual Amount', value: boxSums.annual, color: '#16a34a', icon: MdEvent },
-    { label: 'Total', value: boxSums.total, color: '#0891b2', icon: MdAccountBalanceWallet },
+  const statBoxSpecs: (StatBoxSpec & { key: PaymentFor | 'total' })[] = [
+    ...PAYMENT_FOR_KEY_ORDER.map((key) => ({
+      key, label: PAYMENT_FOR_KEY_META[key].label, value: boxSums[key], color: PAYMENT_FOR_KEY_META[key].color, icon: PAYMENT_FOR_KEY_META[key].icon,
+    })),
+    { key: 'total' as const, label: 'Total', value: boxSums.total, color: '#0891b2', icon: MdAccountBalanceWallet },
   ];
 
   return (
@@ -488,12 +597,18 @@ const DueReportPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Stat boxes — always 6, always one row on desktop, same
-          saturated-gradient StatCard used site-wide (Building Master etc). */}
-      <div className="due-report-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
+      {/* ── Stat boxes — every Payment For category plus a grand Total,
+          always one row on desktop, same saturated-gradient StatCard used
+          site-wide (Building Master etc). Each category box doubles as a
+          click-to-filter on the table below (same convention Payment
+          Upcoming's own boxes use) — click again, or click Total, to
+          clear it. ────────────────────────────────────────────────────── */}
+      <div className="due-report-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-3 mb-5">
         {statBoxSpecs.map((spec) => (
-          <StatCard key={spec.label} label={spec.label} value={rupee(spec.value)} icon={spec.icon} color={spec.color}
+          <StatCard key={spec.key} label={spec.label} value={rupee(spec.value)} icon={spec.icon} color={spec.color}
             bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loadingDueList} compact labelFontSize={12.5}
+            active={spec.key !== 'total' && categoryFilter === spec.key}
+            onClick={() => (spec.key === 'total' ? setCategoryFilter(null) : toggleCategoryFilter(spec.key))}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
       </div>
@@ -587,8 +702,8 @@ const DueReportPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Toolbar — Payment For + Building + Employee filters (left),
-          Export CSV + Refresh (right), always one row. ─────────────────── */}
+      {/* ── Toolbar — Payment For + Building + Employee + global search +
+          Status filters (left), Export CSV + Refresh (right). ──────────── */}
       <div className="due-report-toolbar rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="due-report-toolbar-row flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
           <div className="due-report-toolbar-filters flex items-center gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto', minWidth: 0 }}>
@@ -600,6 +715,20 @@ const DueReportPage: React.FC = () => {
             </div>
             <div className="due-report-filter-item" style={{ width: 200, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Select Employee" options={employeeNameOptions} value={filterEmployee} onChange={setFilterEmployee} />
+            </div>
+            <div className="due-report-filter-item due-report-global-search relative" style={{ width: 220, flexShrink: 0 }}>
+              <MdSearch size={15} style={{ position: 'absolute', left: 10, top: 11, color: t.textSecondary, pointerEvents: 'none' }} />
+              <input type="text" placeholder="Search across all data..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)}
+                style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px 9px 30px', fontSize: 12, outline: 'none' }} />
+            </div>
+            <div className="due-report-filter-item" style={{ width: 160, flexShrink: 0 }}>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as DueStatusFilter)}
+                style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }}>
+                <option value="all">All Status</option>
+                <option value="overdue">Overdue</option>
+                <option value="due_today">Due Today</option>
+                <option value="upcoming">Upcoming</option>
+              </select>
             </div>
           </div>
           <div className="due-report-toolbar-actions flex items-center gap-2.5" style={{ flexShrink: 0 }}>
@@ -625,68 +754,90 @@ const DueReportPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Payment Due table ────────────────────────────────────────────── */}
+      {/* ── Payment Due table — Customer, Company/Project/Location, Building/
+          Wing/Flat, Assigned Employee+Code, Contact, Payment For (color-
+          coded badge, matching the top boxes), Amount, Status, Detail,
+          Follow Up. ────────────────────────────────────────────────────── */}
       <div className="due-report-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="due-report-table-scroll" style={{ overflowX: 'auto' }}>
-          <table className="due-report-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
+          <table className="due-report-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Customer Code', 'Customer Name', 'Assigned Employee', 'Building / Wing / Flat', 'Mobile No', 'Payment For', 'Amount', 'Status', 'Overdue By', 'Follow Up'].map((h) => (
+                {['Customer', 'Company / Project / Location', 'Building / Wing / Flat', 'Assigned Employee', 'Contact (Email / Mobile)', 'Payment For', 'Amount', 'Status', 'Detail', 'Follow Up'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {loadingDueList ? (
+              {(loadingDueList || (statusFilter === 'upcoming' && loadingUpcoming)) ? (
                 <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
               ) : filteredDueRows.length === 0 ? (
                 <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
-                  {dueRows.length === 0 ? 'No customers currently have a payment due.' : 'No dues match the selected filters.'}
+                  {baseDisplayRows.length === 0 ? 'No customers currently have a payment due.' : 'No dues match the selected filters.'}
                 </td></tr>
               ) : (
-                pagedDueRows.map((r, i) => {
-                  // Every row in this list is, by definition, overdue (see
-                  // getDueListDetailed) — so the chip is always "Overdue".
-                  // The detail column keeps the rest of the backend's
-                  // already-computed duration/date/amount text, just with
-                  // the leading "Overdue" word stripped since the chip now
-                  // says that.
-                  const overdueDetail = r.due_status.replace(/^Overdue\s+/, '');
-                  return (
-                    <tr key={`${r.customer_id}-${r.payment_for}-${i}`} style={{ borderTop: `1px solid ${t.divider}` }}>
-                      <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.customer_code}</td>
-                      <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 600, color: '#000', whiteSpace: 'nowrap' }}>{r.customer_name}</td>
-                      <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.assigned_employee_name || '—'}</td>
-                      <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
-                        <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
-                        {(r.wing_name || r.flat_no) && (
-                          <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
-                            {r.wing_name ? `Wing ${r.wing_name}` : ''}{r.wing_name && r.flat_no ? ' • ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.mobile_number || '—'}</td>
-                      <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>{r.payment_for}</td>
-                      <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#000', whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
-                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                        <span style={{
-                          display: 'inline-block', padding: '3px 10px', borderRadius: 999,
-                          fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#dc2626',
-                        }}>
-                          Overdue
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: '#dc2626', minWidth: 260 }}>{overdueDetail}</td>
-                      <td style={{ padding: '12px 14px' }}>
-                        <button type="button" onClick={() => openFollowUp(r)} title="Schedule a follow-up"
+                pagedDueRows.map((r) => (
+                  <tr key={r.key} style={{ borderTop: `1px solid ${t.divider}` }}>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: '#000', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 600 }}>{r.customer_name}</div>
+                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code}</div>
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 600 }}>{r.company_name || '—'}</div>
+                      {(r.project_name || r.location) && (
+                        <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
+                          {r.project_name || ''}{r.project_name && r.location ? ' • ' : ''}{r.location || ''}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
+                      {(r.wing_name || r.flat_no) && (
+                        <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
+                          {r.wing_name ? `Wing ${r.wing_name}` : ''}{r.wing_name && r.flat_no ? ' • ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 600 }}>{r.assigned_employee_name || '—'}</div>
+                      {r.assigned_employee_code && (
+                        <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.assigned_employee_code}</div>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000' }}>
+                      <div>{r.email || '—'}</div>
+                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.mobile_number || '—'}</div>
+                    </td>
+                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        display: 'inline-block', padding: '3px 9px', borderRadius: 999,
+                        fontSize: 10.5, fontWeight: 700, color: '#fff', background: PAYMENT_FOR_KEY_META[r.payment_for_key].color,
+                      }}>
+                        {PAYMENT_FOR_KEY_META[r.payment_for_key].label}
+                      </span>
+                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>{r.payment_for}</div>
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#000', whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
+                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        display: 'inline-block', padding: '3px 10px', borderRadius: 999,
+                        fontSize: 10.5, fontWeight: 700, color: '#fff', background: r.statusColor,
+                      }}>
+                        {r.statusLabel}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: r.statusColor, minWidth: 220 }}>{r.detailText}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      {r.dueRow && (
+                        <button type="button" onClick={() => openFollowUp(r.dueRow as DueListDetailRow)} title="Schedule a follow-up"
                           className="flex items-center justify-center rounded-lg"
                           style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: '#0284c7', cursor: 'pointer' }}>
                           <MdNoteAdd size={16} />
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })
+                      )}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

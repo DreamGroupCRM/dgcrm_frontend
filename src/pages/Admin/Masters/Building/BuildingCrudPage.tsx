@@ -908,7 +908,26 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Project Details</h2>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+          <div>
+            {/* V_22.0 — moved here from its own former "Step 7: Company"
+                section, per the sequence Company → Project → Location →
+                Building; optional (a building need not link to a business
+                Company), so no required-field marker. Lists every entry
+                in Company Master, same as before. */}
+            <label style={labelStyle}>Company</label>
+            <select
+              value={businessCompanyId}
+              disabled={isView}
+              onChange={(e) => { setBusinessCompanyId(e.target.value); markDirty(); }}
+              style={{ ...fieldStyle, cursor: isView ? 'default' : 'pointer' }}
+            >
+              <option value="">Select company (optional)</option>
+              {companyOptions.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
           <div>
             <label style={labelStyle}>Project Name <span style={{ color: '#ef4444' }}>*</span></label>
             <input
@@ -1436,35 +1455,6 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             </div>
           </div>
         )}
-      </SectionCard>
-
-      {/* ── Step 7: Company (V_22.0) — links this building to a business
-          Company (Company Master), so Add Payment can auto-derive its
-          Company field from the customer's building instead of free-typing
-          it. Optional — existing buildings simply have none linked. ──── */}
-      <SectionCard t={t}>
-        <div className="flex items-center gap-2.5 mb-4">
-          <StepBadge n={7} accent={accent} />
-          <div>
-            <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Company</h2>
-            <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Which company does this building belong to?</p>
-          </div>
-        </div>
-
-        <div>
-          <label style={labelStyle}>Company</label>
-          <select
-            value={businessCompanyId}
-            disabled={isView}
-            onChange={(e) => { setBusinessCompanyId(e.target.value); markDirty(); }}
-            style={{ ...fieldStyle, maxWidth: 320, cursor: isView ? 'default' : 'pointer' }}
-          >
-            <option value="">Select company (optional)</option>
-            {companyOptions.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
       </SectionCard>
 
       {/* ── Action Buttons ───────────────────────────────────────────────── */}

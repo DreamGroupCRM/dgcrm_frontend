@@ -51,7 +51,7 @@ interface StatBoxSpec { label: string; value: number; color: string; icon: IconT
 const PAYMENT_FOR_KEY_META: Record<PaymentForKey, { label: string; color: string; icon: IconType }> = {
   EMIAmount: { label: 'Monthly Installment', color: '#2563eb', icon: MdPayments },
   BookingAmount: { label: 'Booking Amount', color: '#dc2626', icon: MdReceiptLong },
-  PayAfterbooking: { label: 'Payment After Booking', color: '#ea580c', icon: MdSchedule },
+  PayAfterbooking: { label: 'Remaining Booking Amount', color: '#ea580c', icon: MdSchedule },
   PossessionAmount: { label: 'Possession Amount', color: '#7c3aed', icon: MdVpnKey },
   AnnualAmount: { label: 'Booster Before Possession', color: '#16a34a', icon: MdStars },
   AnnualAmount1: { label: 'Booster After Possession', color: '#0d9488', icon: MdWorkspacePremium },

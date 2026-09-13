@@ -7,7 +7,7 @@
 // this page itself was loaded with.
 import { useEffect, useRef } from 'react';
 
-const POLL_INTERVAL_MS = 5 * 60 * 1000;
+const POLL_INTERVAL_MS = 30 * 1000;
 
 async function fetchServerVersion(): Promise<string | null> {
   try {
