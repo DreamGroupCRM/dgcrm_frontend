@@ -19,6 +19,7 @@ import DateRangePresetFilter, { DateRangePreset, computeDateRangePreset } from '
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import { fetchAttendance, markAttendance, AttendanceRecord, AttendanceStatus } from '../../../../services/attendanceService';
 import { formatDate } from '../../../../utils';
+import './AttendancePage.css';
 
 const STATUS_LABEL: Record<AttendanceStatus, string> = {
   present: 'Present', absent: 'Absent', half_day: 'Half Day', leave: 'Leave',
@@ -114,8 +115,8 @@ const AttendancePage: React.FC = () => {
   };
 
   return (
-    <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+    <div className="att-admin-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
+      <div className="att-admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Present" value={counts.present} icon={MdCheckCircle} color="#16a34a" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Absent" value={counts.absent} icon={MdCancel} color="#dc2626" bg="" loading={loading}
@@ -127,22 +128,22 @@ const AttendancePage: React.FC = () => {
       </div>
 
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
+        <div className="att-admin-toolbar flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
           <DateRangePresetFilter t={t} preset={preset} onPresetChange={setPreset}
             customFrom={customFrom} customTo={customTo} onCustomFromChange={setCustomFrom} onCustomToChange={setCustomTo} />
-          <div className="flex items-center gap-2.5">
-            <button type="button" onClick={openModal} className="master-btn-primary">
-              <MdAdd size={16} /> Mark Attendance
+          <div className="att-admin-toolbar-actions flex items-center gap-2.5">
+            <button type="button" onClick={openModal} className="att-admin-mark-btn master-btn-primary">
+              <MdAdd size={16} /> <span className="att-admin-mark-btn-text">Mark Attendance</span>
             </button>
             <button type="button" onClick={load} title="Refresh"
-              className="flex items-center justify-center rounded-xl"
+              className="att-admin-refresh-btn flex items-center justify-center rounded-xl"
               style={{ width: 38, height: 38, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
               <MdRefresh size={18} />
             </button>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 px-5 py-3" style={{ borderBottom: `1px solid ${t.divider}` }}>
+        <div className="att-admin-filters flex flex-wrap items-center gap-2.5 px-5 py-3" style={{ borderBottom: `1px solid ${t.divider}` }}>
           <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} style={{ ...getFormInputStyle(t), width: 200 }}>
             <option value="">All Employees</option>
             {employeeOptions.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
@@ -154,7 +155,7 @@ const AttendancePage: React.FC = () => {
         </div>
 
         <div className="master-table-scroll">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+          <table className="att-admin-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['Employee', 'Date', 'Status', 'Check In', 'Check Out', 'Location', 'Remarks'].map((h) => (
@@ -190,7 +191,7 @@ const AttendancePage: React.FC = () => {
       </div>
 
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        <div className="att-admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
           onClick={() => setShowModal(false)}>
           <div onClick={(e) => e.stopPropagation()} className="rounded-2xl"
             style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxWidth: 480, width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
@@ -212,7 +213,7 @@ const AttendancePage: React.FC = () => {
                   {(Object.keys(STATUS_LABEL) as AttendanceStatus[]).map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
                 </select>
               </FormField>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormField label="Check In" t={t}><input type="time" value={form.check_in_time} onChange={(e) => setForm((f) => ({ ...f, check_in_time: e.target.value }))} style={getFormInputStyle(t)} /></FormField>
                 <FormField label="Check Out" t={t}><input type="time" value={form.check_out_time} onChange={(e) => setForm((f) => ({ ...f, check_out_time: e.target.value }))} style={getFormInputStyle(t)} /></FormField>
               </div>

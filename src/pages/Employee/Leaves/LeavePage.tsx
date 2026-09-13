@@ -16,6 +16,7 @@ import { getFormInputStyle, FormField, getAccordionCardStyle, getAccordionHeader
 import { fetchEmployeeDashboardSummary } from '../../../services/dashboardService';
 import { fetchLeaves, submitLeaveRequest, LeaveRecord, LeaveStatus, GENERAL_LEAVE_TYPES, LEAVE_TYPE_LABEL, LeaveType } from '../../../services/leaveService';
 import { formatDate } from '../../../utils';
+import './LeavePage.css';
 
 const STATUS_LABEL: Record<LeaveStatus, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
 const STATUS_COLOR: Record<LeaveStatus, string> = { pending: '#d97706', approved: '#16a34a', rejected: '#dc2626' };
@@ -90,7 +91,7 @@ const LeavePage: React.FC = () => {
       <div style={cardStyle}>
         <div style={headerStyle}><span style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary }}>Request Leave</span></div>
         <form onSubmit={handleSubmit} className="p-4" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormField label="From *" t={t}><input required type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={getFormInputStyle(t)} /></FormField>
             <FormField label="To *" t={t}><input required type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={getFormInputStyle(t)} /></FormField>
           </div>
@@ -115,7 +116,7 @@ const LeavePage: React.FC = () => {
           <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>My Leave Requests</h3>
         </div>
         <div className="master-table-scroll">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+          <table className="lv-emp-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['From', 'To', 'Type', 'Reason', 'Status'].map((h) => (

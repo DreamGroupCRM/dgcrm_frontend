@@ -20,6 +20,7 @@ import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { fetchAuditLogList, fetchAuditEntityTypes, AuditLogEntry } from '../../../services/auditService';
 import { formatLastLogin } from '../../../utils';
+import './AuditHistoryPage.css';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 const FILTER_LABEL_STYLE: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 };
@@ -161,7 +162,7 @@ const AuditHistoryPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="ah-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Events" value={counts.total} icon={MdHistory} color="#7c3aed" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Creates" value={counts.create} icon={MdAdd} color="#16a34a" bg="" loading={loading}
@@ -229,7 +230,7 @@ const AuditHistoryPage: React.FC = () => {
           </button>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+          <table className="ah-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['Date / Time', 'Entity Type', 'Entity ID', 'Action', 'Performed By', 'Details'].map((h) => (
@@ -264,7 +265,7 @@ const AuditHistoryPage: React.FC = () => {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4" style={{ borderTop: `1px solid ${t.divider}` }}>
+        <div className="ah-pagination flex flex-wrap items-center justify-between gap-3 p-4" style={{ borderTop: `1px solid ${t.divider}` }}>
           <div className="flex items-center gap-2">
             <span style={{ fontSize: 11, color: t.textSecondary }}>Rows per page:</span>
             <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
@@ -275,7 +276,7 @@ const AuditHistoryPage: React.FC = () => {
           <div style={{ fontSize: 11, color: t.textSecondary }}>
             Showing {total === 0 ? 0 : (safePage - 1) * limit + 1}–{Math.min(safePage * limit, total)} of {total}
           </div>
-          <div className="flex-1 flex items-center justify-center gap-1.5">
+          <div className="ah-page-nav flex-1 flex items-center justify-center gap-1.5">
             <button type="button" disabled={safePage <= 1} onClick={() => setPage(1)}
               className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: safePage <= 1 ? 'not-allowed' : 'pointer', opacity: safePage <= 1 ? 0.5 : 1 }}>
               <MdKeyboardDoubleArrowLeft size={16} />

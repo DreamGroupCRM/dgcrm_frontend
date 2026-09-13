@@ -17,6 +17,7 @@ import StatCard from '../../../components/masters/StatCard';
 import { PhoneInput } from '../../../components/common/PhoneInput';
 import { ValidationErrorSummary } from '../../../components/common/ValidationErrorSummary';
 import { showAlert, formatLastLogin } from '../../../utils';
+import './UserManagementPage.css';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -223,7 +224,7 @@ const UserManagementPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="um-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Users" value={rows.length} icon={MdPeople} color="#0284c7" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Active" value={activeCount} icon={MdCheckCircle} color="#16a34a" bg="" loading={loading}
@@ -235,23 +236,23 @@ const UserManagementPage: React.FC = () => {
       </div>
 
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
+        <div className="um-toolbar flex items-center justify-between gap-3 flex-wrap p-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Login Accounts</h3>
-          <div className="flex items-center gap-2">
+          <div className="um-toolbar-actions flex items-center gap-2">
             <button type="button" onClick={() => setShowCreate(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold"
+              className="um-create-btn flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold"
               style={{ background: 'var(--grad-purple)', color: '#fff', border: 'none', cursor: 'pointer' }}>
-              <MdPersonAddAlt1 size={15} /> Create Admin
+              <MdPersonAddAlt1 size={15} /> <span className="um-create-btn-text">Create Admin</span>
             </button>
             <button type="button" onClick={load} title="Refresh"
-              className="flex items-center justify-center rounded-xl"
+              className="um-refresh-btn flex items-center justify-center rounded-xl"
               style={{ width: 36, height: 36, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
               <MdRefresh size={17} />
             </button>
           </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
+          <table className="um-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['Name', 'Email', 'Role', 'Linked To', 'Status', 'Last Login', 'Actions'].map((h) => (
@@ -290,7 +291,7 @@ const UserManagementPage: React.FC = () => {
                       </td>
                       <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatLastLogin(row.last_login_at)}</td>
                       <td style={{ padding: '12px 14px' }}>
-                        <div className="flex items-center gap-2">
+                        <div className="um-row-actions flex items-center gap-2">
                           {row.base_role === 'admin' && (
                             <button type="button" title="Edit admin details" onClick={() => openEditModal(row)} className="master-icon-btn">
                               <MdEdit size={15} />
@@ -372,7 +373,7 @@ const UserManagementPage: React.FC = () => {
                 errors={editActiveErrors.map((c) => ({ field: c.field, message: c.message }))}
                 onErrorClick={revealEditField}
               />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div ref={setEditFieldRef('first_name')}>
                   <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>First Name *</label>
                   <input required value={editForm.first_name} onChange={(e) => setEditForm((f) => ({ ...f, first_name: e.target.value }))} autoFocus
@@ -454,7 +455,7 @@ const UserManagementPage: React.FC = () => {
                   errors={createActiveErrors.map((c) => ({ field: c.field, message: c.message }))}
                   onErrorClick={revealCreateField}
                 />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div ref={setCreateFieldRef('first_name')}>
                     <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>First Name *</label>
                     <input required value={createForm.first_name} onChange={(e) => setCreateForm((f) => ({ ...f, first_name: e.target.value }))} autoFocus

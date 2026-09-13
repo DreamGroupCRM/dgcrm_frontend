@@ -19,6 +19,7 @@ import DateRangePresetFilter, { DateRangePreset, computeDateRangePreset } from '
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import { fetchLeaves, reviewLeaveRequest, LeaveRecord, LeaveStatus, LEAVE_TYPE_LABEL, LeaveType, LEAVE_SESSION_LABEL } from '../../../../services/leaveService';
 import { formatDate, formatLastLogin } from '../../../../utils';
+import './LeaveApprovalsPage.css';
 
 const STATUS_LABEL: Record<LeaveStatus, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
 const STATUS_COLOR: Record<LeaveStatus, string> = { pending: '#d97706', approved: '#16a34a', rejected: '#dc2626' };
@@ -96,7 +97,7 @@ const LeaveApprovalsPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+      <div className="lv-appr-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         <StatCard label="Showing" value={records.length} icon={MdBeachAccess} color="#7c3aed" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Pending" value={pendingCount} icon={MdHourglassEmpty} color="#d97706" bg="" loading={loading}
@@ -104,8 +105,8 @@ const LeaveApprovalsPage: React.FC = () => {
       </div>
 
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
-          <div className="flex items-center rounded-xl p-0.5" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="lv-appr-toolbar flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
+          <div className="lv-appr-status-tabs flex items-center rounded-xl p-0.5" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}` }}>
             {(['all', 'pending', 'approved', 'rejected'] as const).map((v) => (
               <button key={v} type="button" onClick={() => setStatusFilter(v)}
                 className="px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap capitalize"
@@ -114,13 +115,13 @@ const LeaveApprovalsPage: React.FC = () => {
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="lv-appr-toolbar-actions flex flex-wrap items-center gap-2.5">
             <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} style={{ ...getFormInputStyle(t), width: 200 }}>
               <option value="">All Employees</option>
               {employeeOptions.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
             </select>
             <button type="button" onClick={load} title="Refresh"
-              className="flex items-center justify-center rounded-xl"
+              className="lv-appr-refresh-btn flex items-center justify-center rounded-xl"
               style={{ width: 38, height: 38, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
               <MdRefresh size={18} />
             </button>
@@ -134,7 +135,7 @@ const LeaveApprovalsPage: React.FC = () => {
         </div>
 
         <div className="master-table-scroll">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
+          <table className="lv-appr-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['Employee', 'From', 'To', 'Days', 'Type', 'Session', 'Reason', 'Status', 'Requested', 'Action'].map((h) => (

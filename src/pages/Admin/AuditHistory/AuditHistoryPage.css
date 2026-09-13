@@ -1,0 +1,24 @@
+/* ==========================================================================
+   AuditHistoryPage — responsive rules only (V_22.0). Additive on top of the
+   page's existing inline styles / Tailwind utility classes; nothing in the
+   JSX's inline style={{}} props is overridden here except with an explicit
+   !important, needed to beat inline-style specificity. Side gutter is owned
+   by DashboardLayout's <main>, not repeated here.
+   Breakpoints: sm 480-767  xs <=479
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  .ah-stat-grid { gap: 8px !important; }
+  .ah-table th { padding: 10px 10px !important; font-size: 10.5px !important; }
+  .ah-table td { padding: 10px 10px !important; font-size: 11px !important; }
+  .ah-page-nav { flex-wrap: nowrap !important; overflow-x: auto !important; justify-content: flex-start !important; }
+}
+
+@media (max-width: 479px) {
+  .ah-stat-grid { gap: 6px !important; }
+  .ah-table th { padding: 8px 8px !important; font-size: 10px !important; }
+  .ah-table td { padding: 8px 8px !important; font-size: 10.5px !important; }
+  .ah-page-nav button.flex.items-center.justify-center { width: 28px !important; height: 28px !important; }
+  .ah-page-nav button.px-3 { padding: 4px 8px !important; font-size: 12px !important; }
+  .ah-pagination { padding: 10px !important; gap: 8px !important; }
+}

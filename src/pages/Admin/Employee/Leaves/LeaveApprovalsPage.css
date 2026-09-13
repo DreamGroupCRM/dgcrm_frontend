@@ -1,0 +1,26 @@
+/* ==========================================================================
+   LeaveApprovalsPage — responsive rules only (V_22.0). Additive on top of
+   the page's existing inline styles / Tailwind utility classes; nothing in
+   the JSX's inline style={{}} props is overridden here except with an
+   explicit !important, needed to beat inline-style specificity. Side gutter
+   is owned by DashboardLayout's <main>, not repeated here.
+   Breakpoints: sm 480-767  xs <=479
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  .lv-appr-stat-grid { gap: 8px !important; }
+  .lv-appr-toolbar { padding: 12px !important; gap: 10px !important; }
+  .lv-appr-status-tabs button { padding: 6px 10px !important; font-size: 11px !important; }
+  .lv-appr-table th { padding: 10px 10px !important; font-size: 10.5px !important; }
+  .lv-appr-table td { padding: 10px 10px !important; font-size: 11px !important; }
+}
+
+@media (max-width: 479px) {
+  .lv-appr-stat-grid { gap: 6px !important; }
+  .lv-appr-status-tabs button { padding: 5px 8px !important; font-size: 10px !important; }
+  .lv-appr-toolbar-actions { gap: 6px !important; }
+  .lv-appr-refresh-btn { width: 30px !important; height: 30px !important; }
+  .lv-appr-refresh-btn svg { width: 15px !important; height: 15px !important; }
+  .lv-appr-table th { padding: 8px 8px !important; font-size: 10px !important; }
+  .lv-appr-table td { padding: 8px 8px !important; font-size: 10.5px !important; }
+}

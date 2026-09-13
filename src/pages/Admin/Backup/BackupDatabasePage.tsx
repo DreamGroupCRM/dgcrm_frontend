@@ -16,6 +16,7 @@ import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { formatLastLogin } from '../../../utils';
 import { fetchSnapshots, createSnapshot, restoreSnapshot, deleteSnapshot, BackupSnapshot } from '../../../services/backupService';
+import './BackupDatabasePage.css';
 
 const formatBytes = (n: number): string => {
   if (n < 1024) return `${n} B`;
@@ -103,7 +104,7 @@ const BackupDatabasePage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="bkp-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Snapshots" value={snapshots.length} icon={MdStorage} color="#0284c7" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Manual" value={manualCount} icon={MdAdd} color="#16a34a" bg="" loading={loading}
@@ -146,7 +147,7 @@ const BackupDatabasePage: React.FC = () => {
           </button>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+          <table className="bkp-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['Label', 'Type', 'Created', 'Created By', 'Size', 'Actions'].map((h) => (

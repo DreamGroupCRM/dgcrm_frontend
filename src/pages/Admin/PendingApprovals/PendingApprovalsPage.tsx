@@ -19,6 +19,7 @@ import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { showAlert, formatLastLogin } from '../../../utils';
+import './PendingApprovalsPage.css';
 import {
   fetchPendingApprovals, approvePendingDelete, rejectPendingDelete,
   PendingApprovalRow, PendingApprovalEntityType,
@@ -104,7 +105,7 @@ const PendingApprovalsPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+      <div className="pnd-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         <StatCard label="Pending Requests" value={rows.length} icon={MdPendingActions} color="#d97706" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Modules Affected" value={Object.keys(moduleCounts).length} icon={MdPendingActions} color="#0284c7" bg="" loading={loading}
@@ -123,7 +124,7 @@ const PendingApprovalsPage: React.FC = () => {
           </button>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+          <table className="pnd-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['Module', 'Record', 'Requested By', 'Requested At', 'Actions'].map((h) => (
