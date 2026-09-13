@@ -119,12 +119,22 @@ const PaymentUpcomingPage: React.FC = () => {
     return sums;
   }, [listRows]);
 
-  const statBoxSpecs: StatBoxSpec[] = PAYMENT_FOR_KEY_ORDER.map((key) => ({
+  const statBoxSpecs: (StatBoxSpec & { key: PaymentForKey })[] = PAYMENT_FOR_KEY_ORDER.map((key) => ({
+    key,
     label: PAYMENT_FOR_KEY_META[key].label,
     value: boxSums[key],
     color: PAYMENT_FOR_KEY_META[key].color,
     icon: PAYMENT_FOR_KEY_META[key].icon,
   }));
+
+  // ── Click-to-filter on the category boxes — same "clickable StatCard
+  // doubles as a filter, active box gets a highlight ring" convention as
+  // CustomerDetailsListPage's own All/Assigned/Un Assigned boxes. Clicking
+  // the already-active box clears the filter (there's no separate "All"
+  // box here to click back to, unlike Customer List). ANDed together with
+  // the 3 search fields below, not a replacement for them. ────────────────
+  const [categoryFilter, setCategoryFilter] = useState<PaymentForKey | null>(null);
+  const toggleCategoryFilter = (key: PaymentForKey) => setCategoryFilter((prev) => (prev === key ? null : key));
 
   // ── 3 search fields — client-side, same convention as DueReportPage's
   // own Payment For / Building / Employee filters over one fetched list.
@@ -138,6 +148,7 @@ const PaymentUpcomingPage: React.FC = () => {
     const e = searchEmployee.trim().toLowerCase();
     const b = searchBuilding.trim().toLowerCase();
     return listRows.filter((r) => {
+      if (categoryFilter && r.payment_for_key !== categoryFilter) return false;
       if (c && !(
         r.customer_name.toLowerCase().includes(c)
         || r.customer_code.toLowerCase().includes(c)
@@ -151,12 +162,12 @@ const PaymentUpcomingPage: React.FC = () => {
       if (b && !(r.building_name || '').toLowerCase().includes(b)) return false;
       return true;
     });
-  }, [listRows, searchCustomer, searchEmployee, searchBuilding]);
+  }, [listRows, categoryFilter, searchCustomer, searchEmployee, searchBuilding]);
 
   // ── Client-side pagination over the filtered list. ───────────────────────
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  useEffect(() => { setPage(1); }, [searchCustomer, searchEmployee, searchBuilding, listRows]);
+  useEffect(() => { setPage(1); }, [categoryFilter, searchCustomer, searchEmployee, searchBuilding, listRows]);
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / limit));
   const safePage = Math.min(page, totalPages);
   const from = filteredRows.length === 0 ? 0 : (safePage - 1) * limit + 1;
@@ -190,13 +201,17 @@ const PaymentUpcomingPage: React.FC = () => {
 
       {/* ── Per-category stat boxes — every Payment For option, moved to
           the very top of the page so a glance tells you exactly what's
-          coming and how much, before even looking at the table. Only
-          meaningful once a range has been applied. ──────────────────────── */}
+          coming and how much, before even looking at the table. Doubles
+          as a click-to-filter, same convention as CustomerDetailsListPage's
+          own clickable summary boxes: click applies that category to the
+          table below and highlights the box; click it again to clear.
+          Only meaningful once a range has been applied. ─────────────────── */}
       {applied && (
         <div className="payment-upcoming-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
           {statBoxSpecs.map((spec) => (
-            <StatCard key={spec.label} label={spec.label} value={rupee(spec.value)} icon={spec.icon} color={spec.color}
+            <StatCard key={spec.key} label={spec.label} value={rupee(spec.value)} icon={spec.icon} color={spec.color}
               bg={isDark ? 'rgba(79,70,229,0.12)' : '#eef2ff'} loading={loadingAmount || loadingList} compact labelFontSize={11.5}
+              active={categoryFilter === spec.key} onClick={() => toggleCategoryFilter(spec.key)}
               surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
           ))}
         </div>
@@ -285,7 +300,7 @@ const PaymentUpcomingPage: React.FC = () => {
                 <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading upcoming payments...</td></tr>
               ) : filteredRows.length === 0 ? (
                 <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
-                  {listRows.length === 0 ? 'No upcoming payments in the selected date range.' : 'No upcoming payments match the selected search.'}
+                  {listRows.length === 0 ? 'No upcoming payments in the selected date range.' : 'No upcoming payments match the selected filters.'}
                 </td></tr>
               ) : (
                 pagedRows.map((r, i) => (
