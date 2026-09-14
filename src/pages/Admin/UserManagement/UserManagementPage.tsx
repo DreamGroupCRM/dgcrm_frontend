@@ -16,6 +16,7 @@ import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { PhoneInput } from '../../../components/common/PhoneInput';
 import { ValidationErrorSummary } from '../../../components/common/ValidationErrorSummary';
+import { phoneNumberError } from '../../../utils/phoneValidation';
 import { showAlert, formatLastLogin } from '../../../utils';
 import './UserManagementPage.css';
 
@@ -65,6 +66,7 @@ const UserManagementPage: React.FC = () => {
   const createValidationChecks: FieldCheck[] = [
     { field: 'first_name', message: 'Please enter First Name.', failed: () => !createForm.first_name.trim() },
     { field: 'email', message: 'Please enter a valid Email address.', failed: () => !createForm.email.trim() || !EMAIL_RE.test(createForm.email.trim()) },
+    { field: 'phone', message: phoneNumberError(createForm.phone_country_code, createForm.phone), failed: () => !!phoneNumberError(createForm.phone_country_code, createForm.phone) },
   ];
   const [createSubmitAttempted, setCreateSubmitAttempted] = useState(false);
   const createActiveErrors = createSubmitAttempted ? createValidationChecks.filter((c) => c.failed()) : [];
@@ -82,6 +84,7 @@ const UserManagementPage: React.FC = () => {
   const editValidationChecks: FieldCheck[] = [
     { field: 'first_name', message: 'Please enter First Name.', failed: () => !editForm.first_name.trim() },
     { field: 'email', message: 'Please enter a valid Email address.', failed: () => !editForm.email.trim() || !EMAIL_RE.test(editForm.email.trim()) },
+    { field: 'phone', message: phoneNumberError(editForm.phone_country_code, editForm.phone), failed: () => !!phoneNumberError(editForm.phone_country_code, editForm.phone) },
   ];
   const [editSubmitAttempted, setEditSubmitAttempted] = useState(false);
   const editActiveErrors = editSubmitAttempted ? editValidationChecks.filter((c) => c.failed()) : [];
@@ -392,11 +395,12 @@ const UserManagementPage: React.FC = () => {
                   style={{ width: '100%', background: t.inputBg, border: `1px solid ${editErrorFor('email') ? '#ef4444' : t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
                 {editErrorFor('email') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{editErrorFor('email')}</p>}
               </div>
-              <div>
+              <div ref={setEditFieldRef('phone')}>
                 <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Phone</label>
                 <PhoneInput theme={t}
                   code={editForm.phone_country_code} onCodeChange={(v) => setEditForm((f) => ({ ...f, phone_country_code: v }))}
                   number={editForm.phone} onNumberChange={(v) => setEditForm((f) => ({ ...f, phone: v }))} />
+                {editErrorFor('phone') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{editErrorFor('phone')}</p>}
               </div>
               <div className="flex items-center justify-end gap-2.5 mt-2">
                 <button type="button" onClick={() => setEditTarget(null)} disabled={savingEdit}
@@ -474,11 +478,12 @@ const UserManagementPage: React.FC = () => {
                     style={{ width: '100%', background: t.inputBg, border: `1px solid ${createErrorFor('email') ? '#ef4444' : t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 12px', fontSize: 13, outline: 'none' }} />
                   {createErrorFor('email') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{createErrorFor('email')}</p>}
                 </div>
-                <div>
+                <div ref={setCreateFieldRef('phone')}>
                   <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Phone</label>
                   <PhoneInput theme={t}
                     code={createForm.phone_country_code} onCodeChange={(v) => setCreateForm((f) => ({ ...f, phone_country_code: v }))}
                     number={createForm.phone} onNumberChange={(v) => setCreateForm((f) => ({ ...f, phone: v }))} />
+                  {createErrorFor('phone') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{createErrorFor('phone')}</p>}
                 </div>
                 <p style={{ fontSize: 11, color: t.textSecondary, margin: 0 }}>
                   A temporary password is generated automatically — the new admin must set their own password on first login.

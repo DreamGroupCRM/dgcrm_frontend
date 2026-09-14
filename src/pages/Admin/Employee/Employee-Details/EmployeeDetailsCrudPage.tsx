@@ -25,6 +25,7 @@ import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils
 import { DobPicker } from '../../../../components/common/DobPicker';
 import { TimePicker } from '../../../../components/common/TimePicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
+import { phoneNumberError } from '../../../../utils/phoneValidation';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './EmployeeDetails.css';
@@ -841,6 +842,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     { field: 'date_of_birth', section: 'personal', message: 'Please enter the Date of Birth.', failed: () => !form.date_of_birth },
     { field: 'email', section: 'personal', message: 'Please enter the Email address.', failed: () => !form.email.trim() },
     { field: 'mobile_number', section: 'personal', message: 'Please enter the Mobile Number.', failed: () => !form.mobile_number.trim() },
+    { field: 'mobile_number', section: 'personal', message: phoneNumberError(form.mobile_country_code, form.mobile_number), failed: () => !!phoneNumberError(form.mobile_country_code, form.mobile_number) },
+    { field: 'alternate_number', section: 'personal', message: phoneNumberError(form.alternate_country_code, form.alternate_number), failed: () => !!phoneNumberError(form.alternate_country_code, form.alternate_number) },
+    { field: 'whatsapp_number', section: 'personal', message: phoneNumberError(form.whatsapp_country_code, form.whatsapp_number), failed: () => !!phoneNumberError(form.whatsapp_country_code, form.whatsapp_number) },
     { field: 'address', section: 'personal', message: 'Please enter the Address.', failed: () => !form.address.trim() },
     { field: 'aadhar_number', section: 'personal', message: 'Please enter the Aadhar Number.', failed: () => !form.aadhar_number.trim() },
     { field: 'aadhar_card', section: 'personal', message: 'Please upload the Aadhar Card.', failed: () => !files.aadhar_card && !existingUrls.aadhar_card },
@@ -1225,11 +1229,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <PhoneInput theme={t} disabled={isView} code={form.mobile_country_code} onCodeChange={(v) => set('mobile_country_code', v)}
               number={form.mobile_number} onNumberChange={(v) => set('mobile_number', v)} placeholder="Enter mobile number" />
           </Field>
-          <Field t={t} label="Alternate Number">
+          <Field t={t} label="Alternate Number" error={errorFor('alternate_number')} fieldRef={setFieldRef('alternate_number') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView} code={form.alternate_country_code} onCodeChange={(v) => set('alternate_country_code', v)}
               number={form.alternate_number} onNumberChange={(v) => set('alternate_number', v)} placeholder="Enter mobile number" />
           </Field>
-          <Field t={t} label="WhatsApp Number">
+          <Field t={t} label="WhatsApp Number" error={errorFor('whatsapp_number')} fieldRef={setFieldRef('whatsapp_number') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView} code={form.whatsapp_country_code} onCodeChange={(v) => set('whatsapp_country_code', v)}
               number={form.whatsapp_number} onNumberChange={(v) => set('whatsapp_number', v)} placeholder="Enter mobile number" />
           </Field>

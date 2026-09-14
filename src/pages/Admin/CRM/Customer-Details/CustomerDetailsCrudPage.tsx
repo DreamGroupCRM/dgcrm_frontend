@@ -32,6 +32,7 @@ import { showAlert, resolveFileUrl } from '../../../../utils';
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
 import { DobPicker } from '../../../../components/common/DobPicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
+import { phoneNumberError } from '../../../../utils/phoneValidation';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './CustomerDetails.css';
@@ -909,6 +910,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     { field: 'customerPhoto', section: 'personal', message: 'Please upload the Customer Photo.', failed: () => !customerPhoto },
     { field: 'email', section: 'personal', message: 'Please enter the Email.', failed: () => email.trim() === '' },
     { field: 'mobileNumber', section: 'personal', message: 'Please enter the Mobile Number.', failed: () => mobileNumber.trim() === '' },
+    { field: 'mobileNumber', section: 'personal', message: phoneNumberError(mobileCountryCode, mobileNumber), failed: () => !!phoneNumberError(mobileCountryCode, mobileNumber) },
+    { field: 'secondaryNumber', section: 'personal', message: phoneNumberError(secondaryCountryCode, secondaryNumber), failed: () => !!phoneNumberError(secondaryCountryCode, secondaryNumber) },
+    { field: 'alternatePersonMobile', section: 'personal', message: phoneNumberError(alternatePersonCountryCode, alternatePersonMobile), failed: () => !!phoneNumberError(alternatePersonCountryCode, alternatePersonMobile) },
     { field: 'aadharPhoto', section: 'personal', message: 'Please upload the Aadhar Card.', failed: () => !aadharPhoto },
     { field: 'aadharNumber', section: 'personal', message: 'Please enter the Aadhar Number.', failed: () => aadharNumber.trim() === '' },
     { field: 'pancardPhoto', section: 'personal', message: 'Please upload the PAN Card.', failed: () => !pancardPhoto },
@@ -1367,7 +1371,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             them). V_22.0 — the old separate WhatsApp Number field is gone;
             "also on WhatsApp" is now a checkbox on each number instead. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          <Field t={t} label="Secondary Mobile Number">
+          <Field t={t} label="Secondary Mobile Number" error={errorFor('secondaryNumber')} fieldRef={setFieldRef('secondaryNumber') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView}
               code={secondaryCountryCode} onCodeChange={setSecondaryCountryCode} number={secondaryNumber} onNumberChange={setSecondaryNumber} />
             <label className="flex items-center gap-1.5 mt-1.5" style={{ fontSize: 10.5, color: t.textSecondary, cursor: isView ? 'default' : 'pointer' }}>
@@ -1416,7 +1420,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter full name" value={alternatePersonName} readOnly={isView} disabled={isView}
               onChange={(e) => setAlternatePersonName(e.target.value)} className={fieldClass} />
           </Field>
-          <Field t={t} label="Alternate Contact Mobile">
+          <Field t={t} label="Alternate Contact Mobile" error={errorFor('alternatePersonMobile')} fieldRef={setFieldRef('alternatePersonMobile') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView}
               code={alternatePersonCountryCode} onCodeChange={setAlternatePersonCountryCode}
               number={alternatePersonMobile} onNumberChange={setAlternatePersonMobile} />

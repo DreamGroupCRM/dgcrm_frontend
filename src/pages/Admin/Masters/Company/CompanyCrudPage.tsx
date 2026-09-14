@@ -15,6 +15,7 @@ import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FormField, getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
+import { phoneNumberError } from '../../../../utils/phoneValidation';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { showAlert } from '../../../../utils';
 import { companyService, CompanyPayload } from '../../../../services/companyService';
@@ -172,10 +173,10 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
     if (!form.name.trim()) e.name = 'Company name is required.';
     if (!form.email.trim()) e.email = 'Email is required.';
     else if (!VALIDATION.EMAIL_REGEX.test(form.email)) e.email = 'Enter a valid email address.';
-    if (!form.phone.trim()) e.phone = 'Phone number is required.';
-    else if (!/^\d{10}$/.test(form.phone)) e.phone = 'Phone must be exactly 10 digits.';
-    if (form.whatsapp_number && !/^\d{10}$/.test(form.whatsapp_number))
-      e.whatsapp_number = 'WhatsApp must be exactly 10 digits.';
+    const phoneErr = phoneNumberError(form.phone_country_code, form.phone, { required: true, requiredMessage: 'Phone number is required.' });
+    if (phoneErr) e.phone = phoneErr;
+    const whatsappErr = phoneNumberError(form.whatsapp_country_code, form.whatsapp_number);
+    if (whatsappErr) e.whatsapp_number = whatsappErr;
     if (form.city && !ALPHA_REGEX.test(form.city)) e.city = 'City must contain letters only.';
     if (form.state && !ALPHA_REGEX.test(form.state)) e.state = 'State must contain letters only.';
     if (form.country && !ALPHA_REGEX.test(form.country)) e.country = 'Country must contain letters only.';
@@ -191,7 +192,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
   const isMandatoryValid =
     form.name.trim() !== '' &&
     VALIDATION.EMAIL_REGEX.test(form.email) &&
-    /^\d{10}$/.test(form.phone);
+    !phoneNumberError(form.phone_country_code, form.phone, { required: true });
 
   const handleChange = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -338,7 +339,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
 
           <Field label="Phone" required={!isView} t={t} error={errors.phone} fieldRef={setFieldRef('phone')}>
             <PhoneInput
-              theme={t} disabled={isView} placeholder="Enter 10-digit phone number"
+              theme={t} disabled={isView} placeholder="Enter phone number"
               code={form.phone_country_code} onCodeChange={(v) => handleChange('phone_country_code', v)}
               number={form.phone}
               onNumberChange={(v) => { if (NUMERIC_REGEX.test(v) && v.length <= 10) handleChange('phone', v); }}
@@ -347,7 +348,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
 
           <Field label="WhatsApp Number" t={t} error={errors.whatsapp_number} fieldRef={setFieldRef('whatsapp_number')}>
             <PhoneInput
-              theme={t} disabled={isView} placeholder="Enter 10-digit WhatsApp number"
+              theme={t} disabled={isView} placeholder="Enter WhatsApp number"
               code={form.whatsapp_country_code} onCodeChange={(v) => handleChange('whatsapp_country_code', v)}
               number={form.whatsapp_number}
               onNumberChange={(v) => { if (NUMERIC_REGEX.test(v) && v.length <= 10) handleChange('whatsapp_number', v); }}

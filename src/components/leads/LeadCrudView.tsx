@@ -13,6 +13,7 @@ import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import { getAccordionCardStyle, getAccordionHeaderStyle, getFormInputStyle, FormField } from '../../components/common/MasterListUI';
 import { PhoneInput } from '../../components/common/PhoneInput';
 import { ValidationErrorSummary } from '../../components/common/ValidationErrorSummary';
+import { phoneNumberError } from '../../utils/phoneValidation';
 import {
   fetchLeadById, createLead, updateLead, assignLead, fetchLeadActivities, addLeadComment,
 } from '../../services/leadService';
@@ -85,7 +86,9 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const validationChecks: { field: string; message: string; failed: () => boolean }[] = [
     { field: 'name', message: 'Please enter the Lead Name.', failed: () => !form.name?.trim() },
-    { field: 'mobile_number', message: 'Mobile Number must be exactly 10 digits.', failed: () => !!form.mobile_number && !/^\d{10}$/.test(form.mobile_number) },
+    { field: 'mobile_number', message: phoneNumberError(form.mobile_country_code ?? '+91', form.mobile_number ?? ''), failed: () => !!phoneNumberError(form.mobile_country_code ?? '+91', form.mobile_number ?? '') },
+    { field: 'whatsapp_number', message: phoneNumberError(form.whatsapp_country_code ?? '+91', form.whatsapp_number ?? ''), failed: () => !!phoneNumberError(form.whatsapp_country_code ?? '+91', form.whatsapp_number ?? '') },
+    { field: 'alternate_number', message: phoneNumberError(form.alternate_country_code ?? '+91', form.alternate_number ?? ''), failed: () => !!phoneNumberError(form.alternate_country_code ?? '+91', form.alternate_number ?? '') },
     { field: 'email', message: 'Please enter a valid Email address.', failed: () => !!form.email && !EMAIL_RE.test(form.email) },
   ];
   const getFirstInvalid = () => validationChecks.find((c) => c.failed()) ?? null;
@@ -270,16 +273,16 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
               <input required disabled={isView} value={form.name} onChange={(e) => set('name', e.target.value)} style={getFormInputStyle(t)} />
             </FormField>
             <FormField label="Mobile Number" t={t} error={errorFor('mobile_number')} fieldRef={setFieldRef('mobile_number')}>
-              <PhoneInput theme={t} disabled={isView} placeholder="10 digits"
+              <PhoneInput theme={t} disabled={isView} placeholder="Enter mobile number"
                 code={form.mobile_country_code ?? '+91'} onCodeChange={(v) => set('mobile_country_code', v)}
                 number={form.mobile_number ?? ''} onNumberChange={(v) => set('mobile_number', v)} />
             </FormField>
-            <FormField label="WhatsApp Number" t={t}>
+            <FormField label="WhatsApp Number" t={t} error={errorFor('whatsapp_number')} fieldRef={setFieldRef('whatsapp_number')}>
               <PhoneInput theme={t} disabled={isView}
                 code={form.whatsapp_country_code ?? '+91'} onCodeChange={(v) => set('whatsapp_country_code', v)}
                 number={form.whatsapp_number ?? ''} onNumberChange={(v) => set('whatsapp_number', v)} />
             </FormField>
-            <FormField label="Alternate Number" t={t}>
+            <FormField label="Alternate Number" t={t} error={errorFor('alternate_number')} fieldRef={setFieldRef('alternate_number')}>
               <PhoneInput theme={t} disabled={isView}
                 code={form.alternate_country_code ?? '+91'} onCodeChange={(v) => set('alternate_country_code', v)}
                 number={form.alternate_number ?? ''} onNumberChange={(v) => set('alternate_number', v)} />
