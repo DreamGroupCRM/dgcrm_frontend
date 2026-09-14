@@ -12,15 +12,17 @@
    so every page gets it consistently — not repeated per-page here. */
 
 /* ---------- md: 768-1023px ---------- */
-/* Filters/actions are always stacked on separate rows now (set inline on
-   DueReportPage — a fixed-width filters row sharing a line with the
-   actions box at typical laptop widths is what caused the horizontal
-   scrollbar/hidden-actions bug this file's rules used to only fix below
-   768px). Only gap/width tightening is still needed here. */
+/* Filters + actions stay on one row down to lg widths (base widths set
+   inline on DueReportPage are kept narrow enough for that); below this
+   breakpoint there isn't room for all 5 filters plus the actions cluster
+   on one line, so the actions box wraps onto its own row (flex-wrap on
+   .due-report-toolbar-row, set inline) instead of forcing a horizontal
+   scrollbar or hiding behind anything. */
 @media (max-width: 1023px) {
   .due-report-toolbar-row { gap: 8px !important; }
   .due-report-toolbar-filters { gap: 8px !important; }
-  .due-report-filter-item { width: 150px !important; }
+  .due-report-filter-item { width: 130px !important; }
+  .due-report-toolbar-actions { margin-left: 0 !important; width: 100%; justify-content: space-between !important; }
 }
 
 /* ---------- sm: 480-767px ---------- */

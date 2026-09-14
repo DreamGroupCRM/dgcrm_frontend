@@ -185,6 +185,12 @@ export interface DueListDetailRow {
   amount: number;
   due_status: string;
   due_category: 'overdue' | 'due_today';
+  // Number of stacked-up monthly EMI installments this row represents;
+  // null for one-time dues (Booking/Remaining Booking/Possession/Annual).
+  months_pending: number | null;
+  // Per-installment EMI amount (amount = per_month_amount * months_pending);
+  // null alongside months_pending for one-time dues.
+  per_month_amount: number | null;
 }
 /** GET /api/payments/due-list-detailed */
 export const fetchDueListDetailed = async (): Promise<{ success: boolean; rows: DueListDetailRow[]; total: number }> => {

@@ -8,7 +8,9 @@ import { toast } from 'react-toastify';
 import {
   MdApartment, MdAdd, MdClose, MdCheckCircle, MdFiberManualRecord,
   MdArrowBack, MdSave, MdLayers, MdChevronRight, MdExpandMore,
+  MdBusiness, MdGridView, MdStorefront, MdLocalParking,
 } from 'react-icons/md';
+import type { IconType } from 'react-icons';
 import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
@@ -72,6 +74,18 @@ interface Props { mode: Mode; }
 const FLAT_TYPES = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Studio', 'Other'];
 const WING_COLORS = ['#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#db2777'];
 
+// One accent color + icon per form section — replaces the plain numbered
+// step circle with a colorful icon chip, so the 6 sections read apart at a
+// glance instead of blending into one long grey scroll.
+const SECTION_STYLE: { color: string; soft: string; icon: IconType }[] = [
+  { color: '#2563eb', soft: '#eff6ff', icon: MdBusiness },     // 1 Project Details
+  { color: '#7c3aed', soft: '#f5f3ff', icon: MdApartment },    // 2 Wings
+  { color: '#0891b2', soft: '#ecfeff', icon: MdLayers },       // 3 Floors in Each Wing
+  { color: '#4f46e5', soft: '#eef2ff', icon: MdGridView },     // 4 Flats on Each Floor
+  { color: '#ea580c', soft: '#fff7ed', icon: MdStorefront },   // 5 Shop Details
+  { color: '#db2777', soft: '#fdf2f8', icon: MdLocalParking }, // 6 Parking
+];
+
 // Sticky footer height — same value/pattern as DepartmentCrudPage.tsx's
 // FOOTER_HEIGHT, so Go Back/Save are always reachable without scrolling
 // even with many wings/floors/flats filled in.
@@ -132,16 +146,26 @@ const makeWing = (id: string): WingRow => ({
 // ─────────────────────────────────────────────────────────────────────────────
 // Small presentational helpers
 // ─────────────────────────────────────────────────────────────────────────────
-const StepBadge: React.FC<{ n: number; accent: string }> = ({ n, accent }) => (
-  <div style={{
-    width: 28, height: 28, borderRadius: '50%',
-    background: accent, color: '#fff',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 12.5, fontWeight: 700, flexShrink: 0,
-  }}>
-    {n}
-  </div>
-);
+// n is 1-based — indexes SECTION_STYLE (0-based) for that section's color/icon.
+const StepBadge: React.FC<{ n: number; accent: string }> = ({ n }) => {
+  const { color, soft, icon: Icon } = SECTION_STYLE[n - 1];
+  return (
+    <div style={{
+      width: 36, height: 36, borderRadius: 11,
+      background: soft, color, position: 'relative',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    }}>
+      <Icon size={18} />
+      <span style={{
+        position: 'absolute', top: -5, right: -5, width: 16, height: 16, borderRadius: '50%',
+        background: color, color: '#fff', fontSize: 9.5, fontWeight: 700,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {n}
+      </span>
+    </div>
+  );
+};
 
 const SectionCard: React.FC<{
   t: AppTheme; children: React.ReactNode; style?: React.CSSProperties;
@@ -783,8 +807,22 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   // scroll to instead of only ever reporting the first one via toast.
   const projectDetailsRef = useRef<HTMLDivElement>(null);
   const wingsRef = useRef<HTMLDivElement>(null);
+  const floorsRef = useRef<HTMLDivElement>(null);
+  const flatsRef = useRef<HTMLDivElement>(null);
   const shopsRef = useRef<HTMLDivElement>(null);
   const parkingRef = useRef<HTMLDivElement>(null);
+  // Quick-jump pill nav (item: colorful minimized redesign) — every section
+  // is reachable in one click instead of scrolling the whole form.
+  const sectionNavItems = [
+    { label: 'Project Details', ref: projectDetailsRef },
+    { label: 'Wings', ref: wingsRef },
+    { label: 'Floors', ref: floorsRef },
+    { label: 'Flats', ref: flatsRef },
+    { label: 'Shops', ref: shopsRef },
+    { label: 'Parking', ref: parkingRef },
+  ];
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement>) =>
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const validationChecks: { field: string; message: string; failed: () => boolean; sectionRef: React.RefObject<HTMLDivElement> }[] = [
     { field: 'projectDetails', message: 'Please fill all Project Details fields, including Company.', sectionRef: projectDetailsRef,
       failed: () => (!isEdit && !businessCompanyId) || !projectName.trim() || !location.trim() || !buildingName.trim() },
@@ -904,6 +942,29 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         onErrorClick={revealInvalidField}
       />
 
+      {/* Section jump nav — one colored pill per section (matching that
+          section's icon chip color), click to smooth-scroll there. */}
+      <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 20 }}>
+        {sectionNavItems.map((item, idx) => {
+          const { color, soft, icon: Icon } = SECTION_STYLE[idx];
+          return (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => scrollToSection(item.ref)}
+              className="flex items-center gap-1.5"
+              style={{
+                padding: '7px 12px 7px 8px', borderRadius: 999, border: 'none',
+                background: soft, color, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              <Icon size={14} />
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* ── Step 1: Project Details ─────────────────────────────────────── */}
       <SectionCard t={t} sectionRef={projectDetailsRef}>
         <div className="flex items-center gap-2.5 mb-1">
@@ -984,11 +1045,13 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 mt-4">
-          {wings.map((w, idx) => (
+          {wings.map((w, idx) => {
+            const wingColor = WING_COLORS[idx % WING_COLORS.length];
+            return (
             <div key={w.id} className="flex items-center gap-2 px-3 py-2 rounded-xl"
-              style={{ border: `1px solid ${t.inputBorder}`, background: t.inputBg }}
+              style={{ border: `1px solid ${wingColor}40`, background: `${wingColor}1a` }}
             >
-              <MdApartment size={18} style={{ color: WING_COLORS[idx % WING_COLORS.length], flexShrink: 0 }} />
+              <MdApartment size={18} style={{ color: wingColor, flexShrink: 0 }} />
               <input
                 type="text" placeholder={`Wing ${idx + 1} name`} value={w.name}
                 readOnly={isView} disabled={isView}
@@ -1007,7 +1070,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 </button>
               )}
             </div>
-          ))}
+            );
+          })}
 
           {!isView && (
             <button
@@ -1025,7 +1089,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       </SectionCard>
 
       {/* ── Step 3: Floors in Each Wing ──────────────────────────────────── */}
-      <SectionCard t={t}>
+      <SectionCard t={t} sectionRef={floorsRef}>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
           <div className="flex items-center gap-2.5">
             <StepBadge n={3} accent={accent} />
@@ -1093,7 +1157,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       </SectionCard>
 
       {/* ── Step 4: Flats on Each Floor ──────────────────────────────────── */}
-      <SectionCard t={t}>
+      <SectionCard t={t} sectionRef={flatsRef}>
         <div className="flex items-center gap-2.5 mb-4">
           <StepBadge n={4} accent={accent} />
           <div>

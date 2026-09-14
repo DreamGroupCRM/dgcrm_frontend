@@ -189,6 +189,8 @@ interface DisplayRow {
   building_name: string | null; wing_name: string | null; flat_no: string | null;
   payment_for: string; payment_for_key: PaymentFor;
   amount: number;
+  months_pending: number | null;
+  per_month_amount: number | null;
   statusLabel: string; statusColor: string;
   detailText: string;
   dueRow?: DueListDetailRow;
@@ -365,6 +367,8 @@ const DueReportPage: React.FC = () => {
     building_name: r.building_name, wing_name: r.wing_name, flat_no: r.flat_no,
     payment_for: r.payment_for, payment_for_key: r.payment_for_key,
     amount: r.amount,
+    months_pending: r.months_pending,
+    per_month_amount: r.per_month_amount,
     statusLabel: r.due_category === 'due_today' ? 'Due Today' : 'Overdue',
     statusColor: r.due_category === 'due_today' ? '#d97706' : '#dc2626',
     detailText: r.due_status.replace(/^Overdue\s+/, '').replace(/^Due Today\s*\|\s*/, ''),
@@ -380,6 +384,8 @@ const DueReportPage: React.FC = () => {
     building_name: r.building_name, wing_name: r.wing_name, flat_no: r.flat_no,
     payment_for: r.payment_for, payment_for_key: r.payment_for_key,
     amount: r.amount,
+    months_pending: null,
+    per_month_amount: null,
     statusLabel: 'Upcoming', statusColor: '#4f46e5',
     detailText: `Due on ${new Date(r.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
   })), [upcomingRows]);
@@ -429,10 +435,13 @@ const DueReportPage: React.FC = () => {
         toast.error('No dues to export.');
         return;
       }
-      const header = ['Customer Code', 'Customer Name', 'Company', 'Assigned Employee', 'Building', 'Wing', 'Flat No', 'Email', 'Mobile No', 'Payment For', 'Amount', 'Status', 'Detail'];
+      const header = ['Customer Code', 'Customer Name', 'Company', 'Assigned Employee', 'Building', 'Wing', 'Flat No', 'Email', 'Mobile No', 'Payment For', 'Months Pending', 'Amount', 'Status', 'Detail'];
       const rows = filteredDueRows.map((r) => [
         r.customer_code, r.customer_name, r.company_name || '', r.assigned_employee_name || '', r.building_name || '', r.wing_name || '',
-        r.flat_no || '', r.email || '', r.mobile_number || '', r.payment_for, r.amount, r.statusLabel, r.detailText,
+        r.flat_no || '', r.email || '', r.mobile_number || '', r.payment_for, r.months_pending ?? '',
+        r.months_pending && r.months_pending > 1 && r.per_month_amount != null
+          ? `${r.per_month_amount} x ${r.months_pending} = ${r.amount}` : r.amount,
+        r.statusLabel, r.detailText,
       ]);
       const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -703,31 +712,30 @@ const DueReportPage: React.FC = () => {
       </div>
 
       {/* ── Toolbar — Payment For + Building + Employee + global search +
-          Status filters (own row), Export CSV + Refresh + follow-up badge
-          (own row below). Always stacked (not just at narrow widths) —
-          five fixed-width filters sharing a row with the actions box at
-          typical laptop/sidebar widths was what pushed the whole toolbar
-          past the container, forcing a horizontal scrollbar that hid the
-          actions off to the right. Stacking removes that scrollbar
-          entirely and the filters get their own row to size normally. ── */}
+          Status filters, follow-up badge, Export CSV and Refresh all in a
+          single row. Filter widths are kept narrow (and the follow-up
+          badge/export button compact) so the whole row fits typical
+          laptop/sidebar widths without a horizontal scrollbar; flex-wrap
+          only kicks in as a fallback on very small screens instead of
+          clipping/hiding anything. ── */}
       <div className="due-report-toolbar rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="due-report-toolbar-row" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="due-report-toolbar-filters flex items-center flex-wrap gap-3" style={{ minWidth: 0 }}>
-            <div className="due-report-filter-item" style={{ width: 170, flexShrink: 0 }}>
+        <div className="due-report-toolbar-row flex items-center flex-wrap" style={{ gap: 10 }}>
+          <div className="due-report-toolbar-filters flex items-center flex-wrap gap-2" style={{ minWidth: 0 }}>
+            <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Select Payment For" options={paymentForFilterOptions} value={filterPaymentFor} onChange={setFilterPaymentFor} />
             </div>
-            <div className="due-report-filter-item" style={{ width: 170, flexShrink: 0 }}>
+            <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Select Building" options={buildingNames} value={filterBuilding} onChange={setFilterBuilding} />
             </div>
-            <div className="due-report-filter-item" style={{ width: 170, flexShrink: 0 }}>
+            <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Select Employee" options={employeeNameOptions} value={filterEmployee} onChange={setFilterEmployee} />
             </div>
-            <div className="due-report-filter-item due-report-global-search relative" style={{ width: 190, flexShrink: 0 }}>
+            <div className="due-report-filter-item due-report-global-search relative" style={{ width: 160, flexShrink: 0 }}>
               <MdSearch size={15} style={{ position: 'absolute', left: 10, top: 11, color: t.textSecondary, pointerEvents: 'none' }} />
               <input type="text" placeholder="Search across all data..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)}
                 style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px 9px 30px', fontSize: 12, outline: 'none' }} />
             </div>
-            <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
+            <div className="due-report-filter-item" style={{ width: 120, flexShrink: 0 }}>
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as DueStatusFilter)}
                 style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }}>
                 <option value="all">All Status</option>
@@ -737,27 +745,25 @@ const DueReportPage: React.FC = () => {
               </select>
             </div>
           </div>
-          <div className="due-report-toolbar-actions flex items-center justify-between flex-wrap gap-2.5">
+          <div className="due-report-toolbar-actions flex items-center gap-2" style={{ marginLeft: 'auto', flexShrink: 0 }}>
             {/* In-app-only badge — open follow-ups due today/tomorrow across
                 the whole team (no email/WhatsApp sending, out of scope). */}
             <div title="Open follow-ups due today / tomorrow"
-              className="due-report-followup-badge flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+              className="due-report-followup-badge flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold"
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, whiteSpace: 'nowrap', flexShrink: 0 }}>
               <MdNoteAdd size={15} style={{ color: '#0284c7' }} />
-              <span className="due-report-followup-badge-text">Follow-ups — Today: {followUpCounts.today} · Tomorrow: {followUpCounts.tomorrow}</span>
+              <span className="due-report-followup-badge-text">Today: {followUpCounts.today} · Tmrw: {followUpCounts.tomorrow}</span>
             </div>
-            <div className="flex items-center gap-2.5">
-              <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
-                className="due-report-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-                <MdDownload size={16} /> <span className="due-report-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
-              </button>
-              <button type="button" onClick={handleRefresh} title="Refresh"
-                className="due-report-refresh-btn flex items-center justify-center rounded-xl"
-                style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
-                <MdRefresh size={18} />
-              </button>
-            </div>
+            <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
+              className="due-report-export-btn flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold"
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <MdDownload size={16} /> <span className="due-report-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
+            </button>
+            <button type="button" onClick={handleRefresh} title="Refresh"
+              className="due-report-refresh-btn flex items-center justify-center rounded-xl"
+              style={{ width: 36, height: 36, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
+              <MdRefresh size={18} />
+            </button>
           </div>
         </div>
       </div>
@@ -771,16 +777,16 @@ const DueReportPage: React.FC = () => {
           <table className="due-report-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Customer', 'Company / Project / Location', 'Building / Wing / Flat', 'Assigned Employee', 'Contact (Email / Mobile)', 'Payment For', 'Amount', 'Status', 'Detail', 'Follow Up'].map((h) => (
+                {['Customer', 'Company / Project / Location', 'Building / Wing / Flat', 'Assigned Employee', 'Contact (Email / Mobile)', 'Payment For', 'Months Pending', 'Amount', 'Status', 'Detail', 'Follow Up'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {(loadingDueList || (statusFilter === 'upcoming' && loadingUpcoming)) ? (
-                <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
+                <tr><td colSpan={11} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
               ) : filteredDueRows.length === 0 ? (
-                <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
+                <tr><td colSpan={11} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
                   {baseDisplayRows.length === 0 ? 'No customers currently have a payment due.' : 'No dues match the selected filters.'}
                 </td></tr>
               ) : (
@@ -825,7 +831,24 @@ const DueReportPage: React.FC = () => {
                       </span>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>{r.payment_for}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#000', whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
+                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                      {r.months_pending ? (
+                        <span style={{
+                          display: 'inline-block', padding: '3px 9px', borderRadius: 999,
+                          fontSize: 10.5, fontWeight: 700, color: '#fff',
+                          background: r.months_pending >= 5 ? '#dc2626' : r.months_pending >= 3 ? '#ea580c' : '#d97706',
+                        }}>
+                          {r.months_pending} month{r.months_pending === 1 ? '' : 's'}
+                        </span>
+                      ) : (
+                        <span style={{ color: t.textSecondary, fontSize: 11.5 }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#000', whiteSpace: 'nowrap' }}>
+                      {r.months_pending && r.months_pending > 1 && r.per_month_amount != null
+                        ? `${rupee(r.per_month_amount)} × ${r.months_pending} = ${rupee(r.amount)}`
+                        : rupee(r.amount)}
+                    </td>
                     <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                       <span style={{
                         display: 'inline-block', padding: '3px 10px', borderRadius: 999,
