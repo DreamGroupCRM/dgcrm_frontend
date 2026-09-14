@@ -1,0 +1,243 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#05070d" />
+      <stop offset="55%" stop-color="#0a0f1e" />
+      <stop offset="100%" stop-color="#0d1526" />
+    </linearGradient>
+    <radialGradient id="coreGlow" cx="50%" cy="42%" r="60%">
+      <stop offset="0%" stop-color="#d97706" stop-opacity="0.22" />
+      <stop offset="45%" stop-color="#d97706" stop-opacity="0.07" />
+      <stop offset="100%" stop-color="#d97706" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="blueGlow" cx="82%" cy="78%" r="45%">
+      <stop offset="0%" stop-color="#1d4ed8" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#1d4ed8" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#93c5fd" />
+      <stop offset="100%" stop-color="#fbbf6d" />
+    </linearGradient>
+    <filter id="glow" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="3.2" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bgGrad)" />
+  <rect width="1920" height="1080" fill="url(#coreGlow)" />
+  <rect width="1920" height="1080" fill="url(#blueGlow)" />
+
+  <g>
+    <path d="M 1955.0 560.4 L 1920.0 560.4 L 1920.0 445.1 L 1920.0 445.1 L 1920.0 354.1" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.15" stroke-linecap="round" />
+    <path d="M 1910.0 841.8 L 1790.6 841.8 L 1790.6 692.1 L 1920.0 692.1 L 1920.0 813.2" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.11" stroke-linecap="round" />
+    <path d="M -34.3 759.0 L 0.0 759.0 L 0.0 869.5 L 0.0 869.5 L 0.0 738.6" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.10" stroke-linecap="round" />
+    <path d="M 1945.8 920.8 L 1847.0 920.8 L 1847.0 805.6 L 1733.1 805.6" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.18" stroke-linecap="round" />
+    <path d="M -19.5 198.1 L 0.0 100.4 L 0.0 100.4 L 0.0 39.4" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.09" stroke-linecap="round" />
+    <path d="M 1885.1 448.0 L 1800.5 448.0 L 1800.5 289.3 L 1895.4 289.3 L 1895.4 369.3 L 1920.0 369.3" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.16" stroke-linecap="round" />
+    <path d="M 3.1 790.3 L 106.3 790.3 L 106.3 871.8 L 214.6 871.8 L 214.6 976.8 L 118.3 976.8" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.10" stroke-linecap="round" />
+    <path d="M 21.8 316.5 L 21.8 420.4 L 0.0 420.4 L 0.0 338.3 L 0.0 338.3" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.12" stroke-linecap="round" />
+    <path d="M 59.6 618.6 L 59.6 678.8 L 0.0 678.8 L 0.0 608.1 L 0.0 608.1 L 0.0 676.3" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.10" stroke-linecap="round" />
+  </g>
+  <g>
+    <line x1="1276.3" y1="833.8" x2="1294.4" y2="797.9" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.52" />
+    <line x1="1276.3" y1="833.8" x2="1339.5" y2="818.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.46" />
+    <line x1="1276.3" y1="833.8" x2="1283.0" y2="736.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.39" />
+    <line x1="1490.3" y1="721.0" x2="1405.3" y2="720.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.42" />
+    <line x1="1490.3" y1="721.0" x2="1339.5" y2="818.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.22" />
+    <line x1="1490.3" y1="721.0" x2="1604.2" y2="880.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.19" />
+    <line x1="1492.4" y1="1015.7" x2="1379.9" y2="945.5" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.32" />
+    <line x1="1492.4" y1="1015.7" x2="1604.2" y2="880.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.23" />
+    <line x1="1492.4" y1="1015.7" x2="1339.5" y2="818.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.07" />
+    <line x1="1198.1" y1="1014.1" x2="1127.1" y2="984.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.44" />
+    <line x1="1198.1" y1="1014.1" x2="1034.2" y2="995.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.25" />
+    <line x1="1198.1" y1="1014.1" x2="1379.9" y2="945.5" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.19" />
+    <line x1="1405.3" y1="720.2" x2="1339.5" y2="818.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.35" />
+    <line x1="1405.3" y1="720.2" x2="1283.0" y2="736.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.34" />
+    <line x1="144.6" y1="158.7" x2="236.6" y2="176.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.40" />
+    <line x1="144.6" y1="158.7" x2="244.4" y2="57.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.30" />
+    <line x1="144.6" y1="158.7" x2="344.3" y2="159.8" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.18" />
+    <line x1="441.7" y1="245.4" x2="490.9" y2="185.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.44" />
+    <line x1="441.7" y1="245.4" x2="449.6" y2="370.0" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.34" />
+    <line x1="441.7" y1="245.4" x2="344.3" y2="159.8" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.33" />
+    <line x1="50.0" y1="885.2" x2="69.5" y2="785.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.38" />
+    <line x1="50.0" y1="885.2" x2="14.2" y2="1024.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.30" />
+    <line x1="50.0" y1="885.2" x2="218.4" y2="770.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.17" />
+    <line x1="537.8" y1="726.2" x2="488.9" y2="594.1" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.30" />
+    <line x1="537.8" y1="726.2" x2="677.5" y2="791.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.27" />
+    <line x1="537.8" y1="726.2" x2="411.1" y2="614.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.24" />
+    <line x1="1817.8" y1="292.2" x2="1575.8" y2="289.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.09" />
+    <line x1="399.0" y1="941.0" x2="395.5" y2="858.8" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.43" />
+    <line x1="399.0" y1="941.0" x2="602.7" y2="902.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.16" />
+    <line x1="399.0" y1="941.0" x2="218.4" y2="770.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.07" />
+    <line x1="1427.0" y1="47.8" x2="1425.9" y2="108.3" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.47" />
+    <line x1="1427.0" y1="47.8" x2="1611.8" y2="59.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.21" />
+    <line x1="1427.0" y1="47.8" x2="1627.3" y2="53.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.18" />
+    <line x1="236.6" y1="176.4" x2="344.3" y2="159.8" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.37" />
+    <line x1="236.6" y1="176.4" x2="244.4" y2="57.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.35" />
+    <line x1="515.5" y1="430.0" x2="449.6" y2="370.0" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.41" />
+    <line x1="515.5" y1="430.0" x2="488.9" y2="594.1" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.25" />
+    <line x1="515.5" y1="430.0" x2="360.4" y2="498.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.24" />
+    <line x1="1575.8" y1="289.6" x2="1507.6" y2="246.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.43" />
+    <line x1="1575.8" y1="289.6" x2="1611.8" y2="59.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.11" />
+    <line x1="1575.8" y1="289.6" x2="1425.9" y2="108.3" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.10" />
+    <line x1="187.6" y1="692.3" x2="218.4" y2="770.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.42" />
+    <line x1="187.6" y1="692.3" x2="99.9" y2="663.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.40" />
+    <line x1="187.6" y1="692.3" x2="84.1" y2="634.0" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.35" />
+    <line x1="490.9" y1="185.7" x2="344.3" y2="159.8" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.28" />
+    <line x1="490.9" y1="185.7" x2="449.6" y2="370.0" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.20" />
+    <line x1="360.4" y1="498.2" x2="330.6" y2="446.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.47" />
+    <line x1="360.4" y1="498.2" x2="272.0" y2="422.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.35" />
+    <line x1="360.4" y1="498.2" x2="411.1" y2="614.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.33" />
+    <line x1="411.1" y1="614.6" x2="488.9" y2="594.1" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.43" />
+    <line x1="411.1" y1="614.6" x2="249.9" y2="564.8" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.24" />
+    <line x1="1127.1" y1="984.2" x2="1034.2" y2="995.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.40" />
+    <line x1="1127.1" y1="984.2" x2="996.7" y2="948.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.31" />
+    <line x1="1693.2" y1="559.8" x2="1659.9" y2="618.5" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.46" />
+    <line x1="1693.2" y1="559.8" x2="1744.8" y2="690.1" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.30" />
+    <line x1="1693.2" y1="559.8" x2="1736.6" y2="725.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.24" />
+    <line x1="1059.2" y1="743.7" x2="1086.4" y2="734.8" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.54" />
+    <line x1="1059.2" y1="743.7" x2="1073.4" y2="543.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.18" />
+    <line x1="1059.2" y1="743.7" x2="996.7" y2="948.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.15" />
+    <line x1="1507.6" y1="246.4" x2="1425.9" y2="108.3" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.26" />
+    <line x1="1507.6" y1="246.4" x2="1611.8" y2="59.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.15" />
+    <line x1="1659.9" y1="618.5" x2="1744.8" y2="690.1" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.37" />
+    <line x1="1659.9" y1="618.5" x2="1736.6" y2="725.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.32" />
+    <line x1="1604.2" y1="880.4" x2="1736.6" y2="725.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.17" />
+    <line x1="690.9" y1="1017.9" x2="724.8" y2="971.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.48" />
+    <line x1="690.9" y1="1017.9" x2="692.6" y2="897.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.34" />
+    <line x1="690.9" y1="1017.9" x2="602.7" y2="902.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.29" />
+    <line x1="1736.6" y1="725.6" x2="1744.8" y2="690.1" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.52" />
+    <line x1="1736.6" y1="725.6" x2="1797.1" y2="749.5" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.46" />
+    <line x1="1034.2" y1="995.4" x2="996.7" y2="948.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.47" />
+    <line x1="1034.2" y1="995.4" x2="980.4" y2="950.0" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.45" />
+    <line x1="208.0" y1="464.4" x2="272.0" y2="422.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.44" />
+    <line x1="208.0" y1="464.4" x2="249.9" y2="564.8" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.37" />
+    <line x1="208.0" y1="464.4" x2="330.6" y2="446.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.34" />
+    <line x1="996.7" y1="948.7" x2="980.4" y2="950.0" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.57" />
+    <line x1="996.7" y1="948.7" x2="937.7" y2="1064.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.33" />
+    <line x1="1425.9" y1="108.3" x2="1256.0" y2="180.0" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.21" />
+    <line x1="99.9" y1="663.6" x2="84.1" y2="634.0" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.53" />
+    <line x1="99.9" y1="663.6" x2="69.5" y2="785.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.33" />
+    <line x1="69.5" y1="785.4" x2="218.4" y2="770.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.28" />
+    <line x1="1186.4" y1="25.4" x2="1217.5" y2="71.3" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.48" />
+    <line x1="1186.4" y1="25.4" x2="1256.0" y2="180.0" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.24" />
+    <line x1="1186.4" y1="25.4" x2="1240.6" y2="217.1" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.18" />
+    <line x1="778.4" y1="813.0" x2="677.5" y2="791.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.38" />
+    <line x1="778.4" y1="813.0" x2="692.6" y2="897.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.35" />
+    <line x1="778.4" y1="813.0" x2="813.1" y2="657.1" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.26" />
+    <line x1="1256.0" y1="180.0" x2="1240.6" y2="217.1" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.51" />
+    <line x1="1256.0" y1="180.0" x2="1217.5" y2="71.3" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.36" />
+    <line x1="488.9" y1="594.1" x2="360.4" y2="498.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.26" />
+    <line x1="1086.4" y1="734.8" x2="1073.4" y2="543.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.19" />
+    <line x1="1086.4" y1="734.8" x2="1283.0" y2="736.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.18" />
+    <line x1="1611.8" y1="59.7" x2="1627.3" y2="53.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.56" />
+    <line x1="1611.8" y1="59.7" x2="1425.9" y2="108.3" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.19" />
+    <line x1="1627.3" y1="53.2" x2="1425.9" y2="108.3" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.16" />
+    <line x1="1240.6" y1="217.1" x2="1217.5" y2="71.3" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.29" />
+    <line x1="813.1" y1="657.1" x2="677.5" y2="791.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.20" />
+    <line x1="1283.0" y1="736.4" x2="1294.4" y2="797.9" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.47" />
+    <line x1="1283.0" y1="736.4" x2="1339.5" y2="818.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.39" />
+    <line x1="449.6" y1="370.0" x2="330.6" y2="446.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.30" />
+    <line x1="677.5" y1="791.7" x2="692.6" y2="897.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.37" />
+    <line x1="677.5" y1="791.7" x2="602.7" y2="902.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.32" />
+    <line x1="249.9" y1="564.8" x2="360.4" y2="498.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.33" />
+    <line x1="249.9" y1="564.8" x2="187.6" y2="692.3" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.30" />
+    <line x1="244.4" y1="57.6" x2="344.3" y2="159.8" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.30" />
+    <line x1="84.1" y1="634.0" x2="69.5" y2="785.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.28" />
+    <line x1="272.0" y1="422.6" x2="330.6" y2="446.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.47" />
+    <line x1="980.4" y1="950.0" x2="937.7" y2="1064.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.34" />
+    <line x1="1379.9" y1="945.5" x2="1339.5" y2="818.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.32" />
+    <line x1="1379.9" y1="945.5" x2="1276.3" y2="833.8" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.28" />
+    <line x1="1744.8" y1="690.1" x2="1797.1" y2="749.5" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.43" />
+    <line x1="1294.4" y1="797.9" x2="1339.5" y2="818.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.49" />
+    <line x1="1797.1" y1="749.5" x2="1659.9" y2="618.5" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.20" />
+    <line x1="602.7" y1="902.6" x2="692.6" y2="897.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.41" />
+    <line x1="602.7" y1="902.6" x2="724.8" y2="971.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.30" />
+    <line x1="724.8" y1="971.7" x2="692.6" y2="897.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.43" />
+    <line x1="14.2" y1="1024.4" x2="69.5" y2="785.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.08" />
+    <line x1="395.5" y1="858.8" x2="537.8" y2="726.2" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.19" />
+    <line x1="395.5" y1="858.8" x2="218.4" y2="770.7" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.18" />
+    <line x1="937.7" y1="1064.2" x2="1034.2" y2="995.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.35" />
+    <line x1="1791.8" y1="999.3" x2="1913.4" y2="916.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.29" />
+    <line x1="1791.8" y1="999.3" x2="1604.2" y2="880.4" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.13" />
+    <line x1="1791.8" y1="999.3" x2="1797.1" y2="749.5" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.07" />
+    <line x1="1913.4" y1="916.4" x2="1797.1" y2="749.5" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.17" />
+    <line x1="218.4" y1="770.7" x2="99.9" y2="663.6" stroke="url(#edgeGrad)" stroke-width="1" opacity="0.26" />
+  </g>
+  <g>
+    <circle cx="1276.3" cy="833.8" r="2.3" fill="#bcd4ff" opacity="0.49" />
+    <circle cx="1490.3" cy="721.0" r="5.0" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="1492.4" cy="1015.7" r="1.1" fill="#bcd4ff" opacity="0.39" />
+    <circle cx="1198.1" cy="1014.1" r="2.1" fill="#bcd4ff" opacity="0.75" />
+    <circle cx="1405.3" cy="720.2" r="4.0" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="144.6" cy="158.7" r="1.5" fill="#bcd4ff" opacity="0.65" />
+    <circle cx="441.7" cy="245.4" r="1.2" fill="#bcd4ff" opacity="0.52" />
+    <circle cx="50.0" cy="885.2" r="4.9" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="537.8" cy="726.2" r="1.3" fill="#bcd4ff" opacity="0.59" />
+    <circle cx="1817.8" cy="292.2" r="1.3" fill="#bcd4ff" opacity="0.64" />
+    <circle cx="399.0" cy="941.0" r="1.4" fill="#bcd4ff" opacity="0.41" />
+    <circle cx="1427.0" cy="47.8" r="4.9" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="236.6" cy="176.4" r="1.6" fill="#bcd4ff" opacity="0.58" />
+    <circle cx="515.5" cy="430.0" r="2.3" fill="#bcd4ff" opacity="0.38" />
+    <circle cx="1575.8" cy="289.6" r="4.8" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="187.6" cy="692.3" r="1.3" fill="#bcd4ff" opacity="0.53" />
+    <circle cx="490.9" cy="185.7" r="1.9" fill="#bcd4ff" opacity="0.50" />
+    <circle cx="360.4" cy="498.2" r="2.3" fill="#bcd4ff" opacity="0.76" />
+    <circle cx="411.1" cy="614.6" r="4.1" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="1127.1" cy="984.2" r="3.2" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="1693.2" cy="559.8" r="2.3" fill="#bcd4ff" opacity="0.45" />
+    <circle cx="1059.2" cy="743.7" r="1.9" fill="#bcd4ff" opacity="0.55" />
+    <circle cx="1507.6" cy="246.4" r="1.3" fill="#bcd4ff" opacity="0.42" />
+    <circle cx="1659.9" cy="618.5" r="2.1" fill="#bcd4ff" opacity="0.68" />
+    <circle cx="1604.2" cy="880.4" r="1.5" fill="#bcd4ff" opacity="0.76" />
+    <circle cx="690.9" cy="1017.9" r="1.6" fill="#bcd4ff" opacity="0.73" />
+    <circle cx="1736.6" cy="725.6" r="1.9" fill="#bcd4ff" opacity="0.37" />
+    <circle cx="1034.2" cy="995.4" r="1.8" fill="#bcd4ff" opacity="0.66" />
+    <circle cx="208.0" cy="464.4" r="1.5" fill="#bcd4ff" opacity="0.77" />
+    <circle cx="996.7" cy="948.7" r="4.1" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="1425.9" cy="108.3" r="2.4" fill="#bcd4ff" opacity="0.37" />
+    <circle cx="99.9" cy="663.6" r="1.6" fill="#bcd4ff" opacity="0.56" />
+    <circle cx="69.5" cy="785.4" r="2.2" fill="#bcd4ff" opacity="0.77" />
+    <circle cx="1186.4" cy="25.4" r="1.6" fill="#bcd4ff" opacity="0.61" />
+    <circle cx="778.4" cy="813.0" r="2.0" fill="#bcd4ff" opacity="0.37" />
+    <circle cx="1256.0" cy="180.0" r="2.0" fill="#bcd4ff" opacity="0.48" />
+    <circle cx="488.9" cy="594.1" r="2.0" fill="#bcd4ff" opacity="0.53" />
+    <circle cx="1086.4" cy="734.8" r="2.3" fill="#bcd4ff" opacity="0.69" />
+    <circle cx="1611.8" cy="59.7" r="1.1" fill="#bcd4ff" opacity="0.35" />
+    <circle cx="1627.3" cy="53.2" r="1.9" fill="#bcd4ff" opacity="0.66" />
+    <circle cx="1240.6" cy="217.1" r="2.1" fill="#bcd4ff" opacity="0.48" />
+    <circle cx="813.1" cy="657.1" r="1.4" fill="#bcd4ff" opacity="0.53" />
+    <circle cx="1283.0" cy="736.4" r="4.3" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="449.6" cy="370.0" r="2.1" fill="#bcd4ff" opacity="0.75" />
+    <circle cx="677.5" cy="791.7" r="1.2" fill="#bcd4ff" opacity="0.60" />
+    <circle cx="249.9" cy="564.8" r="2.3" fill="#bcd4ff" opacity="0.48" />
+    <circle cx="244.4" cy="57.6" r="1.9" fill="#bcd4ff" opacity="0.45" />
+    <circle cx="1217.5" cy="71.3" r="2.0" fill="#bcd4ff" opacity="0.59" />
+    <circle cx="84.1" cy="634.0" r="4.6" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="272.0" cy="422.6" r="2.3" fill="#bcd4ff" opacity="0.50" />
+    <circle cx="980.4" cy="950.0" r="2.1" fill="#bcd4ff" opacity="0.78" />
+    <circle cx="1379.9" cy="945.5" r="1.9" fill="#bcd4ff" opacity="0.38" />
+    <circle cx="1744.8" cy="690.1" r="1.6" fill="#bcd4ff" opacity="0.42" />
+    <circle cx="1294.4" cy="797.9" r="1.4" fill="#bcd4ff" opacity="0.57" />
+    <circle cx="1797.1" cy="749.5" r="1.2" fill="#bcd4ff" opacity="0.53" />
+    <circle cx="602.7" cy="902.6" r="1.7" fill="#bcd4ff" opacity="0.71" />
+    <circle cx="1339.5" cy="818.6" r="1.4" fill="#bcd4ff" opacity="0.72" />
+    <circle cx="724.8" cy="971.7" r="1.3" fill="#bcd4ff" opacity="0.60" />
+    <circle cx="344.3" cy="159.8" r="3.6" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="14.2" cy="1024.4" r="4.3" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="395.5" cy="858.8" r="2.3" fill="#bcd4ff" opacity="0.63" />
+    <circle cx="760.7" cy="316.5" r="3.6" fill="#fbbf6d" filter="url(#glow)" />
+    <circle cx="330.6" cy="446.6" r="2.2" fill="#bcd4ff" opacity="0.67" />
+    <circle cx="937.7" cy="1064.2" r="2.1" fill="#bcd4ff" opacity="0.48" />
+    <circle cx="692.6" cy="897.2" r="2.0" fill="#bcd4ff" opacity="0.52" />
+    <circle cx="1791.8" cy="999.3" r="2.1" fill="#bcd4ff" opacity="0.53" />
+    <circle cx="732.9" cy="24.4" r="1.7" fill="#bcd4ff" opacity="0.47" />
+    <circle cx="1913.4" cy="916.4" r="1.8" fill="#bcd4ff" opacity="0.58" />
+    <circle cx="1073.4" cy="543.6" r="1.8" fill="#bcd4ff" opacity="0.76" />
+    <circle cx="218.4" cy="770.7" r="2.3" fill="#bcd4ff" opacity="0.37" />
+  </g>
+</svg>

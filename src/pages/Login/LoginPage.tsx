@@ -24,13 +24,11 @@ import { ROUTES } from '../../constants';
 import { showAlert, homeRouteForRole } from '../../utils';
 import { authService } from '../../services/authService';
 import Logo from '../../components/ui/Logo';
-// V_22.0 — low-opacity background banner + tagline. Reuses one of the
-// existing marketing carousel images (already sitting unused in assets
-// since the login page's own carousel/side-panel was simplified away —
-// see this file's own header comment) rather than adding a new asset;
-// "Your Dream Home Without Interest" is exactly the 0%-interest/loan-
-// free messaging asked for.
-import loginBgImage from '../../assets/images/carousel_1.png';
+// AI-themed background — a generated neural-network/circuit constellation
+// (glowing nodes + connecting traces) in the app's own amber/blue accent
+// colors, at low opacity behind the pattern/card so it reads as ambient
+// texture, not a competing visual.
+import loginBgImage from '../../assets/images/ai_network_bg.svg';
 
 import {
   TextField,
