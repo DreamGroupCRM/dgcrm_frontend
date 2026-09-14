@@ -703,25 +703,31 @@ const DueReportPage: React.FC = () => {
       </div>
 
       {/* ── Toolbar — Payment For + Building + Employee + global search +
-          Status filters (left), Export CSV + Refresh (right). ──────────── */}
+          Status filters (own row), Export CSV + Refresh + follow-up badge
+          (own row below). Always stacked (not just at narrow widths) —
+          five fixed-width filters sharing a row with the actions box at
+          typical laptop/sidebar widths was what pushed the whole toolbar
+          past the container, forcing a horizontal scrollbar that hid the
+          actions off to the right. Stacking removes that scrollbar
+          entirely and the filters get their own row to size normally. ── */}
       <div className="due-report-toolbar rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="due-report-toolbar-row flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
-          <div className="due-report-toolbar-filters flex items-center gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto', minWidth: 0 }}>
-            <div className="due-report-filter-item" style={{ width: 200, flexShrink: 0 }}>
+        <div className="due-report-toolbar-row" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="due-report-toolbar-filters flex items-center flex-wrap gap-3" style={{ minWidth: 0 }}>
+            <div className="due-report-filter-item" style={{ width: 170, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Select Payment For" options={paymentForFilterOptions} value={filterPaymentFor} onChange={setFilterPaymentFor} />
             </div>
-            <div className="due-report-filter-item" style={{ width: 200, flexShrink: 0 }}>
+            <div className="due-report-filter-item" style={{ width: 170, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Select Building" options={buildingNames} value={filterBuilding} onChange={setFilterBuilding} />
             </div>
-            <div className="due-report-filter-item" style={{ width: 200, flexShrink: 0 }}>
+            <div className="due-report-filter-item" style={{ width: 170, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Select Employee" options={employeeNameOptions} value={filterEmployee} onChange={setFilterEmployee} />
             </div>
-            <div className="due-report-filter-item due-report-global-search relative" style={{ width: 220, flexShrink: 0 }}>
+            <div className="due-report-filter-item due-report-global-search relative" style={{ width: 190, flexShrink: 0 }}>
               <MdSearch size={15} style={{ position: 'absolute', left: 10, top: 11, color: t.textSecondary, pointerEvents: 'none' }} />
               <input type="text" placeholder="Search across all data..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)}
                 style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px 9px 30px', fontSize: 12, outline: 'none' }} />
             </div>
-            <div className="due-report-filter-item" style={{ width: 160, flexShrink: 0 }}>
+            <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as DueStatusFilter)}
                 style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }}>
                 <option value="all">All Status</option>
@@ -731,7 +737,7 @@ const DueReportPage: React.FC = () => {
               </select>
             </div>
           </div>
-          <div className="due-report-toolbar-actions flex items-center gap-2.5" style={{ flexShrink: 0 }}>
+          <div className="due-report-toolbar-actions flex items-center justify-between flex-wrap gap-2.5">
             {/* In-app-only badge — open follow-ups due today/tomorrow across
                 the whole team (no email/WhatsApp sending, out of scope). */}
             <div title="Open follow-ups due today / tomorrow"
@@ -740,16 +746,18 @@ const DueReportPage: React.FC = () => {
               <MdNoteAdd size={15} style={{ color: '#0284c7' }} />
               <span className="due-report-followup-badge-text">Follow-ups — Today: {followUpCounts.today} · Tomorrow: {followUpCounts.tomorrow}</span>
             </div>
-            <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
-              className="due-report-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-              <MdDownload size={16} /> <span className="due-report-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
-            </button>
-            <button type="button" onClick={handleRefresh} title="Refresh"
-              className="due-report-refresh-btn flex items-center justify-center rounded-xl"
-              style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
-              <MdRefresh size={18} />
-            </button>
+            <div className="flex items-center gap-2.5">
+              <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
+                className="due-report-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                <MdDownload size={16} /> <span className="due-report-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
+              </button>
+              <button type="button" onClick={handleRefresh} title="Refresh"
+                className="due-report-refresh-btn flex items-center justify-center rounded-xl"
+                style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
+                <MdRefresh size={18} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

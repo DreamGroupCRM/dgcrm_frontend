@@ -12,10 +12,15 @@
    so every page gets it consistently — not repeated per-page here. */
 
 /* ---------- md: 768-1023px ---------- */
+/* Filters/actions are always stacked on separate rows now (set inline on
+   DueReportPage — a fixed-width filters row sharing a line with the
+   actions box at typical laptop widths is what caused the horizontal
+   scrollbar/hidden-actions bug this file's rules used to only fix below
+   768px). Only gap/width tightening is still needed here. */
 @media (max-width: 1023px) {
   .due-report-toolbar-row { gap: 8px !important; }
   .due-report-toolbar-filters { gap: 8px !important; }
-  .due-report-filter-item { width: 170px !important; }
+  .due-report-filter-item { width: 150px !important; }
 }
 
 /* ---------- sm: 480-767px ---------- */
@@ -29,22 +34,10 @@
   .due-report-form-card-head { padding: 10px 14px !important; }
   .due-report-form-grid { gap: 8px !important; }
 
-  /* Toolbar: filters and actions each keep exactly one row, stacked on
-     top of one another instead of fighting for the same row — same
-     stacking convention already used by .master-topbar site-wide. */
-  .due-report-toolbar-row {
-    flex-wrap: wrap !important;
-  }
-  .due-report-toolbar-filters {
-    width: 100%;
-    order: 1;
-  }
   .due-report-toolbar-actions {
-    width: 100%;
-    order: 2;
     justify-content: space-between !important;
   }
-  .due-report-filter-item { width: 150px !important; }
+  .due-report-filter-item { width: 140px !important; }
 
   .due-report-export-btn { padding: 8px 12px !important; font-size: 12px !important; }
   .due-report-refresh-btn { width: 34px !important; height: 34px !important; }
