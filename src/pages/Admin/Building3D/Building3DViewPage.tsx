@@ -25,17 +25,17 @@
 //     location.state = { pickerMode: true, returnPath, preselectBuildingId }
 //     and, on confirming an available unit, navigates back to returnPath
 //     with location.state.selectedUnit for CustomerDetailsCrudPage to read.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  MdArrowBack, MdCenterFocusStrong, MdChevronRight,
-  MdInfoOutline, MdCheckCircle, MdPerson, MdClose,
+  MdArrowBack, MdCenterFocusStrong, MdChevronRight, MdAdd, MdRemove,
+  MdInfoOutline, MdCheckCircle, MdPerson, MdClose, MdGridView, MdFormatListBulleted,
 } from 'react-icons/md';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { FetchBuildingList, ViewBuilding } from '../../../services/buildingService';
 import { Building, BuildingFlat, BuildingShop } from '../../../types/index';
-import BuildingScene from './BuildingScene';
+import BuildingScene, { BuildingSceneHandle } from './BuildingScene';
 import { DrillLevel, UnitVM, UnitStatus, unitCounts } from './types';
 import './Building3D.css';
 
@@ -52,6 +52,13 @@ const shopStatus = (s: BuildingShop): UnitStatus => {
 
 const STATUS_DOT: Record<UnitStatus, string> = { available: '#16a34a', booked: '#dc2626', blocked: '#6b7280' };
 const STATUS_TEXT: Record<UnitStatus, string> = { available: 'Available', booked: 'Booked', blocked: 'Blocked' };
+
+// Compact label for the left floor rail — "Ground Floor" -> "G", "3rd Floor" -> "3".
+const shortFloorLabel = (label: string): string => {
+  if (/ground/i.test(label)) return 'G';
+  const m = label.match(/\d+/);
+  return m ? m[0] : label;
+};
 
 interface PickerNavState {
   pickerMode?: boolean;
@@ -70,6 +77,18 @@ export interface SelectedUnitForCustomer {
   floorLabel: string;
   no: string;
 }
+
+type Tokens = ReturnType<typeof useAppearanceTokens>['t'];
+
+const StatCard: React.FC<{ label: string; value: number; t: Tokens; dot?: string }> = ({ label, value, t, dot }) => (
+  <div className="rounded-2xl px-4 py-3" style={{ background: 'var(--b3d-inset-bg)', border: '1px solid var(--b3d-surface-border)' }}>
+    <div className="flex items-center gap-1.5" style={{ fontSize: 11, fontWeight: 700, color: t.textSecondary }}>
+      {dot && <span style={{ width: 8, height: 8, borderRadius: 999, background: dot, display: 'inline-block' }} />}
+      {label}
+    </div>
+    <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, marginTop: 2 }}>{value}</div>
+  </div>
+);
 
 const Building3DViewPage: React.FC = () => {
   const navigate = useNavigate();
@@ -92,6 +111,8 @@ const Building3DViewPage: React.FC = () => {
   const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<UnitVM | null>(null);
   const [resetToken, setResetToken] = useState(0);
+  const [rightTab, setRightTab] = useState<'floorplan' | 'unitlist'>('floorplan');
+  const sceneRef = useRef<BuildingSceneHandle>(null);
 
   // ── Load the building list once (id + names only needed for the
   // selector) — same FetchBuildingList call Building Master's own list
@@ -187,20 +208,6 @@ const Building3DViewPage: React.FC = () => {
     }
     return [];
   }, [level, selectedWing, selectedFloor, shops]);
-
-  const floorUnitSummaries = useMemo(() => {
-    const out: Record<string, string> = {};
-    for (const w of wings) {
-      for (const f of w.floors) {
-        const c = unitCounts(f.flats.map((fl) => ({
-          kind: 'flat' as const, id: fl.id, no: fl.flat_no, typeLabel: '', areaSqft: null,
-          status: flatStatus(fl), bookedByName: null, wingName: null, floorLabel: null,
-        })));
-        out[f.id] = `${c.available}/${c.total} available`;
-      }
-    }
-    return out;
-  }, [wings]);
 
   // ── Navigation between drill levels ──────────────────────────────────
   const goToBuilding = () => { setLevel('building'); setSelectedWingId(null); setSelectedFloorId(null); setSelectedUnit(null); setResetToken((n) => n + 1); };
@@ -334,30 +341,18 @@ const Building3DViewPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── Legend + building-wide summary ───────────────────────────────── */}
+      {/* ── Stat cards + legend ───────────────────────────────────────────── */}
       {buildingDetail && (
-        <div className="flex items-center justify-between flex-wrap gap-3 rounded-2xl px-4 py-3 mb-4"
-          style={{ background: 'var(--b3d-inset-bg)', border: '1px solid var(--b3d-surface-border)' }}>
-          <div className="flex items-center gap-4 flex-wrap" style={{ fontSize: 11.5, fontWeight: 700, color: t.textSecondary }}>
-            {(['available', 'booked', 'blocked'] as UnitStatus[]).map((s) => (
-              <span key={s} className="flex items-center gap-1.5">
-                <span style={{ width: 9, height: 9, borderRadius: 999, background: STATUS_DOT[s], display: 'inline-block' }} />
-                {STATUS_TEXT[s]}
-              </span>
-            ))}
-            <span className="flex items-center gap-1.5">
-              <span style={{ width: 9, height: 9, borderRadius: 999, background: '#2563eb', display: 'inline-block' }} />
-              Selected
-            </span>
-          </div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary }}>
-            {buildingDetail.building_name} — Total: {summary.total} | Available: {summary.available} | Booked: {summary.booked} | Blocked: {summary.blocked}
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <StatCard label="Total Units" value={summary.total} t={t} />
+          <StatCard label="Available" value={summary.available} dot={STATUS_DOT.available} t={t} />
+          <StatCard label="Booked" value={summary.booked} dot={STATUS_DOT.booked} t={t} />
+          <StatCard label="Blocked" value={summary.blocked} dot={STATUS_DOT.blocked} t={t} />
         </div>
       )}
 
       {/* ── Main: 3D viewer + side panel ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
         <div className="rounded-2xl relative" style={{ background: 'var(--b3d-surface-bg)', border: '1px solid var(--b3d-surface-border)', height: 520, overflow: 'hidden' }}>
           {!buildingDetail ? (
             <div className="flex items-center justify-center h-full" style={{ color: t.textSecondary, fontSize: 13 }}>
@@ -366,28 +361,60 @@ const Building3DViewPage: React.FC = () => {
           ) : (
             <>
               <BuildingScene
+                ref={sceneRef}
                 level={level}
                 wings={wings}
                 shops={shops}
                 selectedWingId={selectedWingId}
                 units={currentUnits}
                 selectedUnitId={selectedUnit?.id ?? null}
-                floorUnitSummaries={floorUnitSummaries}
                 resetToken={resetToken}
                 onSelectWing={goToWing}
                 onSelectShopsBlock={goToShops}
                 onSelectFloor={goToFloor}
                 onSelectUnit={setSelectedUnit}
               />
-              <button type="button" onClick={() => setResetToken((n) => n + 1)} title="Reset View"
-                className="flex items-center gap-1.5"
-                style={{
-                  position: 'absolute', top: 12, right: 12, fontSize: 11, fontWeight: 700,
-                  background: 'rgba(255,255,255,0.92)', color: '#0c4a6e', border: '1px solid #bae6fd',
-                  borderRadius: 8, padding: '5px 10px', cursor: 'pointer',
-                }}>
-                <MdCenterFocusStrong size={14} /> Reset View
-              </button>
+
+              {/* Zoom / reset control stack — mirrors the reference's stacked +/-/home controls */}
+              <div className="flex flex-col gap-1.5" style={{ position: 'absolute', top: 12, right: 12 }}>
+                {[
+                  { icon: <MdAdd size={15} />, title: 'Zoom In', onClick: () => sceneRef.current?.zoomIn() },
+                  { icon: <MdRemove size={15} />, title: 'Zoom Out', onClick: () => sceneRef.current?.zoomOut() },
+                  { icon: <MdCenterFocusStrong size={15} />, title: 'Reset View', onClick: () => { setResetToken((n) => n + 1); sceneRef.current?.resetView(); } },
+                ].map((btn, i) => (
+                  <button key={i} type="button" onClick={btn.onClick} title={btn.title}
+                    style={{
+                      width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'rgba(255,255,255,0.92)', color: '#0c4a6e', border: '1px solid #bae6fd',
+                      borderRadius: 8, cursor: 'pointer',
+                    }}>
+                    {btn.icon}
+                  </button>
+                ))}
+              </div>
+
+              {/* Left floor rail — only once a wing is selected and it has more than one floor */}
+              {(level === 'wing' || level === 'floor') && selectedWing && selectedWing.floors.length > 1 && (
+                <div className="flex flex-col-reverse gap-1"
+                  style={{
+                    position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                    maxHeight: '75%', overflowY: 'auto', background: 'rgba(255,255,255,0.9)',
+                    padding: 6, borderRadius: 10, border: '1px solid #e2e8f0',
+                  }}>
+                  {selectedWing.floors.map((f) => (
+                    <button key={f.id} type="button" onClick={() => goToFloor(f.label)} title={f.label}
+                      style={{
+                        width: 28, height: 28, borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        border: f.id === selectedFloorId ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                        background: f.id === selectedFloorId ? '#dbeafe' : '#fff',
+                        color: f.id === selectedFloorId ? '#1d4ed8' : '#334155',
+                      }}>
+                      {shortFloorLabel(f.label)}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div style={{ position: 'absolute', bottom: 10, left: 12, fontSize: 10.5, color: '#6b7280', background: 'rgba(255,255,255,0.85)', padding: '3px 8px', borderRadius: 6 }}>
                 Drag to rotate · Scroll to zoom · Right-drag to pan
               </div>
@@ -397,10 +424,72 @@ const Building3DViewPage: React.FC = () => {
 
         {/* ── Side panel ──────────────────────────────────────────────────── */}
         <div className="rounded-2xl p-4" style={{ background: 'var(--b3d-surface-bg)', border: '1px solid var(--b3d-surface-border)', minHeight: 200 }}>
-          {!selectedUnit ? (
+          {!selectedUnit && (level === 'floor' || level === 'shops') ? (
+            <div>
+              {/* Floor Plan / Unit List tabs — Floor Plan is a schematic grid of
+                  real units styled like a floor plan (no fabricated room shapes,
+                  lift/staircase positions — that spatial data doesn't exist). */}
+              <div className="flex items-center gap-1 mb-3" style={{ borderBottom: '1px solid var(--b3d-surface-border)' }}>
+                {([
+                  { key: 'floorplan' as const, label: 'Floor Plan', icon: <MdGridView size={13} /> },
+                  { key: 'unitlist' as const, label: 'Unit List', icon: <MdFormatListBulleted size={13} /> },
+                ]).map((tab) => (
+                  <button key={tab.key} type="button" onClick={() => setRightTab(tab.key)}
+                    className="flex items-center gap-1.5"
+                    style={{
+                      fontSize: 12, fontWeight: 700, padding: '7px 12px', cursor: 'pointer',
+                      background: 'transparent', border: 'none', borderBottom: rightTab === tab.key ? '2px solid #2563eb' : '2px solid transparent',
+                      color: rightTab === tab.key ? '#2563eb' : t.textSecondary, marginBottom: -1,
+                    }}>
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {currentUnits.length === 0 ? (
+                <div style={{ fontSize: 12, color: t.textSecondary, padding: '12px 2px' }}>No units on this level.</div>
+              ) : rightTab === 'floorplan' ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {currentUnits.map((u) => (
+                    <button key={u.id} type="button" onClick={() => setSelectedUnit(u)}
+                      style={{
+                        borderRadius: 8, padding: '8px 4px', textAlign: 'center', cursor: 'pointer',
+                        border: `1.5px solid ${STATUS_DOT[u.status]}`, background: `${STATUS_DOT[u.status]}1a`,
+                      }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: t.textPrimary }}>{u.no}</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: STATUS_DOT[u.status], marginTop: 2 }}>{STATUS_TEXT[u.status]}</div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+                    <thead>
+                      <tr style={{ textAlign: 'left', color: t.textSecondary }}>
+                        <th style={{ padding: '4px 6px', fontWeight: 700 }}>No</th>
+                        <th style={{ fontWeight: 700 }}>Type</th>
+                        <th style={{ fontWeight: 700 }}>Area</th>
+                        <th style={{ fontWeight: 700 }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentUnits.map((u) => (
+                        <tr key={u.id} onClick={() => setSelectedUnit(u)} style={{ cursor: 'pointer', borderTop: '1px solid var(--b3d-surface-border)' }}>
+                          <td style={{ padding: '6px 6px', fontWeight: 700, color: t.textPrimary }}>{u.no}</td>
+                          <td style={{ color: t.textPrimary }}>{u.typeLabel}</td>
+                          <td style={{ color: t.textPrimary }}>{u.areaSqft != null ? `${u.areaSqft} sq.ft` : '—'}</td>
+                          <td><span style={{ color: STATUS_DOT[u.status], fontWeight: 700 }}>{STATUS_TEXT[u.status]}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ) : !selectedUnit ? (
             <div className="flex flex-col items-center justify-center text-center gap-2" style={{ color: t.textSecondary, fontSize: 12, minHeight: 180 }}>
               <MdInfoOutline size={22} />
-              <span>Select a {level === 'shops' ? 'shop' : 'flat'} in the 3D view to see its details.</span>
+              <span>Select a wing to drill into its floors and units.</span>
             </div>
           ) : (
             <div>
