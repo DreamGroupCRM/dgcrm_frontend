@@ -629,6 +629,13 @@ export interface Customer {
   email                         : string;
   address?                      : string;
 
+  // Free-text Company Name entered on the Customer form (distinct from
+  // Building Master's own linked business company) + the Project Name off
+  // the customer's booked Building — shown together as one column,
+  // immediately before Building Name, on the Customer List.
+  company_name?               : string;
+  project_name?                : string;
+
   building_id                    : string;
   building_name                   : string;
   wing_id?                         : string;
@@ -638,8 +645,17 @@ export interface Customer {
   flat_type                            : string;
   area_sqft                             : number | null;
 
+  // V_22.0 item 9 — a shop booking is mutually exclusive with wing/flat
+  // above (no wing/floor for a ground-level shop); unit_type/shop_no/
+  // shop_area let the List page show shop details instead of blank
+  // flat columns for these customers.
+  unit_type?                              : 'flat' | 'shop';
+  shop_no?                                 : string;
+  shop_area?                                : number | null;
+
   booking_date                           : string;
   monthly_emi                             : number | null;
+  monthly_installment_date?               : string | null;
 
   assigned_employee_id?                    : string;
   assigned_employee_code?                   : string;

@@ -24,7 +24,7 @@ interface FieldProps {
 const Field: React.FC<FieldProps> = ({ label, required, error, t, fieldRef, children }) => (
   <FormField
     label={label} t={t} required={required} error={error} fieldRef={fieldRef}
-    labelStyle={getFormLabelStyle(t, { fontWeight: 700, fontSize: 12.5, marginBottom: 6, color: t.textPrimary })}
+    labelStyle={getFormLabelStyle(t, { fontWeight: 700, fontSize: 13.5, marginBottom: 6, color: t.textPrimary })}
     errorStyle={{ color: '#ef4444', fontSize: 11.5, marginTop: 4, fontFamily: t.fontFamily }}
   >
     {children}
@@ -144,7 +144,7 @@ const ModuleMasterCrudPage: React.FC<Props> = ({ mode }) => {
     border      : `1px solid ${hasError ? '#ef4444' : t.inputBorder}`,
     borderRadius: 10,
     padding     : '10px 14px',
-    fontSize    : 14,
+    fontSize    : 15,
     outline     : 'none',
     fontFamily  : t.fontFamily,
     cursor      : isView ? 'not-allowed' : 'text',

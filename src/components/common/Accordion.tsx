@@ -30,7 +30,15 @@ interface AccordionSectionProps {
 }
 
 export const AccordionSection: React.FC<AccordionSectionProps> = ({ theme, icon, title, gradient, open, onToggle, children, sectionRef }) => (
-  <div ref={sectionRef} className="rounded-2xl mb-5 overflow-hidden" style={{ background: theme.surfaceBg, border: `1px solid ${theme.surfaceBorder}` }}>
+  // overflow: hidden only while collapsed — that's purely to clip the
+  // gradient header's square corners to the card's rounded-2xl border, and
+  // the header is all there is to clip at that point. While open, a
+  // dropdown (SearchableSelect, PhoneInput's country picker, a native
+  // multi-select popup, ...) inside this section needs to be able to
+  // overflow past the card's own edge instead of being cut off — hidden
+  // here would silently clip it, which is exactly the "dropdown hidden
+  // behind an accordion" bug (item 7).
+  <div ref={sectionRef} className="rounded-2xl mb-5" style={{ background: theme.surfaceBg, border: `1px solid ${theme.surfaceBorder}`, overflow: open ? 'visible' : 'hidden' }}>
     <button
       type="button" onClick={onToggle}
       className="w-full flex items-center gap-2.5 px-5 sm:px-6 py-3.5"

@@ -182,14 +182,21 @@ const EmployeeCard: React.FC<{
 // clips both axes per the CSS spec, cutting the dropdown off whenever it
 // opened near the table's bottom or right edge. A portal positioned with
 // `fixed` from the trigger button's own bounding rect escapes that
-// clipped container entirely, and computeMenuPos below opens it toward
-// whichever side (left/right) actually has room, instead of always
-// growing rightward off the edge of the screen.
+// clipped container entirely.
+//
+// Opens immediately to the RIGHT of the 3-dot button (not downward below
+// the row) so it stays visually attached to the icon that opened it —
+// flips to the left when there isn't enough room on the right, and clamps
+// vertically so it never runs off the bottom of the screen.
 const MENU_WIDTH = 130;
+const MENU_HEIGHT = 150; // 4 rows incl. borders/padding
 const computeMenuPos = (rect: DOMRect): { top: number; left: number } => {
-  const spaceRight = window.innerWidth - rect.left;
-  const left = spaceRight >= MENU_WIDTH ? rect.left : Math.max(8, rect.right - MENU_WIDTH);
-  return { top: rect.bottom + 4, left };
+  const spaceRight = window.innerWidth - rect.right;
+  const left = spaceRight >= MENU_WIDTH + 8
+    ? rect.right + 4
+    : Math.max(8, rect.left - MENU_WIDTH - 4);
+  const top = Math.max(8, Math.min(rect.top, window.innerHeight - MENU_HEIGHT - 8));
+  return { top, left };
 };
 
 const RowActionMenu: React.FC<{
@@ -361,11 +368,13 @@ const EmployeeDetailsListPage: React.FC = () => {
         toast.error('No employees to export.');
         return;
       }
-      const header = ['Employee Code', 'Name', 'Email', 'Mobile', 'Department', 'Designation', 'Status', 'Joined On'];
+      const header = ['Employee Code', 'Name', 'Email', 'Mobile', 'D.O.B', 'Joining Date', 'Department', 'Designation', 'Visible Employees', 'Status'];
       const rows = exportRows.map((e) => [
-        e.employee_code, `${e.first_name} ${e.last_name}`, e.email, e.mobile_number,
-        (e.department_names || []).join('; '), (e.designation_names || []).join('; '),
-        STATUS_STYLES[e.status]?.label || e.status, formatDate(e.joining_date),
+        e.employee_code, `${e.first_name} ${e.last_name}`, e.email, `${e.mobile_country_code || ''} ${e.mobile_number || ''}`.trim(),
+        formatDate(e.date_of_birth), formatDate(e.joining_date),
+        e.department || (e.department_names || []).join('; '), e.designation || (e.designation_names || []).join('; '),
+        e.visible_employees_count ?? 0,
+        STATUS_STYLES[e.status]?.label || e.status,
       ]);
       const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -510,16 +519,16 @@ const EmployeeDetailsListPage: React.FC = () => {
                     borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
                     borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                   }}>Action</th>
-                  {['Employee Code', 'Employee Name', 'D.O.B', 'Email ID', 'Mobile No', 'Joining Date', 'Status'].map((h) => (
+                  {['Employee ID', 'Employee Name', 'Email ID / Mobile Number', 'D.O.B', 'Joining Date', 'Department', 'Designation', 'Visible Employees', 'Status'].map((h) => (
                     <th key={h} style={{ borderBottom: `1px solid ${t.divider}` }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 48 }}>Loading employees...</td></tr>
+                  <tr><td colSpan={10} style={{ textAlign: 'center', padding: 48 }}>Loading employees...</td></tr>
                 ) : pageRows.length === 0 ? (
-                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 48 }}>No employees found.</td></tr>
+                  <tr><td colSpan={10} style={{ textAlign: 'center', padding: 48 }}>No employees found.</td></tr>
                 ) : (
                   pageRows.map((emp, idx) => {
                     const status = STATUS_STYLES[emp.status] || STATUS_STYLES.active;
@@ -559,10 +568,15 @@ const EmployeeDetailsListPage: React.FC = () => {
                             <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{emp.first_name} {emp.last_name}</span>
                           </div>
                         </td>
+                        <td>
+                          <div>{emp.email || '—'}</div>
+                          <div style={{ fontSize: 10.5, color: t.textSecondary, fontWeight: 400 }}>{emp.mobile_country_code} {emp.mobile_number}</div>
+                        </td>
                         <td>{formatDate(emp.date_of_birth) || '—'}</td>
-                        <td>{emp.email || '—'}</td>
-                        <td>{emp.mobile_country_code} {emp.mobile_number}</td>
                         <td>{formatDate(emp.joining_date) || '—'}</td>
+                        <td>{emp.department || '—'}</td>
+                        <td>{emp.designation || '—'}</td>
+                        <td style={{ textAlign: 'center' }}>{emp.visible_employees_count ?? 0}</td>
                         <td>
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
                             style={{ background: status.bg, color: status.color, fontSize: 10.5, whiteSpace: 'nowrap' }}>

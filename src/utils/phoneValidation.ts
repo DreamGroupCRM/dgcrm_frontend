@@ -2,32 +2,23 @@
 // DREAM GROUP CRM — SHARED PHONE NUMBER VALIDATION
 // ==========================================
 // One place every mobile/phone/WhatsApp/contact field validates against,
-// instead of each form hand-rolling its own regex (most of which assumed
-// "always 10 digits", which is only true for India/USA/UK — a real
-// Singapore mobile is 8 digits, UAE/Australia are 9, so those numbers were
-// being rejected even though PhoneInput's country dropdown already offers
-// those countries). Delegates the actual country-aware length/format check
-// to libphonenumber-js rather than maintaining a per-country regex table.
-import { isValidPhoneNumber } from 'libphonenumber-js/min';
-
-/**
- * Validates a number against the dialing rules of its selected country.
- * `countryCode` is the "+91"-style dial code PhoneInput already stores.
- * Returns '' when the field is valid (including a blank optional field),
- * or a short, non-technical message otherwise.
- */
+// instead of each form hand-rolling its own regex. V_22.0's global
+// validation pass fixes every mobile/WhatsApp/alternate-contact number
+// app-wide at exactly 10 numeric digits (no spaces) — PhoneInput's country
+// selector stays (still shown, still saved) for display/dialing purposes,
+// but the number itself is validated the same way regardless of which
+// country is selected, rather than per-country via libphonenumber-js as
+// before.
 export function phoneNumberError(
   countryCode: string,
   number: string,
   options: { required?: boolean; requiredMessage?: string } = {}
 ): string {
+  void countryCode; // kept for call-site compatibility; no longer used
   const trimmed = (number || '').trim();
   if (!trimmed) {
     return options.required ? (options.requiredMessage || 'Please enter the mobile number.') : '';
   }
-  if (!/^\d+$/.test(trimmed)) return 'Mobile number must contain digits only.';
-  if (!isValidPhoneNumber(`${countryCode || '+91'}${trimmed}`)) {
-    return 'Please enter a valid mobile number for the selected country.';
-  }
+  if (!/^\d{10}$/.test(trimmed)) return 'Mobile number must be exactly 10 digits.';
   return '';
 }

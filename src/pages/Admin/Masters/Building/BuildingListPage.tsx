@@ -7,26 +7,26 @@ import {
   MdAdd, MdDownload, MdRefresh,
   MdSearch, MdApartment,
   MdBusiness, MdLayers, MdHome, MdStorefront, MdViewInAr,
+  MdToggleOn, MdToggleOff, MdVisibility, MdEdit,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
-import { FetchBuildingList, DeleteBuilding, BuildingSortKey } from '../../../../services/buildingService';
-import { Building, BuildingListSummary } from '../../../../types/index';
+import { FetchBuildingList, DisableBuilding, EnableBuilding, BuildingSortKey } from '../../../../services/buildingService';
+import { Building, BuildingListSummary, isAdminRole } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
-import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
 import SortableTh, { SortDir } from '../../../../components/masters/SortableTh';
 import StatCard from '../../../../components/masters/StatCard';
 import MultiStatCard from '../../../../components/masters/MultiStatCard';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
-// Fixed width for the Actions column — sized for the 3 MasterIconButtons
-// icons plus the standalone "View 3D Structure" button added alongside
-// them, + gaps + cell padding, so it never grows/shrinks with the number
-// of other columns in the table.
-const ACTION_COL_WIDTH = 128;
+// Fixed width for the Actions column — sized for View/Edit/"View 3D
+// Structure" plus the role-gated Disable/Enable toggle (only rendered for
+// Admin/Superadmin), + gaps + cell padding, so it never grows/shrinks with
+// the number of other columns in the table.
+const ACTION_COL_WIDTH = 152;
 
 // ── derived helpers ──────────────────────────────────────────────────────────
 const totalFlatsOf = (b: Building): number =>
@@ -42,6 +42,12 @@ const BuildingListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isDark, t, cssVars } = useAppearanceTokens();
+  // Disable/Enable (replacing the old Delete) is restricted to Admin/
+  // Superadmin regardless of whatever module permissions an Employee
+  // might otherwise have on Building Master — see building.routes.ts's
+  // matching requireAdmin gate on the backend.
+  const role = useAppSelector((s) => s.auth.role);
+  const canToggleActive = isAdminRole(role);
 
   // allBuildings now holds ONLY the current server page — previously this
   // held up to 1000 rows fetched once, with search AND sort both done
@@ -104,23 +110,28 @@ const BuildingListPage: React.FC = () => {
     }
   };
 
-  // ── delete ──────────────────────────────────────────────────────────────
-  const handleDelete = async (building: Building) => {
+  // ── disable / enable (replaces the old hard-sounding Delete) ───────────
+  // A disabled building is never removed — it keeps appearing in this list
+  // (greyed out below) rather than disappearing, and its data stays intact.
+  const handleToggleActive = async (building: Building) => {
+    const disabling = building.is_active;
     const result = await showAlert.confirm(
-      `Are you sure you want to delete "${building.building_name}"?`,
-      'Delete Building?'
+      disabling
+        ? `Are you sure you want to disable "${building.building_name}"? It will be greyed out but not removed.`
+        : `Are you sure you want to enable "${building.building_name}"?`,
+      disabling ? 'Disable Building?' : 'Enable Building?'
     );
     if (!result.isConfirmed) return;
     try {
-      const res = await DeleteBuilding(building.id);
+      const res = disabling ? await DisableBuilding(building.id) : await EnableBuilding(building.id);
       if (res.success) {
-        toast.success('Building Deleted Successfully', { autoClose: 1000 });
+        toast.success(disabling ? 'Building Disabled Successfully' : 'Building Enabled Successfully', { autoClose: 1000 });
         fetchBuildings();
       } else {
-        toast.error(res.message || 'Failed to Delete');
+        toast.error(res.message || 'Failed to update building status');
       }
     } catch {
-      toast.error('Failed to delete building. Please try again.');
+      toast.error('Failed to update building status. Please try again.');
     }
   };
 
@@ -139,12 +150,13 @@ const BuildingListPage: React.FC = () => {
       const exportRows = res.rows ?? [];
       if (exportRows.length === 0) { toast.info('No data to Export'); return; }
       const headers = [
-        'ID', 'Project Name', 'Building Name', 'Location',
+        'ID', 'Company Name', 'Project Name', 'Building Name', 'Location',
         'No. of Wings', 'No. of Floors', 'No. of Flats', 'No. of Shops', 'Parking',
         'Status', 'Created At', 'Updated At',
       ];
       const rows = exportRows.map((b) => [
         b.id,
+        `"${b.business_company_name || ''}"`,
         `"${b.project_name}"`,
         `"${b.building_name}"`,
         `"${b.location}"`,
@@ -261,6 +273,7 @@ const BuildingListPage: React.FC = () => {
                   Actions
                 </th>
                 <SortableTh label="ID" rowSpan={2} active={sortKey === 'id'} dir={sortDir} onClick={() => toggleSort('id')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <th rowSpan={2} style={{ borderBottom: `1px solid ${t.divider}` }}>Company Name</th>
                 <SortableTh label="Project Name" rowSpan={2} active={sortKey === 'project_name'} dir={sortDir} onClick={() => toggleSort('project_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Building Name" rowSpan={2} active={sortKey === 'building_name'} dir={sortDir} onClick={() => toggleSort('building_name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Wings" rowSpan={2} active={sortKey === 'wings'} dir={sortDir} onClick={() => toggleSort('wings')} style={{ borderBottom: `1px solid ${t.divider}` }} />
@@ -283,19 +296,23 @@ const BuildingListPage: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={14} style={{ textAlign: 'center', padding: 48 }}>
+                  <td colSpan={15} style={{ textAlign: 'center', padding: 48 }}>
                     Loading...
                   </td>
                 </tr>
               ) : pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={14} style={{ textAlign: 'center', padding: 48 }}>
+                  <td colSpan={15} style={{ textAlign: 'center', padding: 48 }}>
                     {search ? 'No buildings match your search.' : 'No buildings found.'}
                   </td>
                 </tr>
               ) : (
                 pageRows.map((b, idx) => {
-                  const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
+                  // Disabled buildings stay in the list (never removed) but
+                  // render greyed-out, per the Disable-replaces-Delete rule.
+                  const isDisabled = !b.is_active;
+                  const rowBg = isDisabled ? (isDark ? '#1c1c1c' : '#f1f1f1') : (idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg);
+                  const rowTextColor = isDisabled ? (isDark ? '#6b7280' : '#9ca3af') : undefined;
                   const disabledFlats = b.disabled_flats ?? 0;
                   const disabledShops = b.disabled_shops ?? 0;
                   return (
@@ -303,23 +320,39 @@ const BuildingListPage: React.FC = () => {
                       key={b.id}
                       style={{
                         background: rowBg,
+                        color: rowTextColor,
                         borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`,
                         transition: 'background 0.15s',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = t.tableRowHover)}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = isDisabled ? rowBg : t.tableRowHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}
                     >
                       <td className="master-table-actions-td" style={{
                         width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
-                        zIndex: 1, background: isDark ? t.surfaceBg : '#ffffff',
+                        zIndex: 1, background: isDisabled ? rowBg : (isDark ? t.surfaceBg : '#ffffff'),
                         borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                       }}>
                         <div className="flex items-center justify-center gap-1">
-                          <MasterIconButtons
-                            onView={() => navigate(`/admin/masters/building/view/${b.id}`)}
-                            onEdit={() => navigate(`/admin/masters/building/edit/${b.id}`)}
-                            onDelete={() => handleDelete(b)}
-                          />
+                          <button type="button" title="View" className="master-icon-btn"
+                            onClick={() => navigate(`/admin/masters/building/view/${b.id}`)}>
+                            <MdVisibility size={15} />
+                          </button>
+                          <button type="button" title="Edit" className="master-icon-btn"
+                            onClick={() => navigate(`/admin/masters/building/edit/${b.id}`)}>
+                            <MdEdit size={15} />
+                          </button>
+                          {canToggleActive && (
+                            <button
+                              type="button"
+                              title={b.is_active ? 'Disable Building' : 'Enable Building'}
+                              className="master-icon-btn"
+                              onClick={() => handleToggleActive(b)}
+                            >
+                              {b.is_active
+                                ? <MdToggleOn size={17} style={{ color: '#16a34a' }} />
+                                : <MdToggleOff size={17} style={{ color: '#dc2626' }} />}
+                            </button>
+                          )}
                           <button type="button" title="View 3D Structure" className="master-icon-btn"
                             onClick={() => navigate(`/admin/building-3d-view?buildingId=${b.id}`)}>
                             <MdViewInAr size={15} />
@@ -327,10 +360,11 @@ const BuildingListPage: React.FC = () => {
                         </div>
                       </td>
                       <td>{b.id}</td>
+                      <td>{b.business_company_name || '—'}</td>
                       <td>
                         <div style={{ fontWeight: 600 }}>{b.project_name}</div>
                         {b.location && (
-                          <div style={{ fontSize: 10.5, color: t.textSecondary, fontWeight: 400 }}>{b.location}</div>
+                          <div style={{ fontSize: 10.5, color: isDisabled ? rowTextColor : t.textSecondary, fontWeight: 400 }}>{b.location}</div>
                         )}
                       </td>
                       <td>

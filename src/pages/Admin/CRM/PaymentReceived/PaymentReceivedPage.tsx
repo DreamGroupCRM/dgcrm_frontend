@@ -18,6 +18,7 @@
 // Approvals' (checkbox + Actions first) with View Receipt/Download
 // Receipt/Delete instead of View/Approve/Delete.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import jsPDF from 'jspdf';
@@ -110,31 +111,61 @@ const FilterSelect: React.FC<{
 // ── Small local searchable dropdown — same "type to filter, click to
 // pick" shape used on the Payment Dues/Customer List pages, kept local
 // since this page's only picker (Customer, for the Generate Receipt
-// modal) is its only user. ──────────────────────────────────────────────
+// modal) is its only user. The dropdown list itself renders into a
+// document.body portal at a `fixed` position computed from the input's own
+// bounding rect (same fix as DueReportPage's own SearchableSelect) — a
+// plain `position: absolute` list here would get clipped by the modal's
+// own overflow, which is exactly the "dropdown hidden behind a
+// card/container" bug (item 7). ──────────────────────────────────────────
 const SearchableSelect: React.FC<{
   t: Theme; placeholder: string; options: string[]; value: string; onChange: (v: string) => void;
 }> = ({ t, placeholder, options, value, onChange }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setQuery(value); }, [value]);
+
+  const openDropdown = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    setOpen(true);
+  };
+
   useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (ref.current && !ref.current.contains(target) && !target.closest?.('[data-payment-received-select-menu]')) setOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const reposition = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    };
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open]);
 
   const filtered = options.filter((o) => o?.toLowerCase().includes(query.toLowerCase()));
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, cursor: 'text' }}
-        onClick={() => setOpen(true)}>
+        onClick={openDropdown}>
         <MdSearch size={15} style={{ color: t.textSecondary, flexShrink: 0 }} />
         <input type="text" placeholder={placeholder} value={query}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+          onFocus={openDropdown}
+          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); openDropdown(); }}
           style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%' }} />
         {value && (
           <button type="button" onClick={(e) => { e.stopPropagation(); onChange(''); setQuery(''); }}
@@ -144,15 +175,17 @@ const SearchableSelect: React.FC<{
         )}
         <MdKeyboardArrowDown size={16} style={{ color: t.textSecondary, flexShrink: 0 }} />
       </div>
-      {open && filtered.length > 0 && (
-        <div style={{ position: 'absolute', top: '110%', left: 0, right: 0, zIndex: 30, maxHeight: 220, overflowY: 'auto', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0' }}>
+      {open && menuPos && filtered.length > 0 && createPortal(
+        <div data-payment-received-select-menu
+          style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, width: menuPos.width, zIndex: 200, maxHeight: 220, overflowY: 'auto', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0' }}>
           {filtered.slice(0, 50).map((opt) => (
             <button key={opt} type="button" onClick={() => { onChange(opt); setQuery(opt); setOpen(false); }}
               className="w-full text-left px-3.5 py-2 text-sm" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
               {opt}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

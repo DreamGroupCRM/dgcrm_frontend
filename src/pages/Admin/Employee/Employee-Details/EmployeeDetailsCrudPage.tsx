@@ -26,6 +26,7 @@ import { DobPicker } from '../../../../components/common/DobPicker';
 import { TimePicker } from '../../../../components/common/TimePicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
 import { phoneNumberError } from '../../../../utils/phoneValidation';
+import { aadhaarError, panError, sanitizeDigits, sanitizeAlphanumericUpper } from '../../../../utils/fieldValidation';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './EmployeeDetails.css';
@@ -846,9 +847,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     { field: 'alternate_number', section: 'personal', message: phoneNumberError(form.alternate_country_code, form.alternate_number), failed: () => !!phoneNumberError(form.alternate_country_code, form.alternate_number) },
     { field: 'whatsapp_number', section: 'personal', message: phoneNumberError(form.whatsapp_country_code, form.whatsapp_number), failed: () => !!phoneNumberError(form.whatsapp_country_code, form.whatsapp_number) },
     { field: 'address', section: 'personal', message: 'Please enter the Address.', failed: () => !form.address.trim() },
-    { field: 'aadhar_number', section: 'personal', message: 'Please enter the Aadhar Number.', failed: () => !form.aadhar_number.trim() },
+    { field: 'aadhar_number', section: 'personal', message: aadhaarError(form.aadhar_number, true), failed: () => !!aadhaarError(form.aadhar_number, true) },
     { field: 'aadhar_card', section: 'personal', message: 'Please upload the Aadhar Card.', failed: () => !files.aadhar_card && !existingUrls.aadhar_card },
-    { field: 'pan_number', section: 'personal', message: 'Please enter the PAN Number.', failed: () => !form.pan_number.trim() },
+    { field: 'pan_number', section: 'personal', message: panError(form.pan_number, true), failed: () => !!panError(form.pan_number, true) },
     { field: 'pan_card', section: 'personal', message: 'Please upload the PAN Card.', failed: () => !files.pan_card && !existingUrls.pan_card },
     { field: 'profile_photo', section: 'personal', message: 'Please upload the Profile Photo.', failed: () => !files.profile_photo && !existingUrls.profile_photo },
     { field: 'joining_date', section: 'office', message: 'Please enter the Employee Joining Date.', failed: () => !form.joining_date },
@@ -1245,16 +1246,16 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={handleAadharCardChange}
             fieldRef={setFieldRef('aadhar_card') as React.Ref<HTMLDivElement>} />
           <Field t={t} label="Aadhar Number" required error={errorFor('aadhar_number')} fieldRef={setFieldRef('aadhar_number') as React.Ref<HTMLDivElement>}>
-            <input type="text" placeholder="Enter aadhar number" value={form.aadhar_number} readOnly={isView} disabled={isView}
-              onChange={(e) => set('aadhar_number', e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
+            <input type="text" placeholder="Enter aadhar number" value={form.aadhar_number} readOnly={isView} disabled={isView} maxLength={12}
+              onChange={(e) => set('aadhar_number', sanitizeDigits(e.target.value, 12))} className={fieldClass} />
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
           <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
             file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={handlePanCardChange}
             fieldRef={setFieldRef('pan_card') as React.Ref<HTMLDivElement>} />
           <Field t={t} label="PAN Number" required error={errorFor('pan_number')} fieldRef={setFieldRef('pan_number') as React.Ref<HTMLDivElement>}>
-            <input type="text" placeholder="Enter PAN number" value={form.pan_number} readOnly={isView} disabled={isView}
-              onChange={(e) => set('pan_number', e.target.value.toUpperCase())} className={fieldClass} />
+            <input type="text" placeholder="Enter PAN number" value={form.pan_number} readOnly={isView} disabled={isView} maxLength={10}
+              onChange={(e) => set('pan_number', sanitizeAlphanumericUpper(e.target.value, 10))} className={fieldClass} />
             {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
         </div>

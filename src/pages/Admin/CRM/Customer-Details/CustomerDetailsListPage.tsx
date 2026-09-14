@@ -9,7 +9,7 @@ import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh, MdVisibility,
   MdGroups, MdPersonAddAlt1, MdPersonOff, MdClose,
   MdKeyboardArrowDown, MdMoreVert, MdReceiptLong, MdLoyalty, MdPhone, MdEmail,
-  MdPayments, MdPrint, MdAccountBalanceWallet, MdDescription, MdFilterList,
+  MdPayments, MdPrint, MdDescription, MdFilterList,
   MdGridView, MdViewList, MdLocationOn, MdBadge,
 } from 'react-icons/md';
 
@@ -25,15 +25,14 @@ import {
   fetchCustomerFullDetails, fetchCustomerScheme,
 } from '../../../../services/customerDetailsService';
 import {
-  collectPayment, fetchCustomerDue, fetchCustomerRemaining, fetchPaymentReceipt, deletePayment, PAYMENT_FOR_OPTIONS, paymentForLabel,
+  collectPayment, fetchCustomerDue, fetchPaymentReceipt, deletePayment, paymentForLabel,
 } from '../../../../services/paymentService';
 import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceiptPdf } from './paymentPdfExport';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
-import { fetchCustomerIntelligence, CustomerIntelligence } from '../../../../services/intelligenceService';
 import {
   Customer, Building, CustomerPaymentRecord, CustomerListSummary, CustomerListFilters,
-  PaymentFor, CustomerDueSummary, CustomerRemainingAmounts, PaymentReceipt, CollectPaymentPayload, isAdminRole,
+  PaymentFor, CustomerDueSummary, PaymentReceipt, CollectPaymentPayload, isAdminRole,
 } from '../../../../types/index';
 import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
 import './CustomerDetails.css';
@@ -229,6 +228,22 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 // divider between every option (item 7's "Action menu matching Employee
 // List style") — same trio as before, just tighter width/padding and
 // dividers instead of a plain stacked list.
+//
+// Opens immediately to the RIGHT of the 3-dot button (not downward below
+// the row) so it stays visually attached to the icon that opened it —
+// flips to the left when there isn't enough room on the right, and clamps
+// vertically so it never runs off the bottom of the screen.
+const CUSTOMER_MENU_WIDTH = 186;
+const CUSTOMER_MENU_HEIGHT = 178; // 5 rows incl. borders/padding
+const computeCustomerMenuPos = (rect: DOMRect): { top: number; left: number } => {
+  const spaceRight = window.innerWidth - rect.right;
+  const left = spaceRight >= CUSTOMER_MENU_WIDTH + 8
+    ? rect.right + 4
+    : Math.max(8, rect.left - CUSTOMER_MENU_WIDTH - 4);
+  const top = Math.max(8, Math.min(rect.top, window.innerHeight - CUSTOMER_MENU_HEIGHT - 8));
+  return { top, left };
+};
+
 const RowActionMenu: React.FC<{
   t: Theme; pos: { top: number; left: number };
   onView: () => void; onEdit: () => void; onDelete: () => void;
@@ -413,12 +428,11 @@ const CustomerDetailsListPage: React.FC = () => {
   const [infoModal, setInfoModal] = useState<{
     type: 'payment'; customer: Customer; loading: boolean;
     payments?: CustomerPaymentRecord[];
-    // Customer Due view — fetched alongside payment history, additive to
-    // the existing Payment History modal (see openPaymentHistory below).
-    due?: CustomerDueSummary; remaining?: CustomerRemainingAmounts;
-    // AI Customer Intelligence — fetched alongside the above, same
-    // allSettled defensive pattern (see openPaymentHistory below).
-    ai?: CustomerIntelligence;
+    // Pending Amount shown in the Customer Details header — the modal's AI
+    // Customer Intelligence / Customer Due panels were removed (only the
+    // remaining_amount figure from this is still shown), but `due` itself
+    // stays fetched for that.
+    due?: CustomerDueSummary;
     // Total Cost of Flat — the list's own Customer type doesn't carry
     // flat_amount, so this is fetched alongside everything else above via
     // the same allSettled call (fetchCustomerFullDetails), best-effort.
@@ -724,16 +738,14 @@ const CustomerDetailsListPage: React.FC = () => {
   const openPaymentHistory = async (c: Customer) => {
     setInfoModal({ type: 'payment', customer: c, loading: true });
     try {
-      // Payment History is unchanged; Customer Due (total_due/remaining_amount
-      // + the per-type remaining breakdown) and Total Flat Cost are fetched
-      // alongside it so the one modal shows all of it — using allSettled so
-      // a due/remaining/full-details failure never blocks the existing
+      // Payment History is unchanged; Customer Due (only its remaining_amount,
+      // for the Pending Amount line in the header) and Total Flat Cost are
+      // fetched alongside it so the one modal shows all of it — using
+      // allSettled so a due/full-details failure never blocks the existing
       // payment history from rendering.
-      const [historyRes, dueRes, remainingRes, aiRes, fullRes] = await Promise.allSettled([
+      const [historyRes, dueRes, fullRes] = await Promise.allSettled([
         fetchCustomerPaymentHistory(c.id),
         fetchCustomerDue(c.id),
-        fetchCustomerRemaining(c.id),
-        fetchCustomerIntelligence(c.id),
         fetchCustomerFullDetails(c.id),
       ]);
       if (historyRes.status === 'rejected') throw historyRes.reason;
@@ -741,8 +753,6 @@ const CustomerDetailsListPage: React.FC = () => {
         type: 'payment', customer: c, loading: false,
         payments: historyRes.value.rows,
         due: dueRes.status === 'fulfilled' ? dueRes.value.data : undefined,
-        remaining: remainingRes.status === 'fulfilled' ? remainingRes.value.data : undefined,
-        ai: aiRes.status === 'fulfilled' ? aiRes.value : undefined,
         totalFlatCost: fullRes.status === 'fulfilled' ? fullRes.value.data?.total_cost ?? undefined : undefined,
       });
     } catch {
@@ -913,10 +923,20 @@ const CustomerDetailsListPage: React.FC = () => {
         toast.error('No customers to export.');
         return;
       }
-      const header = ['Employee Code', 'Employee Name', 'Customer Name', 'Mobile', 'Email', 'Building', 'Wing', 'Flat No', 'Flat Type', 'Area (Sq Ft)', 'Booking Date', 'Monthly EMI'];
+      const header = [
+        'Employee Code', 'Employee Name', 'Customer Name', 'Mobile', 'Email', 'Company', 'Project', 'Building',
+        'Wing / Shop', 'Flat / Shop No', 'Flat Type / Area', 'Booking Date', 'Monthly EMI', 'Monthly Installment Date',
+      ];
       const rows = exportRows.map((c) => [
         c.assigned_employee_code || '', c.assigned_employee_name || '', c.customer_name, c.mobile_number, c.email,
-        c.building_name, c.wing_name, c.flat_no, c.flat_type, c.area_sqft ?? '', formatDate(c.booking_date), c.monthly_emi ?? '',
+        c.company_name || '', c.project_name || '', c.building_name,
+        c.unit_type === 'shop' ? 'Shop' : c.wing_name,
+        c.unit_type === 'shop' ? (c.shop_no || '') : c.flat_no,
+        c.unit_type === 'shop'
+          ? `Shop${c.shop_area != null ? ` / ${c.shop_area} Sqft` : ''}`
+          : `${c.flat_type || ''}${c.area_sqft != null ? ` / ${c.area_sqft} Sqft` : ''}`,
+        formatDate(c.booking_date), c.monthly_emi ?? '',
+        c.monthly_installment_date ? formatDate(c.monthly_installment_date) : '',
       ]);
       const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1122,7 +1142,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     onOpenMenu={(e) => {
                       if (openMenuId === c.id) { setOpenMenuId(null); setMenuPos(null); return; }
                       const r = e.currentTarget.getBoundingClientRect();
-                      setMenuPos({ top: r.bottom + 4, left: r.left - 96 });
+                      setMenuPos(computeCustomerMenuPos(r));
                       setOpenMenuId(c.id);
                     }}
                     menuOpen={openMenuId === c.id} menuPos={menuPos}
@@ -1145,7 +1165,7 @@ const CustomerDetailsListPage: React.FC = () => {
                   <input type="checkbox" title="Select all active customers on this page"
                     checked={activePageRows.length > 0 && activePageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
-                {['Action', 'Customer Code', 'Customer Name', 'Employee Name', 'Contact Details', 'Project & Flat Details', 'Flat Type', 'Flat Area (Sq Ft)', 'Flat Booking Date', 'Monthly EMI Amount'].map((h) => (
+                {['Action', 'Customer Code', 'Customer Name', 'Employee Name', 'Contact Details', 'Company / Project', 'Building Details', 'Flat Type / Area', 'Flat Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
@@ -1154,9 +1174,9 @@ const CustomerDetailsListPage: React.FC = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={11} className="cust-empty-state">Loading customers...</td></tr>
+                <tr><td colSpan={12} className="cust-empty-state">Loading customers...</td></tr>
               ) : pageRows.length === 0 ? (
-                <tr><td colSpan={11} className="cust-empty-state">No customers found.</td></tr>
+                <tr><td colSpan={12} className="cust-empty-state">No customers found.</td></tr>
               ) : (
                 pageRows.map((c) => (
                   <tr key={c.id} className="cust-divider-top">
@@ -1172,7 +1192,7 @@ const CustomerDetailsListPage: React.FC = () => {
                             onClick={(e) => {
                               if (openMenuId === c.id) { setOpenMenuId(null); setMenuPos(null); return; }
                               const r = e.currentTarget.getBoundingClientRect();
-                              setMenuPos({ top: r.bottom + 4, left: r.left });
+                              setMenuPos(computeCustomerMenuPos(r));
                               setOpenMenuId(c.id);
                             }}
                             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 4 }}>
@@ -1229,14 +1249,29 @@ const CustomerDetailsListPage: React.FC = () => {
                       <div className="flex items-center gap-1.5 mt-0.5"><MdEmail size={13} /> {c.email}</div>
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
-                      <div style={{ fontWeight: 700 }}>{c.building_name}</div>
-                      <div>{c.wing_name} Wing, {c.flat_no}</div>
+                      <div style={{ fontWeight: 700 }}>{c.company_name || '—'}</div>
+                      <div>{c.project_name || '—'}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{c.flat_type || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{c.area_sqft ?? '—'}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
+                      <div style={{ fontWeight: 700 }}>{c.building_name}</div>
+                      {/* A shop booking has no wing/flat (mutually exclusive
+                          with a flat booking) — show its own Shop No instead
+                          of an empty "undefined Wing," line. */}
+                      {c.unit_type === 'shop'
+                        ? <div>Shop {c.shop_no || '—'}</div>
+                        : <div>{c.wing_name} Wing, {c.flat_no}</div>}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                      {c.unit_type === 'shop'
+                        ? `Shop${c.shop_area != null ? ` / ${c.shop_area} Sqft` : ''}`
+                        : `${c.flat_type || '—'}${c.area_sqft != null ? ` / ${c.area_sqft} Sqft` : ''}`}
+                    </td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{formatDate(c.booking_date)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       {c.monthly_emi != null ? `₹ ${c.monthly_emi.toLocaleString('en-IN')}` : '—'}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                      {c.monthly_installment_date ? formatDate(c.monthly_installment_date) : '—'}
                     </td>
                   </tr>
                 ))
@@ -1277,6 +1312,7 @@ const CustomerDetailsListPage: React.FC = () => {
                   {/* ── Customer info block — matches the reference Payment
                       History PDF's own layout (Name/Building/Mobile left,
                       Address/Email/Total Flat Cost/Pending Amount right). ── */}
+                  <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>Customer Details</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 mb-4">
                     <div style={{ fontSize: 12, color: t.textPrimary }}>Name: <strong>{infoModal.customer.customer_name}</strong></div>
                     <div style={{ fontSize: 12, color: t.textPrimary }}>Address: <strong>{infoModal.customer.address || '—'}</strong></div>
@@ -1288,80 +1324,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     <div style={{ fontSize: 12, color: '#dc2626' }}>Pending Amount: <strong>{infoModal.due ? `₹ ${infoModal.due.remaining_amount.toLocaleString('en-IN')}` : '—'}</strong></div>
                   </div>
 
-                  {/* ── 🤖 AI Customer Intelligence — engagement/risk
-                      computed server-side from this customer's own payment
-                      history (see intelligenceService.ts /
-                      customerIntelligence.service.ts). Silently omitted if
-                      the fetch failed (allSettled in openPaymentHistory) —
-                      never shown with fabricated data. ─────────────────── */}
-                  {infoModal.ai && (
-                    <div className="rounded-xl p-3.5 mb-4" style={{ background: isDark ? 'rgba(124,58,237,0.08)' : '#f5f3ff', border: `1px solid ${isDark ? 'rgba(124,58,237,0.3)' : '#ddd6fe'}` }}>
-                      <div className="flex items-center gap-1.5 mb-2.5">
-                        <span style={{ fontSize: 13 }}>🤖</span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>AI Customer Intelligence</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 mb-2.5">
-                        <div>
-                          <div style={{ fontSize: 9.5, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }}>Engagement</div>
-                          <div style={{
-                            fontSize: 12, fontWeight: 800,
-                            color: infoModal.ai.engagement === 'HIGH' ? '#16a34a' : infoModal.ai.engagement === 'MEDIUM' ? '#d97706' : '#64748b',
-                          }}>
-                            {infoModal.ai.engagement}
-                          </div>
-                          <div style={{ fontSize: 10, color: t.textSecondary }}>{infoModal.ai.engagement_reason}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 9.5, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }}>Risk</div>
-                          <div style={{
-                            fontSize: 12, fontWeight: 800,
-                            color: infoModal.ai.risk === 'HIGH' ? '#dc2626' : infoModal.ai.risk === 'MEDIUM' ? '#d97706' : '#16a34a',
-                          }}>
-                            {infoModal.ai.risk === 'HIGH' ? '⚠️ HIGH' : infoModal.ai.risk}
-                          </div>
-                          <div style={{ fontSize: 10, color: t.textSecondary }}>{infoModal.ai.risk_reason}</div>
-                        </div>
-                      </div>
-                      <div className="rounded-lg px-2.5 py-2" style={{ background: isDark ? 'rgba(124,58,237,0.12)' : '#fff', border: `1px solid ${isDark ? 'rgba(124,58,237,0.25)' : '#e9d5ff'}` }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, color: '#7c3aed', marginBottom: 1 }}>{infoModal.ai.recommended_action}</div>
-                        <div style={{ fontSize: 10, color: t.textSecondary }}>{infoModal.ai.recommended_action_reason}</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ── Customer Due panel — total_due/remaining_amount +
-                      per-type remaining breakdown, additive above the
-                      existing payment list. ──────────────────────────── */}
-                  {(infoModal.due || infoModal.remaining) && (
-                    <div className="rounded-xl p-3.5 mb-4" style={{ background: isDark ? 'rgba(220,38,38,0.08)' : '#fef2f2', border: `1px solid ${isDark ? 'rgba(220,38,38,0.25)' : '#fecaca'}` }}>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <MdAccountBalanceWallet size={15} style={{ color: '#dc2626' }} />
-                        <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>Customer Due</span>
-                      </div>
-                      {infoModal.due && (
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                          <div>
-                            <div style={{ fontSize: 10, color: t.textSecondary }}>Total Due</div>
-                            <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>₹ {infoModal.due.total_due.toLocaleString('en-IN')}</div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 10, color: t.textSecondary }}>Remaining</div>
-                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#dc2626' }}>₹ {infoModal.due.remaining_amount.toLocaleString('en-IN')}</div>
-                          </div>
-                        </div>
-                      )}
-                      {infoModal.remaining && (
-                        <div className="flex flex-wrap gap-x-4 gap-y-1" style={{ borderTop: `1px solid ${isDark ? 'rgba(220,38,38,0.2)' : '#fecaca'}`, paddingTop: 6 }}>
-                          {PAYMENT_FOR_OPTIONS.map((o) => (
-                            <div key={o.value} style={{ fontSize: 10, color: t.textSecondary }}>
-                              {o.label}: <strong style={{ color: t.textPrimary }}>₹ {(infoModal.remaining![o.value] ?? 0).toLocaleString('en-IN')}</strong>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
+                  <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>Payment Details</div>
                   {(infoModal.payments || []).length === 0 ? (
                     <p style={{ color: t.textSecondary, fontSize: 12 }}>No payment history found.</p>
                   ) : (

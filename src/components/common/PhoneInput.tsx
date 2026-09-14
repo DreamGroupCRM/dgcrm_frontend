@@ -11,6 +11,7 @@
 // which is both the safer layout and the more familiar pattern from
 // production phone inputs (react-phone-input-2, intl-tel-input, etc.).
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MdAdd, MdKeyboardArrowDown, MdSearch } from 'react-icons/md';
 // Real SVG flags instead of Unicode flag emoji (🇮🇳 etc.) — those only
 // render as a picture when the OS/browser ships a color-emoji font with
@@ -91,13 +92,46 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+
+  // The country picker is used inside accordion sections, modals, and
+  // narrow grid cells all over the app (Customer/Employee/Company/Lead/User
+  // Management forms) — a plain `position: absolute` panel here would get
+  // clipped by any of those containers' own overflow/scroll (item 7's
+  // "hidden behind accordions/cards" bug). Rendered into a document.body
+  // portal at a `fixed` position computed from the trigger's own bounding
+  // rect instead, same fix already applied to the app's other dropdowns.
+  const openDropdown = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setMenuPos({ top: r.bottom + 4, left: r.left });
+    setOpen((v) => !v);
+  };
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQuery(''); } };
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (ref.current && !ref.current.contains(target) && !target.closest?.('[data-phone-country-menu]')) {
+        setOpen(false); setQuery('');
+      }
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const reposition = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (r) setMenuPos({ top: r.bottom + 4, left: r.left });
+    };
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
   }, [open]);
 
   const selected = COUNTRY_OPTIONS.find((c) => c.code === code) || COUNTRY_OPTIONS[0];
@@ -113,16 +147,16 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       {icon}
       <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
         <button
-          type="button" disabled={disabled} onClick={() => setOpen((v) => !v)}
+          type="button" disabled={disabled} onClick={openDropdown}
           className="flex items-center gap-1.5"
           style={{ background: 'transparent', border: 'none', padding: '9px 2px', cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: theme.fontFamily, fontSize: 12, color: theme.inputText }}
         >
           <selected.flag title={selected.name} style={flagStyle} /> {selected.code} <MdKeyboardArrowDown size={13} style={{ color: theme.textSecondary }} />
         </button>
 
-        {open && !disabled && (
-          <div style={{
-            position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 30, width: 260,
+        {open && !disabled && menuPos && createPortal(
+          <div data-phone-country-menu style={{
+            position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 200, width: 260,
             background: theme.surfaceBg, border: `1px solid ${theme.surfaceBorder}`, borderRadius: 12,
             boxShadow: '0 8px 24px rgba(0,0,0,0.16)', overflow: 'hidden',
           }}>
@@ -153,14 +187,15 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
                 </button>
               ))}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 
       <span style={{ width: 1, height: 18, background: theme.inputBorder, flexShrink: 0 }} />
       <input
-        type="tel" placeholder={placeholder} value={number} disabled={disabled}
-        onChange={(e) => onNumberChange(e.target.value.replace(/[^\d]/g, ''))}
+        type="tel" placeholder={placeholder} value={number} disabled={disabled} maxLength={10}
+        onChange={(e) => onNumberChange(e.target.value.replace(/[^\d]/g, '').slice(0, 10))}
         style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 50, color: theme.inputText, fontSize: 12, fontFamily: theme.fontFamily }}
       />
       {onAdd && !disabled && (

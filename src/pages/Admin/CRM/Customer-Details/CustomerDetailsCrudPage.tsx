@@ -33,6 +33,7 @@ import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils
 import { DobPicker } from '../../../../components/common/DobPicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
 import { phoneNumberError } from '../../../../utils/phoneValidation';
+import { aadhaarError, panError, sanitizeDigits, sanitizeAlphanumericUpper } from '../../../../utils/fieldValidation';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './CustomerDetails.css';
@@ -914,8 +915,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     { field: 'secondaryNumber', section: 'personal', message: phoneNumberError(secondaryCountryCode, secondaryNumber), failed: () => !!phoneNumberError(secondaryCountryCode, secondaryNumber) },
     { field: 'alternatePersonMobile', section: 'personal', message: phoneNumberError(alternatePersonCountryCode, alternatePersonMobile), failed: () => !!phoneNumberError(alternatePersonCountryCode, alternatePersonMobile) },
     { field: 'aadharPhoto', section: 'personal', message: 'Please upload the Aadhar Card.', failed: () => !aadharPhoto },
-    { field: 'aadharNumber', section: 'personal', message: 'Please enter the Aadhar Number.', failed: () => aadharNumber.trim() === '' },
+    { field: 'aadharNumber', section: 'personal', message: aadhaarError(aadharNumber, true), failed: () => !!aadhaarError(aadharNumber, true) },
     { field: 'pancardPhoto', section: 'personal', message: 'Please upload the PAN Card.', failed: () => !pancardPhoto },
+    { field: 'pancardNumber', section: 'personal', message: panError(pancardNumber), failed: () => !!panError(pancardNumber) },
     { field: 'address', section: 'personal', message: 'Please enter the Address.', failed: () => address.trim() === '' },
     { field: 'dateOfBirth', section: 'personal', message: 'Please select the Date of Birth.', failed: () => dateOfBirth === '' },
     { field: 'companyName', section: 'property', message: 'Please select the Company Name.', failed: () => companyName.trim() === '' },
@@ -980,15 +982,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       toast.error('Remaining Booking Date cannot be before the Booking Date.');
       return;
     }
-    // Backend hard-requires a 12-digit Aadhaar number (CreateCustomerSchema's
-    // aadhar_card_no) — checked here too so a photo whose OCR auto-fill
-    // misread or skipped the number doesn't reach the server before the
-    // customer gets a clear message about it.
-    if (!/^\d{12}$/.test(aadharNumber.trim())) {
-      toast.error('Aadhaar number must be exactly 12 digits.');
-      return;
-    }
-
     // Item 18: possible-duplicate warn-but-allow popup — Create only (an
     // existing customer editing their own record isn't a "duplicate" of
     // themselves). The admin can still confirm and proceed — this is a
@@ -1385,16 +1378,16 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
           <Field t={t} label="Aadhar Number" required error={errorFor('aadharNumber')} fieldRef={setFieldRef('aadharNumber') as React.Ref<HTMLDivElement>}>
-            <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView}
-              onChange={(e) => setAadharNumber(e.target.value.replace(/[^\d]/g, ''))} className={fieldClass} />
+            <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView} maxLength={12}
+              onChange={(e) => setAadharNumber(sanitizeDigits(e.target.value, 12))} className={fieldClass} />
           </Field>
           <Field t={t} label="Upload Pancard Photo" required error={errorFor('pancardPhoto')} fieldRef={setFieldRef('pancardPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange} />
             {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0284c7', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
-          <Field t={t} label="Pancard Number">
-            <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView}
-              onChange={(e) => setPancardNumber(e.target.value.toUpperCase())} className={fieldClass} />
+          <Field t={t} label="Pancard Number" error={errorFor('pancardNumber')} fieldRef={setFieldRef('pancardNumber') as React.Ref<HTMLDivElement>}>
+            <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView} maxLength={10}
+              onChange={(e) => setPancardNumber(sanitizeAlphanumericUpper(e.target.value, 10))} className={fieldClass} />
           </Field>
         </div>
 

@@ -246,10 +246,10 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
   // ── shared field styles (src/components/common/MasterListUI.tsx) — this
   // page's own padding/radius/font-size preserved via overrides, only the
   // repeated border/background/color construction is now centralized. ────
-  const labelStyle = getFormLabelStyle(t, { fontSize: 12, color: t.textPrimary, marginBottom: 6 });
+  const labelStyle = getFormLabelStyle(t, { fontSize: 13, color: t.textPrimary, marginBottom: 6 });
   const fieldStyle = getFormInputStyle(t, {
     background: isView ? t.insetBg : t.inputBg, borderRadius: 10, padding: '10px 14px',
-    fontSize: 12.5, outline: 'none', fontFamily: t.fontFamily,
+    fontSize: 13.5, outline: 'none', fontFamily: t.fontFamily,
   });
 
   if (fetching) {

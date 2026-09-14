@@ -322,13 +322,23 @@ export const UpdateBuilding = async (
   };
 };
 
-// ── Delete building ──────────────────────────────────────────────────────────
-/** DELETE /api/buildings/:id */
-export const DeleteBuilding = async (id: string): Promise<BuildingDeleteResponse> => {
-  const res = await axiosInstance.delete(`/buildings/${id}`, {
-    headers: { [API_NAME_HEADER]: 'DeleteBuilding' },
+// ── Disable / Enable building ────────────────────────────────────────────────
+// Replaces the old hard-sounding "Delete Building" — a building (and
+// everything under it) is only ever soft-disabled, never removed; it keeps
+// showing up in Building Master (greyed out) instead of disappearing.
+/** PATCH /api/buildings/:id/disable */
+export const DisableBuilding = async (id: string): Promise<BuildingDeleteResponse> => {
+  const res = await axiosInstance.patch(`/buildings/${id}/disable`, undefined, {
+    headers: { [API_NAME_HEADER]: 'DisableBuilding' },
   });
-  console.log('[buildingService] DeleteBuilding response:', res.data);
+  return res.data;
+};
+
+/** PATCH /api/buildings/:id/enable */
+export const EnableBuilding = async (id: string): Promise<BuildingDeleteResponse> => {
+  const res = await axiosInstance.patch(`/buildings/${id}/enable`, undefined, {
+    headers: { [API_NAME_HEADER]: 'EnableBuilding' },
+  });
   return res.data;
 };
 
@@ -338,5 +348,6 @@ export const buildingService = {
   getById : ViewBuilding,
   create  : CreateBuilding,
   update  : UpdateBuilding,
-  remove  : DeleteBuilding,
+  disable : DisableBuilding,
+  enable  : EnableBuilding,
 };

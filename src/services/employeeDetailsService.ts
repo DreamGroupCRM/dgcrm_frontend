@@ -89,6 +89,10 @@ export interface Employee {
   // multi-membership arrays are empty.
   department?                                      : string | null;
   designation?                                      : string | null;
+  // Count of other employees reporting to this one (see reporting_manager_id
+  // / "Assign Visible Employees") — always present on list rows, computed
+  // server-side via a correlated subquery (employees.repository.ts).
+  visible_employees_count?                         : number;
 
   status                                             : EmployeeStatus;
   is_active                                           : boolean;

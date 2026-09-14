@@ -66,7 +66,7 @@ const Field: React.FC<FieldProps> = ({
         color: textPrim,
         fontWeight: 600,
         mb: 0.75,
-        fontSize: '0.82rem',
+        fontSize: '0.875rem',
         textTransform: 'uppercase',
         letterSpacing: '0.04em',
       }}
@@ -81,7 +81,7 @@ const Field: React.FC<FieldProps> = ({
           px: 2, py: 1.5, borderRadius: 2,
           border: `1px solid ${borderC}`,
           background: isDark ? '#0f172a' : '#f8faff',
-          color: textPrim, fontSize: '0.95rem',
+          color: textPrim, fontSize: '1rem',
           fontWeight: 500, minHeight: 44,
         }}
       >
@@ -98,12 +98,12 @@ const Field: React.FC<FieldProps> = ({
         sx={{
           '& .MuiOutlinedInput-root': {
             background: isDark ? '#0f172a' : '#fff',
-            borderRadius: 2, color: textPrim, fontSize: '0.95rem',
+            borderRadius: 2, color: textPrim, fontSize: '1rem',
             '& fieldset': { borderColor: error ? '#ef4444' : borderC },
             '&:hover fieldset': { borderColor: error ? '#ef4444' : '#3b82f6' },
             '&.Mui-focused fieldset': { borderColor: error ? '#ef4444' : '#3b82f6' },
           },
-          '& .MuiFormHelperText-root': { color: '#ef4444', fontSize: '0.78rem', mt: 0.5, ml: 0 },
+          '& .MuiFormHelperText-root': { color: '#ef4444', fontSize: '0.82rem', mt: 0.5, ml: 0 },
           '& input': { color: textPrim },
         }}
       />

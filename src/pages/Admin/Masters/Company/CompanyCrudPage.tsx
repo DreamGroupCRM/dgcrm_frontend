@@ -16,6 +16,7 @@ import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FormField, getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
 import { phoneNumberError } from '../../../../utils/phoneValidation';
+import { pincodeError, panError, gstError, sanitizeDigits, sanitizeAlphanumericUpper } from '../../../../utils/fieldValidation';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { showAlert } from '../../../../utils';
 import { companyService, CompanyPayload } from '../../../../services/companyService';
@@ -40,7 +41,7 @@ interface FieldProps {
 const Field: React.FC<FieldProps> = ({ label, required, error, t, children, fieldRef }) => (
   <FormField
     label={label} t={t} required={required} error={error} fieldRef={fieldRef}
-    labelStyle={getFormLabelStyle(t, { fontWeight: 700, fontSize: 12.5, marginBottom: 6, color: t.textPrimary })}
+    labelStyle={getFormLabelStyle(t, { fontWeight: 700, fontSize: 13.5, marginBottom: 6, color: t.textPrimary })}
   >
     {children}
   </FormField>
@@ -63,7 +64,6 @@ interface FormState {
   pincode: string;
   pan: string;
   gst: string;
-  company_code: string;
 }
 
 interface FormErrors {
@@ -74,6 +74,9 @@ interface FormErrors {
   city?: string;
   state?: string;
   country?: string;
+  pincode?: string;
+  pan?: string;
+  gst?: string;
 }
 
 const ALPHA_REGEX = /^[a-zA-Z\s]*$/;
@@ -85,7 +88,7 @@ const FOOTER_HEIGHT = 76;
 
 const empty: FormState = {
   name: '', email: '', phone_country_code: '+91', phone: '', whatsapp_country_code: '+91', whatsapp_number: '',
-  city: '', state: '', country: '', pincode: '', pan: '', gst: '', company_code: '',
+  city: '', state: '', country: '', pincode: '', pan: '', gst: '',
 };
 
 const fromCompany = (d: Company): FormState => ({
@@ -101,7 +104,6 @@ const fromCompany = (d: Company): FormState => ({
   pincode: d.pincode ?? '',
   pan: d.pan ?? '',
   gst: d.gst ?? '',
-  company_code: d.company_code ?? '',
 });
 
 const PAGE_TITLES: Record<Mode, string> = {
@@ -134,7 +136,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
   // (item 7) so its list reads like real sentences instead of raw keys.
   const FIELD_LABELS: Record<keyof FormErrors, string> = {
     name: 'Company Name', email: 'Email', phone: 'Phone', whatsapp_number: 'WhatsApp Number',
-    city: 'City', state: 'State', country: 'Country',
+    city: 'City', state: 'State', country: 'Country', pincode: 'Pincode', pan: 'PAN', gst: 'GST',
   };
 
   const revealInvalidField = (field: string) => {
@@ -180,6 +182,12 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
     if (form.city && !ALPHA_REGEX.test(form.city)) e.city = 'City must contain letters only.';
     if (form.state && !ALPHA_REGEX.test(form.state)) e.state = 'State must contain letters only.';
     if (form.country && !ALPHA_REGEX.test(form.country)) e.country = 'Country must contain letters only.';
+    const pincodeErr = pincodeError(form.pincode);
+    if (pincodeErr) e.pincode = pincodeErr;
+    const panErr = panError(form.pan);
+    if (panErr) e.pan = panErr;
+    const gstErr = gstError(form.gst);
+    if (gstErr) e.gst = gstErr;
     return e;
   };
 
@@ -221,7 +229,6 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
         phone_country_code: form.phone_country_code,
         phone: form.phone.trim(),
         is_active: true,
-        company_code: form.company_code,
         whatsapp_country_code: form.whatsapp_country_code,
         whatsapp_number: form.whatsapp_number,
         city: form.city,
@@ -277,7 +284,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
     border: `1px solid ${hasError ? '#ef4444' : t.inputBorder}`,
     borderRadius: 10,
     padding: '10px 14px',
-    fontSize: 12.5,
+    fontSize: 13.5,
     outline: 'none',
     fontFamily: t.fontFamily,
     cursor: isView ? 'not-allowed' : 'text',
@@ -403,7 +410,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
 
-          <Field label="Pincode" t={t}>
+          <Field label="Pincode" t={t} error={errors.pincode} fieldRef={setFieldRef('pincode')}>
             <input
               type="text"
               inputMode="numeric"
@@ -411,48 +418,38 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
               value={form.pincode}
               readOnly={isView}
               disabled={isView}
-              maxLength={10}
-              onChange={(e) => {
-                if (!isView && NUMERIC_REGEX.test(e.target.value))
-                  handleChange('pincode', e.target.value);
-              }}
-              style={fieldStyle()}
+              maxLength={6}
+              onChange={(e) => !isView && handleChange('pincode', sanitizeDigits(e.target.value, 6))}
+              onBlur={() => !isView && handleBlur('pincode')}
+              style={fieldStyle(!!errors.pincode)}
             />
           </Field>
 
-          <Field label="PAN" t={t}>
+          <Field label="PAN" t={t} error={errors.pan} fieldRef={setFieldRef('pan')}>
             <input
               type="text"
               placeholder="Enter PAN number"
               value={form.pan}
               readOnly={isView}
               disabled={isView}
-              onChange={(e) => !isView && handleChange('pan', e.target.value.toUpperCase())}
-              style={fieldStyle()}
+              maxLength={10}
+              onChange={(e) => !isView && handleChange('pan', sanitizeAlphanumericUpper(e.target.value, 10))}
+              onBlur={() => !isView && handleBlur('pan')}
+              style={fieldStyle(!!errors.pan)}
             />
           </Field>
 
-          <Field label="GST" t={t}>
+          <Field label="GST" t={t} error={errors.gst} fieldRef={setFieldRef('gst')}>
             <input
               type="text"
               placeholder="Enter GST number"
               value={form.gst}
               readOnly={isView}
               disabled={isView}
-              onChange={(e) => !isView && handleChange('gst', e.target.value.toUpperCase())}
-              style={fieldStyle()}
-            />
-          </Field>
-
-          <Field label="Company Code" t={t}>
-            <input
-              type="text"
-              placeholder="Enter company code"
-              value={form.company_code}
-              readOnly={isView}
-              disabled={isView}
-              onChange={(e) => !isView && handleChange('company_code', e.target.value)}
-              style={fieldStyle()}
+              maxLength={15}
+              onChange={(e) => !isView && handleChange('gst', sanitizeAlphanumericUpper(e.target.value, 15))}
+              onBlur={() => !isView && handleBlur('gst')}
+              style={fieldStyle(!!errors.gst)}
             />
           </Field>
 

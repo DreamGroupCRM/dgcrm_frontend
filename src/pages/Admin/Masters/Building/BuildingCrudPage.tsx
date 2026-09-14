@@ -352,7 +352,7 @@ const SeriesConfigCard: React.FC<{
   onApply: () => void;
   onCancel: () => void;
 }> = ({ t, accent, accentHover, seriesNumber, draft, onChangeDraft, onApply, onCancel }) => {
-  const fieldStyleLocal = getFormInputStyle(t, { borderRadius: 8, padding: '7px 10px', fontSize: 11.5, outline: 'none' });
+  const fieldStyleLocal = getFormInputStyle(t, { borderRadius: 8, padding: '7px 10px', fontSize: 12.5, outline: 'none' });
   return (
     <div
       className="w-full"
@@ -765,7 +765,11 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   const parkingCountValid = parkingCountInput.trim() !== '' && /^\d+$/.test(parkingCountInput.trim()) && parseInt(parkingCountInput, 10) > 0;
   const parkingSectionValid = hasParking !== null && (!hasParking || parkingCountValid);
 
+  // Company is mandatory on Add — existing buildings created before this
+  // rule may have none set, so Edit stays permissive rather than blocking
+  // an otherwise-unrelated edit until the user backfills it.
   const isFormValid =
+    (isEdit || businessCompanyId !== '') &&
     projectName.trim() !== '' &&
     location.trim() !== '' &&
     buildingName.trim() !== '' &&
@@ -782,8 +786,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   const shopsRef = useRef<HTMLDivElement>(null);
   const parkingRef = useRef<HTMLDivElement>(null);
   const validationChecks: { field: string; message: string; failed: () => boolean; sectionRef: React.RefObject<HTMLDivElement> }[] = [
-    { field: 'projectDetails', message: 'Please fill all Project Details fields.', sectionRef: projectDetailsRef,
-      failed: () => !projectName.trim() || !location.trim() || !buildingName.trim() },
+    { field: 'projectDetails', message: 'Please fill all Project Details fields, including Company.', sectionRef: projectDetailsRef,
+      failed: () => (!isEdit && !businessCompanyId) || !projectName.trim() || !location.trim() || !buildingName.trim() },
     { field: 'wings', message: 'Please give every wing a name and a valid floor count.', sectionRef: wingsRef,
       failed: () => wings.length === 0 || wings.some((w) => w.name.trim() === '' || !(parseInt(w.no_of_floors, 10) >= 0)) },
     { field: 'shops', message: hasShops === null ? 'Please select whether this building has shops.' : 'Please enter the number of shops and click Generate Shops.', sectionRef: shopsRef,
@@ -877,12 +881,12 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   // page's own padding/radius/font-size preserved via overrides. ──────────
   const fieldStyle = getFormInputStyle(t, {
     background: isView ? t.insetBg : t.inputBg, borderRadius: 10,
-    padding: '10px 14px', fontSize: 12.5,
+    padding: '10px 14px', fontSize: 13.5,
     outline: 'none', boxSizing: 'border-box', fontFamily: t.fontFamily,
     cursor: isView ? 'not-allowed' : 'text', opacity: isView ? 0.85 : 1,
   });
 
-  const labelStyle = getFormLabelStyle(t, { fontWeight: 600, fontSize: 12, marginBottom: 6, color: t.textPrimary, fontFamily: t.fontFamily });
+  const labelStyle = getFormLabelStyle(t, { fontWeight: 600, fontSize: 13, marginBottom: 6, color: t.textPrimary, fontFamily: t.fontFamily });
 
   if (fetching) {
     return (
@@ -910,19 +914,18 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
           <div>
-            {/* V_22.0 — moved here from its own former "Step 7: Company"
-                section, per the sequence Company → Project → Location →
-                Building; optional (a building need not link to a business
-                Company), so no required-field marker. Lists every entry
-                in Company Master, same as before. */}
-            <label style={labelStyle}>Company</label>
+            {/* Moved here from its own former "Step 7: Company" section,
+                per the sequence Company → Project → Location → Building.
+                Now mandatory — every building must link to a business
+                Company. Lists every entry in Company Master, same as before. */}
+            <label style={labelStyle}>Company {!isEdit && <span style={{ color: '#ef4444' }}>*</span>}</label>
             <select
               value={businessCompanyId}
               disabled={isView}
               onChange={(e) => { setBusinessCompanyId(e.target.value); markDirty(); }}
               style={{ ...fieldStyle, cursor: isView ? 'default' : 'pointer' }}
             >
-              <option value="">Select company (optional)</option>
+              <option value="">Select company</option>
               {companyOptions.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -1267,7 +1270,11 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+        {/* One row: Yes/No -> shop count -> Generate Shops — all inline
+            (wraps on narrow screens via flex-wrap, but never stacked into
+            separate rows/sections the way the count+Generate block used to
+            sit below a divider). */}
+        <div className="flex flex-wrap items-center gap-3 sm:gap-5">
           <label style={labelStyle}>
             Do you have shops in this building? <span style={{ color: '#ef4444' }}>*</span>
           </label>
@@ -1287,11 +1294,9 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
               No
             </label>
           </div>
-        </div>
 
-        {hasShops && (
-          <div className="mt-5" style={{ borderTop: `1px solid ${t.divider}`, paddingTop: 16 }}>
-            <div className="flex flex-wrap items-center gap-3 mb-4">
+          {hasShops && (
+            <>
               <span style={{ fontWeight: 600, fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                 How many shops in this building? <span style={{ color: '#ef4444' }}>*</span>
               </span>
@@ -1315,8 +1320,12 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                   <MdAdd size={17} /> Generate Shops
                 </button>
               )}
-            </div>
+            </>
+          )}
+        </div>
 
+        {hasShops && (
+          <div className="mt-5" style={{ borderTop: `1px solid ${t.divider}`, paddingTop: 16 }}>
             {shops.length === 0 ? (
               <p style={{ color: t.textSecondary, fontSize: 12 }}>
                 No shops yet — enter a count above and click &quot;Generate Shops&quot;.
@@ -1406,7 +1415,10 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+        {/* One row: Yes/No -> parking count input — same inline pattern as
+            the Shops section above (wraps on narrow screens, never a
+            separate stacked row/section). */}
+        <div className="flex flex-wrap items-center gap-3 sm:gap-5">
           <label style={labelStyle}>
             Do you have parking? <span style={{ color: '#ef4444' }}>*</span>
           </label>
@@ -1426,11 +1438,9 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
               No
             </label>
           </div>
-        </div>
 
-        {hasParking && (
-          <div className="mt-5" style={{ borderTop: `1px solid ${t.divider}`, paddingTop: 16 }}>
-            <div className="flex flex-wrap items-center gap-3">
+          {hasParking && (
+            <>
               <span style={{ fontWeight: 600, fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                 How many parking spaces are there in this building? <span style={{ color: '#ef4444' }}>*</span>
               </span>
@@ -1452,9 +1462,9 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 }}
                 style={{ ...fieldStyle, width: 140 }}
               />
-            </div>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </SectionCard>
 
       {/* ── Action Buttons ───────────────────────────────────────────────── */}

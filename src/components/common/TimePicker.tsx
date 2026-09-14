@@ -11,6 +11,7 @@
 // fully reachable by keyboard/tab, and each column scrolls independently
 // with CSS scroll-snap for a smooth, native-feeling stop-on-value feel.
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MdAccessTime } from 'react-icons/md';
 
 export interface PickerTheme {
@@ -101,13 +102,42 @@ interface TimePickerProps {
 
 export const TimePicker: React.FC<TimePickerProps> = ({ theme, value, onChange, disabled }) => {
   const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Check-In/Check-Out lives inside an accordion section on the Employee
+  // CRUD form — a plain `position: absolute` popover here would get
+  // clipped by any scrollable/overflow ancestor (item 7). Rendered into a
+  // document.body portal at a `fixed` position instead, same fix as the
+  // app's other dropdowns/pickers.
+  const openPicker = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setMenuPos({ top: r.bottom + 4, left: r.left });
+    setOpen((v) => !v);
+  };
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (ref.current && !ref.current.contains(target) && !target.closest?.('[data-time-picker-menu]')) setOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const reposition = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (r) setMenuPos({ top: r.bottom + 4, left: r.left });
+    };
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
   }, [open]);
 
   const [hStr, mStr] = value ? value.split(':') : ['', ''];
@@ -124,7 +154,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({ theme, value, onChange, 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button
-        type="button" disabled={disabled} onClick={() => setOpen((v) => !v)}
+        type="button" disabled={disabled} onClick={openPicker}
         className="flex items-center gap-1.5"
         style={{
           width: '100%', background: theme.inputBg, border: `1px solid ${theme.inputBorder}`, borderRadius: 10,
@@ -136,10 +166,11 @@ export const TimePicker: React.FC<TimePickerProps> = ({ theme, value, onChange, 
         {value ? formatDisplay(value) : 'Select time'}
       </button>
 
-      {open && !disabled && (
+      {open && !disabled && menuPos && createPortal(
         <div
+          data-time-picker-menu
           style={{
-            position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 30,
+            position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 200,
             display: 'flex', background: theme.surfaceBg, border: `1px solid ${theme.surfaceBorder}`,
             borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.16)', overflow: 'hidden',
           }}
@@ -165,7 +196,8 @@ export const TimePicker: React.FC<TimePickerProps> = ({ theme, value, onChange, 
               );
             })}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
