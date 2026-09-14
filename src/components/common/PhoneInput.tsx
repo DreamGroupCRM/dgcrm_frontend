@@ -19,7 +19,8 @@ import { MdAdd, MdKeyboardArrowDown, MdSearch } from 'react-icons/md';
 // text ("IN") instead of a flag, which is what was actually happening
 // everywhere this component is used. SVGs render identically on every
 // platform since they don't depend on any installed font.
-import { IN, US, GB, AU, AE, SG } from 'country-flag-icons/react/3x2';
+import * as FlagIcons from 'country-flag-icons/react/3x2';
+import { getCountries, getCountryCallingCode } from 'libphonenumber-js/min';
 
 export interface PickerTheme {
   inputBg: string;
@@ -39,23 +40,35 @@ export interface PickerTheme {
 type FlagIcon = React.ComponentType<{ title?: string; style?: React.CSSProperties }>;
 
 export interface CountryOption {
+  iso2: string;
   code: string;
   flag: FlagIcon;
   name: string;
 }
 
-// Same 6 countries both pages already supported — just carrying the name
-// alongside the flag/code now, for the dropdown list only.
-export const COUNTRY_OPTIONS: CountryOption[] = [
-  { code: '+91', flag: IN as FlagIcon, name: 'India' },
-  { code: '+1', flag: US as FlagIcon, name: 'USA' },
-  { code: '+44', flag: GB as FlagIcon, name: 'UK' },
-  { code: '+61', flag: AU as FlagIcon, name: 'Australia' },
-  { code: '+971', flag: AE as FlagIcon, name: 'UAE' },
-  { code: '+65', flag: SG as FlagIcon, name: 'Singapore' },
-];
+// Every country/territory libphonenumber-js knows a dial code for — built
+// once from that library's own data (not a hand-typed table) plus
+// Intl.DisplayNames for the English name, so this list is exactly as
+// complete and correct as the phone-number validation elsewhere in this
+// app already is. India is pinned first as the default/most-used country;
+// everything else is alphabetical by name. A dial code can be shared by
+// more than one country (e.g. +1 for both USA and Canada) — that's real
+// (not a bug here), so the closed/selected state just shows whichever of
+// those countries appears first in this list for that code.
+const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+export const COUNTRY_OPTIONS: CountryOption[] = getCountries()
+  .map((iso2) => ({
+    iso2,
+    code: `+${getCountryCallingCode(iso2)}`,
+    flag: (FlagIcons as Record<string, FlagIcon>)[iso2],
+    name: regionNames.of(iso2) || iso2,
+  }))
+  .filter((c) => !!c.flag)
+  .sort((a, b) => (a.iso2 === 'IN' ? -1 : b.iso2 === 'IN' ? 1 : a.name.localeCompare(b.name)));
 
-const flagStyle: React.CSSProperties = { width: 18, height: 13, borderRadius: 2, flexShrink: 0, objectFit: 'cover' };
+// A thin outline keeps white-heavy flags (Japan, etc.) visible against a
+// white/light dropdown row instead of nearly disappearing into it.
+const flagStyle: React.CSSProperties = { width: 18, height: 13, borderRadius: 2, flexShrink: 0, objectFit: 'cover', boxShadow: '0 0 0 1px rgba(0,0,0,0.12)' };
 
 interface PhoneInputProps {
   theme: PickerTheme;
@@ -109,24 +122,24 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
 
         {open && !disabled && (
           <div style={{
-            position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 30, width: 220,
+            position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 30, width: 260,
             background: theme.surfaceBg, border: `1px solid ${theme.surfaceBorder}`, borderRadius: 12,
             boxShadow: '0 8px 24px rgba(0,0,0,0.16)', overflow: 'hidden',
           }}>
             <div className="flex items-center gap-1.5 px-2.5 py-2" style={{ borderBottom: `1px solid ${theme.surfaceBorder}` }}>
               <MdSearch size={14} style={{ color: theme.textSecondary, flexShrink: 0 }} />
               <input
-                autoFocus type="text" placeholder="Search country" value={query}
+                autoFocus type="text" placeholder="Search country or code" value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 12, width: '100%', color: theme.inputText, fontFamily: theme.fontFamily }}
               />
             </div>
-            <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+            <div style={{ maxHeight: 280, overflowY: 'auto' }}>
               {filtered.length === 0 ? (
                 <div style={{ padding: '10px 12px', fontSize: 11.5, color: theme.textSecondary }}>No matching country.</div>
               ) : filtered.map((c) => (
                 <button
-                  key={c.code} type="button"
+                  key={c.iso2} type="button"
                   onClick={() => { onCodeChange(c.code); setOpen(false); setQuery(''); }}
                   className="w-full flex items-center gap-2 text-left"
                   style={{
@@ -135,8 +148,8 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
                   }}
                 >
                   <c.flag title={c.name} style={flagStyle} />
-                  <span style={{ flex: 1 }}>{c.name}</span>
-                  <span style={{ color: theme.textSecondary }}>{c.code}</span>
+                  <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</span>
+                  <span style={{ color: theme.textSecondary, flexShrink: 0 }}>{c.code}</span>
                 </button>
               ))}
             </div>
