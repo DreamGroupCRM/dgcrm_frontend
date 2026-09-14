@@ -20,6 +20,7 @@
     "@reduxjs/toolkit": "^2.2.5",
     "@types/three": "^0.169.0",
     "axios": "^1.7.2",
+    "country-flag-icons": "^1.6.20",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "jspdf": "^4.2.1",

@@ -12,6 +12,14 @@
 // production phone inputs (react-phone-input-2, intl-tel-input, etc.).
 import React, { useEffect, useRef, useState } from 'react';
 import { MdAdd, MdKeyboardArrowDown, MdSearch } from 'react-icons/md';
+// Real SVG flags instead of Unicode flag emoji (🇮🇳 etc.) — those only
+// render as a picture when the OS/browser ships a color-emoji font with
+// flag glyphs. Windows (pre-2022 builds) and most Linux browsers don't, so
+// they silently fall back to showing the raw two-letter region-indicator
+// text ("IN") instead of a flag, which is what was actually happening
+// everywhere this component is used. SVGs render identically on every
+// platform since they don't depend on any installed font.
+import { IN, US, GB, AU, AE, SG } from 'country-flag-icons/react/3x2';
 
 export interface PickerTheme {
   inputBg: string;
@@ -25,22 +33,29 @@ export interface PickerTheme {
   fontFamily: string;
 }
 
+// The library's own Props type (ElementAttributes<HTMLSVGElement>) doesn't
+// actually match DOM's SVGSVGElement, so a looser shape is used here for
+// the two props these flags are actually given below.
+type FlagIcon = React.ComponentType<{ title?: string; style?: React.CSSProperties }>;
+
 export interface CountryOption {
   code: string;
-  flag: string;
+  flag: FlagIcon;
   name: string;
 }
 
 // Same 6 countries both pages already supported — just carrying the name
 // alongside the flag/code now, for the dropdown list only.
 export const COUNTRY_OPTIONS: CountryOption[] = [
-  { code: '+91', flag: '🇮🇳', name: 'India' },
-  { code: '+1', flag: '🇺🇸', name: 'USA' },
-  { code: '+44', flag: '🇬🇧', name: 'UK' },
-  { code: '+61', flag: '🇦🇺', name: 'Australia' },
-  { code: '+971', flag: '🇦🇪', name: 'UAE' },
-  { code: '+65', flag: '🇸🇬', name: 'Singapore' },
+  { code: '+91', flag: IN as FlagIcon, name: 'India' },
+  { code: '+1', flag: US as FlagIcon, name: 'USA' },
+  { code: '+44', flag: GB as FlagIcon, name: 'UK' },
+  { code: '+61', flag: AU as FlagIcon, name: 'Australia' },
+  { code: '+971', flag: AE as FlagIcon, name: 'UAE' },
+  { code: '+65', flag: SG as FlagIcon, name: 'Singapore' },
 ];
+
+const flagStyle: React.CSSProperties = { width: 18, height: 13, borderRadius: 2, flexShrink: 0, objectFit: 'cover' };
 
 interface PhoneInputProps {
   theme: PickerTheme;
@@ -86,10 +101,10 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
         <button
           type="button" disabled={disabled} onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-0.5"
+          className="flex items-center gap-1.5"
           style={{ background: 'transparent', border: 'none', padding: '9px 2px', cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: theme.fontFamily, fontSize: 12, color: theme.inputText }}
         >
-          {selected.flag} {selected.code} <MdKeyboardArrowDown size={13} style={{ color: theme.textSecondary }} />
+          <selected.flag title={selected.name} style={flagStyle} /> {selected.code} <MdKeyboardArrowDown size={13} style={{ color: theme.textSecondary }} />
         </button>
 
         {open && !disabled && (
@@ -119,7 +134,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
                     background: c.code === code ? 'rgba(2,132,199,0.1)' : 'transparent', color: theme.textPrimary, fontSize: 12.5,
                   }}
                 >
-                  <span>{c.flag}</span>
+                  <c.flag title={c.name} style={flagStyle} />
                   <span style={{ flex: 1 }}>{c.name}</span>
                   <span style={{ color: theme.textSecondary }}>{c.code}</span>
                 </button>
