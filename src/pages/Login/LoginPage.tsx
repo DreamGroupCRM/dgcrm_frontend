@@ -24,11 +24,10 @@ import { ROUTES } from '../../constants';
 import { showAlert, homeRouteForRole } from '../../utils';
 import { authService } from '../../services/authService';
 import Logo from '../../components/ui/Logo';
-// AI-themed background — a generated neural-network/circuit constellation
-// (glowing nodes + connecting traces) in the app's own amber/blue accent
-// colors, at low opacity behind the pattern/card so it reads as ambient
-// texture, not a competing visual.
-import loginBgImage from '../../assets/images/ai_network_bg.svg';
+// Circuit-board/login-panel background — glowing white traces, a pixel-cloud
+// texture and a bracketed login-card motif on black, at low opacity behind
+// the pattern/card so it reads as ambient texture, not a competing visual.
+import loginBgImage from '../../assets/images/login_circuit_mono.svg';
 
 import {
   TextField,

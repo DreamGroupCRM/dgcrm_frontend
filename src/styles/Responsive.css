@@ -29,9 +29,9 @@
   background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d97706' fill-opacity='.35'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4z'/%3E%3C/g%3E%3C/svg%3E");
 }
 
-/* ── Login page background: an AI-themed neural-network/circuit graphic,
-   at low opacity behind the pattern/card so it reads as ambient texture,
-   not a competing visual. ──────────────────────────────────────────────── */
+/* ── Login page background: a monochrome circuit-board/login-panel
+   graphic. Kept prominent (unlike the old ai_network_bg texture) since
+   this artwork is meant to read as the page's visual centerpiece. ─────── */
 .login-bg-image {
   position: absolute;
   inset: 0;
@@ -39,7 +39,7 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
-  opacity: 0.16;
+  opacity: 0.5;
 }
 
 .login-tagline {
