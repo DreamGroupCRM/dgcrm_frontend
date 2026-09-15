@@ -43,6 +43,7 @@ const MultiStatCard: React.FC<MultiStatCardProps> = ({
     <div className="master-stat-icon" style={{ background: 'rgba(255,255,255,0.22)' }}>
       <Icon size={15} style={{ color: '#fff' }} />
     </div>
+    <span className="master-stat-divider" aria-hidden="true" />
     <div className="master-stat-body-multi">
       <div className="master-stat-label master-stat-label-gradient" style={labelFontSize ? { fontSize: labelFontSize } : undefined}>{label}</div>
       <div className="master-stat-multi-row">
