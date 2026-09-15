@@ -390,10 +390,16 @@ const LoginPage: React.FC = () => {
         <div
           className="login-card animate-fade-in"
           style={{
-            background: 'rgba(255,255,255,0.08)',
+            // Darker glass than before — the new background photo is a
+            // bright glowing panel, so a near-transparent card (the old
+            // rgba(255,255,255,0.08)) let it wash the fields out. This
+            // keeps the photo at full opacity while still giving the form
+            // a readable dark panel to sit on, echoing the photo's own
+            // dark login-box + cyan glow.
+            background: 'rgba(3,12,24,0.72)',
             backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+            border: '1px solid rgba(125,211,252,0.35)',
+            boxShadow: '0 0 45px rgba(56,189,248,0.25), 0 25px 50px rgba(0,0,0,0.55)',
           }}
         >
             {/* ── Logo + Title (real image) ── */}
