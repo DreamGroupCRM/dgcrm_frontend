@@ -45,7 +45,7 @@ const glassFieldSx = {
     borderRadius: '10px',
     '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
     '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.4)' },
-    '&.Mui-focused fieldset': { borderColor: '#0284c7' },
+    '&.Mui-focused fieldset': { borderColor: '#4e342e' },
     '&.Mui-error fieldset': { borderColor: '#ef4444' },
   },
   '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.6)' },

@@ -167,7 +167,7 @@ const AuditHistoryPage: React.FC = () => {
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Creates" value={counts.create} icon={MdAdd} color="#16a34a" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-        <StatCard label="Updates" value={counts.update} icon={MdEdit} color="#0284c7" bg="" loading={loading}
+        <StatCard label="Updates" value={counts.update} icon={MdEdit} color="#4e342e" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Deletes" value={counts.delete} icon={MdDelete} color="#dc2626" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />

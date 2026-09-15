@@ -102,13 +102,13 @@ const DeltaBadge: React.FC<{ value: number | null }> = ({ value }) => {
 
 // ── Chart color palette — reuses the same 7-hex accents statGradients.ts
 // already defines, so charts read as one system with the rest of the app. ──
-const CHART_COLORS = ['#0284c7', '#16a34a', '#ea580c', '#7c3aed', '#dc2626', '#0891b2', '#db2777'];
+const CHART_COLORS = ['#4e342e', '#16a34a', '#ea580c', '#7c3aed', '#dc2626', '#0891b2', '#db2777'];
 
 const ACTION_META: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   create: { label: 'created', color: '#16a34a', icon: MdAdd },
   update: { label: 'updated', color: '#7c3aed', icon: MdEdit },
   delete: { label: 'deleted', color: '#dc2626', icon: MdDelete },
-  login_success: { label: 'logged in', color: '#0284c7', icon: MdLogin },
+  login_success: { label: 'logged in', color: '#4e342e', icon: MdLogin },
   login_failed: { label: 'failed to log in', color: '#dc2626', icon: MdErrorOutline },
   otp_verified: { label: 'verified OTP', color: '#0891b2', icon: MdVerifiedUser },
 };
@@ -141,7 +141,7 @@ const Skeleton: React.FC<{ t: Theme; height?: number }> = ({ t, height = 280 }) 
 const TEMPERATURE_META: Record<string, { emoji: string; color: string }> = {
   HOT: { emoji: '🔥', color: '#dc2626' },
   WARM: { emoji: '🟡', color: '#d97706' },
-  COLD: { emoji: '🔵', color: '#0284c7' },
+  COLD: { emoji: '🔵', color: '#4e342e' },
 };
 
 const InsightTile: React.FC<{ t: Theme; isDark: boolean; emoji: string; label: string; value: string }> = ({ t, isDark, emoji, label, value }) => (
@@ -154,7 +154,7 @@ const InsightTile: React.FC<{ t: Theme; isDark: boolean; emoji: string; label: s
 
 const PatternCard: React.FC<{ t: Theme; isDark: boolean; pattern: DetectedPattern }> = ({ t, isDark, pattern }) => {
   const isWarning = pattern.severity === 'warning';
-  const color = isWarning ? '#dc2626' : '#0284c7';
+  const color = isWarning ? '#dc2626' : '#4e342e';
   return (
     <div className="rounded-xl p-3" style={{ background: isDark ? `${color}1a` : `${color}0d`, border: `1px solid ${color}33` }}>
       <div className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 3 }}>
@@ -328,9 +328,9 @@ const ExecutiveDashboardPage: React.FC = () => {
               <button key={k} type="button" onClick={() => setPreset(k)}
                 className="px-2.5 py-1.5 rounded-lg text-xs font-semibold"
                 style={{
-                  background: preset === k ? tintColor('#0284c7') : t.insetBg,
+                  background: preset === k ? tintColor('#4e342e') : t.insetBg,
                   color: preset === k ? '#fff' : t.textSecondary,
-                  border: `1px solid ${preset === k ? tintColor('#0284c7') : t.surfaceBorder}`, cursor: 'pointer',
+                  border: `1px solid ${preset === k ? tintColor('#4e342e') : t.surfaceBorder}`, cursor: 'pointer',
                 }}>
                 {PRESET_LABELS[k]}
               </button>
@@ -362,7 +362,7 @@ const ExecutiveDashboardPage: React.FC = () => {
 
       {/* ── KPI cards ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" style={{ marginBottom: 18 }}>
-        <StatCard label="Total Customers" value={loading ? '—' : kpis!.total_customers} icon={MdPeople} color="#0284c7" bg="" loading={loading}
+        <StatCard label="Total Customers" value={loading ? '—' : kpis!.total_customers} icon={MdPeople} color="#4e342e" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Properties" value={loading ? '—' : kpis!.total_properties} icon={MdApartment} color="#7c3aed" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
@@ -458,7 +458,7 @@ const ExecutiveDashboardPage: React.FC = () => {
                   contentStyle={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10, fontSize: 12 }}
                   formatter={(value, name) => [rupee(Number(value)), name === 'booking_value' ? 'Booking Value' : String(name)]}
                 />
-                <Line type="monotone" dataKey="booking_value" stroke="#0284c7" strokeWidth={2.5} dot={{ r: 3 }} name="booking_value" />
+                <Line type="monotone" dataKey="booking_value" stroke="#4e342e" strokeWidth={2.5} dot={{ r: 3 }} name="booking_value" />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -510,7 +510,7 @@ const ExecutiveDashboardPage: React.FC = () => {
                     <XAxis dataKey="month" tick={{ fontSize: 10.5, fill: t.textMuted }} axisLine={{ stroke: t.divider }} tickLine={false} />
                     <YAxis tick={{ fontSize: 11, fill: t.textMuted }} axisLine={false} tickLine={false} allowDecimals={false} width={30} />
                     <Tooltip contentStyle={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10, fontSize: 12 }} />
-                    <Bar dataKey="count" fill="#0284c7" radius={[4, 4, 0, 0]} name="New Customers" />
+                    <Bar dataKey="count" fill="#4e342e" radius={[4, 4, 0, 0]} name="New Customers" />
                   </BarChart>
                 </ResponsiveContainer>
               )}

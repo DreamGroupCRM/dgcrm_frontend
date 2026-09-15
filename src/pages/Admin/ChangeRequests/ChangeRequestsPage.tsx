@@ -110,7 +110,7 @@ const ChangeRequestsPage: React.FC = () => {
       <div className="cr-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         <StatCard label="Pending Requests" value={rows.length} icon={MdPendingActions} color="#d97706" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-        <StatCard label="Module" value={MODULE_LABEL[activeModule]} icon={MdPendingActions} color="#0284c7" bg="" loading={loading}
+        <StatCard label="Module" value={MODULE_LABEL[activeModule]} icon={MdPendingActions} color="#4e342e" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
@@ -159,7 +159,7 @@ const ChangeRequestsPage: React.FC = () => {
                       <td style={{ padding: '12px 14px', fontSize: 12, color: isDark ? '#fff' : '#000' }}>
                         <button type="button" onClick={() => setDetailsRow(row)}
                           className="flex items-center gap-1.5" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, fontSize: 12 }}>
-                          {summarize(row)} <MdVisibility size={14} color="#0284c7" />
+                          {summarize(row)} <MdVisibility size={14} color="#4e342e" />
                         </button>
                       </td>
                       <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary }}>

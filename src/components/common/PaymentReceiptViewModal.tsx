@@ -38,7 +38,7 @@ export const PaymentReceiptViewModal: React.FC<PaymentReceiptViewModalProps> = (
           <div className="flex items-start justify-between mb-2">
             <div style={{ fontSize: 10, fontWeight: 700, color: '#1e293b' }}>GSTIN : —</div>
             <div className="flex items-center gap-2">
-              <span className="rounded px-2 py-1" style={{ background: '#0284c7', color: '#fff', fontSize: 9.5, fontWeight: 800 }}>PAYMENT RECEIPT</span>
+              <span className="rounded px-2 py-1" style={{ background: '#4e342e', color: '#fff', fontSize: 9.5, fontWeight: 800 }}>PAYMENT RECEIPT</span>
               <button type="button" onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex' }}>
                 <MdClose size={18} />
               </button>
@@ -79,7 +79,7 @@ export const PaymentReceiptViewModal: React.FC<PaymentReceiptViewModalProps> = (
             <div>PAYMENT MODE : <strong>{tx.mode_of_payment || '—'}</strong></div>
           </div>
 
-          <div className="rounded" style={{ border: '2px solid #0284c7', display: 'inline-block', padding: '6px 16px', marginTop: 10 }}>
+          <div className="rounded" style={{ border: '2px solid #4e342e', display: 'inline-block', padding: '6px 16px', marginTop: 10 }}>
             <span style={{ fontSize: 17, fontWeight: 800, color: '#1e293b' }}>{rupee(total)}</span>
           </div>
 

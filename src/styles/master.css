@@ -201,16 +201,18 @@ html.dark .master-table td {
   --grad-green: #059669;
   --grad-teal: #0891b2;
   --grad-grey: #64748b;
-  /* Flat brand blue — one sky blue, reused byte-for-byte everywhere so no
-     surface app-wide ever reads as a "different blue": Add-X buttons,
-     table header bands, top summary boxes, submit/filter/export/refresh
-     buttons and every icon-only button all reference this single var
-     (same value as --grad-sky above, by design — one blue, one source). */
-  --brand-gradient: var(--grad-sky);
-  --grad-table-header: var(--grad-sky);
+  /* Flat brand dark brown — one shade, reused byte-for-byte everywhere so
+     no surface app-wide ever reads as a "different brown" (or a leftover
+     blue): Add-X buttons, table header bands, top summary boxes, submit/
+     filter/export/refresh buttons and every icon-only button all
+     reference this single var. Deliberately its own literal (not an alias
+     of --grad-sky, which stays its own blue for the few section headers
+     still opting into it directly). */
+  --brand-gradient: #4e342e;
+  --grad-table-header: #4e342e;
 }
 
-/* ── Flat blue table-header band — Company/Department/BankAccount/
+/* ── Flat brand-brown table-header band — Company/Department/BankAccount/
    Building masters, and (V_17.0) Employee/Customer lists too. Applied via
    className on the header <tr>(s) *and* on the sticky Actions <th> (which
    otherwise paints over the row with its own opaque background), so the
@@ -292,13 +294,13 @@ html.dark .master-table td {
   background: none;
   cursor: pointer;
   flex-shrink: 0;
-  border: 1.5px solid #0284c7;
-  color: #0284c7;
+  border: 1.5px solid #4e342e;
+  color: #4e342e;
   transition: background 0.15s ease, transform 0.1s ease;
 }
 
 .master-icon-btn:hover {
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(78, 52, 46, 0.08);
 }
 
 .master-icon-btn:active {
@@ -317,12 +319,12 @@ html.dark .master-icon-btn:hover {
 /* Small icon shown inline next to a name/value cell (company/bank/project/
    building/department name, account holder name, branch name) — item 7. */
 .master-row-icon {
-  color: #0284c7;
+  color: #4e342e;
   flex-shrink: 0;
 }
 
 html.dark .master-row-icon {
-  color: #60a5fa;
+  color: #bcaaa4;
 }
 
 /* ── Pagination footer ───────────────────────────────────────────────────

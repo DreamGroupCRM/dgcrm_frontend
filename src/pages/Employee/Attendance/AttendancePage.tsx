@@ -50,7 +50,7 @@ type QuickActionKind = Extract<LeaveType, 'casual' | 'half_day' | 'work_from_hom
 const QUICK_ACTION_META: Record<QuickActionKind, { title: string; icon: React.ReactNode; color: string }> = {
   casual: { title: 'Mark Leave', icon: <MdEventBusy size={18} />, color: '#7c3aed' },
   half_day: { title: 'Half Day', icon: <MdWbSunny size={18} />, color: '#d97706' },
-  work_from_home: { title: 'Work From Home', icon: <MdHomeWork size={18} />, color: '#0284c7' },
+  work_from_home: { title: 'Work From Home', icon: <MdHomeWork size={18} />, color: '#4e342e' },
 };
 
 const AttendancePage: React.FC = () => {
@@ -204,7 +204,7 @@ const AttendancePage: React.FC = () => {
             className="flex items-center justify-center rounded-full"
             style={{
               width: 96, height: 96, border: 'none', cursor: punchState === 'done' ? 'default' : 'pointer',
-              background: punchState === 'done' ? '#9ca3af' : punchState === 'check_out' ? '#0284c7' : '#16a34a',
+              background: punchState === 'done' ? '#9ca3af' : punchState === 'check_out' ? '#4e342e' : '#16a34a',
               color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', opacity: punching ? 0.7 : 1,
             }}>
             <MdFingerprint size={52} />
@@ -228,7 +228,7 @@ const AttendancePage: React.FC = () => {
 
           {mapLink ? (
             <a href={mapLink} target="_blank" rel="noreferrer" className="flex items-center gap-1.5"
-              style={{ fontSize: 11.5, color: '#0284c7', textDecoration: 'none' }}>
+              style={{ fontSize: 11.5, color: '#4e342e', textDecoration: 'none' }}>
               <MdLocationOn size={15} /> Location captured — View on Map <MdMap size={13} />
             </a>
           ) : locationNote ? (
@@ -284,7 +284,7 @@ const AttendancePage: React.FC = () => {
                     <td style={{ whiteSpace: 'nowrap' }}>{r.check_out_time || '—'}</td>
                     <td>
                       {r.latitude != null && r.longitude != null ? (
-                        <a href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`} target="_blank" rel="noreferrer" style={{ color: '#0284c7', fontSize: 11 }}>View on Map</a>
+                        <a href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`} target="_blank" rel="noreferrer" style={{ color: '#4e342e', fontSize: 11 }}>View on Map</a>
                       ) : '—'}
                     </td>
                   </tr>

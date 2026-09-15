@@ -75,14 +75,14 @@ const FLAT_TYPES = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Studio', 'Other'];
 // Blue-only palette (page-wide constraint: white & blue combination only) —
 // wing chips still cycle through 6 distinct shades of blue so wings stay
 // visually distinguishable, without introducing any other hue.
-const WING_COLORS = ['#0284c7', '#1d4ed8', '#0ea5e9', '#1e40af', '#0369a1', '#3b82f6'];
+const WING_COLORS = ['#4e342e', '#1d4ed8', '#0ea5e9', '#1e40af', '#0369a1', '#3b82f6'];
 
 // One accent color + icon per form section — replaces the plain numbered
 // step circle with an icon chip, so the 6 sections read apart at a glance
 // instead of blending into one long grey scroll. Every color here is a
 // shade of blue (page-wide white/blue-only constraint).
 const SECTION_STYLE: { color: string; soft: string; icon: IconType }[] = [
-  { color: '#0284c7', soft: '#eff6ff', icon: MdBusiness },     // 1 Project Details
+  { color: '#4e342e', soft: '#eff6ff', icon: MdBusiness },     // 1 Project Details
   { color: '#1d4ed8', soft: '#dbeafe', icon: MdApartment },    // 2 Wings
   { color: '#0ea5e9', soft: '#e0f2fe', icon: MdLayers },       // 3 Floors in Each Wing
   { color: '#1e40af', soft: '#dbeafe', icon: MdGridView },     // 4 Flats on Each Floor

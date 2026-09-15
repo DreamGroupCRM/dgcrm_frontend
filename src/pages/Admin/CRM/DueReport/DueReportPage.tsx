@@ -163,7 +163,7 @@ const MODE_OF_PAYMENT_OPTIONS = ['Cash', 'Cheque', 'Online', 'Other'];
 // category boxes (click-to-filter) and the table's own Payment For column
 // badge — same convention PaymentUpcomingPage uses.
 const PAYMENT_FOR_KEY_META: Record<PaymentFor, { label: string; color: string; icon: IconType }> = {
-  EMIAmount: { label: 'Monthly Installment', color: '#0284c7', icon: MdPayments },
+  EMIAmount: { label: 'Monthly Installment', color: '#4e342e', icon: MdPayments },
   BookingAmount: { label: 'Booking Amount', color: '#dc2626', icon: MdReceiptLong },
   PayAfterbooking: { label: 'Remaining Booking Amount', color: '#ea580c', icon: MdSchedule },
   PossessionAmount: { label: 'Possession Amount', color: '#7c3aed', icon: MdVpnKey },
@@ -701,7 +701,7 @@ const DueReportPage: React.FC = () => {
             <div className="flex items-end">
               <button type="button" onClick={handleSubmitAddPayment} disabled={submitting}
                 className="w-full px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
-                style={{ background: submitting ? '#6b7280' : '#0284c7', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer' }}>
+                style={{ background: submitting ? '#6b7280' : '#4e342e', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer' }}>
                 {submitting ? 'Submitting...' : 'Submit'}
               </button>
             </div>
@@ -749,7 +749,7 @@ const DueReportPage: React.FC = () => {
             <div title="Open follow-ups due today / tomorrow"
               className="due-report-followup-badge flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <MdNoteAdd size={15} style={{ color: '#0284c7' }} />
+              <MdNoteAdd size={15} style={{ color: '#4e342e' }} />
               <span className="due-report-followup-badge-text">Today: {followUpCounts.today} · Tmrw: {followUpCounts.tomorrow}</span>
             </div>
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
@@ -860,7 +860,7 @@ const DueReportPage: React.FC = () => {
                       {r.dueRow && (
                         <button type="button" onClick={() => openFollowUp(r.dueRow as DueListDetailRow)} title="Schedule a follow-up"
                           className="flex items-center justify-center rounded-lg"
-                          style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: '#0284c7', cursor: 'pointer' }}>
+                          style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: '#4e342e', cursor: 'pointer' }}>
                           <MdNoteAdd size={16} />
                         </button>
                       )}

@@ -201,7 +201,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       {onAdd && !disabled && (
         <button type="button" onClick={onAdd} title="Add another mobile number"
           className="flex items-center justify-center rounded-lg flex-shrink-0"
-          style={{ width: 22, height: 22, background: theme.insetBg, border: `1px solid ${theme.inputBorder}`, color: '#0284c7', cursor: 'pointer' }}>
+          style={{ width: 22, height: 22, background: theme.insetBg, border: `1px solid ${theme.inputBorder}`, color: '#4e342e', cursor: 'pointer' }}>
           <MdAdd size={14} />
         </button>
       )}
