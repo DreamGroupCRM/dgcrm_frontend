@@ -22,13 +22,6 @@ export interface UnitVM {
   floorLabel: string | null; // null for a shop
 }
 
-// 'building'  — every wing (as a card) + a Shops block if the building has any
-// 'wing'      — a full elevation of the selected wing: every floor stacked,
-//               each floor showing every one of its flats as a colored cell
-// 'shops'     — every shop in the building, as a colored grid (shops have
-//               no floor of their own)
-export type DrillLevel = 'building' | 'wing' | 'shops';
-
 export function unitCounts(units: UnitVM[]): { total: number; available: number; booked: number; blocked: number } {
   let available = 0, booked = 0, blocked = 0;
   for (const u of units) {
