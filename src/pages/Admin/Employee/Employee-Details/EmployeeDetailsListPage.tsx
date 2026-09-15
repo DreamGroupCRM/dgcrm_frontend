@@ -478,11 +478,11 @@ const EmployeeDetailsListPage: React.FC = () => {
             <MdAdd size={18} /> Add Employee
           </button>
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv} title="Export CSV" className="master-btn-icon"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1 }}>
+            style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1 }}>
             <MdDownload size={18} />
           </button>
           <button type="button" onClick={fetchEmployees} title="Refresh" className="master-btn-icon"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
+            style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff' }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>

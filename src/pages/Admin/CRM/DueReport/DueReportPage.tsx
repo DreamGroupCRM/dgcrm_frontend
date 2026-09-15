@@ -622,11 +622,9 @@ const DueReportPage: React.FC = () => {
         ))}
       </div>
 
-      {/* ── Add Payment Details ─────────────────────────────────────────── */}
+      {/* ── Payment fields — no section heading, per explicit product
+          decision (Customer Name through Mode of Payment, unchanged). ── */}
       <div className="due-report-form-card rounded-2xl mb-5 overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="due-report-form-card-head" style={{ background: 'linear-gradient(135deg,#f97316,#fbbf24)', padding: '12px 18px' }}>
-          <span style={{ fontSize: 13.5, fontWeight: 800, color: '#fff' }}>Add Payment Details</span>
-        </div>
         <div className="due-report-form-card-body p-5">
           <ValidationErrorSummary
             t={t}
@@ -755,13 +753,13 @@ const DueReportPage: React.FC = () => {
               <span className="due-report-followup-badge-text">Today: {followUpCounts.today} · Tmrw: {followUpCounts.tomorrow}</span>
             </div>
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
-              className="due-report-export-btn flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              className="due-report-export-btn flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold"
+              style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}>
               <MdDownload size={16} /> <span className="due-report-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
             </button>
             <button type="button" onClick={handleRefresh} title="Refresh"
               className="due-report-refresh-btn flex items-center justify-center rounded-xl"
-              style={{ width: 36, height: 36, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
+              style={{ width: 36, height: 36, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
               <MdRefresh size={18} />
             </button>
           </div>

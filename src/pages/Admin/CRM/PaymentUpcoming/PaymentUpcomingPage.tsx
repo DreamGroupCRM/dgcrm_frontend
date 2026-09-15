@@ -44,6 +44,13 @@ const rupee = (n: number): string => `₹${n.toLocaleString('en-IN')}`;
 
 const todayYmd = (): string => new Date().toISOString().slice(0, 10);
 
+// Opens the native calendar on a click/focus anywhere in the field, not
+// just on the small calendar icon — same fix already applied to the date
+// fields on Customer List/CRUD and Customize Scheme.
+const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
+  try { e.currentTarget.showPicker?.(); } catch { /* already open / no gesture — ignore */ }
+};
+
 interface StatBoxSpec { label: string; value: number; color: string; icon: IconType; }
 
 // Friendly label + color per payment_for_key, reused by both the top
@@ -224,11 +231,11 @@ const PaymentUpcomingPage: React.FC = () => {
         <div className="payment-upcoming-range-row flex items-end gap-3 flex-wrap">
           <div className="payment-upcoming-range-field">
             <label style={fieldLabelStyle}>From Date</label>
-            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={{ ...fieldInputStyle, width: 160 }} />
+            <input type="date" value={fromDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setFromDate(e.target.value)} style={{ ...fieldInputStyle, width: 160 }} />
           </div>
           <div className="payment-upcoming-range-field">
             <label style={fieldLabelStyle}>To Date</label>
-            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={{ ...fieldInputStyle, width: 160 }} />
+            <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} style={{ ...fieldInputStyle, width: 160 }} />
           </div>
           <button type="button" onClick={handleApply} disabled={loadingAmount || loadingList}
             className="payment-upcoming-ok-btn px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
@@ -238,7 +245,7 @@ const PaymentUpcomingPage: React.FC = () => {
           {applied && (
             <button type="button" onClick={handleRefresh} title="Refresh"
               className="payment-upcoming-refresh-btn flex items-center justify-center rounded-xl"
-              style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
+              style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
               <MdRefresh size={18} />
             </button>
           )}

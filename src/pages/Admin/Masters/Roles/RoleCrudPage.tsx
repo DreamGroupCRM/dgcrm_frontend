@@ -330,15 +330,17 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
               disabled={!isFormValid || saving}
               sx={{
                 background: isFormValid && !saving
-                  ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                  ? 'var(--brand-gradient)'
                   : undefined,
-                borderRadius: 2, textTransform: 'none', fontWeight: 600,
+                color: '#fff',
+                borderRadius: 2, textTransform: 'none', fontWeight: 700,
                 px: 3, py: 1.1, fontSize: '0.875rem',
-                boxShadow: isFormValid ? '0 4px 14px rgba(59,130,246,0.35)' : 'none',
+                boxShadow: isFormValid ? '0 4px 14px rgba(79,70,229,0.35)' : 'none',
                 '&:hover': {
                   background: isFormValid
-                    ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)'
+                    ? 'var(--brand-gradient)'
                     : undefined,
+                  filter: isFormValid ? 'brightness(0.93)' : undefined,
                 },
                 '&.Mui-disabled': {
                   background: isDark ? '#2a2a3e' : '#e2e8f0',

@@ -454,12 +454,12 @@ const PaymentApprovalsPage: React.FC = () => {
           <div className="pa-filter-actions flex items-center gap-2">
             <button type="button" onClick={handleFilter}
               className="inline-flex items-center gap-1.5 rounded-xl text-xs font-bold"
-              style={{ padding: '0 14px', height: 38, background: isDark ? 'rgba(37,99,235,0.18)' : '#dbeafe', color: isDark ? '#93c5fd' : '#1d4ed8', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ padding: '0 14px', height: 38, background: 'var(--brand-gradient)', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <MdFilterAlt size={15} /> Filter
             </button>
             <button type="button" onClick={handleResetFilters}
               className="inline-flex items-center gap-1.5 rounded-xl text-xs font-bold"
-              style={{ padding: '0 14px', height: 38, background: isDark ? 'rgba(148,163,184,0.15)' : '#f1f5f9', color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ padding: '0 14px', height: 38, background: 'var(--brand-gradient)', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <MdClose size={15} /> Reset
             </button>
           </div>
@@ -493,13 +493,13 @@ const PaymentApprovalsPage: React.FC = () => {
           </div>
           <div className="pa-toolbar-actions flex items-center gap-2.5" style={{ flexShrink: 0 }}>
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
-            className="pa-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+            className="pa-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
+            style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
             <MdDownload size={16} /> <span className="pa-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
           </button>
           <button type="button" onClick={() => { fetchRows(); fetchStats(); }} title="Refresh"
             className="pa-refresh-btn flex items-center justify-center rounded-xl"
-            style={{ width: 40, height: 40, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
+            style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
             <MdRefresh size={18} />
           </button>
           </div>

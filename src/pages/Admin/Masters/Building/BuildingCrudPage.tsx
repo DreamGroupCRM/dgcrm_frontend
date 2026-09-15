@@ -1584,9 +1584,9 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           <button
             onClick={handleSubmit}
             disabled={!isFormValid || saving}
-            className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
+            className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-bold text-white"
             style={{
-              background: !isFormValid || saving ? '#93c5fd' : `linear-gradient(135deg,${accent},${accentHover})`,
+              background: !isFormValid || saving ? '#93c5fd' : 'var(--brand-gradient)',
               border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.8 : 1,
             }}

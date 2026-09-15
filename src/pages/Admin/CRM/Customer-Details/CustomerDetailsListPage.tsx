@@ -9,7 +9,7 @@ import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh, MdVisibility,
   MdGroups, MdPersonAddAlt1, MdPersonOff, MdClose,
   MdKeyboardArrowDown, MdMoreVert, MdReceiptLong, MdLoyalty, MdPhone, MdEmail,
-  MdPayments, MdPrint, MdDescription, MdFilterList,
+  MdPayments, MdPrint, MdDescription,
   MdGridView, MdViewList, MdLocationOn, MdBadge,
 } from 'react-icons/md';
 
@@ -992,70 +992,64 @@ const CustomerDetailsListPage: React.FC = () => {
 
       {/* ── Filters row ───────────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-5" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        {/* Negative margin (not `overflow-hidden` on the card) pulls the
-            gradient bar out to the card's own edges — the Select Flat No
-            dropdown sits in this grid's last row and opens downward past
-            the card's bottom edge, which `overflow-hidden` here would clip. */}
-        <div className="flex items-center gap-2.5 -m-5 mb-4 px-5 py-3.5 rounded-t-2xl" style={{ background: 'var(--grad-sky)' }}>
-          <MdFilterList size={18} style={{ color: '#fff', flexShrink: 0 }} />
-          <h3 style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>Search &amp; Filter Customers</h3>
-        </div>
-
-        {/* All filters always visible in one row (wraps on narrow screens) —
-            no click-to-reveal step. Each filter below sets ONLY its own
-            state — no filter clears, overwrites, or disables another. The
-            option LIST a filter offers may still be narrowed by ones set
-            before it (Wing's options come from whichever Building is
-            selected, same as any real drill-down picker), but that's a
-            list of valid choices to show, never a value picked on the
-            user's behalf, and every field stays enabled and independently
-            usable — a genuinely empty option list surfaces via
-            SearchableSelect's own empty-state message, not by disabling
-            the field. */}
-        <div className="flex flex-wrap items-end gap-3">
-          <div style={{ flex: '1 1 170px', minWidth: 150 }}>
+        {/* Fields only — no section heading, per explicit product decision.
+            flex-nowrap + horizontal scroll (not flex-wrap) keeps every
+            filter on one row instead of spilling to a 2nd row, same
+            technique already used by the toolbar row below. Each filter
+            below sets ONLY its own state — no filter clears, overwrites, or
+            disables another. The option LIST a filter offers may still be
+            narrowed by ones set before it (Wing's options come from
+            whichever Building is selected, same as any real drill-down
+            picker), but that's a list of valid choices to show, never a
+            value picked on the user's behalf, and every field stays
+            enabled and independently usable — a genuinely empty option
+            list surfaces via SearchableSelect's own empty-state message,
+            not by disabling the field. */}
+        <div className="flex items-end gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 2 }}>
+          <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Customer Name</label>
             <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={handleCustomerNameFilterChange} />
           </div>
-          <div style={{ flex: '1 1 170px', minWidth: 150 }}>
+          <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Building</label>
             <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter}
               onChange={setBuildingFilter} />
           </div>
-          <div style={{ flex: '1 1 150px', minWidth: 130 }}>
+          <div style={{ flex: '1 1 130px', minWidth: 115 }}>
             <label className="cust-filter-label">Wing</label>
             <SearchableSelect t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingFilter}
               loading={loadingBuildingDetail}
               emptyMessage={selectedBuilding ? 'No wings found for this building.' : 'Select a Building first to see its wings.'}
               onChange={setWingFilter} />
           </div>
-          <div style={{ flex: '1 1 150px', minWidth: 130 }}>
+          <div style={{ flex: '1 1 130px', minWidth: 115 }}>
             <label className="cust-filter-label">Floor</label>
             <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorFilter}
               emptyMessage={selectedWing ? 'No floors found for this wing.' : 'Select a Wing first to see its floors.'}
               onChange={setFloorFilter} />
           </div>
-          <div style={{ flex: '1 1 150px', minWidth: 130 }}>
+          <div style={{ flex: '1 1 130px', minWidth: 115 }}>
             <label className="cust-filter-label">Flat No</label>
             <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter}
               emptyMessage={selectedFloor ? 'No flats found for this floor.' : 'Select a Floor first to see its flats.'}
               onChange={setFlatNoFilter} labelFor={flatLabelFor} />
           </div>
-          <div style={{ flex: '1 1 140px', minWidth: 130 }}>
+          <div style={{ flex: '1 1 125px', minWidth: 115 }}>
             <label className="cust-filter-label">From Date</label>
             <input type="date" value={fromDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setFromDate(e.target.value)} className="cust-date-field" />
           </div>
-          <div style={{ flex: '1 1 140px', minWidth: 130 }}>
+          <div style={{ flex: '1 1 125px', minWidth: 115 }}>
             <label className="cust-filter-label">To Date</label>
             <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} className="cust-date-field" />
           </div>
 
           {anyFilterApplied && (
             <button
-              type="button" onClick={clearAllFilters}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}
-            > Reset Filters
+              type="button" onClick={clearAllFilters} title="Reset Filters" aria-label="Reset Filters"
+              className="flex items-center justify-center rounded-full"
+              style={{ width: 36, height: 36, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}
+            >
+              <MdClose size={17} />
             </button>
           )}
         </div>
@@ -1107,18 +1101,18 @@ const CustomerDetailsListPage: React.FC = () => {
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
           </button>
           <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
-            className="cust-add-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'var(--grad-purple)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            className="cust-add-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
+            style={{ background: 'var(--brand-gradient)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <MdAdd size={18} /> <span className="cust-add-btn-text">Add Customer</span>
           </button>
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
-            className="cust-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1 }}>
+            className="cust-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
+            style={{ background: 'var(--brand-gradient)', border: 'none', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1 }}>
             <MdDownload size={17} /> <span className="cust-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
           </button>
           <button type="button" onClick={fetchCustomers} title="Refresh"
             className="cust-refresh-btn flex items-center justify-center rounded-xl"
-            style={{ width: 40, height: 40, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
+            style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer' }}>
             <MdRefresh size={18} />
           </button>
         </div>

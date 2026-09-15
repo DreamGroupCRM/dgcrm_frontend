@@ -1694,10 +1694,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <MdVisibility size={16} /> Preview
             </button>
             <button type="button" onClick={handleSubmit} disabled={saving}
-              className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white cust-btn-primary"
+              className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-bold text-white cust-btn-primary"
               style={{
                 opacity: saving ? 0.8 : 1,
-                background: !isFormValid && !saving ? '#9ca3af' : undefined,
+                background: !isFormValid && !saving ? '#9ca3af' : 'var(--brand-gradient)',
                 cursor: saving ? 'not-allowed' : 'pointer',
               }}>
               <MdSave size={17} /> {saving ? 'Saving...' : mode === 'edit' ? 'Update Customer' : 'Create Customer'}

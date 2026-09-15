@@ -253,12 +253,12 @@ const BuildingListPage: React.FC = () => {
             <MdAdd size={18} /> Add Building
           </button>
           <button onClick={exportCSV} title="Export CSV" className="master-btn-icon" disabled={exportingCsv}
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary,
+            style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff',
               opacity: exportingCsv ? 0.6 : 1, cursor: exportingCsv ? 'not-allowed' : 'pointer' }}>
             <MdDownload size={18} />
           </button>
           <button onClick={fetchBuildings} title="Refresh" className="master-btn-icon"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
+            style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff' }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
