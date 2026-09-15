@@ -26,19 +26,19 @@ export const getTheme = (isDark: boolean) => ({
   textMuted     : isDark ? '#525252' : '#374151',
 
   // ── Hover / Active states ────────────────────────────────────────────────
-  hoverBg       : isDark ? '#1a1a1a' : '#eff6ff',   // dark=dark-gray, light=light-blue
-  hoverText     : isDark ? '#d4d4d4' : '#4e342e',   // dark=light-gray, light=blue-600
-  hoverBorder   : isDark ? '#2a2a2a' : '#bfdbfe',
+  hoverBg       : isDark ? '#1a1a1a' : '#efebe9',   // dark=dark-gray, light=light-brown
+  hoverText     : isDark ? '#d4d4d4' : '#4e342e',
+  hoverBorder   : isDark ? '#2a2a2a' : '#d7ccc8',
 
   // ── Sidebar ──────────────────────────────────────────────────────────────
   sidebarBg     : isDark ? '#000000' : '#ffffff',
   sidebarBorder : isDark ? '#1a1a1a' : '#e5e7eb',
   sidebarText   : isDark ? '#c8c8c8' : '#111111',
   sidebarTextMuted : isDark ? '#4a4a4a' : '#6b7280',
-  sidebarActiveBg : isDark ? '#1a1a1a' : '#eff6ff',
+  sidebarActiveBg : isDark ? '#1a1a1a' : '#efebe9',
   sidebarActiveText: isDark ? '#ffffff' : '#4e342e',
   sidebarActiveBorder: isDark ? '#333333' : '#4e342e',
-  sidebarHoverBg: isDark ? '#141414' : '#eff6ff',
+  sidebarHoverBg: isDark ? '#141414' : '#efebe9',
   sidebarHoverText: isDark ? '#d4d4d4' : '#4e342e',
 
   // ── Header ───────────────────────────────────────────────────────────────
@@ -61,11 +61,11 @@ export const getTheme = (isDark: boolean) => ({
 
   // ── Tables ───────────────────────────────────────────────────────────────
   tableHeaderBg : isDark ? '#0a0a0a' : '#f9fafb',
-  tableRowHover : isDark ? '#0d0d0d' : '#eff6ff',
+  tableRowHover : isDark ? '#0d0d0d' : '#efebe9',
   tableRowBorder: isDark ? '#141414' : '#f3f4f6',
 
   // ── Profile Avatar fill color (kept intentional) ─────────────────────────
-  avatarGradient: '#1e40af',
+  avatarGradient: '#4e342e',
 });
 
 export type AppTheme = ReturnType<typeof getTheme>;

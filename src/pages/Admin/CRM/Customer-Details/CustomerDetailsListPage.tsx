@@ -1343,7 +1343,7 @@ const CustomerDetailsListPage: React.FC = () => {
                                   </button>
                                   <button type="button" title="View Receipt" onClick={() => openReceipt(p.id)}
                                     className="flex items-center justify-center rounded-lg"
-                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe', border: 'none', color: '#4e342e', cursor: 'pointer' }}>
+                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(78,52,46,0.18)' : '#efebe9', border: 'none', color: '#4e342e', cursor: 'pointer' }}>
                                     <MdVisibility size={13} />
                                   </button>
                                   {isAdmin && (

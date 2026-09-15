@@ -25,8 +25,8 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
       },
       divider: mode === 'dark' ? '#1a1a1a' : '#e5e7eb',
       action: {
-        hover        : mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(37,99,235,0.06)',
-        selected     : mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(37,99,235,0.10)',
+        hover        : mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(78,52,46,0.06)',
+        selected     : mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(78,52,46,0.10)',
         hoverOpacity : 0.05,
       },
     },
@@ -142,7 +142,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
         styleOverrides: {
           root: ({ theme }) => ({
             '&:hover': {
-              backgroundColor: theme.palette.mode === 'dark' ? '#0d0d0d' : '#eff6ff',
+              backgroundColor: theme.palette.mode === 'dark' ? '#0d0d0d' : '#efebe9',
             },
           }),
         },
@@ -162,7 +162,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
             fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000',
             '&:hover': {
-              backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#eff6ff',
+              backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#efebe9',
               color: theme.palette.mode === 'dark' ? '#d4d4d4' : '#4e342e',
             },
           }),
@@ -182,7 +182,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
         styleOverrides: {
           root: ({ theme }) => ({
             fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
-            backgroundColor: theme.palette.mode === 'dark' ? '#141414' : '#eff6ff',
+            backgroundColor: theme.palette.mode === 'dark' ? '#141414' : '#efebe9',
             color: theme.palette.mode === 'dark' ? '#a3a3a3' : '#4e342e',
           }),
         },

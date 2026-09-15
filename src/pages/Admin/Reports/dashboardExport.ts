@@ -43,7 +43,7 @@ export function exportDashboardToPdf(data: ExecutiveDashboardData, range: RangeI
       ['Active Employees', String(kpis.active_employees)],
       ['Pending / Overdue Activities', String(kpis.pending_or_overdue_activities)],
     ],
-    theme: 'grid', headStyles: { fillColor: [37, 99, 235] }, styles: { fontSize: 9 },
+    theme: 'grid', headStyles: { fillColor: [78, 52, 46] }, styles: { fontSize: 9 },
     margin: { left: marginX, right: marginX },
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

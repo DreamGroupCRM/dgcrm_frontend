@@ -355,7 +355,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
       {!collapsed && (
         <div className="px-4 py-2.5 flex-shrink-0">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-semibold"
-            style={{ background: isDark ? '#141414' : '#eff6ff', color: isDark ? '#a3a3a3' : '#4e342e', fontFamily: t.fontFamily, fontSize: 9.5 }}>
+            style={{ background: isDark ? '#141414' : '#efebe9', color: isDark ? '#a3a3a3' : '#4e342e', fontFamily: t.fontFamily, fontSize: 9.5 }}>
             <span className="w-1.5 h-1.5 rounded-full bg-current" />
             {roleLabel} Panel
           </span>

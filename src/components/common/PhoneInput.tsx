@@ -178,7 +178,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
                   className="w-full flex items-center gap-2 text-left"
                   style={{
                     padding: '8px 12px', border: 'none', cursor: 'pointer', fontFamily: theme.fontFamily,
-                    background: c.code === code ? 'rgba(2,132,199,0.1)' : 'transparent', color: theme.textPrimary, fontSize: 12.5,
+                    background: c.code === code ? 'rgba(78,52,46,0.1)' : 'transparent', color: theme.textPrimary, fontSize: 12.5,
                   }}
                 >
                   <c.flag title={c.name} style={flagStyle} />

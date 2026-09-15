@@ -218,8 +218,8 @@ const ProfileModal: React.FC = () => {
                   <span
                     className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
                     style={{
-                      background: isDark ? t.insetBg : '#dbeafe',
-                      color     : isDark ? '#a3a3a3' : '#1d4ed8',
+                      background: isDark ? t.insetBg : '#efebe9',
+                      color     : isDark ? '#a3a3a3' : '#4e342e',
                     }}
                   >
                     {/* Show the human-readable role name e.g. "Super Admin" */}

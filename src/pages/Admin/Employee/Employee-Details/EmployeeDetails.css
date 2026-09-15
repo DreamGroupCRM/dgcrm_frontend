@@ -181,7 +181,7 @@
 .emp-module-panel {
   padding: 14px;
   border-radius: 16px;
-  background: rgba(2,132,199,0.10);
+  background: rgba(78,52,46,0.10);
   border: 1px solid var(--emp-surface-border);
 }
 
@@ -298,7 +298,7 @@
   font-size: 11.5px;
   font-weight: 600;
   color: #4e342e;
-  background: rgba(2, 132, 199, 0.1);
+  background: rgba(78, 52, 46, 0.1);
 }
 
 /* ── View Employee / View Customer — Uploaded Documents grid, 2 cards per
@@ -361,7 +361,7 @@
   color: #4e342e;
   padding: 6px 12px;
   border-radius: 8px;
-  background: rgba(2, 132, 199, 0.1);
+  background: rgba(78, 52, 46, 0.1);
 }
 
 /* ── Employee card row-action dropdown (View/Edit/Delete/Activate) —
