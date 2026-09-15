@@ -207,16 +207,22 @@ export function exportPaymentHistoryPdf(
   autoTable(doc, {
     startY: y,
     head: [['Rec Number', 'Installment Date', 'Received Date', 'Mode Of Payment', 'Payment For', 'Maintenance', 'Amount', 'Company']],
-    body: payments.map((p) => [
-      p.receipt_number || '—',
-      formatDMY(p.inst_date),
-      formatDMY(p.paid_on),
-      p.mode || '—',
-      paymentForLabel(p.payment_type),
-      p.maintenance ? rupee(p.maintenance) : '0',
-      rupee(p.amount),
-      p.company || '—',
-    ]),
+    body: payments.map((p) => {
+      // Extra Pay pre-pays a future EMI rather than settling the
+      // installment its stored inst_date points at — showing that date
+      // here would misleadingly read as "this installment is paid."
+      const isExtraPay = p.payment_tag === 'Extra Pay';
+      return [
+        p.receipt_number || '—',
+        isExtraPay ? '—' : formatDMY(p.inst_date),
+        formatDMY(p.paid_on),
+        p.mode || '—',
+        isExtraPay ? 'Extra Pay' : paymentForLabel(p.payment_type),
+        p.maintenance ? rupee(p.maintenance) : '0',
+        rupee(p.amount),
+        p.company || '—',
+      ];
+    }),
     theme: 'grid',
     headStyles: { fillColor: [109, 40, 217], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
     styles: { fontSize: 8.5, cellPadding: 5, lineColor: [203, 213, 225], lineWidth: 0.75 },

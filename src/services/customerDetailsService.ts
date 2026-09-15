@@ -165,6 +165,7 @@ interface BackendAmountTransaction {
   created_at: string;
   company: string | null;
   maintanance1: number | null;
+  payment_tag: string | null;
 }
 
 // Backend Customer (+ building/wing/flat relations) -> the flat `Customer`
@@ -294,6 +295,7 @@ const mapTransactionToPaymentRecord = (t: BackendAmountTransaction): CustomerPay
   reference_no: t.receipt_number || t.cheque_number || undefined,
   is_approved: t.is_approved,
   payment_type: t.payment_type,
+  payment_tag: t.payment_tag,
   receipt_number: t.receipt_number || undefined,
   company: t.company ?? undefined,
   maintenance: t.maintanance1 ?? undefined,

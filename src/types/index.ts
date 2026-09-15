@@ -758,6 +758,16 @@ export interface CustomerPaymentRecord {
   notes?         : string;
   is_approved    : boolean;
   payment_type   : string;
+  // "Extra Pay" for an advance-pay EMI transaction (see backend
+  // payment.service.ts's computeAdvancePay) — an Extra Pay transaction still
+  // carries payment_type: 'EMIAmount' internally (it's a pre-payment against
+  // future EMIs) plus an inst_date pointing at whichever future installment
+  // it'll be applied to, but neither should be shown as-is: the Payment
+  // History table/PDF check this tag to show "Extra Pay" instead of "Monthly
+  // Installment" and blank the Installment Date instead of that future date,
+  // which would otherwise misleadingly read as "this payment settled that
+  // specific installment."
+  payment_tag?   : string | null;
   receipt_number?: string;
   company?       : string;
   maintenance?   : number;

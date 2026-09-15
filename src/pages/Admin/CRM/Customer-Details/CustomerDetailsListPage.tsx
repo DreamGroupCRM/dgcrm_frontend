@@ -1356,10 +1356,15 @@ const CustomerDetailsListPage: React.FC = () => {
                                 </div>
                               </td>
                               <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.receipt_number || '—'}</td>
-                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.inst_date ? formatDate(p.inst_date) : '—'}</td>
+                              {/* Extra Pay is a pre-payment against a future EMI, not a
+                                  settlement of that installment — its stored inst_date
+                                  points at whichever EMI it'll eventually apply to, which
+                                  would misleadingly read as "this installment is paid" if
+                                  shown here, so it stays blank instead. */}
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? '—' : (p.inst_date ? formatDate(p.inst_date) : '—')}</td>
                               <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(p.paid_on)}</td>
                               <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.mode || '—'}</td>
-                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{paymentForLabel(p.payment_type)}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(p.payment_type)}</td>
                               <td style={{ padding: '8px 12px', fontSize: 11.5, color: '#16a34a', fontWeight: 600 }}>{p.maintenance ? `₹ ${p.maintenance.toLocaleString('en-IN')}` : '0'}</td>
                               <td style={{ padding: '8px 12px', fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>₹ {p.amount.toLocaleString('en-IN')}</td>
                               <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.company || '—'}</td>
