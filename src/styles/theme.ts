@@ -64,8 +64,8 @@ export const getTheme = (isDark: boolean) => ({
   tableRowHover : isDark ? '#0d0d0d' : '#eff6ff',
   tableRowBorder: isDark ? '#141414' : '#f3f4f6',
 
-  // ── Profile Avatar gradient (kept intentional) ───────────────────────────
-  avatarGradient: 'linear-gradient(135deg, #1e40af, #3b82f6)',
+  // ── Profile Avatar fill color (kept intentional) ─────────────────────────
+  avatarGradient: '#1e40af',
 });
 
 export type AppTheme = ReturnType<typeof getTheme>;

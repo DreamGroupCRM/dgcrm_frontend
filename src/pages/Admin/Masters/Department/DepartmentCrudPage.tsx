@@ -369,7 +369,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                     disabled={!newDesignationName.trim()}
                     className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
                     style={{
-                      background: !newDesignationName.trim() ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
+                      background: !newDesignationName.trim() ? '#9ca3af' : accent,
                       border: 'none', cursor: !newDesignationName.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                     }}
                   >

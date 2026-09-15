@@ -593,7 +593,7 @@ const PaymentApprovalsPage: React.FC = () => {
       {viewModal && (
         <div className="pa-modal-backdrop fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setViewModal(null)}>
           <div className="pa-modal rounded-2xl w-full overflow-hidden" style={{ maxWidth: 560, background: t.surfaceBg, maxHeight: '88vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-3.5" style={{ background: 'linear-gradient(135deg,#f97316,#ec4899)' }}>
+            <div className="flex items-center justify-between px-5 py-3.5" style={{ background: '#f97316' }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>Receipt Details - {viewModal.row.receipt_number}</div>
               <button type="button" onClick={() => setViewModal(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#fff', padding: 4, display: 'flex' }}>
                 <MdClose size={20} />

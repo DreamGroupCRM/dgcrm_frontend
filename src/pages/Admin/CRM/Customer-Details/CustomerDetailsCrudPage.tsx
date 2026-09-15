@@ -525,7 +525,7 @@ const CustomerPreviewModal: React.FC<{ data: PreviewData; onClose: () => void }>
       </div>
 
       <div className="p-5">
-        <PreviewSection icon={<MdPerson size={13} />} title="Personal Details" gradient="var(--grad-sky)">
+        <PreviewSection icon={<MdPerson size={13} />} title="Personal Details" gradient="var(--grad-green)">
           <PreviewRow label="Full Name" value={data.fullName} />
           <PreviewRow label="Email ID" value={data.email} />
           <PreviewRow label="Mobile Number" value={data.mobile} />
@@ -537,7 +537,7 @@ const CustomerPreviewModal: React.FC<{ data: PreviewData; onClose: () => void }>
           <PreviewRow label="Address" value={data.address} />
         </PreviewSection>
 
-        <PreviewSection icon={<MdApartment size={13} />} title="Property Booking Details" gradient="var(--grad-teal)">
+        <PreviewSection icon={<MdApartment size={13} />} title="Property Booking Details" gradient="var(--grad-green)">
           <PreviewRow label="Company Name" value={data.companyName} />
           <PreviewRow label="Project Name" value={data.projectName} />
           <PreviewRow label="Building" value={data.buildingName} />
@@ -562,7 +562,7 @@ const CustomerPreviewModal: React.FC<{ data: PreviewData; onClose: () => void }>
           <PreviewRow label="Booster After Possession" value={data.boosterAfter && `₹ ${data.boosterAfter} / ${data.boosterIntervalAfter || '—'} mo`} />
         </PreviewSection>
 
-        <PreviewSection icon={<MdDescription size={13} />} title="Uploaded Documents" gradient="var(--grad-purple)">
+        <PreviewSection icon={<MdDescription size={13} />} title="Uploaded Documents" gradient="var(--grad-green)">
           {data.documents.map((d) => (
             <PreviewRow key={d.label} label={d.label} value={fileDisplayName(d.value) || 'Not uploaded'} />
           ))}
@@ -1207,7 +1207,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             sizes to its own content instead. */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 items-start">
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)" />
+            <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-green)" />
             <div className="cust-view-grid">
               <ViewValue label="First Name" value={firstName} />
               <ViewValue label="Middle Name" value={middleName} />
@@ -1226,7 +1226,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
 
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="var(--grad-teal)" />
+            <SectionHeader t={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="var(--grad-green)" />
             <div className="cust-view-grid">
               <ViewValue label="Company Name" value={companyName} />
               <ViewValue label="Project Name" value={projectName} />
@@ -1265,7 +1265,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
 
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdDescription size={16} />} title="Uploaded Documents" gradient="var(--grad-purple)" />
+            <SectionHeader t={t} icon={<MdDescription size={16} />} title="Uploaded Documents" gradient="var(--grad-green)" />
             <div className="cust-doc-grid">
               <CustomerDocumentCard t={t} label="Aadhar Card" url={typeof aadharPhoto === 'string' ? aadharPhoto : null} />
               <CustomerDocumentCard t={t} label="Pancard" url={typeof pancardPhoto === 'string' ? pancardPhoto : null} />
@@ -1330,7 +1330,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       />
 
       {/* ── Customer Details (Personal Details) ──────────────────────── */}
-      <AccordionSection theme={t} icon={<MdPerson size={16} />} title="Customer Details" gradient="var(--grad-sky)"
+      <AccordionSection theme={t} icon={<MdPerson size={16} />} title="Customer Details" gradient="var(--grad-green)"
         open={openSections.personal} onToggle={() => setOpenSections((p) => ({ ...p, personal: !p.personal }))}
         sectionRef={(el) => (sectionRefs.current.personal = el)}>
         <SubHeading t={t} title="Personal Details" />
@@ -1433,7 +1433,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       </AccordionSection>
 
       {/* ── Property Booking Details ─────────────────────────────────── */}
-      <AccordionSection theme={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="var(--grad-teal)"
+      <AccordionSection theme={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="var(--grad-green)"
         open={openSections.property} onToggle={() => setOpenSections((p) => ({ ...p, property: !p.property }))}
         sectionRef={(el) => (sectionRefs.current.property = el)}>
 
@@ -1654,7 +1654,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       </AccordionSection>
 
       {/* ── Document Upload ──────────────────────────────────────────── */}
-      <AccordionSection theme={t} icon={<MdDescription size={16} />} title="Document Upload" gradient="var(--grad-purple)"
+      <AccordionSection theme={t} icon={<MdDescription size={16} />} title="Document Upload" gradient="var(--grad-green)"
         open={openSections.documents} onToggle={() => setOpenSections((p) => ({ ...p, documents: !p.documents }))}
         sectionRef={(el) => (sectionRefs.current.documents = el)}>
 

@@ -204,7 +204,7 @@ const AttendancePage: React.FC = () => {
             className="flex items-center justify-center rounded-full"
             style={{
               width: 96, height: 96, border: 'none', cursor: punchState === 'done' ? 'default' : 'pointer',
-              background: punchState === 'done' ? '#9ca3af' : punchState === 'check_out' ? 'linear-gradient(135deg,#0284c7,#0ea5e9)' : 'linear-gradient(135deg,#16a34a,#22c55e)',
+              background: punchState === 'done' ? '#9ca3af' : punchState === 'check_out' ? '#0284c7' : '#16a34a',
               color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', opacity: punching ? 0.7 : 1,
             }}>
             <MdFingerprint size={52} />

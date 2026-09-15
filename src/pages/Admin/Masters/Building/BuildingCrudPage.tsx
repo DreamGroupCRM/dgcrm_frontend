@@ -419,7 +419,7 @@ const SeriesConfigCard: React.FC<{
           type="button"
           onClick={onApply}
           className="flex-1 text-xs font-semibold rounded-lg text-white"
-          style={{ background: `linear-gradient(135deg,${accent},${accentHover})`, border: 'none', cursor: 'pointer', padding: '7px 0' }}
+          style={{ background: accent, border: 'none', cursor: 'pointer', padding: '7px 0' }}
         >
           OK
         </button>
@@ -1128,7 +1128,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
               disabled={wings.length === 0}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
               style={{
-                background: wings.length === 0 ? '#93c5fd' : `linear-gradient(135deg,${accent},${accentHover})`,
+                background: wings.length === 0 ? '#93c5fd' : accent,
                 border: 'none', cursor: wings.length === 0 ? 'not-allowed' : 'pointer',
               }}
             >
@@ -1250,7 +1250,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                         disabled={activeWing.floors.length === 0}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
                         style={{
-                          background: activeWing.floors.length === 0 ? '#93c5fd' : `linear-gradient(135deg,${accent},${accentHover})`,
+                          background: activeWing.floors.length === 0 ? '#93c5fd' : accent,
                           border: 'none', cursor: activeWing.floors.length === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                         }}
                       >
@@ -1404,7 +1404,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                   disabled={!shopCountInput || parseInt(shopCountInput, 10) <= 0}
                   className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
                   style={{
-                    background: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? '#93c5fd' : `linear-gradient(135deg,${accent},${accentHover})`,
+                    background: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? '#93c5fd' : accent,
                     border: 'none', cursor: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                   }}
                 >

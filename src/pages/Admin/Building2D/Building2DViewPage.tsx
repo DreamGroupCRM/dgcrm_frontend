@@ -33,7 +33,9 @@ import { MdArrowBack, MdCheckCircle } from 'react-icons/md';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { FetchBuildingList, ViewBuilding } from '../../../services/buildingService';
 import { Building, BuildingFlat, BuildingShop, BuildingWing } from '../../../types/index';
+import { ROUTES } from '../../../constants';
 import { UnitVM, UnitStatus } from './types';
+import './Building2D.css';
 
 const flatStatus = (f: BuildingFlat): UnitStatus => {
   if (f.is_active === false) return 'blocked';
@@ -46,12 +48,12 @@ const shopStatus = (s: BuildingShop): UnitStatus => {
   return 'available';
 };
 
-// Exactly the 3 colors asked for: Green = Available, Yellow = Booked,
-// Red = Unavailable (an admin-disabled flat/shop).
-const STATUS_COLOR: Record<UnitStatus, string> = { available: '#22c55e', booked: '#eab308', blocked: '#ef4444' };
+// Exactly the 3 colors asked for: Green = Available, Dark Yellow = Booked,
+// Dark Red = Unavailable (an admin-disabled flat/shop).
+const STATUS_COLOR: Record<UnitStatus, string> = { available: '#16a34a', booked: '#a16207', blocked: '#991b1b' };
 const STATUS_TEXT: Record<UnitStatus, string> = { available: 'Available', booked: 'Booked', blocked: 'Unavailable' };
-// Yellow needs dark text to stay readable; red/green read fine in white.
-const STATUS_TEXT_COLOR: Record<UnitStatus, string> = { available: '#ffffff', booked: '#3f2d00', blocked: '#ffffff' };
+// All 3 fills are dark enough now to read white text cleanly.
+const STATUS_TEXT_COLOR: Record<UnitStatus, string> = { available: '#ffffff', booked: '#ffffff', blocked: '#ffffff' };
 
 interface PickerNavState {
   pickerMode?: boolean;
@@ -228,24 +230,30 @@ const Building2DViewPage: React.FC = () => {
     navigate(returnPath, { state: { selectedUnit: payload } });
   };
 
+  const handleBack = () => navigate(pickerMode && returnPath ? returnPath : ROUTES.ADMIN.BUILDING);
+
   return (
     <div style={{ fontFamily: t.fontFamily }}>
+      {/* Heading left, Back button top-right — always present, not just in
+          picker mode, so this page never strands the user without a way
+          back to the Building Master list. */}
       <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-        <div className="flex items-center gap-3">
-          {pickerMode && returnPath && (
-            <button type="button" onClick={() => navigate(returnPath)}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, padding: 6 }}>
-              <MdArrowBack size={20} />
-            </button>
-          )}
-          <h1 style={{ fontSize: 20, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Building View</h1>
-        </div>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Building View</h1>
+        <button type="button" onClick={handleBack}
+          className="flex items-center gap-1.5"
+          style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 8, padding: '7px 14px', color: t.textPrimary, cursor: 'pointer', fontSize: 12.5, fontWeight: 600 }}>
+          <MdArrowBack size={16} /> Back
+        </button>
+      </div>
+
+      {/* Building switch — centered at top, not right-aligned. */}
+      <div className="flex justify-center mb-4">
         <select
           value={selectedBuildingId}
           onChange={(e) => setSelectedBuildingId(e.target.value)}
           disabled={loadingBuildings}
           style={{
-            padding: '8px 12px', borderRadius: 8, fontSize: 13, minWidth: 220,
+            padding: '8px 12px', borderRadius: 8, fontSize: 13, minWidth: 260, textAlign: 'center',
             background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, cursor: 'pointer',
           }}
         >
@@ -256,68 +264,10 @@ const Building2DViewPage: React.FC = () => {
         </select>
       </div>
 
-      <div className="rounded-2xl flex items-center justify-center" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, minHeight: 460, padding: '32px 24px' }}>
-        {!buildingDetail ? (
-          <div style={{ color: t.textSecondary, fontSize: 13 }}>
-            {loadingDetail ? 'Loading building...' : 'Select a building above to see its picture.'}
-          </div>
-        ) : wings.length === 0 && shops.length === 0 ? (
-          <div style={{ color: t.textSecondary, fontSize: 13, textAlign: 'center', maxWidth: 360 }}>
-            This building has no wings or shops configured in Building Master yet — add them there to see its picture here.
-          </div>
-        ) : (
-          // ── One complete building design: a single card holding every
-          // wing (side by side, with real space between them) and, right
-          // below the ground floor, a centered shops strip. ─────────────
-          <div
-            style={{
-              background: t.subtleBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 18,
-              padding: '24px 32px', maxWidth: '100%', overflowX: 'auto', overflowY: 'auto', maxHeight: '72vh',
-              color: t.textPrimary,
-            }}
-          >
-            <div style={{ textAlign: 'center', fontWeight: 800, fontSize: 15, marginBottom: 20 }}>
-              {buildingDetail.building_name}
-            </div>
-
-            <div className="flex items-end justify-center" style={{ gap: 56 }}>
-              {wings.map((w) => (
-                <WingColumn
-                  key={w.id}
-                  wing={w}
-                  floors={floorsOf(w)}
-                  pickerMode={pickerMode}
-                  selectedId={selectedUnit?.kind === 'flat' && selectedUnit.wingName === w.name ? selectedUnit.id : null}
-                  onSelect={(unit) => handleSelectFlat(w, unit)}
-                />
-              ))}
-            </div>
-
-            {shops.length > 0 && (
-              <div style={{ marginTop: 22, paddingTop: 18, borderTop: `2px dashed ${t.surfaceBorder}` }}>
-                <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, opacity: 0.65, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Ground Floor — Shops
-                </div>
-                <div className="flex flex-wrap items-center justify-center" style={{ gap: 6 }}>
-                  {shops.map((s) => (
-                    <UnitBlock
-                      key={s.id}
-                      no={s.shop_no} area={s.area_sqft} status={shopStatus(s)}
-                      selected={selectedUnit?.kind === 'shop' && selectedUnit.id === s.id}
-                      clickable={pickerMode && shopStatus(s) === 'available'}
-                      extraTitle={shopStatus(s) === 'booked' && s.booked_by_customer_name ? `Booked by ${s.booked_by_customer_name}` : undefined}
-                      onClick={() => handleSelectShop(s)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
+      {/* Color legend — what each fill means — shown ABOVE the picture, not
+          below it, so it's read before the picture itself. */}
       {buildingDetail && (wings.length > 0 || shops.length > 0) && (
-        <div className="flex items-center justify-center gap-5 flex-wrap" style={{ marginTop: 14, fontSize: 12, color: t.textSecondary }}>
+        <div className="flex items-center justify-center gap-5 flex-wrap" style={{ marginBottom: 14, fontSize: 12, color: t.textSecondary }}>
           {(['available', 'booked', 'blocked'] as UnitStatus[]).map((s) => (
             <span key={s} className="flex items-center gap-1.5">
               <span style={{ width: 12, height: 12, borderRadius: 4, background: STATUS_COLOR[s], display: 'inline-block' }} />
@@ -326,6 +276,70 @@ const Building2DViewPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* Fixed width/height picture frame — identical size on every device
+          and every building; a building too big to fit scrolls inside this
+          box (both axes) instead of growing it or the page around it. */}
+      <div className="building-2d-box rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        {!buildingDetail ? (
+          <div className="building-2d-canvas" style={{ color: t.textSecondary, fontSize: 13 }}>
+            {loadingDetail ? 'Loading building...' : 'Select a building above to see its picture.'}
+          </div>
+        ) : wings.length === 0 && shops.length === 0 ? (
+          <div className="building-2d-canvas" style={{ color: t.textSecondary, fontSize: 13, textAlign: 'center', maxWidth: 360, padding: '0 24px' }}>
+            This building has no wings or shops configured in Building Master yet — add them there to see its picture here.
+          </div>
+        ) : (
+          <div className="building-2d-canvas">
+            {/* ── One complete building design: a single card holding every
+                wing (side by side, with real space between them) and, right
+                below the ground floor, a centered shops strip. ───────────── */}
+            <div
+              style={{
+                background: t.subtleBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 18,
+                padding: '24px 32px', color: t.textPrimary,
+              }}
+            >
+              <div style={{ textAlign: 'center', fontWeight: 800, fontSize: 15, marginBottom: 20 }}>
+                {buildingDetail.building_name}
+              </div>
+
+              <div className="flex items-end justify-center" style={{ gap: 56 }}>
+                {wings.map((w) => (
+                  <WingColumn
+                    key={w.id}
+                    wing={w}
+                    floors={floorsOf(w)}
+                    pickerMode={pickerMode}
+                    selectedId={selectedUnit?.kind === 'flat' && selectedUnit.wingName === w.name ? selectedUnit.id : null}
+                    onSelect={(unit) => handleSelectFlat(w, unit)}
+                  />
+                ))}
+              </div>
+
+              {shops.length > 0 && (
+                <div style={{ marginTop: 22, paddingTop: 18, borderTop: `2px dashed ${t.surfaceBorder}` }}>
+                  <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, opacity: 0.65, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Ground Floor — Shops
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center" style={{ gap: 6 }}>
+                    {shops.map((s) => (
+                      <UnitBlock
+                        key={s.id}
+                        no={s.shop_no} area={s.area_sqft} status={shopStatus(s)}
+                        selected={selectedUnit?.kind === 'shop' && selectedUnit.id === s.id}
+                        clickable={pickerMode && shopStatus(s) === 'available'}
+                        extraTitle={shopStatus(s) === 'booked' && s.booked_by_customer_name ? `Booked by ${s.booked_by_customer_name}` : undefined}
+                        onClick={() => handleSelectShop(s)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Slim confirm bar — only appears mid-picker-flow with an available
           unit selected, so Customer Create's "Select Flat" hand-off still

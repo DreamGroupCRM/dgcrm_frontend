@@ -701,7 +701,7 @@ const DueReportPage: React.FC = () => {
             <div className="flex items-end">
               <button type="button" onClick={handleSubmitAddPayment} disabled={submitting}
                 className="w-full px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
-                style={{ background: submitting ? '#6b7280' : 'linear-gradient(135deg,#16a34a,#22c55e)', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer' }}>
+                style={{ background: submitting ? '#6b7280' : '#2563eb', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer' }}>
                 {submitting ? 'Submitting...' : 'Submit'}
               </button>
             </div>
@@ -912,7 +912,7 @@ const DueReportPage: React.FC = () => {
               </div>
               <button type="button" onClick={handleSubmitFollowUp} disabled={followUpSubmitting}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
-                style={{ background: followUpSubmitting ? '#6b7280' : 'linear-gradient(135deg,#16a34a,#22c55e)', border: 'none', cursor: followUpSubmitting ? 'not-allowed' : 'pointer' }}>
+                style={{ background: followUpSubmitting ? '#6b7280' : '#16a34a', border: 'none', cursor: followUpSubmitting ? 'not-allowed' : 'pointer' }}>
                 {followUpSubmitting ? 'Scheduling...' : 'Schedule Follow-up'}
               </button>
             </div>

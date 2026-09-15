@@ -177,11 +177,17 @@ const LoginPage: React.FC = () => {
     next[index] = digit;
     setOtpDigits(next);
     setOtpTouched(true);
-    setOtpError(validateOtp(next.join('')));
+    const joined = next.join('');
+    setOtpError(validateOtp(joined));
 
     // Auto-advance to the next box as soon as a digit is entered
     if (digit && index < 5) {
       otpInputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-verify the instant the 6th digit is entered — no Enter/click needed.
+    if (digit && index === 5 && joined.length === 6 && !loading) {
+      submitOtp(joined);
     }
   };
 
@@ -217,9 +223,11 @@ const LoginPage: React.FC = () => {
     pasted.split('').forEach((ch, i) => { next[i] = ch; });
     setOtpDigits(next);
     setOtpTouched(true);
-    setOtpError(validateOtp(next.join('')));
+    const joined = next.join('');
+    setOtpError(validateOtp(joined));
     const focusIndex = Math.min(pasted.length, 5);
     otpInputRefs.current[focusIndex]?.focus();
+    if (joined.length === 6 && !loading) submitOtp(joined);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -270,11 +278,12 @@ const LoginPage: React.FC = () => {
     [form, dispatch]
   );
 
-  // ── Step 2: OTP -> session, or -> forced password reset ──
-  const handleOtpSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      const err = validateOtp(otp);
+  // ── Step 2: OTP -> session, or -> forced password reset. Shared by the
+  // form's Verify button AND the auto-verify-on-6th-digit handlers above,
+  // which call this directly (no form submit event involved). ──────────────
+  const submitOtp = useCallback(
+    async (otpValue: string) => {
+      const err = validateOtp(otpValue);
       setOtpError(err);
       setOtpTouched(true);
       if (err) {
@@ -283,7 +292,7 @@ const LoginPage: React.FC = () => {
       }
       if (!otpToken) return; // shouldn't happen — step wouldn't render without it
 
-      const result = await dispatch(verifyOtpThunk({ otpToken, otp: otp.trim() }));
+      const result = await dispatch(verifyOtpThunk({ otpToken, otp: otpValue.trim() }));
       if (verifyOtpThunk.fulfilled.match(result) && 'token' in result.payload) {
         await showAlert.loginSuccess(result.payload.user.base_role);
         navigate(
@@ -292,7 +301,15 @@ const LoginPage: React.FC = () => {
         );
       }
     },
-    [otp, otpToken, dispatch, navigate]
+    [otpToken, dispatch, navigate]
+  );
+
+  const handleOtpSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      submitOtp(otp);
+    },
+    [otp, submitOtp]
   );
 
   // ── Step 3 (first login only): set a new password -> session ──
@@ -380,13 +397,9 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Centered, standalone login card — no carousel/side panel. Tagline +
-          Hindi slogan sit above it as part of the same low-opacity
-          background messaging (item 8, V_22.0). ─────────────────────────── */}
+          Hindi slogan now sit inside the card itself, around the logo/
+          heading, instead of above it. ───────────────────────────────────── */}
       <div style={{ position: 'relative', zIndex: 5, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
-        <div className="login-tagline text-center">
-          <p className="login-tagline-en">0% Interest - Loan Free Home for Every Indian</p>
-          <p className="login-tagline-hi" lang="hi">Humaara Sapna, Har Hindustani Ka Ghar Ho Apna</p>
-        </div>
         <div
           className="login-card animate-fade-in"
           style={{
@@ -402,8 +415,9 @@ const LoginPage: React.FC = () => {
             boxShadow: '0 0 45px rgba(56,189,248,0.25), 0 25px 50px rgba(0,0,0,0.55)',
           }}
         >
-            {/* ── Logo + Title (real image) ── */}
+            {/* ── Tagline + Logo + Title + Hindi slogan (real image) ── */}
             <div className="text-center mb-7">
+              <p className="login-tagline-en mb-3">0% Interest - Loan Free Home for Every Indian</p>
               <div className="flex justify-center mb-3">
                 {/* Real Dream Group logo — responsive size */}
                 <Logo size="lg" />
@@ -411,6 +425,7 @@ const LoginPage: React.FC = () => {
               <h1 className="font-display text-3xl font-bold text-white mb-1">
                 Dream Group CRM
               </h1>
+              <p className="login-tagline-hi" lang="hi">Humaara Sapna, Har Hindustani Ka Ghar Ho Apna</p>
             </div>
 
             {/* Divider */}

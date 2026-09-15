@@ -46,23 +46,18 @@
   opacity: 0.5;
 }
 
-.login-tagline {
-  max-width: min(560px, 92vw);
-  padding: 0 12px;
-}
 .login-tagline-en {
   margin: 0 0 4px;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.3px;
-  color: rgba(255, 255, 255, 0.55);
+  color: #ffffff;
 }
 .login-tagline-hi {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
-  color: #d97706;
-  text-shadow: 0 1px 12px rgba(217, 119, 6, 0.35);
+  color: #ffffff;
 }
 
 @media (max-width: 479px) {

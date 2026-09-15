@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdAdd, MdDownload, MdRefresh,
-  MdSearch, MdApartment,
-  MdBusiness, MdLayers, MdHome, MdStorefront, MdGridView,
+  MdSearch, MdApartment, MdViewQuilt,
+  MdBusiness, MdLayers, MdHome, MdStorefront,
   MdToggleOn, MdToggleOff, MdVisibility, MdEdit,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
@@ -365,7 +365,7 @@ const BuildingListPage: React.FC = () => {
                           )}
                           <button type="button" title="View 2D Structure" className="master-icon-btn"
                             onClick={() => navigate(`/admin/building-2d-view?buildingId=${b.id}`)}>
-                            <MdGridView size={15} />
+                            <MdViewQuilt size={15} />
                           </button>
                         </div>
                       </td>

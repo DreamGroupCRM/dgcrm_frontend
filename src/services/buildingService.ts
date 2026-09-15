@@ -224,7 +224,10 @@ function toWizardPayload(payload: CreateBuildingPayload) {
 export type BuildingSortKey = 'id' | 'project_name' | 'building_name' | 'wings' | 'floors' | 'flats' | 'shops' | 'parking' | 'created_at';
 
 // ── Fetch list of all buildings ─────────────────────────────────────────────
-/** GET /api/buildings?is_active=true&page=1&limit=10&search=...&sort=...&sort_dir=... */
+// No `is_active` filter — the list must show every building, active and
+// disabled alike (disabled ones render greyed-out, never removed), so the
+// backend's optional is_active filter is deliberately left unset here.
+/** GET /api/buildings?page=1&limit=10&search=...&sort=...&sort_dir=... */
 export const FetchBuildingList = async (
   page: number,
   limit: number,
@@ -233,7 +236,6 @@ export const FetchBuildingList = async (
   sortDir?: 'asc' | 'desc'
 ): Promise<BuildingListResponse> => {
   const params: Record<string, string | number | boolean> = {
-    is_active: true,
     page,
     limit,
   };

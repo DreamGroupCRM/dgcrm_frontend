@@ -391,7 +391,7 @@ const ExecutiveDashboardPage: React.FC = () => {
           the rest of this page (see the effect above) so a failure here
           can never take down the Executive Dashboard around it. ──────── */}
       <div className="rounded-2xl overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${isDark ? 'rgba(124,58,237,0.35)' : '#ddd6fe'}`, boxShadow: isDark ? 'none' : '0 4px 16px rgba(124,58,237,0.08)', marginBottom: 18 }}>
-        <div className="flex items-center gap-2 px-5 py-3.5" style={{ background: 'linear-gradient(135deg,#4c1d95,#7c3aed,#a855f7)' }}>
+        <div className="flex items-center gap-2 px-5 py-3.5" style={{ background: '#4c1d95' }}>
           <MdAutoAwesome size={18} color="#fff" />
           <h2 style={{ fontSize: 15, fontWeight: 800, color: '#fff', margin: 0 }}>DGCRM Intelligence</h2>
           <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.85)', marginLeft: 4 }}>Lead scoring, priorities and patterns — computed from your own CRM data</span>

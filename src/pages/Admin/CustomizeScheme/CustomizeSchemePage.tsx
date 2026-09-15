@@ -107,19 +107,15 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 //    the Employee CRUD page documents: an inline component here would get a
 //    new identity every render (every field change re-renders the page),
 //    which would remount the input and drop focus mid-edit. ─────────────
-// backgroundColor (the theme's normal input surface) + a separate, very
-// low-opacity emerald backgroundImage gradient layered on top of it — every
-// Payment Details field box (amount inputs, date pickers, the Remaining
-// Booking Amount pair) gets a light gradient tint this way, in both themes,
-// without needing an isDark branch: on the near-white light input surface
-// it reads as a soft mint wash, on the near-black dark one as a subtle
-// emerald glow. Text stays high-contrast either way since the base
-// t.inputBg color (and t.inputText) are untouched — only a translucent
-// tint sits on top of it.
+// backgroundColor (the theme's normal input surface) — previously layered
+// a very low-opacity emerald gradient wash on top of it; removed per the
+// no-gradient-anywhere pass rather than reintroducing it as a flat tint,
+// since a solid backgroundColor can't carry both the base theme surface
+// and a translucent overlay at once without a gradient. Text stays
+// high-contrast either way since t.inputBg/t.inputText are untouched.
 const getFieldStyle = (t: Theme): React.CSSProperties => ({
   width: '100%',
   backgroundColor: t.inputBg,
-  backgroundImage: 'linear-gradient(135deg, rgba(16,185,129,0.14), rgba(45,212,191,0.06))',
   border: `1px solid ${t.inputBorder}`, borderRadius: 9,
   padding: '6px 9px', fontSize: 11, color: t.inputText, outline: 'none', fontFamily: t.fontFamily,
 });
@@ -357,14 +353,14 @@ const BankComparisonSidebar: React.FC<{
     <div className="rounded-2xl overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, boxShadow: isDark ? 'none' : '0 4px 16px rgba(0,0,0,0.07)' }}>
       <ResultPanelHeader
         icon={<MdAccountBalance size={15} color="#fff" />} title="Bank Loan vs. Our Plan"
-        gradient="linear-gradient(135deg,#b91c1c,#dc2626)"
+        gradient="#b91c1c"
         subtitle={`${LOAN_TENURE_YEARS}yr @ ${LOAN_INTEREST_RATE}%`}
       />
       <div className="p-3.5">
         <button type="button" onClick={onGeneratePdf} disabled={pdfDisabled}
           title="Generate a Bank Loan vs. Interest-Free Model comparison PDF from the Flat Cost above"
           className="print-hide flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl text-xs font-bold text-white mb-3.5"
-          style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: 'none', cursor: pdfDisabled ? 'not-allowed' : 'pointer', opacity: pdfDisabled ? 0.55 : 1 }}>
+          style={{ background: '#dc2626', border: 'none', cursor: pdfDisabled ? 'not-allowed' : 'pointer', opacity: pdfDisabled ? 0.55 : 1 }}>
           <MdPictureAsPdf size={15} /> {generatingPdf ? 'Generating...' : 'Generate PDF'}
         </button>
 
@@ -684,7 +680,7 @@ const CustomizeSchemePage: React.FC = () => {
           >
             <ResultPanelHeader
               icon={<MdPayments size={15} color="#fff" />} title="Payment Details"
-              gradient="linear-gradient(135deg,#059669,#10b981,#0d9488)"
+              gradient="#059669"
               // "Remaining" now lives ONLY in the top KPI row (SchemeSummaryRow)
               // — kept out of this panel's own header so it isn't shown twice.
               subtitle={totalCost > 0 ? `Total Cost of Flat: ${formatINR(totalCost)}` : 'Enter the scheme inputs below'}
@@ -692,9 +688,7 @@ const CustomizeSchemePage: React.FC = () => {
             <div
               className="p-4"
               style={{
-                background: isDark
-                  ? 'linear-gradient(180deg, rgba(5,150,105,0.12) 0%, rgba(13,148,136,0.05) 45%, transparent 100%)'
-                  : 'linear-gradient(180deg, #ecfdf5 0%, #f0fdfa 45%, #ffffff 100%)',
+                background: isDark ? 'rgba(5,150,105,0.12)' : '#ecfdf5',
               }}
             >
               {/* Exactly 3 rows (4/4/3) — equal-width columns within each row,
@@ -761,7 +755,7 @@ const CustomizeSchemePage: React.FC = () => {
         >
           <ResultPanelHeader
             icon={<MdCalculate size={15} color="#fff" />} title="EMI Scheme"
-            gradient={`linear-gradient(135deg,${accent},#6366f1)`}
+            gradient="var(--grad-green)"
             subtitle={
               <span className="flex items-center gap-1.5">
                 {`Total Cost of Flat: ${formatINR(totalCost)}`}
@@ -793,7 +787,7 @@ const CustomizeSchemePage: React.FC = () => {
         >
           <ResultPanelHeader
             icon={<MdListAlt size={15} color="#fff" />} title="EMI Schedule"
-            gradient="linear-gradient(135deg,#059669,#10b981)"
+            gradient="#059669"
             subtitle={
               <span className="flex items-center gap-1.5">
                 {`${computed.tenure} + ${computed.afterCount} months`}

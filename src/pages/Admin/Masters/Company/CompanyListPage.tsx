@@ -156,11 +156,11 @@ const CompanyListPage: React.FC = () => {
             <MdAdd size={18} /> Add Company
           </button>
           <button onClick={exportCSV} title="Export CSV" className="master-btn-icon"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
+            style={{ background: '#2563eb', border: '1px solid #2563eb', color: '#fff' }}>
             <MdDownload size={18} />
           </button>
           <button onClick={fetchCompanies} title="Refresh" className="master-btn-icon"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
+            style={{ background: '#2563eb', border: '1px solid #2563eb', color: '#fff' }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>

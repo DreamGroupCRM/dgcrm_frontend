@@ -237,9 +237,9 @@ const PaymentUpcomingPage: React.FC = () => {
             <label style={fieldLabelStyle}>To Date</label>
             <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} style={{ ...fieldInputStyle, width: 160 }} />
           </div>
-          <button type="button" onClick={handleApply} disabled={loadingAmount || loadingList}
+          <button type="button" onClick={handleApply} disabled={!rangeValid || loadingAmount || loadingList}
             className="payment-upcoming-ok-btn px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
-            style={{ background: (loadingAmount || loadingList) ? '#6b7280' : 'linear-gradient(135deg,#4f46e5,#6366f1)', border: 'none', cursor: (loadingAmount || loadingList) ? 'not-allowed' : 'pointer' }}>
+            style={{ background: (!rangeValid || loadingAmount || loadingList) ? '#6b7280' : 'var(--brand-gradient)', border: 'none', cursor: (!rangeValid || loadingAmount || loadingList) ? 'not-allowed' : 'pointer' }}>
             {(loadingAmount || loadingList) ? 'Loading...' : 'OK'}
           </button>
           {applied && (

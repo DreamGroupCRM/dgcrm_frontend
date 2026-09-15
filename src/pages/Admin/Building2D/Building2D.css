@@ -1,0 +1,28 @@
+/* ==========================================
+   DREAM GROUP CRM — BUILDING 2D VIEW
+   ==========================================
+   The picture box is a FIXED width/height frame on every device — it never
+   grows or shrinks with how many wings/floors a building has, so the page
+   around it never needs to scroll. Any building too large to fit scrolls
+   INSIDE this box instead (.building-2d-canvas), on both axes. */
+.building-2d-box {
+  width: 100%;
+  height: 520px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.building-2d-canvas {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 767px) {
+  .building-2d-box { height: 440px; }
+}
+@media (max-width: 479px) {
+  .building-2d-box { height: 380px; }
+}

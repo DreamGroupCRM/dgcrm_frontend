@@ -70,9 +70,9 @@ const initials = (first: string, last: string) => `${first?.[0] || ''}${last?.[0
 // page. CustomerDetailsListPage's CustomerCard already uses this same
 // module-scope pattern. ─────────────────────────────────────────────────
 const EmployeeCard: React.FC<{
-  emp: Employee; t: Theme; isDark: boolean; accent: string; accentFocus: string;
+  emp: Employee; t: Theme; isDark: boolean; accent: string;
   navigate: NavigateFunction; renderActionMenu: (emp: Employee) => React.ReactNode;
-}> = ({ emp, t, isDark, accent, accentFocus, navigate, renderActionMenu }) => {
+}> = ({ emp, t, isDark, accent, navigate, renderActionMenu }) => {
   const status = STATUS_STYLES[emp.status] || STATUS_STYLES.active;
   // Deactivated (is_active=false, but not deleted — a deleted employee
   // never reaches this list at all) — whole card reads as "grayed out"
@@ -102,7 +102,7 @@ const EmployeeCard: React.FC<{
             ) : (
               <div
                 className="flex items-center justify-center rounded-full text-white font-bold"
-                style={{ width: 48, height: 48, background: `linear-gradient(135deg,${accent},${accentFocus})`, fontSize: 13 }}
+                style={{ width: 48, height: 48, background: accent, fontSize: 13 }}
               >
                 {initials(emp.first_name, emp.last_name)}
               </div>
@@ -230,8 +230,7 @@ const RowActionMenu: React.FC<{
 const EmployeeDetailsListPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { isDark, t, accent, cssVars: appearanceCssVars } = useAppearanceTokens();
-  const accentFocus = (appearanceCssVars as Record<string, string>)['--master-accent-focus'];
+  const { isDark, t, accent } = useAppearanceTokens();
 
   // allEmployees now holds ONLY the current server page — previously this
   // held up to 1000 rows fetched once (with a SEPARATE, entirely unused set
@@ -471,7 +470,7 @@ const EmployeeDetailsListPage: React.FC = () => {
         <div className="master-actions">
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
             title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'} className="master-btn-icon"
-            style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>
+            style={{ background: '#2563eb', border: '1px solid #2563eb', color: '#fff' }}>
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
           </button>
           <button type="button" onClick={() => navigate('/admin/employee/employee-details/add')} className="master-btn-primary">
@@ -502,7 +501,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                 {pageRows.map((emp, idx) => (
                   <EmployeeCard
                     key={emp.id || emp.employee_code || idx}
-                    emp={emp} t={t} isDark={isDark} accent={accent} accentFocus={accentFocus}
+                    emp={emp} t={t} isDark={isDark} accent={accent}
                     navigate={navigate} renderActionMenu={renderActionMenu}
                   />
                 ))}
@@ -561,7 +560,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                               <img src={resolveFileUrl(emp.profile_photo_url)} alt="" className="rounded-full" style={{ width: 30, height: 30, objectFit: 'cover', flexShrink: 0 }} />
                             ) : (
                               <div className="flex items-center justify-center rounded-full text-white font-bold"
-                                style={{ width: 30, height: 30, background: 'linear-gradient(135deg,#0284c7,#7c3aed)', fontSize: 11, flexShrink: 0 }}>
+                                style={{ width: 30, height: 30, background: '#0284c7', fontSize: 11, flexShrink: 0 }}>
                                 {initials(emp.first_name, emp.last_name)}
                               </div>
                             )}

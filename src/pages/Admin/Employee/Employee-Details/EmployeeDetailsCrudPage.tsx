@@ -448,7 +448,7 @@ const DocumentCard: React.FC<{ t: Theme; label: string; url?: string | null }> =
         className="w-full flex items-center justify-center overflow-hidden"
         style={{
           height: 120,
-          background: isImage ? t.insetBg : url ? 'var(--master-btn-primary-gradient, linear-gradient(135deg,#0284c7,#7c3aed))' : t.insetBg,
+          background: isImage ? t.insetBg : url ? 'var(--master-btn-primary-gradient, #0284c7)' : t.insetBg,
         }}
       >
         {isImage && url ? (
@@ -488,7 +488,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isDark, t, accent, cssVars: appearanceCssVars } = useAppearanceTokens();
-  const accentFocus = (appearanceCssVars as Record<string, string>)['--master-accent-focus'];
   const isView = mode === 'view';
 
   const [fetching, setFetching] = useState(mode !== 'add');
@@ -1018,7 +1017,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           {existingUrls.profile_photo ? (
             <img src={resolveFileUrl(existingUrls.profile_photo)} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover' }} />
           ) : (
-            <div className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ width: 56, height: 56, background: `linear-gradient(135deg,${accent},${accentFocus})`, fontSize: 18 }}>
+            <div className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ width: 56, height: 56, background: accent, fontSize: 18 }}>
               {(form.first_name[0] || '')}{(form.last_name[0] || '')}
             </div>
           )}
@@ -1035,7 +1034,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             stretch left a large block of empty space below its last field. */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 items-start">
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)" />
+            <SectionHeader t={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-green)" />
             <div className="emp-view-grid">
               <ViewValue label="First Name" value={form.first_name} />
               <ViewValue label="Middle Name" value={form.middle_name} />
@@ -1051,7 +1050,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
 
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="var(--grad-purple)" />
+            <SectionHeader t={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="var(--grad-green)" />
             <div className="emp-view-grid">
               <ViewValue label="Joining Date" value={form.joining_date ? formatDate(form.joining_date) : ''} />
               <ViewValue label="Working Hours" value={form.working_hours ? `${form.working_hours} Hours` : ''} />
@@ -1094,7 +1093,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
 
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-            <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module" gradient="var(--grad-grey)" />
+            <SectionHeader t={t} icon={<MdGroups size={16} />} title="Assign Action & Module" gradient="var(--grad-green)" />
             <div className="mb-4">
               <div className="emp-view-label" style={{ marginBottom: 6 }}>Assigned Departments</div>
               <div className="emp-chip-row">
@@ -1130,7 +1129,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         {/* ── Uploaded Documents ──────────────────────────────────────────── */}
         <div className="rounded-2xl mb-5 p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-          <SectionHeader t={t} icon={<MdDescription size={16} />} title="Uploaded Documents" gradient="var(--grad-teal)" />
+          <SectionHeader t={t} icon={<MdDescription size={16} />} title="Uploaded Documents" gradient="var(--grad-green)" />
           {/* Bank Passbook moved into the Bank Details box above (no longer
               duplicated here) — the remaining 4 documents fill 2 rows of 2
               at the .emp-doc-grid breakpoint. */}
@@ -1197,7 +1196,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       />
 
       {/* ── Personal Details ─────────────────────────────────────────── */}
-      <AccordionSection theme={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-sky)"
+      <AccordionSection theme={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-green)"
         open={openSections.personal} onToggle={() => setOpenSections((p) => ({ ...p, personal: !p.personal }))}
         sectionRef={(el) => (sectionRefs.current.personal = el)}>
 
@@ -1278,7 +1277,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       </AccordionSection>
 
       {/* ── Office Use Only ──────────────────────────────────────────── */}
-      <AccordionSection theme={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="var(--grad-purple)"
+      <AccordionSection theme={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="var(--grad-green)"
         open={openSections.office} onToggle={() => setOpenSections((p) => ({ ...p, office: !p.office }))}
         sectionRef={(el) => (sectionRefs.current.office = el)}>
 
@@ -1372,7 +1371,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       </AccordionSection>
 
       {/* ── Assign Action & Module for this Employee ────────────────── */}
-      <AccordionSection theme={t} icon={<MdGroups size={16} />} title="Assign Action & Module for this Employee" gradient="var(--grad-grey)"
+      <AccordionSection theme={t} icon={<MdGroups size={16} />} title="Assign Action & Module for this Employee" gradient="var(--grad-green)"
         open={openSections.assign} onToggle={() => setOpenSections((p) => ({ ...p, assign: !p.assign }))}
         sectionRef={(el) => (sectionRefs.current.assign = el)}>
 
