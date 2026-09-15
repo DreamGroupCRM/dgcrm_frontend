@@ -278,6 +278,13 @@ export interface DueGridRow {
   amount: number;
   payment_for: PaymentFor | null;
   status: DueGridStatus;
+  // true only for a 'paid' EMI row settled by an Extra Pay advance rather
+  // than a normal on-schedule payment — render struck through, never hidden.
+  settled_via_extra_pay: boolean;
+  // What's actually still owed for this row: 0 once paid/settled, otherwise
+  // the scheduled `amount` minus any leftover partial Extra Pay credit for
+  // the one row immediately following a settled range.
+  due_amount: number;
 }
 export interface CustomerDueGrid {
   customer_id: number;

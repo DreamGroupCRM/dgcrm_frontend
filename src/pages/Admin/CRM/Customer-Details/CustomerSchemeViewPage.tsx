@@ -20,6 +20,7 @@ import {
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { fetchCustomerScheme } from '../../../../services/customerDetailsService';
+import { fetchCustomerDueGrid, DueGridRow } from '../../../../services/paymentService';
 import { CustomerSchemeData, CustomerSchemeSummaryRow, CustomerScheduleRow } from '../../../../types/index';
 
 type Theme = AppTheme;
@@ -104,7 +105,13 @@ const SummaryTable: React.FC<{ t: Theme; accent: string; heading: string; rows: 
   </div>
 );
 
-const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; rows: CustomerScheduleRow[]; total: number; totalLabel: string }> = ({ t, accent, section, rows, total, totalLabel }) => (
+// gridRows, when supplied, is the exact same-length, same-order slice of
+// getCustomerDueGrid's rows for this phase (see the merge in the page body
+// below) — used purely to overlay "settled via Extra Pay" struck-through
+// styling on top of the plain schedule row; the row's own date/label/amount
+// (from generateCustomerSchedule) always stay the source of truth for what
+// renders, matching by array position rather than a second network shape.
+const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; rows: CustomerScheduleRow[]; total: number; totalLabel: string; gridRows?: DueGridRow[] }> = ({ t, accent, section, rows, total, totalLabel, gridRows }) => (
   <div className="mb-5">
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
@@ -119,14 +126,33 @@ const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; ro
         <tbody>
           {rows.length === 0 ? (
             <tr><td colSpan={4} style={{ padding: 20, textAlign: 'center', fontSize: 11.5, color: t.textSecondary }}>No installments in this phase.</td></tr>
-          ) : rows.map((r) => (
-            <tr key={r.sr} style={{ borderTop: `1px solid ${t.divider}` }}>
-              <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textSecondary }}>{r.sr}</td>
-              <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDMY(r.date)}</td>
-              <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary }}>{r.label}</td>
-              <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, textAlign: 'right', fontWeight: 600 }}>{formatINR(r.amount)}</td>
-            </tr>
-          ))}
+          ) : rows.map((r, i) => {
+            const settled = !!gridRows?.[i]?.settled_via_extra_pay;
+            const dueAmount = gridRows?.[i]?.due_amount;
+            const partiallyCredited = !settled && typeof dueAmount === 'number' && dueAmount > 0 && dueAmount < r.amount;
+            return (
+              <tr key={r.sr} style={{ borderTop: `1px solid ${t.divider}` }}>
+                <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textSecondary, textDecoration: settled ? 'line-through' : 'none' }}>{r.sr}</td>
+                <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap', textDecoration: settled ? 'line-through' : 'none' }}>{formatDMY(r.date)}</td>
+                <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, textDecoration: settled ? 'line-through' : 'none' }}>
+                  {r.label}
+                  {settled && (
+                    <span className="inline-flex items-center" style={{ marginLeft: 8, padding: '1.5px 7px', borderRadius: 999, fontSize: 9.5, fontWeight: 700, background: '#e0e7ff', color: '#4338ca', textDecoration: 'none' }}>
+                      Settled via Extra Pay
+                    </span>
+                  )}
+                </td>
+                <td style={{ padding: '7px 12px', fontSize: 11.5, textAlign: 'right', fontWeight: 600 }}>
+                  <span style={{ color: settled ? t.textSecondary : t.textPrimary, textDecoration: settled ? 'line-through' : 'none' }}>{formatINR(r.amount)}</span>
+                  {partiallyCredited && (
+                    <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
+                      {formatINR(dueAmount as number)} due &middot; {formatINR(r.amount - (dueAmount as number))} via Extra Pay
+                    </div>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -145,6 +171,11 @@ const CustomerSchemeViewPage: React.FC = () => {
   const [data, setData] = useState<CustomerSchemeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Extra Pay-settled overlay is a non-critical enhancement on top of the
+  // plain schedule above — fetched separately, never blocks the page's own
+  // loading/error state, and silently stays null (no strikethrough shown)
+  // if it fails, rather than treating it as fatal.
+  const [gridRows, setGridRows] = useState<DueGridRow[] | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -167,6 +198,15 @@ const CustomerSchemeViewPage: React.FC = () => {
         }
       })
       .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    fetchCustomerDueGrid(id)
+      .then((grid) => { if (!cancelled) setGridRows(grid.rows); })
+      .catch(() => { if (!cancelled) setGridRows(null); });
     return () => { cancelled = true; };
   }, [id]);
 
@@ -294,8 +334,8 @@ const CustomerSchemeViewPage: React.FC = () => {
           subtitle={`Schedule ${formatINR(c.flat_amount)}`}
         />
         <div className="p-5 sm:p-6">
-          <ScheduleTable t={t} accent={accent} section="A" rows={data.scheduleA} total={data.totalA} totalLabel="(A) Total Before Possession" />
-          <ScheduleTable t={t} accent={accent} section="B" rows={data.scheduleB} total={data.totalB} totalLabel="(B) Total After Possession" />
+          <ScheduleTable t={t} accent={accent} section="A" rows={data.scheduleA} total={data.totalA} totalLabel="(A) Total Before Possession" gridRows={gridRows?.slice(0, data.scheduleA.length)} />
+          <ScheduleTable t={t} accent={accent} section="B" rows={data.scheduleB} total={data.totalB} totalLabel="(B) Total After Possession" gridRows={gridRows?.slice(data.scheduleA.length)} />
           <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
             <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
             <span style={{ fontSize: 13, fontWeight: 800, color: accent }}>{formatINR(data.grandTotal)}</span>

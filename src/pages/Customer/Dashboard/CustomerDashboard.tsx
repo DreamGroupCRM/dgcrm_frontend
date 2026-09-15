@@ -161,7 +161,15 @@ const CustomerDashboard: React.FC = () => {
     [dueGrid]
   );
   const totalAmount = detail?.flat_amount ?? 0;
-  const totalDue = Math.max(0, totalAmount - totalPaid);
+  // Summed off each row's own due_amount (not totalAmount - totalPaid) —
+  // a row can be still-unpaid but partially covered by a leftover Extra Pay
+  // credit smaller than one full EMI, in which case its due_amount is
+  // already netted down (see getCustomerDueGrid) while it hasn't flipped to
+  // 'paid' yet; the plain subtraction would double-count that shortfall.
+  const totalDue = useMemo(
+    () => (dueGrid?.rows ?? []).filter((r) => r.status !== 'paid').reduce((s, r) => s + r.due_amount, 0),
+    [dueGrid]
+  );
 
   const firstName = profile?.first_name || '';
   const documents = detail
@@ -310,11 +318,26 @@ const CustomerDashboard: React.FC = () => {
                     <tbody>
                       {(dueGrid?.rows ?? []).map((r) => (
                         <tr key={r.sr} style={{ borderBottom: `1px solid ${t.tableRowBorder}` }}>
-                          <td style={{ padding: '10px 12px', fontSize: 13, color: t.textMuted }}>{r.sr}</td>
-                          <td style={{ padding: '10px 12px', fontSize: 13, color: t.textPrimary, fontWeight: 500 }}>{r.label}</td>
-                          <td style={{ padding: '10px 12px', fontSize: 13, color: t.textSecondary }}>{r.date ? formatDate(r.date) : '—'}</td>
-                          <td style={{ padding: '10px 12px', fontSize: 13, color: t.textPrimary, fontWeight: 600 }}>{rupee(r.amount)}</td>
-                          <td style={{ padding: '10px 12px' }}><StatusPill status={r.status} /></td>
+                          <td style={{ padding: '10px 12px', fontSize: 13, color: t.textMuted, textDecoration: r.settled_via_extra_pay ? 'line-through' : 'none' }}>{r.sr}</td>
+                          <td style={{ padding: '10px 12px', fontSize: 13, color: t.textPrimary, fontWeight: 500, textDecoration: r.settled_via_extra_pay ? 'line-through' : 'none' }}>{r.label}</td>
+                          <td style={{ padding: '10px 12px', fontSize: 13, color: t.textSecondary, textDecoration: r.settled_via_extra_pay ? 'line-through' : 'none' }}>{r.date ? formatDate(r.date) : '—'}</td>
+                          <td style={{ padding: '10px 12px', fontSize: 13, color: t.textPrimary, fontWeight: 600 }}>
+                            <span style={{ textDecoration: r.settled_via_extra_pay ? 'line-through' : 'none', color: r.settled_via_extra_pay ? t.textMuted : t.textPrimary }}>{rupee(r.amount)}</span>
+                            {!r.settled_via_extra_pay && r.status !== 'paid' && r.due_amount < r.amount && (
+                              <div style={{ fontSize: 10.5, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
+                                {rupee(r.due_amount)} due &middot; {rupee(r.amount - r.due_amount)} covered via Extra Pay
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            {r.settled_via_extra_pay ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold" style={{ background: '#e0e7ff', color: '#4338ca', fontSize: 11 }}>
+                                Settled via Extra Pay
+                              </span>
+                            ) : (
+                              <StatusPill status={r.status} />
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
