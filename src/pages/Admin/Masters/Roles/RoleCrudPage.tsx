@@ -53,12 +53,6 @@ const Field: React.FC<FieldProps> = ({
 }) => (
   // component="div" pins MUI Box's polymorphic `component` prop explicitly
   // (it already renders a div by default — this changes no behavior).
-  // TypeScript-only fix: once @react-three/fiber's global JSX.
-  // IntrinsicElements augmentation is loaded anywhere in the program (see
-  // src/pages/Admin/Building3D), resolving Box's `id` prop against the
-  // unpinned, unioned-over-every-possible-`component` overload blows past
-  // TS2590's complexity limit; pinning it to the one overload actually
-  // used here sidesteps that resolution.
   <Box component="div" id={id} sx={{ mb: 3 }}>
     <Typography
       variant="body2"

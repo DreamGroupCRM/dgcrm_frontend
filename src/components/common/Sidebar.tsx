@@ -22,7 +22,7 @@ import {
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
   MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
   MdAdminPanelSettings, MdManageAccounts, MdPendingActions, MdBeachAccess,
-  MdUpcoming, MdViewInAr,
+  MdUpcoming, MdGridView,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -123,7 +123,7 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
   { label: 'Pending Admin Approval', path: ROUTES.ADMIN.PENDING_APPROVALS, icon: <MdPendingActions /> },
   { label: 'Change Requests', path: ROUTES.ADMIN.CHANGE_REQUESTS, icon: <MdPendingActions /> },
   { label: 'Customize Scheme', path: ROUTES.ADMIN.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
-  { label: '3D Building View', path: ROUTES.ADMIN.BUILDING_3D_VIEW, icon: <MdViewInAr /> },
+  { label: 'Building View', path: ROUTES.ADMIN.BUILDING_2D_VIEW, icon: <MdGridView /> },
 
   // Super Admin lobby — Backup Database moved in here (was previously
   // visible to every admin with no real page behind it) and User

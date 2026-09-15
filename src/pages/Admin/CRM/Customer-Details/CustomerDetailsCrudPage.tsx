@@ -7,7 +7,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdArrowBack, MdSave, MdPerson, MdApartment, MdClose, MdKeyboardArrowDown, MdAdd,
-  MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew, MdViewInAr,
+  MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew, MdGridView,
   MdPayments, MdDescription, MdVisibility, MdRadioButtonChecked, MdRadioButtonUnchecked,
 } from 'react-icons/md';
 import { FaWhatsapp } from 'react-icons/fa';
@@ -24,10 +24,9 @@ import {
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { companyService } from '../../../../services/companyService';
 import { Building, Company, ParkingChoice } from '../../../../types/index';
-// Type-only import — never pulls Building3DViewPage's actual module (and
-// its heavy three.js dependency) into this page's bundle; only the shape
-// of the payload it navigates back with.
-import type { SelectedUnitForCustomer } from '../../Building3D/Building3DViewPage';
+// Type-only import — never pulls Building2DViewPage's actual module into
+// this page's bundle; only the shape of the payload it navigates back with.
+import type { SelectedUnitForCustomer } from '../../Building2D/Building2DViewPage';
 import { showAlert, resolveFileUrl } from '../../../../utils';
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
 import { DobPicker } from '../../../../components/common/DobPicker';
@@ -691,8 +690,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     })();
   }, []);
 
-  // 3D Building View "Select Flat" integration — when returning from the
-  // picker (see Building3DViewPage's handleConfirmSelect), routerLocation.
+  // Building View "Select Flat" integration — when returning from the
+  // picker (see Building2DViewPage's handleConfirmSelect), routerLocation.
   // state.selectedUnit carries the chosen unit's NAMES, not ids: the
   // cascading Company/Project/Building/Wing/Floor/Flat selects below
   // re-resolve the real ids themselves once buildings/buildingDetail load,
@@ -717,7 +716,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       setShopNo('');
     }
     navigate(routerLocation.pathname, { replace: true, state: {} });
-    toast.success(`${selectedUnit.unitType === 'shop' ? 'Shop' : 'Flat'} ${selectedUnit.no} selected from 3D Building View.`);
+    toast.success(`${selectedUnit.unitType === 'shop' ? 'Shop' : 'Flat'} ${selectedUnit.no} selected from Building View.`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routerLocation.state]);
 
@@ -1438,18 +1437,18 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         open={openSections.property} onToggle={() => setOpenSections((p) => ({ ...p, property: !p.property }))}
         sectionRef={(el) => (sectionRefs.current.property = el)}>
 
-        {/* Select Flat (3D View) — opens the 3D Building View in picker
-            mode; on confirming an available flat/shop there, it navigates
-            back here (see the routerLocation.state.selectedUnit effect
-            above) with every field below already filled in. Hidden in View
-            mode — nothing here is editable there anyway. */}
+        {/* Select Flat (Building View) — opens the 2D Building View in
+            picker mode; on confirming an available flat/shop there, it
+            navigates back here (see the routerLocation.state.selectedUnit
+            effect above) with every field below already filled in. Hidden
+            in View mode — nothing here is editable there anyway. */}
         {!isView && (
           <div className="flex justify-end mb-4">
             <button type="button"
-              onClick={() => navigate(ROUTES.ADMIN.BUILDING_3D_VIEW, { state: { pickerMode: true, returnPath: routerLocation.pathname } })}
+              onClick={() => navigate(ROUTES.ADMIN.BUILDING_2D_VIEW, { state: { pickerMode: true, returnPath: routerLocation.pathname } })}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold"
               style={{ background: t.insetBg, color: '#0284c7', border: `1px solid ${t.inputBorder}`, cursor: 'pointer' }}>
-              <MdViewInAr size={16} /> Select Flat (3D View)
+              <MdGridView size={16} /> Select Flat (Building View)
             </button>
           </div>
         )}

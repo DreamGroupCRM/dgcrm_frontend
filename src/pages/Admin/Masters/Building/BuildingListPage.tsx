@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import {
   MdAdd, MdDownload, MdRefresh,
   MdSearch, MdApartment,
-  MdBusiness, MdLayers, MdHome, MdStorefront, MdViewInAr,
+  MdBusiness, MdLayers, MdHome, MdStorefront, MdGridView,
   MdToggleOn, MdToggleOff, MdVisibility, MdEdit,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
@@ -130,8 +130,18 @@ const BuildingListPage: React.FC = () => {
       } else {
         toast.error(res.message || 'Failed to update building status');
       }
-    } catch {
-      toast.error('Failed to update building status. Please try again.');
+    } catch (e) {
+      // Backend blocks disabling a building that still has customers booked
+      // into one of its flats/shops, throwing a 409 with the exact affected
+      // count — surfaced here via SweetAlert (same pattern used elsewhere
+      // for a duplicate-entry 409) instead of the generic toast fallback.
+      const status = (e as { response?: { status?: number; data?: { message?: string } } })?.response?.status;
+      const message = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (status === 409 && message) {
+        showAlert.error(message);
+      } else {
+        toast.error('Failed to update building status. Please try again.');
+      }
     }
   };
 
@@ -353,9 +363,9 @@ const BuildingListPage: React.FC = () => {
                                 : <MdToggleOff size={17} style={{ color: '#dc2626' }} />}
                             </button>
                           )}
-                          <button type="button" title="View 3D Structure" className="master-icon-btn"
-                            onClick={() => navigate(`/admin/building-3d-view?buildingId=${b.id}`)}>
-                            <MdViewInAr size={15} />
+                          <button type="button" title="View 2D Structure" className="master-icon-btn"
+                            onClick={() => navigate(`/admin/building-2d-view?buildingId=${b.id}`)}>
+                            <MdGridView size={15} />
                           </button>
                         </div>
                       </td>

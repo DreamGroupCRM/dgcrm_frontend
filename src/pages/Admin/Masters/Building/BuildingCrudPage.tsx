@@ -72,18 +72,22 @@ type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
 
 const FLAT_TYPES = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Studio', 'Other'];
-const WING_COLORS = ['#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#db2777'];
+// Blue-only palette (page-wide constraint: white & blue combination only) —
+// wing chips still cycle through 6 distinct shades of blue so wings stay
+// visually distinguishable, without introducing any other hue.
+const WING_COLORS = ['#2563eb', '#1d4ed8', '#0ea5e9', '#1e40af', '#0369a1', '#3b82f6'];
 
 // One accent color + icon per form section — replaces the plain numbered
-// step circle with a colorful icon chip, so the 6 sections read apart at a
-// glance instead of blending into one long grey scroll.
+// step circle with an icon chip, so the 6 sections read apart at a glance
+// instead of blending into one long grey scroll. Every color here is a
+// shade of blue (page-wide white/blue-only constraint).
 const SECTION_STYLE: { color: string; soft: string; icon: IconType }[] = [
   { color: '#2563eb', soft: '#eff6ff', icon: MdBusiness },     // 1 Project Details
-  { color: '#7c3aed', soft: '#f5f3ff', icon: MdApartment },    // 2 Wings
-  { color: '#0891b2', soft: '#ecfeff', icon: MdLayers },       // 3 Floors in Each Wing
-  { color: '#4f46e5', soft: '#eef2ff', icon: MdGridView },     // 4 Flats on Each Floor
-  { color: '#ea580c', soft: '#fff7ed', icon: MdStorefront },   // 5 Shop Details
-  { color: '#db2777', soft: '#fdf2f8', icon: MdLocalParking }, // 6 Parking
+  { color: '#1d4ed8', soft: '#dbeafe', icon: MdApartment },    // 2 Wings
+  { color: '#0ea5e9', soft: '#e0f2fe', icon: MdLayers },       // 3 Floors in Each Wing
+  { color: '#1e40af', soft: '#dbeafe', icon: MdGridView },     // 4 Flats on Each Floor
+  { color: '#0369a1', soft: '#e0f2fe', icon: MdStorefront },   // 5 Shop Details
+  { color: '#3b82f6', soft: '#eff6ff', icon: MdLocalParking }, // 6 Parking
 ];
 
 // Sticky footer height — same value/pattern as DepartmentCrudPage.tsx's
@@ -192,7 +196,7 @@ const StatusToggle: React.FC<{
       onClick={() => !disabled && onChange(!checked)}
       style={{
         width: 40, height: 22, borderRadius: 999, border: 'none', padding: 2,
-        background: checked ? '#22c55e' : '#d1d5db',
+        background: checked ? '#1d4ed8' : '#bfdbfe',
         cursor: disabled ? 'not-allowed' : 'pointer',
         display: 'flex', alignItems: 'center',
         justifyContent: checked ? 'flex-end' : 'flex-start',
@@ -208,7 +212,7 @@ const StatusToggle: React.FC<{
     {showLabel && (
       <span style={{
         fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
-        color: checked ? '#16a34a' : '#6b7280',
+        color: checked ? '#1d4ed8' : '#3b82f6',
       }}>
         {checked ? onLabel : offLabel}
       </span>
@@ -236,7 +240,7 @@ const FloorAccordionItem: React.FC<{
 
   const cellInputStyle = (disabled: boolean): React.CSSProperties => ({
     width: '100%',
-    background: disabled ? (isDark ? '#2a2a2a' : '#e5e7eb') : t.inputBg,
+    background: disabled ? (isDark ? '#0f2942' : '#dbeafe') : t.inputBg,
     border: `1px solid ${t.inputBorder}`,
     borderRadius: 8, padding: '6px 10px', fontSize: 12,
     color: disabled ? t.textSecondary : t.inputText,
@@ -298,7 +302,7 @@ const FloorAccordionItem: React.FC<{
                       key={flat.id}
                       style={{
                         background: rowDisabled
-                          ? (isDark ? '#1c1c1c' : '#e5e7eb')
+                          ? (isDark ? '#0f2942' : '#dbeafe')
                           : (idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg),
                         opacity: rowDisabled ? 0.6 : 1,
                         filter: rowDisabled ? 'grayscale(70%)' : 'none',
@@ -935,16 +939,36 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   }
 
   return (
-    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40 }}>
+    <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40, width: '100%' }}>
+      {/* Breadcrumb + page heading — full page width, blue-on-white only. */}
+      <div style={{ width: '100%', marginBottom: 18 }}>
+        <div style={{ fontSize: 12.5, color: '#3b82f6', fontWeight: 600 }}>
+          <span
+            onClick={() => navigate('/admin/masters/building')}
+            style={{ cursor: 'pointer', color: '#3b82f6' }}
+          >
+            Buildings
+          </span>
+          <span style={{ margin: '0 6px', color: '#93c5fd' }}>/</span>
+          <span style={{ color: '#1d4ed8' }}>
+            {isEdit ? 'Edit Building' : isView ? 'View Building' : 'New Building'}
+          </span>
+        </div>
+        <h1 style={{ fontSize: 21, fontWeight: 800, color: '#1d4ed8', margin: '4px 0 0' }}>
+          {PAGE_TITLES[mode]}
+        </h1>
+      </div>
+
       <ValidationErrorSummary
         t={t}
         errors={activeErrors.map((c) => ({ field: c.field, message: c.message }))}
         onErrorClick={revealInvalidField}
       />
 
-      {/* Section jump nav — one colored pill per section (matching that
-          section's icon chip color), click to smooth-scroll there. */}
-      <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 20 }}>
+      {/* Section jump nav — one blue pill per section (matching that
+          section's icon chip shade), click to smooth-scroll there.
+          Centered, per the redesign screenshot. */}
+      <div className="flex flex-wrap items-center justify-center gap-2" style={{ marginBottom: 20 }}>
         {sectionNavItems.map((item, idx) => {
           const { color, soft, icon: Icon } = SECTION_STYLE[idx];
           return (
@@ -979,7 +1003,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 per the sequence Company → Project → Location → Building.
                 Now mandatory — every building must link to a business
                 Company. Lists every entry in Company Master, same as before. */}
-            <label style={labelStyle}>Company {!isEdit && <span style={{ color: '#ef4444' }}>*</span>}</label>
+            <label style={labelStyle}>Company {!isEdit && <span style={{ color: '#1d4ed8' }}>*</span>}</label>
             <select
               value={businessCompanyId}
               disabled={isView}
@@ -993,7 +1017,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             </select>
           </div>
           <div>
-            <label style={labelStyle}>Project Name <span style={{ color: '#ef4444' }}>*</span></label>
+            <label style={labelStyle}>Project Name <span style={{ color: '#1d4ed8' }}>*</span></label>
             <input
               type="text" placeholder="Enter project name" value={projectName}
               readOnly={isView} disabled={isView}
@@ -1002,7 +1026,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </div>
           <div>
-            <label style={labelStyle}>Location <span style={{ color: '#ef4444' }}>*</span></label>
+            <label style={labelStyle}>Location <span style={{ color: '#1d4ed8' }}>*</span></label>
             <input
               type="text" placeholder="Enter location" value={location}
               readOnly={isView} disabled={isView}
@@ -1011,7 +1035,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </div>
           <div>
-            <label style={labelStyle}>Building Name <span style={{ color: '#ef4444' }}>*</span></label>
+            <label style={labelStyle}>Building Name <span style={{ color: '#1d4ed8' }}>*</span></label>
             <input
               type="text" placeholder="Enter building name" value={buildingName}
               readOnly={isView} disabled={isView}
@@ -1078,7 +1102,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
               onClick={addWing}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold"
               style={{
-                border: `1.5px dashed ${isDark ? '#3b3ba0' : '#a5b4fc'}`,
+                border: `1.5px dashed ${isDark ? '#3b82f6' : '#93c5fd'}`,
                 color: accent, background: 'transparent', cursor: 'pointer',
               }}
             >
@@ -1104,7 +1128,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
               disabled={wings.length === 0}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
               style={{
-                background: wings.length === 0 ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
+                background: wings.length === 0 ? '#93c5fd' : `linear-gradient(135deg,${accent},${accentHover})`,
                 border: 'none', cursor: wings.length === 0 ? 'not-allowed' : 'pointer',
               }}
             >
@@ -1125,7 +1149,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                   {w.name ? `${w.name} wing` : `Wing ${idx + 1}`}
                 </span>
               </div>
-              <label style={labelStyle}>No. of Floors <span style={{ color: '#ef4444' }}>*</span></label>
+              <label style={labelStyle}>No. of Floors <span style={{ color: '#1d4ed8' }}>*</span></label>
               <input
                 type="number" min={0} placeholder="e.g. 5" value={w.no_of_floors}
                 readOnly={isView} disabled={isView}
@@ -1177,7 +1201,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                   textAlign: 'left', padding: '10px 14px', borderRadius: 10,
                   border: `1px solid ${w.id === activeWingId ? accent : t.surfaceBorder}`,
                   background: w.id === activeWingId
-                    ? isDark ? 'rgba(67,56,202,0.15)' : '#eef2ff'
+                    ? isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe'
                     : t.subtleBg,
                   cursor: 'pointer', minWidth: 140, flexShrink: 0,
                 }}
@@ -1226,7 +1250,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                         disabled={activeWing.floors.length === 0}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
                         style={{
-                          background: activeWing.floors.length === 0 ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
+                          background: activeWing.floors.length === 0 ? '#93c5fd' : `linear-gradient(135deg,${accent},${accentHover})`,
                           border: 'none', cursor: activeWing.floors.length === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                         }}
                       >
@@ -1340,7 +1364,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             sit below a divider). */}
         <div className="flex flex-wrap items-center gap-3 sm:gap-5">
           <label style={labelStyle}>
-            Do you have shops in this building? <span style={{ color: '#ef4444' }}>*</span>
+            Do you have shops in this building? <span style={{ color: '#1d4ed8' }}>*</span>
           </label>
           <div className="flex items-center gap-5">
             <label className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
@@ -1360,9 +1384,12 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
 
           {hasShops && (
-            <>
+            // Pushed to the right edge of the row (marginLeft: auto) instead
+            // of sitting immediately beside the Yes/No radios, so the
+            // revealed question + input + button read as their own group.
+            <div className="flex flex-wrap items-center gap-3" style={{ marginLeft: 'auto' }}>
               <span style={{ fontWeight: 600, fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                How many shops in this building? <span style={{ color: '#ef4444' }}>*</span>
+                How many shops in this building? <span style={{ color: '#1d4ed8' }}>*</span>
               </span>
               <input
                 type="number" min={0} placeholder="e.g. 4" value={shopCountInput}
@@ -1377,14 +1404,14 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                   disabled={!shopCountInput || parseInt(shopCountInput, 10) <= 0}
                   className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
                   style={{
-                    background: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
+                    background: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? '#93c5fd' : `linear-gradient(135deg,${accent},${accentHover})`,
                     border: 'none', cursor: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                   }}
                 >
-                  <MdAdd size={17} /> Generate Shops
+                  <MdAdd size={17} /> Generate Shop
                 </button>
               )}
-            </>
+            </div>
           )}
         </div>
 
@@ -1407,7 +1434,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                   const fieldsDisabled = isView || rowDisabled;
                   const shopFieldStyle: React.CSSProperties = {
                     width: '100%',
-                    background: fieldsDisabled ? (isDark ? '#2a2a2a' : '#e5e7eb') : t.inputBg,
+                    background: fieldsDisabled ? (isDark ? '#0f2942' : '#dbeafe') : t.inputBg,
                     border: `1px solid ${t.inputBorder}`, borderRadius: 7, padding: '5px 8px',
                     fontSize: 11, color: fieldsDisabled ? t.textSecondary : t.inputText,
                     outline: 'none', fontFamily: t.fontFamily,
@@ -1422,7 +1449,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                       style={{
                         width: 132,
                         border: `1px solid ${t.surfaceBorder}`, borderRadius: 10, padding: '10px 10px',
-                        background: rowDisabled ? (isDark ? '#1c1c1c' : '#e5e7eb') : t.subtleBg,
+                        background: rowDisabled ? (isDark ? '#0f2942' : '#dbeafe') : t.subtleBg,
                         opacity: rowDisabled ? 0.6 : 1,
                         filter: rowDisabled ? 'grayscale(70%)' : 'none',
                         transition: 'opacity 0.15s ease, filter 0.15s ease',
@@ -1484,7 +1511,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             separate stacked row/section). */}
         <div className="flex flex-wrap items-center gap-3 sm:gap-5">
           <label style={labelStyle}>
-            Do you have parking? <span style={{ color: '#ef4444' }}>*</span>
+            Do you have parking? <span style={{ color: '#1d4ed8' }}>*</span>
           </label>
           <div className="flex items-center gap-5">
             <label className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
@@ -1504,9 +1531,10 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
 
           {hasParking && (
-            <>
+            // Same right-pushed group treatment as the Shops section above.
+            <div className="flex flex-wrap items-center gap-3" style={{ marginLeft: 'auto' }}>
               <span style={{ fontWeight: 600, fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                How many parking spaces are there in this building? <span style={{ color: '#ef4444' }}>*</span>
+                How many parking spaces are there in this building? <span style={{ color: '#1d4ed8' }}>*</span>
               </span>
               <input
                 type="number"
@@ -1526,7 +1554,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 }}
                 style={{ ...fieldStyle, width: 140 }}
               />
-            </>
+            </div>
           )}
         </div>
       </SectionCard>
@@ -1547,7 +1575,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           onClick={() => navigate('/admin/masters/building')}
           disabled={saving}
           className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold"
-          style={{ background: isDark ? '#374151' : '#e5e7eb', color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}
+          style={{ background: isDark ? '#1e3a5f' : '#dbeafe', color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}
         >
           <MdArrowBack size={16} /> Go Back
         </button>
@@ -1558,7 +1586,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             disabled={!isFormValid || saving}
             className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
             style={{
-              background: !isFormValid || saving ? '#9ca3af' : `linear-gradient(135deg,${accent},${accentHover})`,
+              background: !isFormValid || saving ? '#93c5fd' : `linear-gradient(135deg,${accent},${accentHover})`,
               border: 'none', cursor: !isFormValid || saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.8 : 1,
             }}
