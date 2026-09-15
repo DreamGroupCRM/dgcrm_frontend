@@ -24,10 +24,11 @@ import { ROUTES } from '../../constants';
 import { showAlert, homeRouteForRole } from '../../utils';
 import { authService } from '../../services/authService';
 import Logo from '../../components/ui/Logo';
-// Circuit-board/login-panel background — glowing white traces, a pixel-cloud
-// texture and a bracketed login-card motif on black, at low opacity behind
-// the pattern/card so it reads as ambient texture, not a competing visual.
-import loginBgImage from '../../assets/images/login_circuit_mono.svg';
+// Circuit-board/login-panel background — shown at full brightness/clarity
+// (not dimmed) so the artwork itself, including its own illustrated login
+// box, reads clearly; the real login card is centered on top of it so it
+// lands on that same illustrated box regardless of viewport size.
+import loginBgImage from '../../assets/images/login_circuit_panel.jpg';
 
 import {
   TextField,
@@ -375,8 +376,7 @@ const LoginPage: React.FC = () => {
     <div className="login-page-container">
 
       <div className="login-background">
-        <img src={loginBgImage} alt="" aria-hidden="true" className="login-bg-image" />
-        <div className="login-pattern"></div>
+        <img src={loginBgImage} alt="" aria-hidden="true" className="login-bg-image" style={{ opacity: 1 }} />
       </div>
 
       {/* Centered, standalone login card — no carousel/side panel. Tagline +
