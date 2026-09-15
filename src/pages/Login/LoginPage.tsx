@@ -384,8 +384,8 @@ const LoginPage: React.FC = () => {
           background messaging (item 8, V_22.0). ─────────────────────────── */}
       <div style={{ position: 'relative', zIndex: 5, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
         <div className="login-tagline text-center">
-          <p className="login-tagline-en">0% Interest · Loan Free Home for Every Indian</p>
-          <p className="login-tagline-hi" lang="hi">हमारा सपना, हर हिंदुस्तानी का घर हो अपना</p>
+          <p className="login-tagline-en">0% Interest - Loan Free Home for Every Indian</p>
+          <p className="login-tagline-hi" lang="hi">Humaara Sapna, Har Hindustani Ka Ghar Ho Apna</p>
         </div>
         <div
           className="login-card animate-fade-in"
