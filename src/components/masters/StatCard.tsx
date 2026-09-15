@@ -65,7 +65,6 @@ const StatCard: React.FC<StatCardProps> = ({
     <div className="master-stat-icon" style={{ background: 'rgba(255,255,255,0.22)' }}>
       <Icon size={compact ? 15 : 19} style={{ color: '#fff' }} />
     </div>
-    <span className="master-stat-divider" aria-hidden="true" />
     <div className="master-stat-body">
       <div className="master-stat-label master-stat-label-gradient" style={labelFontSize ? { fontSize: labelFontSize } : undefined}>{label}</div>
       <div className="master-stat-value master-stat-value-gradient">{loading ? '—' : value}</div>

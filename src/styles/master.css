@@ -427,16 +427,6 @@ html.dark .master-row-icon {
   flex-shrink: 0;
 }
 
-/* Vertical pipe between the icon and the label/count — align-self:stretch
-   (overriding the row's own align-items:center) makes it match whichever
-   sibling is tallest with no hardcoded height. */
-.master-stat-divider {
-  align-self: stretch;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.3);
-  flex-shrink: 0;
-}
-
 .master-stat-body {
   min-width: 0;
   text-align: center;
