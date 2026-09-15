@@ -190,7 +190,7 @@ const NavItemComponent: React.FC<{
           <span className="flex-shrink-0" style={{ fontSize: 16 }}>{item.icon}</span>
           {!collapsed && (
             <>
-              <span className="flex-1 text-left font-medium" style={{ fontSize: 11 }}>{item.label}</span>
+              <span className="flex-1 text-left font-medium" style={{ fontSize: 12 }}>{item.label}</span>
               <span style={{ color: t.sidebarTextMuted }}>
                 {open ? <MdExpandLess size={16} /> : <MdExpandMore size={16} />}
               </span>
@@ -237,7 +237,7 @@ const NavItemComponent: React.FC<{
     >
       <span className="flex-shrink-0" style={{ fontSize: 16 }}>{item.icon}</span>
       {!collapsed && (
-        <span className="font-medium" style={{ fontFamily: t.fontFamily, fontSize: 11 }}>
+        <span className="font-medium" style={{ fontFamily: t.fontFamily, fontSize: 12 }}>
           {item.label}
         </span>
       )}
@@ -378,7 +378,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
             type="button"
             onClick={() => dispatch(toggleSidebar())}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all duration-150"
-            style={{ background: 'transparent', color: t.textPrimary, border: 'none', cursor: 'pointer', fontFamily: t.fontFamily, fontSize: 11 }}
+            style={{ background: 'transparent', color: t.textPrimary, border: 'none', cursor: 'pointer', fontFamily: t.fontFamily, fontSize: 12 }}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLElement).style.background = t.sidebarHoverBg;
