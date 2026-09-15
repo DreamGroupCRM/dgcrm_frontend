@@ -48,12 +48,13 @@ const shopStatus = (s: BuildingShop): UnitStatus => {
   return 'available';
 };
 
-// Exactly the 3 colors asked for: Green = Available, Dark Yellow = Booked,
+// Exactly the 3 colors asked for: Green = Available, Yellow = Booked,
 // Dark Red = Unavailable (an admin-disabled flat/shop).
-const STATUS_COLOR: Record<UnitStatus, string> = { available: '#16a34a', booked: '#a16207', blocked: '#991b1b' };
+const STATUS_COLOR: Record<UnitStatus, string> = { available: '#16a34a', booked: '#eab308', blocked: '#8b0000' };
 const STATUS_TEXT: Record<UnitStatus, string> = { available: 'Available', booked: 'Booked', blocked: 'Unavailable' };
-// All 3 fills are dark enough now to read white text cleanly.
-const STATUS_TEXT_COLOR: Record<UnitStatus, string> = { available: '#ffffff', booked: '#ffffff', blocked: '#ffffff' };
+// Booked's fill is a bright true yellow — dark text reads far better on it
+// than white; Available/Unavailable stay dark enough for white text.
+const STATUS_TEXT_COLOR: Record<UnitStatus, string> = { available: '#ffffff', booked: '#1f2937', blocked: '#ffffff' };
 
 interface PickerNavState {
   pickerMode?: boolean;
