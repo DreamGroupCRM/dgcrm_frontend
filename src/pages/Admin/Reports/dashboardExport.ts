@@ -119,7 +119,7 @@ export async function exportDashboardToExcel(data: ExecutiveDashboardData, range
   wb.creator = 'DGCRM';
   wb.created = new Date();
 
-  const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF2563EB' } };
+  const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF0284C7' } };
   const headerFont = { bold: true, color: { argb: 'FFFFFFFF' } };
 
   const styleHeader = (ws: ExcelJS.Worksheet) => {

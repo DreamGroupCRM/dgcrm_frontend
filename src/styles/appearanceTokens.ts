@@ -117,7 +117,7 @@ export interface AppearancePalette {
   systemBorder: string;
   // Sidebar's active-nav-item highlight + Header's avatar badge — until
   // this Architecture Review pass, these were fixed in theme.ts's
-  // getTheme(isDark) as a #2563eb-based blue completely independent of
+  // getTheme(isDark) as a #0284c7-based blue completely independent of
   // any appearance (the shell every page renders inside never responded
   // to Appearance at all). Existing's values below are copied verbatim
   // from theme.ts so nothing visually changes today; the other palettes
@@ -147,8 +147,8 @@ const EXISTING: AppearancePalette = {
   duplicateIcon: '#dc2626',
   systemBorder: '#a1a1aa',
   navActiveBg: '#eff6ff', navActiveBgDark: '#1a1a1a',
-  navActiveText: '#2563eb', navActiveTextDark: '#ffffff',
-  navActiveBorder: '#2563eb', navActiveBorderDark: '#333333',
+  navActiveText: '#0284c7', navActiveTextDark: '#ffffff',
+  navActiveBorder: '#0284c7', navActiveBorderDark: '#333333',
   avatarGradient: '#1e40af',
   avatarGradientDark: '#1e40af',
   families: {

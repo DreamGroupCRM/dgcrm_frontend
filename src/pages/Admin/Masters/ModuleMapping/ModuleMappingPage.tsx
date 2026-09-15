@@ -167,7 +167,7 @@ const ModuleMappingPage: React.FC = () => {
                             checked={checked}
                             disabled={isPending}
                             onChange={() => toggleCell(m.id, a.id)}
-                            style={{ width: 16, height: 16, cursor: isPending ? 'wait' : 'pointer', accentColor: '#2563eb' }}
+                            style={{ width: 16, height: 16, cursor: isPending ? 'wait' : 'pointer', accentColor: '#0284c7' }}
                           />
                         </td>
                       );

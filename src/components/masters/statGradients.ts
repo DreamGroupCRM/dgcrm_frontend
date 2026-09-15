@@ -13,6 +13,6 @@
 // one place. Duplicated as a literal (not var(--brand-gradient)) since
 // this sets a JS/inline-style string, not a stylesheet rule — keep this
 // hex value in sync with master.css's --brand-gradient if either changes.
-const STAT_CARD_BRAND_COLOR = '#2563eb';
+const STAT_CARD_BRAND_COLOR = '#0284c7';
 
 export const getStatGradient = (_color?: string, _tint?: (gradient: string) => string): string => STAT_CARD_BRAND_COLOR;

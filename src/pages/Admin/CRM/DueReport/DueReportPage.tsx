@@ -163,7 +163,7 @@ const MODE_OF_PAYMENT_OPTIONS = ['Cash', 'Cheque', 'Online', 'Other'];
 // category boxes (click-to-filter) and the table's own Payment For column
 // badge — same convention PaymentUpcomingPage uses.
 const PAYMENT_FOR_KEY_META: Record<PaymentFor, { label: string; color: string; icon: IconType }> = {
-  EMIAmount: { label: 'Monthly Installment', color: '#2563eb', icon: MdPayments },
+  EMIAmount: { label: 'Monthly Installment', color: '#0284c7', icon: MdPayments },
   BookingAmount: { label: 'Booking Amount', color: '#dc2626', icon: MdReceiptLong },
   PayAfterbooking: { label: 'Remaining Booking Amount', color: '#ea580c', icon: MdSchedule },
   PossessionAmount: { label: 'Possession Amount', color: '#7c3aed', icon: MdVpnKey },
@@ -701,7 +701,7 @@ const DueReportPage: React.FC = () => {
             <div className="flex items-end">
               <button type="button" onClick={handleSubmitAddPayment} disabled={submitting}
                 className="w-full px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
-                style={{ background: submitting ? '#6b7280' : '#2563eb', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer' }}>
+                style={{ background: submitting ? '#6b7280' : '#0284c7', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer' }}>
                 {submitting ? 'Submitting...' : 'Submit'}
               </button>
             </div>

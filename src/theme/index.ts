@@ -12,7 +12,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
   createTheme({
     palette: {
       mode,
-      primary:   { main: '#2563eb', contrastText: '#ffffff' },
+      primary:   { main: '#0284c7', contrastText: '#ffffff' },
       secondary: { main: '#64748b', contrastText: '#ffffff' },
       background: {
         default: mode === 'dark' ? '#000000' : '#ffffff',
@@ -78,8 +78,8 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
             backgroundColor: theme.palette.mode === 'dark' ? '#0d0d0d' : '#ffffff',
             color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000',
             '& fieldset': { borderColor: theme.palette.mode === 'dark' ? '#2a2a2a' : '#d1d5db' },
-            '&:hover fieldset': { borderColor: theme.palette.mode === 'dark' ? '#404040' : '#2563eb' },
-            '&.Mui-focused fieldset': { borderColor: theme.palette.mode === 'dark' ? '#525252' : '#2563eb' },
+            '&:hover fieldset': { borderColor: theme.palette.mode === 'dark' ? '#404040' : '#0284c7' },
+            '&.Mui-focused fieldset': { borderColor: theme.palette.mode === 'dark' ? '#525252' : '#0284c7' },
           }),
           input: { fontFamily: '"Roboto", "Inter", "Arial", sans-serif' },
         },
@@ -89,7 +89,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
           root: ({ theme }) => ({
             fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             color: theme.palette.mode === 'dark' ? '#a3a3a3' : '#4b5563',
-            '&.Mui-focused': { color: theme.palette.mode === 'dark' ? '#d4d4d4' : '#2563eb' },
+            '&.Mui-focused': { color: theme.palette.mode === 'dark' ? '#d4d4d4' : '#0284c7' },
           }),
         },
       },
@@ -163,7 +163,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
             color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000',
             '&:hover': {
               backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#eff6ff',
-              color: theme.palette.mode === 'dark' ? '#d4d4d4' : '#2563eb',
+              color: theme.palette.mode === 'dark' ? '#d4d4d4' : '#0284c7',
             },
           }),
         },
@@ -183,7 +183,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
           root: ({ theme }) => ({
             fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             backgroundColor: theme.palette.mode === 'dark' ? '#141414' : '#eff6ff',
-            color: theme.palette.mode === 'dark' ? '#a3a3a3' : '#2563eb',
+            color: theme.palette.mode === 'dark' ? '#a3a3a3' : '#0284c7',
           }),
         },
       },

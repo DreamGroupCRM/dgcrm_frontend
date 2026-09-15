@@ -27,7 +27,7 @@ export const getTheme = (isDark: boolean) => ({
 
   // ── Hover / Active states ────────────────────────────────────────────────
   hoverBg       : isDark ? '#1a1a1a' : '#eff6ff',   // dark=dark-gray, light=light-blue
-  hoverText     : isDark ? '#d4d4d4' : '#2563eb',   // dark=light-gray, light=blue-600
+  hoverText     : isDark ? '#d4d4d4' : '#0284c7',   // dark=light-gray, light=blue-600
   hoverBorder   : isDark ? '#2a2a2a' : '#bfdbfe',
 
   // ── Sidebar ──────────────────────────────────────────────────────────────
@@ -36,10 +36,10 @@ export const getTheme = (isDark: boolean) => ({
   sidebarText   : isDark ? '#c8c8c8' : '#111111',
   sidebarTextMuted : isDark ? '#4a4a4a' : '#6b7280',
   sidebarActiveBg : isDark ? '#1a1a1a' : '#eff6ff',
-  sidebarActiveText: isDark ? '#ffffff' : '#2563eb',
-  sidebarActiveBorder: isDark ? '#333333' : '#2563eb',
+  sidebarActiveText: isDark ? '#ffffff' : '#0284c7',
+  sidebarActiveBorder: isDark ? '#333333' : '#0284c7',
   sidebarHoverBg: isDark ? '#141414' : '#eff6ff',
-  sidebarHoverText: isDark ? '#d4d4d4' : '#2563eb',
+  sidebarHoverText: isDark ? '#d4d4d4' : '#0284c7',
 
   // ── Header ───────────────────────────────────────────────────────────────
   headerBg      : isDark ? '#000000' : '#ffffff',
@@ -51,7 +51,7 @@ export const getTheme = (isDark: boolean) => ({
   // ── Inputs / Forms ───────────────────────────────────────────────────────
   inputBg       : isDark ? '#0d0d0d' : '#ffffff',
   inputBorder   : isDark ? '#2a2a2a' : '#d1d5db',
-  inputFocusBorder: isDark ? '#404040' : '#2563eb',
+  inputFocusBorder: isDark ? '#404040' : '#0284c7',
   inputText     : isDark ? '#ffffff' : '#000000',
 
   // ── Buttons ──────────────────────────────────────────────────────────────

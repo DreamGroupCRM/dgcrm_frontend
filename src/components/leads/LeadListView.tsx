@@ -227,18 +227,18 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
           {isAdmin && (
             <>
               <button type="button" onClick={handleImportClick} title="Import CSV" disabled={importing} className="master-btn-icon"
-                style={{ background: '#2563eb', border: '1px solid #2563eb', color: '#fff' }}>
+                style={{ background: '#0284c7', border: '1px solid #0284c7', color: '#fff' }}>
                 <MdUpload size={18} className={importing ? 'animate-spin' : ''} />
               </button>
               <input ref={fileInputRef} type="file" accept=".csv" onChange={handleImportFile} style={{ display: 'none' }} />
             </>
           )}
           <button type="button" onClick={handleExport} title="Export CSV" className="master-btn-icon"
-            style={{ background: '#2563eb', border: '1px solid #2563eb', color: '#fff' }}>
+            style={{ background: '#0284c7', border: '1px solid #0284c7', color: '#fff' }}>
             <MdDownload size={18} />
           </button>
           <button type="button" onClick={fetchLeads} title="Refresh" className="master-btn-icon"
-            style={{ background: '#2563eb', border: '1px solid #2563eb', color: '#fff' }}>
+            style={{ background: '#0284c7', border: '1px solid #0284c7', color: '#fff' }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>

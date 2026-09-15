@@ -201,12 +201,13 @@ html.dark .master-table td {
   --grad-green: #059669;
   --grad-teal: #0891b2;
   --grad-grey: #64748b;
-  /* Flat brand blue — matches the reference "OK" button (solid blue,
-     white bold text). Single source for every primary action
-     surface app-wide: Add-X buttons, table header bands, top summary
-     boxes, submit/filter/export/refresh buttons all reference this. */
-  --brand-gradient: #2563eb;
-  --grad-table-header: #2563eb;
+  /* Flat brand blue — one sky blue, reused byte-for-byte everywhere so no
+     surface app-wide ever reads as a "different blue": Add-X buttons,
+     table header bands, top summary boxes, submit/filter/export/refresh
+     buttons and every icon-only button all reference this single var
+     (same value as --grad-sky above, by design — one blue, one source). */
+  --brand-gradient: var(--grad-sky);
+  --grad-table-header: var(--grad-sky);
 }
 
 /* ── Flat blue table-header band — Company/Department/BankAccount/
@@ -291,8 +292,8 @@ html.dark .master-table td {
   background: none;
   cursor: pointer;
   flex-shrink: 0;
-  border: 1.5px solid #2563eb;
-  color: #2563eb;
+  border: 1.5px solid #0284c7;
+  color: #0284c7;
   transition: background 0.15s ease, transform 0.1s ease;
 }
 
@@ -316,7 +317,7 @@ html.dark .master-icon-btn:hover {
 /* Small icon shown inline next to a name/value cell (company/bank/project/
    building/department name, account holder name, branch name) — item 7. */
 .master-row-icon {
-  color: #2563eb;
+  color: #0284c7;
   flex-shrink: 0;
 }
 
