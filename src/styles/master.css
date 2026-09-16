@@ -440,30 +440,35 @@ html.dark .master-row-icon {
 
 .master-stat-body {
   min-width: 0;
+  flex: 1;
   text-align: center;
 }
 
-/* Label on top, count below — same order for every stat card project-wide. */
+/* Label on top, count below — same order and same font sizes for every
+   stat card project-wide (Payment Due page's own boxes are the reference
+   size: 12.5px label, 14px value). Both compact and non-compact cards
+   share these — no per-page overrides, so no page's boxes read bigger or
+   smaller than another's. */
 .master-stat-label {
-  font-size: 10px;
+  font-size: 12.5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .master-stat-label-gradient {
-  color: rgba(255, 255, 255, 0.88);
+  color: #f2f2f2;
   font-weight: 700;
 }
 
 .master-stat-value {
-  font-size: 16.5px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1.15;
 }
 
 .master-stat-value-gradient {
-  color: #fff;
+  color: #f2f2f2;
 }
 
 /* Building master's 7-card summary row — the default .master-stat-grid
@@ -499,17 +504,6 @@ html.dark .master-row-icon {
   height: 15px;
 }
 
-.master-stat-card-compact .master-stat-label {
-  font-size: 10px;
-}
-
-/* Label/value both 2px smaller than the previous 16px — every KPI-box
-   page (Employee/Customer/Building/Customize Scheme List) passes
-   labelFontSize={14} now to match, so label and value stay the same size
-   as each other, just more compact. */
-.master-stat-card-compact .master-stat-value {
-  font-size: 14px;
-}
 
 /* ── CRUD page fixed footer — Company/Department/Bank/Building/Customer's
    Go Back+Save bar. A genuinely viewport-fixed floating card: rounded

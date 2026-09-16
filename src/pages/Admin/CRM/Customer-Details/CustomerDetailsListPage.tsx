@@ -990,7 +990,7 @@ const CustomerDetailsListPage: React.FC = () => {
           { filterKey: 'assigned', label: 'Assigned Customers', value: summary.assigned_customers, icon: MdPersonAddAlt1, color: '#16a34a' },
           { filterKey: 'unassigned', label: 'Un Assigned Customers', value: summary.unassigned_customers, icon: MdPersonOff, color: '#ea580c' },
         ] as const).map(({ filterKey, ...card }) => (
-          <StatCard key={filterKey} {...card} bg="" loading={loading} compact labelFontSize={14}
+          <StatCard key={filterKey} {...card} bg="" loading={loading} compact
             active={assignmentStatusFilter === filterKey}
             onClick={() => setAssignmentStatusFilter(filterKey)}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />

@@ -31,10 +31,6 @@ interface StatCardProps {
   // all 7 fit on one row instead of the cards being oversized to fill 4
   // columns' worth of width (see master.css's .master-stat-card-compact).
   compact?: boolean;
-  // Optional override for the label's font-size (e.g. Employee Details'
-  // summary cards ask for 18px specifically) — undefined everywhere else,
-  // so every other caller keeps the CSS class's default label size.
-  labelFontSize?: number;
   // Makes the card double as a clickable filter (Customer List's All/
   // Assigned/Un Assigned boxes) — undefined everywhere else, so every
   // other caller stays a plain non-interactive summary card. `active`
@@ -45,7 +41,7 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({
-  label, value, icon: Icon, color, surfaceBorder, loading, compact, labelFontSize, onClick, active,
+  label, value, icon: Icon, color, surfaceBorder, loading, compact, onClick, active,
 }) => {
   const { tintGradient } = useAppearanceTokens();
   return (
@@ -66,7 +62,7 @@ const StatCard: React.FC<StatCardProps> = ({
       <Icon size={compact ? 15 : 19} style={{ color: '#fff' }} />
     </div>
     <div className="master-stat-body">
-      <div className="master-stat-label master-stat-label-gradient" style={labelFontSize ? { fontSize: labelFontSize } : undefined}>{label}</div>
+      <div className="master-stat-label master-stat-label-gradient">{label}</div>
       <div className="master-stat-value master-stat-value-gradient">{loading ? '—' : value}</div>
     </div>
   </div>

@@ -515,16 +515,16 @@ const PaymentApprovalsPage: React.FC = () => {
                   <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={rows.length === 0}
                     style={{ cursor: rows.length === 0 ? 'not-allowed' : 'pointer' }} />
                 </th>
-                {['Actions', 'Receipt No.', 'Name', 'Building', 'Wing', 'Flat No.', 'Instalment Date', 'Received Date', 'Maintenance', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
+                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Instalment Date', 'Received Date', 'Maintenance', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={16} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading pending payments...</td></tr>
+                <tr><td colSpan={14} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading pending payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={16} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments are waiting for approval.</td></tr>
+                <tr><td colSpan={14} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments are waiting for approval.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -551,11 +551,19 @@ const PaymentApprovalsPage: React.FC = () => {
                       </div>
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.customer_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.building_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.wing_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.flat_no || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMY(r.inst_date)}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 600 }}>{r.customer_name || '—'}</div>
+                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code || '—'}</div>
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
+                      {(r.wing_name || r.flat_no) && (
+                        <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
+                          {r.wing_name ? `Wing ${r.wing_name}` : ''}{r.wing_name && r.flat_no ? ' • ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.payment_tag === 'Extra Pay' ? '—' : formatDMY(r.inst_date)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMY(r.payment_date || r.created_at)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#16a34a', fontWeight: 600, whiteSpace: 'nowrap' }}>{rupee(r.maintenance || 0)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
@@ -567,12 +575,13 @@ const PaymentApprovalsPage: React.FC = () => {
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <div className="flex items-center gap-1 flex-wrap">
-                        <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(234,88,12,0.15)' : '#ffedd5', color: '#ea580c', fontSize: 10.5, whiteSpace: 'nowrap' }}>
-                          {SHORT_PAYMENT_TYPE_LABEL[r.payment_type] || paymentForLabel(r.payment_type)}
-                        </span>
-                        {r.payment_tag === 'Extra Pay' && (
+                        {r.payment_tag === 'Extra Pay' ? (
                           <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: '#b45309', fontSize: 10.5, whiteSpace: 'nowrap' }}>
                             Extra Pay
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(234,88,12,0.15)' : '#ffedd5', color: '#ea580c', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                            {SHORT_PAYMENT_TYPE_LABEL[r.payment_type] || paymentForLabel(r.payment_type)}
                           </span>
                         )}
                       </div>
@@ -605,18 +614,26 @@ const PaymentApprovalsPage: React.FC = () => {
               ) : (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-5 gap-y-4 mb-5">
-                    <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Name</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{viewModal.data.customer.customer_name || '—'}</div></div>
+                    <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Customer Name</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{viewModal.data.customer.customer_name || '—'}</div><div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{viewModal.data.customer.customer_code || '—'}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Building</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{viewModal.data.customer.building_name || '—'}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Wing</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{viewModal.data.customer.wing_name || '—'}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Flat No.</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{viewModal.data.customer.flat_no || '—'}</div></div>
-                    <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Instalment Date</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.inst_date)}</div></div>
+                    {viewModal.data.transaction.payment_tag !== 'Extra Pay' && (
+                      <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Instalment Date</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.inst_date)}</div></div>
+                    )}
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Payment Date</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.payment_date || viewModal.data.transaction.created_at)}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Created At</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.created_at)}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Payment Method</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{viewModal.data.transaction.mode_of_payment || '—'}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Payment Type</div>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md font-semibold" style={{ background: isDark ? 'rgba(234,88,12,0.15)' : '#ffedd5', color: '#ea580c', fontSize: 10.5 }}>
-                        {SHORT_PAYMENT_TYPE_LABEL[viewModal.data.transaction.payment_type] || paymentForLabel(viewModal.data.transaction.payment_type)}
-                      </span>
+                      {viewModal.data.transaction.payment_tag === 'Extra Pay' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md font-semibold" style={{ background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: '#b45309', fontSize: 10.5 }}>
+                          Extra Pay
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md font-semibold" style={{ background: isDark ? 'rgba(234,88,12,0.15)' : '#ffedd5', color: '#ea580c', fontSize: 10.5 }}>
+                          {SHORT_PAYMENT_TYPE_LABEL[viewModal.data.transaction.payment_type] || paymentForLabel(viewModal.data.transaction.payment_type)}
+                        </span>
+                      )}
                     </div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Maintenance</div><div style={{ fontSize: 12.5, fontWeight: 600, color: '#16a34a' }}>{rupee(viewModal.data.transaction.maintenance || 0)}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Amount</div><div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>{rupee(viewModal.data.transaction.amount)}</div></div>

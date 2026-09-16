@@ -25,14 +25,11 @@ interface MultiStatCardProps {
   textPrimary: string;
   textSecondary: string;
   loading?: boolean;
-  // Optional override for the label's font-size — same purpose as
-  // StatCard's labelFontSize prop, undefined keeps the CSS class default.
-  labelFontSize?: number;
 }
 
 const MultiStatCard: React.FC<MultiStatCardProps> = ({
   label, icon: Icon, color, total, enabled, disabled,
-  surfaceBorder, loading, labelFontSize,
+  surfaceBorder, loading,
 }) => {
   const { tintGradient } = useAppearanceTokens();
   return (
@@ -44,19 +41,19 @@ const MultiStatCard: React.FC<MultiStatCardProps> = ({
       <Icon size={15} style={{ color: '#fff' }} />
     </div>
     <div className="master-stat-body-multi">
-      <div className="master-stat-label master-stat-label-gradient" style={labelFontSize ? { fontSize: labelFontSize } : undefined}>{label}</div>
+      <div className="master-stat-label master-stat-label-gradient">{label}</div>
       <div className="master-stat-multi-row">
         <div className="master-stat-multi-item">
-          <span className="master-stat-multi-value" style={{ color: '#fff' }}>{loading ? '—' : total}</span>
-          <span className="master-stat-multi-sublabel" style={{ color: 'rgba(255,255,255,0.85)' }}>Total</span>
+          <span className="master-stat-multi-value" style={{ color: '#f2f2f2' }}>{loading ? '—' : total}</span>
+          <span className="master-stat-multi-sublabel" style={{ color: '#f2f2f2' }}>Total</span>
         </div>
         <div className="master-stat-multi-item">
           <span className="master-stat-multi-value" style={{ color: '#86efac' }}>{loading ? '—' : enabled}</span>
-          <span className="master-stat-multi-sublabel" style={{ color: 'rgba(255,255,255,0.85)' }}>Enabled</span>
+          <span className="master-stat-multi-sublabel" style={{ color: '#f2f2f2' }}>Enabled</span>
         </div>
         <div className="master-stat-multi-item">
           <span className="master-stat-multi-value" style={{ color: '#fca5a5' }}>{loading ? '—' : disabled}</span>
-          <span className="master-stat-multi-sublabel" style={{ color: 'rgba(255,255,255,0.85)' }}>Disabled</span>
+          <span className="master-stat-multi-sublabel" style={{ color: '#f2f2f2' }}>Disabled</span>
         </div>
       </div>
     </div>

@@ -35,7 +35,7 @@ import { UpcomingListDetailRow } from '../../../../types/paymentUpcoming';
 import { fetchAllCustomerDetails } from '../../../../services/customerDetailsService';
 import { FetchBuildingList } from '../../../../services/buildingService';
 import { FetchEmployeeDetails, Employee } from '../../../../services/employeeDetailsService';
-import { tasksService } from '../../../../services/tasksService';
+import { tasksService, Task } from '../../../../services/tasksService';
 import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../../types/index';
 import './DueReport.css';
 
@@ -218,6 +218,10 @@ const DueReportPage: React.FC = () => {
   const [followUpAssignedTo, setFollowUpAssignedTo] = useState('');
   const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
   const [followUpCounts, setFollowUpCounts] = useState({ today: 0, tomorrow: 0 });
+  // The badge's own click target — today's + tomorrow's open follow-ups,
+  // each tagged with which day it falls on so the popup can group them.
+  const [followUpListTasks, setFollowUpListTasks] = useState<(Task & { dueBucket: 'today' | 'tomorrow' })[]>([]);
+  const [followUpListOpen, setFollowUpListOpen] = useState(false);
 
   const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -230,6 +234,10 @@ const DueReportPage: React.FC = () => {
         tasksService.fetchTasks({ status: 'pending', due_date: ymd(tomorrow) }),
       ]);
       setFollowUpCounts({ today: todayTasks.length, tomorrow: tomorrowTasks.length });
+      setFollowUpListTasks([
+        ...todayTasks.map((task) => ({ ...task, dueBucket: 'today' as const })),
+        ...tomorrowTasks.map((task) => ({ ...task, dueBucket: 'tomorrow' as const })),
+      ]);
     } catch { /* badge just stays at its last known count if this fails */ }
   }, []);
 
@@ -615,7 +623,7 @@ const DueReportPage: React.FC = () => {
       <div className="due-report-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-3 mb-5">
         {statBoxSpecs.map((spec) => (
           <StatCard key={spec.key} label={spec.label} value={rupee(spec.value)} icon={spec.icon} color={spec.color}
-            bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loadingDueList} compact labelFontSize={12.5}
+            bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loadingDueList} compact
             active={spec.key !== 'total' && categoryFilter === spec.key}
             onClick={() => (spec.key === 'total' ? setCategoryFilter(null) : toggleCategoryFilter(spec.key))}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
@@ -745,13 +753,14 @@ const DueReportPage: React.FC = () => {
           </div>
           <div className="due-report-toolbar-actions flex items-center gap-2" style={{ marginLeft: 'auto', flexShrink: 0 }}>
             {/* In-app-only badge — open follow-ups due today/tomorrow across
-                the whole team (no email/WhatsApp sending, out of scope). */}
-            <div title="Open follow-ups due today / tomorrow"
+                the whole team (no email/WhatsApp sending, out of scope).
+                Clicking it opens a popup listing those follow-ups. */}
+            <button type="button" title="Open follow-ups due today / tomorrow" onClick={() => setFollowUpListOpen(true)}
               className="due-report-followup-badge flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
               <MdNoteAdd size={15} style={{ color: '#0000FF' }} />
               <span className="due-report-followup-badge-text">Today: {followUpCounts.today} · Tmrw: {followUpCounts.tomorrow}</span>
-            </div>
+            </button>
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
               className="due-report-export-btn flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold"
               style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -775,7 +784,7 @@ const DueReportPage: React.FC = () => {
           <table className="due-report-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Customer', 'Company / Project / Location', 'Building / Wing / Flat', 'Assigned Employee', 'Contact (Email / Mobile)', 'Payment For', 'Months Pending', 'Amount', 'Status', 'Detail', 'Follow Up'].map((h) => (
+                {['Customer Name', 'Company / Project / Location', 'Building / Wing / Flat', 'Assigned Employee', 'Contact (Email / Mobile)', 'Payment For', 'Months Pending', 'Amount', 'Status', 'Detail', 'Follow Up'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -915,6 +924,49 @@ const DueReportPage: React.FC = () => {
                 style={{ background: followUpSubmitting ? '#6b7280' : '#16a34a', border: 'none', cursor: followUpSubmitting ? 'not-allowed' : 'pointer' }}>
                 {followUpSubmitting ? 'Scheduling...' : 'Schedule Follow-up'}
               </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Follow-up list popup — the badge's own click target, listing
+          every open follow-up due today/tomorrow across the team. ────── */}
+      {followUpListOpen && createPortal(
+        <div className="due-report-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setFollowUpListOpen(false)}>
+          <div className="due-report-modal rounded-2xl w-full" style={{ maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: t.textPrimary }}>Follow-ups — Today &amp; Tomorrow</div>
+              <button type="button" onClick={() => setFollowUpListOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary }}>
+                <MdClose size={20} />
+              </button>
+            </div>
+            <div style={{ padding: '8px 0', overflowY: 'auto' }}>
+              {followUpListTasks.length === 0 ? (
+                <p style={{ color: t.textSecondary, fontSize: 12, padding: '16px 20px' }}>No follow-ups scheduled for today or tomorrow.</p>
+              ) : (
+                followUpListTasks.map((task) => (
+                  <div key={task.id} style={{ padding: '10px 20px', borderBottom: `1px solid ${t.divider}` }}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>{task.customer_name || task.title}</div>
+                      <span style={{
+                        flexShrink: 0, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em',
+                        padding: '2px 8px', borderRadius: 999, color: '#fff',
+                        background: task.dueBucket === 'today' ? '#dc2626' : '#d97706',
+                      }}>
+                        {task.dueBucket === 'today' ? 'Today' : 'Tomorrow'}
+                      </span>
+                    </div>
+                    {task.description && (
+                      <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2 }}>{task.description}</div>
+                    )}
+                    <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>
+                      Assigned to: {task.assigned_to_name || 'Unassigned'}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>,

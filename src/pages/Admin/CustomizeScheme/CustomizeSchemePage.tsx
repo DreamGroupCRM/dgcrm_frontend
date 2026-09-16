@@ -281,9 +281,9 @@ const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradie
 // rep needs at a glance while building a scheme: Total Flat Cost, the two
 // pre-possession lump sums combined, the before-possession tenure, and both
 // monthly EMI figures. Now built from the same shared StatCard component
-// Employee/Customer Details List use (compact + labelFontSize=16), so this
-// page's label/value font sizes are pixel-identical to theirs instead of a
-// separately hand-tuned card markup drifting to a smaller size over time.
+// every other list page uses, so this page's label/value font sizes are
+// pixel-identical to theirs instead of a separately hand-tuned card markup
+// drifting to a smaller size over time.
 interface SchemeSummaryCard { label: string; value: string; icon: IconType; color: string; }
 
 // "Remaining" moved here from the Payment Details panel's header subtitle —
@@ -306,7 +306,7 @@ const SchemeSummaryRow: React.FC<{
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mb-4">
       {cards.map((card) => (
-        <StatCard key={card.label} {...card} bg="" compact labelFontSize={14}
+        <StatCard key={card.label} {...card} bg="" compact
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       ))}
     </div>

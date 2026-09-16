@@ -1073,7 +1073,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             const wingColor = WING_COLORS[idx % WING_COLORS.length];
             return (
             <div key={w.id} className="flex items-center gap-2 px-3 py-2 rounded-xl"
-              style={{ border: `1px solid ${wingColor}40`, background: `${wingColor}1a` }}
+              style={{ border: `1px solid ${wingColor}40`, background: t.surfaceBg }}
             >
               <MdApartment size={18} style={{ color: wingColor, flexShrink: 0 }} />
               <input

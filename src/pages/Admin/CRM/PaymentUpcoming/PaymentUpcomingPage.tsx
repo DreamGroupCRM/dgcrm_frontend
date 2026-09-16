@@ -217,7 +217,7 @@ const PaymentUpcomingPage: React.FC = () => {
         <div className="payment-upcoming-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
           {statBoxSpecs.map((spec) => (
             <StatCard key={spec.key} label={spec.label} value={rupee(spec.value)} icon={spec.icon} color={spec.color}
-              bg={isDark ? 'rgba(79,70,229,0.12)' : '#eef2ff'} loading={loadingAmount || loadingList} compact labelFontSize={11.5}
+              bg={isDark ? 'rgba(79,70,229,0.12)' : '#eef2ff'} loading={loadingAmount || loadingList} compact
               active={categoryFilter === spec.key} onClick={() => toggleCategoryFilter(spec.key)}
               surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
           ))}
@@ -255,7 +255,7 @@ const PaymentUpcomingPage: React.FC = () => {
                 label={`Upcoming Amount — ${rangeDays} Day${rangeDays === 1 ? '' : 's'}`}
                 value={rupee(amountResult.total_amount)}
                 icon={MdAccountBalanceWallet} color="#4f46e5"
-                bg={isDark ? 'rgba(79,70,229,0.12)' : '#eef2ff'} loading={loadingAmount} compact labelFontSize={12.5}
+                bg={isDark ? 'rgba(79,70,229,0.12)' : '#eef2ff'} loading={loadingAmount} compact
                 surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary}
               />
             </div>
@@ -293,7 +293,7 @@ const PaymentUpcomingPage: React.FC = () => {
           <table className="payment-upcoming-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Customer', 'Assigned Employee', 'Company / Project / Location', 'Building / Wing / Flat', 'Contact (Email / Mobile)', 'Payment For', 'Due Date', 'Amount', 'Status'].map((h) => (
+                {['Customer Name', 'Assigned Employee', 'Company / Project / Location', 'Building / Wing / Flat', 'Contact (Email / Mobile)', 'Payment For', 'Due Date', 'Amount', 'Status'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
