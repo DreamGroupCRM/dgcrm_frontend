@@ -93,20 +93,16 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
         style={{ maxWidth: 1180, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, fontFamily: t.fontFamily }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Header — Heading top-left, building switcher centered, Cancel
-            icon top-right with the color legend stacked vertically directly
-            underneath it (per explicit design spec: no Back button anywhere
-            in this popup, X is the only way to leave besides Escape/
-            backdrop-click). ──────────────────────────────────────────── */}
-        <div className="building-2d-modal-header grid items-start gap-3" style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${t.divider}` }}>
-          <div style={{ minWidth: 0 }}>
-            <h2 style={{ fontSize: 19, fontWeight: 800, color: t.textPrimary, margin: 0, lineHeight: 1.25, wordBreak: 'break-word' }}>
-              {selectedBuildingName ? `${selectedBuildingName} 2D View` : 'Building 2D View'}
-            </h2>
-            <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '3px 0 0' }}>
-              Every flat and shop's live availability, straight from Building Master.
-            </p>
-          </div>
+        {/* ── Header — a single compact row: Heading left, building switcher
+            centered, Cancel icon right (no Back button anywhere in this
+            popup — X, Escape, or backdrop-click are the only ways to leave).
+            The color legend used to live stacked under the X here; it now
+            lives inside the picture frame itself (where the building name
+            used to sit) — see the canvas below. ─────────────────────────── */}
+        <div className="building-2d-modal-header grid items-center gap-3" style={{ padding: '12px 20px', borderBottom: `1px solid ${t.divider}` }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: t.textPrimary, margin: 0, lineHeight: 1.3, wordBreak: 'break-word', minWidth: 0 }}>
+            {selectedBuildingName ? `${selectedBuildingName} 2D View` : 'Building 2D View'}
+          </h2>
 
           <div className="flex justify-center">
             <select
@@ -125,24 +121,12 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
             </select>
           </div>
 
-          <div className="flex flex-col items-end" style={{ gap: 10 }}>
+          <div className="flex justify-end">
             <button type="button" onClick={onClose} title="Close" aria-label="Close"
               className="flex items-center justify-center rounded-lg"
               style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
               <MdClose size={18} />
             </button>
-
-            {/* Vertical color legend — directly under the Cancel icon, per
-                spec, always visible (not gated on a building being loaded)
-                so it reads as a fixed key for the whole popup. */}
-            <div className="flex flex-col items-end" style={{ gap: 5 }}>
-              {(['blocked', 'booked', 'available'] as UnitStatus[]).map((s) => (
-                <span key={s} className="flex items-center gap-1.5" style={{ fontSize: 11, fontWeight: 600, color: t.textSecondary, whiteSpace: 'nowrap' }}>
-                  {STATUS_TEXT[s]}
-                  <span style={{ width: 12, height: 12, borderRadius: 4, background: STATUS_COLOR[s], display: 'inline-block', flexShrink: 0 }} />
-                </span>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -169,8 +153,17 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
                   padding: '28px 36px', color: t.textPrimary,
                 }}
               >
-                <div style={{ textAlign: 'center', fontWeight: 800, fontSize: 16, marginBottom: 22 }}>
-                  {buildingDetail.building_name}
+                {/* Color legend — where the building name used to sit, per
+                    explicit design spec (the name already shows in the
+                    header above). Horizontal, red/green/yellow, evenly
+                    spaced like tab stops. */}
+                <div className="flex items-center justify-center" style={{ gap: 40, marginBottom: 20 }}>
+                  {(['blocked', 'available', 'booked'] as UnitStatus[]).map((s) => (
+                    <span key={s} className="flex items-center gap-1.5" style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                      <span style={{ width: 13, height: 13, borderRadius: 4, background: STATUS_COLOR[s], display: 'inline-block', flexShrink: 0 }} />
+                      {STATUS_TEXT[s]}
+                    </span>
+                  ))}
                 </div>
 
                 <div className="flex items-end justify-center" style={{ gap: 56 }}>

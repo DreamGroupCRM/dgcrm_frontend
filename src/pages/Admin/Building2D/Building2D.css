@@ -31,7 +31,9 @@
    Building Master's row icon instead of navigating to a new page. The card
    is a flex column capped at 90vh so it never overflows the viewport; only
    the picture area (.building-2d-modal-box/-canvas) scrolls, the header
-   (heading/dropdown/close+legend) stays pinned in view. */
+   (heading/dropdown/close) stays pinned in view — kept to one compact row
+   (no subtitle, no stacked legend) so the picture starts right underneath
+   it with minimal dead vertical space. */
 .building-2d-modal-card {
   max-height: 90vh;
   overflow: hidden;
@@ -48,21 +50,26 @@
 .building-2d-modal-box {
   flex: 1;
   min-height: 0;
-  padding: 20px 24px 24px;
+  padding: 8px 24px 20px;
 }
+/* align-items: flex-start (not center) — a building tall enough to
+   overflow the frame must scroll from its true top; centering an
+   overflowing flex child can leave its top edge unreachable by scroll
+   in some browsers. Horizontal centering is kept since width overflow
+   is rare here. */
 .building-2d-modal-canvas {
   width: 100%;
   height: 100%;
   min-height: 420px;
   overflow: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
 /* Narrow screens — heading + close icon share the top row (close always
-   reachable without scrolling the legend into view first), the building
-   dropdown drops to its own full-width row underneath. */
+   reachable at a glance), the building dropdown drops to its own
+   full-width row underneath. */
 @media (max-width: 767px) {
   .building-2d-modal-header {
     grid-template-columns: 1fr auto;
