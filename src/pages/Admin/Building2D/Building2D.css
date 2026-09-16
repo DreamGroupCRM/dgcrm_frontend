@@ -51,15 +51,26 @@
   flex: 1;
   min-height: 0;
   padding: 8px 24px 20px;
+  display: flex;
+  flex-direction: column;
 }
-/* align-items: flex-start (not center) — a building tall enough to
+/* .building-2d-modal-canvas is flex:1 of .building-2d-modal-box (not
+   height:100%) — a flex item's height:100% only resolves once the parent
+   has a genuinely definite height, and a flex-grown parent's resolved size
+   doesn't reliably count as definite for a plain percentage-height child.
+   Chaining flex:1/min-height:0 down through every level sidesteps that and
+   is what actually clips this box to the available space, which is what
+   makes overflow:auto here produce a real, working scrollbar instead of the
+   canvas silently growing to match its content (no scrollbar, half the
+   building cut off below the fold).
+   align-items: flex-start (not center) — a building tall enough to
    overflow the frame must scroll from its true top; centering an
    overflowing flex child can leave its top edge unreachable by scroll
    in some browsers. Horizontal centering is kept since width overflow
    is rare here. */
 .building-2d-modal-canvas {
   width: 100%;
-  height: 100%;
+  flex: 1;
   min-height: 420px;
   overflow: auto;
   display: flex;
