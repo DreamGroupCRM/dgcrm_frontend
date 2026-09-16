@@ -98,8 +98,8 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
             (legend sits right before the X, not the dropdown — no Back
             button anywhere in this popup; X, Escape, or backdrop-click are
             the only ways to leave). ─────────────────────────────────────── */}
-        <div className="building-2d-modal-header grid items-center gap-3" style={{ padding: '12px 20px', borderBottom: `1px solid ${t.divider}` }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: t.textPrimary, margin: 0, lineHeight: 1.3, wordBreak: 'break-word', minWidth: 0 }}>
+        <div className="building-2d-modal-header grid items-center gap-3" style={{ padding: '8px 20px', borderBottom: `1px solid ${t.divider}` }}>
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: t.textPrimary, margin: 0, lineHeight: '30px', wordBreak: 'break-word', minWidth: 0 }}>
             {selectedBuildingName ? `${selectedBuildingName} 2D View` : 'Building 2D View'}
           </h2>
 
@@ -109,7 +109,7 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
               onChange={(e) => setSelectedBuildingId(e.target.value)}
               disabled={loadingBuildings}
               style={{
-                padding: '9px 14px', borderRadius: 9, fontSize: 13, minWidth: 220, textAlign: 'center',
+                height: 30, padding: '0 12px', borderRadius: 8, fontSize: 12.5, minWidth: 210, textAlign: 'center',
                 background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, cursor: 'pointer',
               }}
             >
@@ -120,11 +120,11 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
             </select>
           </div>
 
-          <div className="flex items-center justify-end" style={{ gap: 16, flexWrap: 'wrap' }}>
-            <div className="flex items-center" style={{ gap: 14 }}>
+          <div className="flex items-center justify-end" style={{ gap: 14, flexWrap: 'nowrap', height: 30 }}>
+            <div className="flex items-center" style={{ gap: 12 }}>
               {(['blocked', 'available', 'booked'] as UnitStatus[]).map((s) => (
-                <span key={s} className="flex items-center gap-1.5" style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                  <span style={{ width: 12, height: 12, borderRadius: 3, background: STATUS_COLOR[s], display: 'inline-block', flexShrink: 0 }} />
+                <span key={s} className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                  <span style={{ width: 11, height: 11, borderRadius: 3, background: STATUS_COLOR[s], display: 'inline-block', flexShrink: 0 }} />
                   {STATUS_TEXT[s]}
                 </span>
               ))}
@@ -132,8 +132,8 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
 
             <button type="button" onClick={onClose} title="Close" aria-label="Close"
               className="flex items-center justify-center rounded-lg"
-              style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
-              <MdClose size={18} />
+              style={{ width: 30, height: 30, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
+              <MdClose size={16} />
             </button>
           </div>
         </div>
