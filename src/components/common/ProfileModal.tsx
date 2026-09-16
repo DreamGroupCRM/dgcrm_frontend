@@ -111,7 +111,7 @@ const ProfileModal: React.FC = () => {
       className="flex items-center gap-2.5 p-2.5 rounded-xl"
       style={{ background: t.insetBg }}
     >
-      <span className="text-lg flex-shrink-0" style={{ color: '#0096FF' }}>{icon}</span>
+      <span className="text-lg flex-shrink-0" style={{ color: '#0000FF' }}>{icon}</span>
       <div className="min-w-0">
         <p className="text-xs font-medium leading-none mb-0.5"
           style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>
@@ -249,7 +249,7 @@ const ProfileModal: React.FC = () => {
                   className="w-full flex items-center gap-2 p-2.5 rounded-xl text-sm font-semibold transition-all"
                   style={{ background: t.insetBg, color: t.textPrimary, border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
                 >
-                  <MdLockOutline size={17} style={{ color: '#0096FF' }} />
+                  <MdLockOutline size={17} style={{ color: '#0000FF' }} />
                   Change Password
                 </button>
 

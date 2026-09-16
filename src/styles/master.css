@@ -202,15 +202,15 @@ html.dark .master-table td {
   --grad-teal: #0891b2;
   --grad-grey: #64748b;
   /* Brand colors, split by surface per explicit product decision:
-     --brand-gradient (#0000FF) stays the Add-X / submit / filter / export /
-     refresh BUTTON fill; table header bands get their own teal
-     (--grad-table-header); top summary boxes and icons get their own blue
-     (see statGradients.ts's STAT_CARD_BRAND_COLOR and this file's
+     --brand-gradient (#0000FF) is the Add-X / submit / filter / export /
+     refresh BUTTON fill, AND every icon's color (see this file's
      .master-icon-btn/.master-row-icon below — kept in sync with this
-     comment's #0096FF, not aliased to a var, since one sets a stylesheet
-     rule and the other a JS/inline-style string). Deliberately not an
-     alias of --grad-sky, which stays its own blue for the few section
-     headers still opting into it directly. */
+     literal, not aliased to a var, since one sets a stylesheet rule and
+     the other a JS/inline-style string); table header bands get their own
+     teal (--grad-table-header); top summary boxes get their own grey (see
+     statGradients.ts's STAT_CARD_BRAND_COLOR). Deliberately not an alias
+     of --grad-sky, which stays its own blue for the few section headers
+     still opting into it directly. */
   --brand-gradient: #0000FF;
   --grad-table-header: #0A7474;
 }
@@ -297,13 +297,13 @@ html.dark .master-table td {
   background: none;
   cursor: pointer;
   flex-shrink: 0;
-  border: 1.5px solid #0096FF;
-  color: #0096FF;
+  border: 1.5px solid #0000FF;
+  color: #0000FF;
   transition: background 0.15s ease, transform 0.1s ease;
 }
 
 .master-icon-btn:hover {
-  background: rgba(0, 150, 255, 0.08);
+  background: rgba(0, 0, 255, 0.08);
 }
 
 .master-icon-btn:active {
@@ -322,7 +322,7 @@ html.dark .master-icon-btn:hover {
 /* Small icon shown inline next to a name/value cell (company/bank/project/
    building/department name, account holder name, branch name) — item 7. */
 .master-row-icon {
-  color: #0096FF;
+  color: #0000FF;
   flex-shrink: 0;
 }
 

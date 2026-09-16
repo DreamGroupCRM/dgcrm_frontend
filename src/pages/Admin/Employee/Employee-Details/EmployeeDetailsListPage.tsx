@@ -212,7 +212,7 @@ const RowActionMenu: React.FC<{
     }}
   >
     <button type="button" title="View" onClick={onView} className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
-      <MdVisibility size={14} color="#0096FF" /> View
+      <MdVisibility size={14} color="#0000FF" /> View
     </button>
     <button type="button" title="Edit" onClick={onEdit} className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
       <MdEdit size={13} color="#7c3aed" /> Edit
@@ -470,7 +470,7 @@ const EmployeeDetailsListPage: React.FC = () => {
         <div className="master-actions">
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
             title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'} className="master-btn-icon"
-            style={{ background: '#0096FF', border: '1px solid #0096FF', color: '#fff' }}>
+            style={{ background: '#0000FF', border: '1px solid #0000FF', color: '#fff' }}>
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
           </button>
           <button type="button" onClick={() => navigate('/admin/employee/employee-details/add')} className="master-btn-primary">

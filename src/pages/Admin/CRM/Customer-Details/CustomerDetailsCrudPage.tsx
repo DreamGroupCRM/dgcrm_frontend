@@ -351,7 +351,7 @@ const CompactFileUpload: React.FC<{ t: Theme; isView?: boolean; accept?: string;
           {previewUrl ? (
             <img src={previewUrl} alt="" className="rounded-lg flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'cover' }} />
           ) : (
-            <MdInsertDriveFile size={16} style={{ color: '#0096FF', flexShrink: 0 }} />
+            <MdInsertDriveFile size={16} style={{ color: '#0000FF', flexShrink: 0 }} />
           )}
           <span className="truncate" style={{ fontSize: 11.5, color: t.textPrimary, flex: 1 }}>{displayName}</span>
           {!isView && (
@@ -401,7 +401,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
       {previewUrl ? (
         <img src={previewUrl} alt="" className="rounded-lg mx-auto mb-1.5" style={{ width: 48, height: 48, objectFit: 'cover' }} />
       ) : (
-        <MdCloudUpload size={26} style={{ color: '#0096FF', margin: '0 auto 6px' }} />
+        <MdCloudUpload size={26} style={{ color: '#0000FF', margin: '0 auto 6px' }} />
       )}
       {displayName ? (
         <div className="flex items-center justify-center gap-2">
@@ -427,7 +427,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
 const RadioOption: React.FC<{ t: Theme; label: string; selected: boolean; onSelect: () => void; disabled?: boolean }> = ({ t, label, selected, onSelect, disabled }) => (
   <button type="button" disabled={disabled} onClick={onSelect}
     className="flex items-center gap-2" style={{ background: 'transparent', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', padding: 0 }}>
-    {selected ? <MdRadioButtonChecked size={18} style={{ color: '#0096FF' }} /> : <MdRadioButtonUnchecked size={18} style={{ color: t.textSecondary }} />}
+    {selected ? <MdRadioButtonChecked size={18} style={{ color: '#0000FF' }} /> : <MdRadioButtonUnchecked size={18} style={{ color: t.textSecondary }} />}
     <span style={{ fontSize: 12, color: t.textPrimary, fontWeight: 600 }}>{label}</span>
   </button>
 );

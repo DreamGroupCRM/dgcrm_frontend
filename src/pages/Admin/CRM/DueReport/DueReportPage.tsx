@@ -749,7 +749,7 @@ const DueReportPage: React.FC = () => {
             <div title="Open follow-ups due today / tomorrow"
               className="due-report-followup-badge flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <MdNoteAdd size={15} style={{ color: '#0096FF' }} />
+              <MdNoteAdd size={15} style={{ color: '#0000FF' }} />
               <span className="due-report-followup-badge-text">Today: {followUpCounts.today} · Tmrw: {followUpCounts.tomorrow}</span>
             </div>
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
@@ -860,7 +860,7 @@ const DueReportPage: React.FC = () => {
                       {r.dueRow && (
                         <button type="button" onClick={() => openFollowUp(r.dueRow as DueListDetailRow)} title="Schedule a follow-up"
                           className="flex items-center justify-center rounded-lg"
-                          style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: '#0096FF', cursor: 'pointer' }}>
+                          style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: '#0000FF', cursor: 'pointer' }}>
                           <MdNoteAdd size={16} />
                         </button>
                       )}
