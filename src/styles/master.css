@@ -534,8 +534,11 @@ html.dark .master-row-icon {
    only ever reached the bottom once you'd scrolled all the way down). */
 .master-crud-footer {
   position: fixed;
-  left: 16px;
-  right: 16px;
+  /* left/right mirror DashboardLayout's <main> side gutter exactly
+     (px-2.5/sm:px-4/lg:px-6) so this floating bar is always the same
+     width as the section cards above it, instead of drifting wider. */
+  left: 10px;
+  right: 10px;
   bottom: 16px;
   height: 76px;
   z-index: 40;
@@ -547,13 +550,16 @@ html.dark .master-row-icon {
 
 @media (min-width: 640px) {
   .master-crud-footer {
+    left: 16px;
+    right: 16px;
     padding: 0 24px;
   }
 }
 
 @media (min-width: 1024px) {
   .master-crud-footer {
-    left: calc(var(--sidebar-w, 260px) + 16px);
+    left: calc(var(--sidebar-w, 260px) + 24px);
+    right: 24px;
   }
 }
 

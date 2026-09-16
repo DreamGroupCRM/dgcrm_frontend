@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdArrowBack, MdCloudUpload, MdPerson, MdBusinessCenter, MdAccountBalance,
-  MdGroups, MdInfoOutline, MdDescription, MdCheckCircle, MdOpenInNew,
+  MdGroups, MdDescription, MdCheckCircle, MdOpenInNew,
 } from 'react-icons/md';
 
 import { AppTheme } from '../../../../styles/theme';
@@ -288,9 +288,6 @@ const GroupedDesignationChecklist: React.FC<{
         <div className="flex flex-col gap-3">
           {groups.map((group) => (
             <div key={group.key}>
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>
-                {group.heading}
-              </div>
               <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2">
                 {group.opts.map((opt, i) => (
                   <React.Fragment key={opt.value}>
@@ -1419,14 +1416,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           onToggle={toggleVisibleEmployee}
           loading={loadingVisibleEmployees} emptyHint="No other employees available."
         />
-
-        <div
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl mt-2"
-          style={{ background: isDark ? 'rgba(99,102,241,0.1)' : '#eef2ff', color: '#4338ca', fontSize: 11 }}
-        >
-          <MdInfoOutline size={16} style={{ flexShrink: 0 }} />
-          You can assign multiple departments and designations, pick exactly which actions apply per module, and choose which employees this employee can view.
-        </div>
       </AccordionSection>
 
       {/* ── Sticky footer — Go Back (always) + Create/Update (add/edit only), centered ──────── */}
