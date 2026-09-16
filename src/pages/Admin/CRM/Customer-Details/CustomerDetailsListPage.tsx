@@ -295,7 +295,8 @@ const CustomerCard: React.FC<{
   menuOpen: boolean; menuPos: { top: number; left: number } | null;
   onView: () => void; onEdit: () => void; onDelete: () => void;
   onDownloadHistory: () => void; onDownloadSchedule: () => void;
-}> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onDelete, onDownloadHistory, onDownloadSchedule }) => {
+  onOpenPaymentHistory: () => void; onOpenScheme: () => void;
+}> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onDelete, onDownloadHistory, onDownloadSchedule, onOpenPaymentHistory, onOpenScheme }) => {
   const statusBg = c.status === 'active' ? '#dcfce7' : '#fee2e2';
   const statusColor = c.status === 'active' ? '#16a34a' : '#dc2626';
   return (
@@ -330,14 +331,24 @@ const CustomerCard: React.FC<{
             )}
           </div>
         </div>
-        <div style={{ position: 'relative' }}>
-          <button type="button" onClick={onOpenMenu} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}>
-            <MdMoreVert size={18} />
+        <div className="flex items-center" style={{ gap: 2, flexShrink: 0 }}>
+          <button type="button" title="Show Payment History" onClick={onOpenPaymentHistory}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}>
+            <MdReceiptLong size={16} />
           </button>
-          {menuOpen && menuPos && (
-            <RowActionMenu t={t} pos={menuPos} onView={onView} onEdit={onEdit} onDelete={onDelete}
-              onDownloadHistory={onDownloadHistory} onDownloadSchedule={onDownloadSchedule} />
-          )}
+          <button type="button" title="Show Scheme" onClick={onOpenScheme}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}>
+            <MdLoyalty size={16} />
+          </button>
+          <div style={{ position: 'relative' }}>
+            <button type="button" onClick={onOpenMenu} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}>
+              <MdMoreVert size={18} />
+            </button>
+            {menuOpen && menuPos && (
+              <RowActionMenu t={t} pos={menuPos} onView={onView} onEdit={onEdit} onDelete={onDelete}
+                onDownloadHistory={onDownloadHistory} onDownloadSchedule={onDownloadSchedule} />
+            )}
+          </div>
         </div>
       </div>
 
@@ -1148,6 +1159,8 @@ const CustomerDetailsListPage: React.FC = () => {
                     onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
                     onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                     onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
+                    onOpenPaymentHistory={() => openPaymentHistory(c)}
+                    onOpenScheme={() => navigate(`/admin/crm/customer-details/scheme/${c.id}`)}
                   />
                 ))}
               </div>
