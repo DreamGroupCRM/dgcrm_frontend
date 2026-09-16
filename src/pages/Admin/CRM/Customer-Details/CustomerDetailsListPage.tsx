@@ -320,7 +320,14 @@ const CustomerCard: React.FC<{
             <div style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary, lineHeight: 1.25, wordBreak: 'break-word' }}>
               {c.customer_name}
             </div>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#7c3aed' }}>{c.customer_code || '—'}</span>
+            {c.customer_code ? (
+              <button type="button" onClick={onView}
+                style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11, fontWeight: 600, color: '#7c3aed' }}>
+                {c.customer_code}
+              </button>
+            ) : (
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#7c3aed' }}>—</span>
+            )}
           </div>
         </div>
         <div style={{ position: 'relative' }}>
@@ -1159,7 +1166,7 @@ const CustomerDetailsListPage: React.FC = () => {
                   <input type="checkbox" title="Select all active customers on this page"
                     checked={activePageRows.length > 0 && activePageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
-                {['Action', 'Customer Code', 'Customer Name', 'Employee Name', 'Contact Details', 'Company / Project', 'Building Details', 'Flat Type / Area', 'Flat Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
+                {['Action', 'Customer ID', 'Customer Name', 'Employee Name', 'Contact Details', 'Company / Project', 'Building Details', 'Flat Type / Area', 'Flat Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
@@ -1211,8 +1218,15 @@ const CustomerDetailsListPage: React.FC = () => {
                         </button>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
-                      {c.customer_code || '—'}
+                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                      {c.customer_code ? (
+                        <button type="button" onClick={() => navigate(`/admin/crm/customer-details/view/${c.id}`)}
+                          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, color: '#0096FF' }}>
+                          {c.customer_code}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: 11.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000' }}>—</span>
+                      )}
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       <div className="flex items-center gap-2">
