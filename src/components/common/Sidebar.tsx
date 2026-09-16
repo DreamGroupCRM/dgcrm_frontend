@@ -67,16 +67,10 @@ interface NavItem {
 
 const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavItem[] => [
   { label: 'Dashboard', path: ROUTES.ADMIN.DASHBOARD, icon: <MdDashboard /> },
-  // Executive Dashboard — visible to Admin/SuperAdmin here same as the rest
-  // of this nav tree; the real gate is server-side (checkPermission
-  // ('reports','view') on GET /api/dashboard/executive) so a role without
-  // the 'reports' permission still can't pull data even if this link is
-  // somehow reached directly.
-  { label: 'Reports', path: ROUTES.ADMIN.EXECUTIVE_DASHBOARD, icon: <MdAssessment /> },
 
   // Master section — conditionally included based on settings toggle
   ...(masterEnabled ? [{
-    label: 'Master', icon: <MdBusiness />,
+    label: 'Masters', icon: <MdBusiness />,
     children: [
       { label: 'Company', path: ROUTES.ADMIN.COMPANY, icon: <MdBusiness /> },
       { label: 'Department', path: ROUTES.ADMIN.DEPARTMENT, icon: <MdAccountTree /> },
@@ -98,8 +92,10 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
     label: 'Employee', icon: <MdPeople />,
     children: [
       { label: 'Employee Details', path: ROUTES.ADMIN.EMPLOYEE_DETAILS, icon: <MdPersonAdd /> },
+      // Leave Requests now lives inside the Attendance page itself (one
+      // merged Attendance + Leave experience) instead of its own sidebar
+      // entry/route.
       { label: 'Attendance', path: ROUTES.ADMIN.ATTENDANCE, icon: <MdEventAvailable /> },
-      { label: 'Leave Requests', path: ROUTES.ADMIN.LEAVES, icon: <MdBeachAccess /> },
     ],
   },
 
@@ -115,15 +111,20 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
     ],
   },
 
+  { label: 'Customize Scheme', path: ROUTES.ADMIN.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
+  { label: 'Building View', path: ROUTES.ADMIN.BUILDING_2D_VIEW, icon: <MdGridView /> },
   { label: 'Audit History', path: ROUTES.ADMIN.AUDIT_HISTORY, icon: <MdHistory /> },
   // Admin/superadmin (requireAdmin server-side, not requireSuperAdmin) —
   // the whole point is a regular Admin reviews delete requests an
   // employee couldn't complete themselves, so this is visible to both,
   // unlike the Super Admin lobby group below.
   { label: 'Pending Admin Approval', path: ROUTES.ADMIN.PENDING_APPROVALS, icon: <MdPendingActions /> },
-  { label: 'Change Requests', path: ROUTES.ADMIN.CHANGE_REQUESTS, icon: <MdPendingActions /> },
-  { label: 'Customize Scheme', path: ROUTES.ADMIN.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
-  { label: 'Building View', path: ROUTES.ADMIN.BUILDING_2D_VIEW, icon: <MdGridView /> },
+  // Executive Dashboard — visible to Admin/SuperAdmin here same as the rest
+  // of this nav tree; the real gate is server-side (checkPermission
+  // ('reports','view') on GET /api/dashboard/executive) so a role without
+  // the 'reports' permission still can't pull data even if this link is
+  // somehow reached directly.
+  { label: 'Reports', path: ROUTES.ADMIN.EXECUTIVE_DASHBOARD, icon: <MdAssessment /> },
 
   // Super Admin lobby — Backup Database moved in here (was previously
   // visible to every admin with no real page behind it) and User

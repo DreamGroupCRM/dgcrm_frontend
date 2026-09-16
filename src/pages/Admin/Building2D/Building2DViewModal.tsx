@@ -114,7 +114,7 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
               }}
             >
               <option value="">{loadingBuildings ? 'Loading buildings...' : '-- Select Building --'}</option>
-              {buildings.map((b) => (
+              {buildings.filter((b) => b.is_active || b.id === selectedBuildingId).map((b) => (
                 <option key={b.id} value={b.id}>{b.building_name} ({b.project_name})</option>
               ))}
             </select>

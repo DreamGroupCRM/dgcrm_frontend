@@ -59,10 +59,9 @@ const PaymentApprovalsPage = lazy(() => import('../pages/Admin/CRM/PaymentApprov
 // table, instead of a total-only number.
 const PaymentUpcomingPage = lazy(() => import('../pages/Admin/CRM/PaymentUpcoming/PaymentUpcomingPage'));
 // Attendance — replaces its former PlaceholderPage, backed by the existing
-// working attendance API (V_21.0).
+// working attendance API (V_21.0). Leave Requests (previously its own
+// LeaveApprovalsPage/route) now lives inside this same page as a tab.
 const AttendancePage = lazy(() => import('../pages/Admin/Employee/Attendance/AttendancePage'));
-// Leave Requests — first real frontend for the leave module (V_21.0).
-const LeaveApprovalsPage = lazy(() => import('../pages/Admin/Employee/Leaves/LeaveApprovalsPage'));
 // Executive Dashboard — new "Reports" sidebar entry.
 const ExecutiveDashboardPage = lazy(() => import('../pages/Admin/Reports/ExecutiveDashboardPage'));
 // Backup Database — replaces its former PlaceholderPage with real whole-
@@ -131,7 +130,8 @@ const AdminRoutes: React.FC = () => (
       <Route path="employee/employee-details/view/:id" element={<EmployeeDetailsCrudPage mode="view" />} />
       <Route path="employee/employee-details/edit/:id" element={<EmployeeDetailsCrudPage mode="edit" />} />
       <Route path="employee/attendance" element={<AttendancePage />} />
-      <Route path="employee/leaves" element={<LeaveApprovalsPage />} />
+      {/* Old standalone Leave Requests route — now a tab inside Attendance. */}
+      <Route path="employee/leaves" element={<Navigate to={ROUTES.ADMIN.ATTENDANCE} replace />} />
 
       <Route path="crm/customer-details" element={<CustomerDetailsListPage />} />
       <Route path="crm/customer-details/add" element={<CustomerDetailsCrudPage mode="add" />} />

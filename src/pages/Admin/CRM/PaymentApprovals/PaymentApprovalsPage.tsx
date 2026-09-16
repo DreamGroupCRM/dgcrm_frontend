@@ -430,7 +430,7 @@ const PaymentApprovalsPage: React.FC = () => {
           <FilterSelect t={t} label="Company" value={draftCompany} onChange={setDraftCompany}
             placeholder="--Select--" options={companyNameOptions.map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Building Name" value={draftBuildingName} onChange={handleBuildingChange}
-            placeholder="--Select--" options={buildings.map((b) => b.building_name).filter((v, i, arr) => arr.indexOf(v) === i).map((n) => ({ value: n, label: n }))} />
+            placeholder="--Select--" options={buildings.filter((b) => b.is_active).map((b) => b.building_name).filter((v, i, arr) => arr.indexOf(v) === i).map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Wing" value={draftWingName} onChange={handleWingChange}
             placeholder="--Select--" options={wingOptions.map((n) => ({ value: n, label: n }))} disabled={!selectedBuilding} />
           <FilterSelect t={t} label="Flat Number" value={draftFlatNo} onChange={setDraftFlatNo}

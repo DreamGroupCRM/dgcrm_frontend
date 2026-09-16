@@ -204,6 +204,11 @@ const Building2DViewPage: React.FC = () => {
   const wings = buildingDetail?.wings ?? [];
   const shops = buildingDetail?.shops ?? [];
 
+  // Heading name comes from the buildings list (available the instant a
+  // building is picked) rather than buildingDetail (which only resolves
+  // once its own fetch finishes) — same as Building2DViewModal's header.
+  const selectedBuildingName = buildings.find((b) => b.id === selectedBuildingId)?.building_name || '';
+
   const handleSelectFlat = (w: BuildingWing, unit: { id: string; no: string; status: UnitStatus; floorLabel: string; areaSqft: number | null; bookedByName: string | null }) => {
     setSelectedUnit({
       kind: 'flat', id: unit.id, no: unit.no, typeLabel: '—', areaSqft: unit.areaSqft,
@@ -237,48 +242,46 @@ const Building2DViewPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily }}>
-      {/* Heading left, Back button top-right — always present, not just in
-          picker mode, so this page never strands the user without a way
-          back to the Building Master list. */}
+      {/* ── Header — single row, matching Building2DViewModal's popup
+          header: heading + building switcher grouped on the left, the
+          3-color legend + Back button grouped on the right. ───────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-        <h1 style={{ fontSize: 20, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Building View</h1>
-        <button type="button" onClick={handleBack}
-          className="flex items-center gap-1.5"
-          style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 8, padding: '7px 14px', color: t.textPrimary, cursor: 'pointer', fontSize: 12.5, fontWeight: 600 }}>
-          <MdArrowBack size={16} /> Back
-        </button>
-      </div>
-
-      {/* Building switch — centered at top, not right-aligned. */}
-      <div className="flex justify-center mb-4">
-        <select
-          value={selectedBuildingId}
-          onChange={(e) => setSelectedBuildingId(e.target.value)}
-          disabled={loadingBuildings}
-          style={{
-            padding: '8px 12px', borderRadius: 8, fontSize: 13, minWidth: 260, textAlign: 'center',
-            background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, cursor: 'pointer',
-          }}
-        >
-          <option value="">{loadingBuildings ? 'Loading buildings...' : '-- Select Building --'}</option>
-          {buildings.map((b) => (
-            <option key={b.id} value={b.id}>{b.building_name} ({b.project_name})</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Color legend — what each fill means — shown ABOVE the picture, not
-          below it, so it's read before the picture itself. */}
-      {buildingDetail && (wings.length > 0 || shops.length > 0) && (
-        <div className="flex items-center justify-center gap-5 flex-wrap" style={{ marginBottom: 14, fontSize: 12, color: t.textSecondary }}>
-          {(['available', 'booked', 'blocked'] as UnitStatus[]).map((s) => (
-            <span key={s} className="flex items-center gap-1.5">
-              <span style={{ width: 12, height: 12, borderRadius: 4, background: STATUS_COLOR[s], display: 'inline-block' }} />
-              {STATUS_TEXT[s]}
-            </span>
-          ))}
+        <div className="flex items-center flex-wrap" style={{ gap: 14, minWidth: 0 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: t.textPrimary, margin: 0, lineHeight: '34px', wordBreak: 'break-word' }}>
+            {selectedBuildingName ? `${selectedBuildingName} 2D View` : 'Building View'}
+          </h1>
+          <select
+            value={selectedBuildingId}
+            onChange={(e) => setSelectedBuildingId(e.target.value)}
+            disabled={loadingBuildings}
+            style={{
+              height: 34, padding: '0 12px', borderRadius: 8, fontSize: 13, minWidth: 240, textAlign: 'center',
+              background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, cursor: 'pointer',
+            }}
+          >
+            <option value="">{loadingBuildings ? 'Loading buildings...' : '-- Select Building --'}</option>
+            {buildings.filter((b) => b.is_active || b.id === selectedBuildingId).map((b) => (
+              <option key={b.id} value={b.id}>{b.building_name} ({b.project_name})</option>
+            ))}
+          </select>
         </div>
-      )}
+
+        <div className="flex items-center justify-end flex-wrap" style={{ gap: 14 }}>
+          <div className="flex items-center flex-wrap" style={{ gap: 12 }}>
+            {(['blocked', 'available', 'booked'] as UnitStatus[]).map((s) => (
+              <span key={s} className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                <span style={{ width: 11, height: 11, borderRadius: 3, background: STATUS_COLOR[s], display: 'inline-block', flexShrink: 0 }} />
+                {STATUS_TEXT[s]}
+              </span>
+            ))}
+          </div>
+          <button type="button" onClick={handleBack}
+            className="flex items-center gap-1.5"
+            style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 8, padding: '7px 14px', color: t.textPrimary, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, flexShrink: 0 }}>
+            <MdArrowBack size={16} /> Back
+          </button>
+        </div>
+      </div>
 
       {/* Fixed width/height picture frame — identical size on every device
           and every building; a building too big to fit scrolls inside this

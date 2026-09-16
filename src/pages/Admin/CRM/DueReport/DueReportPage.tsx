@@ -202,7 +202,7 @@ const DueReportPage: React.FC = () => {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
-  const buildingNames = useMemo(() => Array.from(new Set(buildings.map((b) => b.building_name))), [buildings]);
+  const buildingNames = useMemo(() => Array.from(new Set(buildings.filter((b) => b.is_active).map((b) => b.building_name))), [buildings]);
 
   const [dueRows, setDueRows] = useState<DueListDetailRow[]>([]);
   const [loadingDueList, setLoadingDueList] = useState(false);

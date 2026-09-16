@@ -216,7 +216,7 @@ const ExecutiveDashboardPage: React.FC = () => {
     (async () => {
       try {
         const res = await FetchBuildingList(1, 1000);
-        if (res.success) setBuildings(res.rows.map((b) => ({ id: b.id, label: b.building_name })));
+        if (res.success) setBuildings(res.rows.filter((b) => b.is_active).map((b) => ({ id: b.id, label: b.building_name })));
       } catch { /* filter just stays empty */ }
     })();
   }, []);

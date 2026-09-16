@@ -808,8 +808,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const companyNameOptions = useMemo(() => Array.from(new Set(companies.map((c) => c.name))), [companies]);
   const projectNameOptions = useMemo(() => Array.from(new Set(buildings.map((b) => b.project_name))), [buildings]);
   const buildingsForProject = useMemo(
-    () => (projectName ? buildings.filter((b) => b.project_name === projectName) : buildings),
-    [buildings, projectName]
+    () => (projectName ? buildings.filter((b) => b.project_name === projectName) : buildings)
+      .filter((b) => b.is_active || b.building_name === buildingName),
+    [buildings, projectName, buildingName]
   );
   const buildingNameOptions = useMemo(() => Array.from(new Set(buildingsForProject.map((b) => b.building_name))), [buildingsForProject]);
   const selectedBuilding = useMemo(() => buildingsForProject.find((b) => b.building_name === buildingName), [buildingsForProject, buildingName]);

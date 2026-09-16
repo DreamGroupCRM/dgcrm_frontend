@@ -554,7 +554,7 @@ const CustomerDetailsListPage: React.FC = () => {
   // — not the list row's placeholders. Floor itself isn't a customer field
   // (customers only carry flat_no), so it's purely a narrowing step for the
   // Flat No list, not a filter criterion applied to customers directly. ────
-  const buildingNameOptions = useMemo(() => Array.from(new Set(buildings.map((b) => b.building_name))), [buildings]);
+  const buildingNameOptions = useMemo(() => Array.from(new Set(buildings.filter((b) => b.is_active).map((b) => b.building_name))), [buildings]);
   const selectedBuilding = useMemo(() => buildings.find((b) => b.building_name === buildingFilter), [buildings, buildingFilter]);
 
   const [buildingDetail, setBuildingDetail] = useState<Building | null>(null);
