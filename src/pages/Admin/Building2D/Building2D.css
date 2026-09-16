@@ -16,7 +16,15 @@
   height: 100%;
   overflow: auto;
   display: flex;
-  align-items: center;
+  /* flex-start (not center) — same reasoning as
+     .building-2d-modal-canvas below: centering an overflowing scrollable
+     flex child can leave its top edge unreachable by scroll in some
+     browsers, which is what made a building taller than the fixed box
+     look cut off/broken when opened as a full page from the sidebar
+     (the popup version never had this bug since it already used
+     flex-start). Horizontal centering is kept since width overflow is
+     rare here. */
+  align-items: flex-start;
   justify-content: center;
 }
 

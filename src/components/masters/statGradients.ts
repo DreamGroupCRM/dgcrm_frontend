@@ -2,16 +2,15 @@
 // DGCRM — KPI STAT CARD FILL COLOR
 // ==========================================
 // Every stat card (StatCard/MultiStatCard — Building/Employee/Customer
-// List, Payment Due/Approvals/Received/Upcoming) shares one brand fill —
-// an orange-to-purple gradient, distinct from the Add-X button/icon blue
-// (master.css's --brand-gradient) but the SAME gradient every table
-// header band uses (master.css's --grad-table-header — kept in sync with
-// this literal) — instead of a per-card accent color, per explicit
-// product decision — so this deliberately ignores both the caller's
-// `color` prop and the active appearance's tint (a tint would shift the
-// fill away from the brand color toward whatever accent the viewer has
-// chosen). Kept as a function (rather than inlining the value in every
-// caller) so every stat card's fill still comes from this one place.
-const STAT_CARD_BRAND_GRADIENT = 'linear-gradient(to right, #cc5333, #23074d)';
-
-export const getStatGradient = (_color?: string, _tint?: (gradient: string) => string): string => STAT_CARD_BRAND_GRADIENT;
+// List, Payment Due/Approvals/Received/Upcoming, Attendance, etc.) shares
+// one brand fill — the SAME per-appearance color every table header band
+// uses (master.css's --grad-table-header, set per Appearance in
+// appearanceTokens.ts) — instead of a per-card accent color or a fixed
+// literal, so switching the Appearance (e.g. to the green palette) recolors
+// every top box the same way it already recolors every table header,
+// instead of top boxes staying a fixed brand color while the rest of the
+// page follows the chosen theme. Kept as a function (rather than inlining
+// the value in every caller) so every stat card's fill still comes from
+// this one place. `_color`/`_tint` are unused (same as before) — a
+// per-card accent isn't part of this design, only the shared theme color.
+export const getStatGradient = (_color?: string, _tint?: (gradient: string) => string): string => 'var(--grad-table-header)';
