@@ -31,7 +31,9 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { STORAGE_KEYS } from '../../constants';
 
-export type AppearanceId = 'existing' | 'light-professional' | 'dark-professional' | 'modern' | 'executive';
+export type AppearanceId =
+  | 'existing' | 'light-professional' | 'dark-professional' | 'modern' | 'executive'
+  | 'ocean-gradient' | 'sunset-gradient';
 
 export const APPEARANCE_OPTIONS: { id: AppearanceId; label: string; implemented: boolean }[] = [
   { id: 'existing', label: 'Existing / Current', implemented: true },
@@ -39,6 +41,8 @@ export const APPEARANCE_OPTIONS: { id: AppearanceId; label: string; implemented:
   { id: 'dark-professional', label: 'Dark Professional', implemented: true },
   { id: 'modern', label: 'Modern', implemented: true },
   { id: 'executive', label: 'Executive', implemented: true },
+  { id: 'ocean-gradient', label: 'Ocean Gradient', implemented: true },
+  { id: 'sunset-gradient', label: 'Sunset Gradient', implemented: true },
 ];
 
 interface AppearanceState {

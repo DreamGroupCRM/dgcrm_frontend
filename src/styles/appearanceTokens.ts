@@ -140,17 +140,24 @@ const EXISTING: AppearancePalette = {
   accent: '#4338ca', accentDark: '#4338ca',
   accentHover: '#3730a3', accentHoverDark: '#4f46e5',
   accentFocus: '#4f46e5', accentFocusDark: '#4f46e5',
-  btnPrimaryGradient: '#0000FF',
-  btnPrimaryGradientDark: '#0000FF',
+  // Was '#0000FF' — a different literal than tableHeaderGradient below,
+  // which is why "Add X" buttons/action icons/pagination/avatar/sidebar
+  // active-nav rendered a visibly different color than table headers and
+  // stat boxes under this appearance (every other palette already keeps
+  // these in sync — see e.g. LIGHT_PROFESSIONAL). Now unified to the same
+  // teal so switching to "Existing / Current" recolors every one of these
+  // surfaces identically, everywhere in the app.
+  btnPrimaryGradient: '#0A7474',
+  btnPrimaryGradientDark: '#0A7474',
   tableHeaderGradient: '#0A7474',
   tableHeaderGradientDark: '#0A7474',
   duplicateIcon: '#dc2626',
   systemBorder: '#a1a1aa',
   navActiveBg: '#efebe9', navActiveBgDark: '#1a1a1a',
-  navActiveText: '#0000FF', navActiveTextDark: '#ffffff',
-  navActiveBorder: '#0000FF', navActiveBorderDark: '#333333',
-  avatarGradient: '#0000FF',
-  avatarGradientDark: '#0000FF',
+  navActiveText: '#0A7474', navActiveTextDark: '#ffffff',
+  navActiveBorder: '#0A7474', navActiveBorderDark: '#333333',
+  avatarGradient: '#0A7474',
+  avatarGradientDark: '#0A7474',
   families: {
     accentInfo:   { bg: '#e0e7ff', fg: '#4338ca', bgDark: 'rgba(99,102,241,0.18)',  fgDark: '#a5b4fc' },
     info:         { bg: '#dbeafe', fg: '#1d4ed8', bgDark: 'rgba(59,130,246,0.18)',  fgDark: '#93c5fd' },
@@ -302,12 +309,60 @@ const EXECUTIVE: AppearancePalette = {
   },
 };
 
+// ── 'ocean-gradient' — teal-into-blue diagonal gradient. Unlike the 5
+// palettes above (a flat single hex per role), tableHeaderGradient/
+// btnPrimaryGradient/avatarGradient here are real two-stop CSS gradient
+// strings — safe everywhere those three feed a plain `background`, since
+// none of them are ever hex-parsed by mixHex/tintColor (only `accent`/
+// `accentDark` are, so those two stay solid hex). ────────────────────────
+const OCEAN_GRADIENT: AppearancePalette = {
+  label: 'Ocean Gradient',
+  accent: '#0e7490', accentDark: '#22d3ee',
+  accentHover: '#155e75', accentHoverDark: '#67e8f9',
+  accentFocus: '#0891b2', accentFocusDark: '#22d3ee',
+  btnPrimaryGradient: 'linear-gradient(135deg, #0d9488, #0369a1)',
+  btnPrimaryGradientDark: 'linear-gradient(135deg, #115e59, #0c4a6e)',
+  tableHeaderGradient: 'linear-gradient(135deg, #0d9488, #0369a1)',
+  tableHeaderGradientDark: 'linear-gradient(135deg, #115e59, #0c4a6e)',
+  duplicateIcon: '#dc2626',
+  systemBorder: '#94a3b8',
+  navActiveBg: '#e0f2fe', navActiveBgDark: 'rgba(34,211,238,0.16)',
+  navActiveText: '#0e7490', navActiveTextDark: '#22d3ee',
+  navActiveBorder: '#0e7490', navActiveBorderDark: '#22d3ee',
+  avatarGradient: 'linear-gradient(135deg, #0d9488, #0369a1)',
+  avatarGradientDark: 'linear-gradient(135deg, #115e59, #0c4a6e)',
+  families: LIGHT_PROFESSIONAL.families,
+};
+
+// ── 'sunset-gradient' — warm coral-into-magenta diagonal gradient, the
+// same "two-stop gradient string" treatment as Ocean Gradient above. ────
+const SUNSET_GRADIENT: AppearancePalette = {
+  label: 'Sunset Gradient',
+  accent: '#c2410c', accentDark: '#fb923c',
+  accentHover: '#9a3412', accentHoverDark: '#fdba74',
+  accentFocus: '#ea580c', accentFocusDark: '#fb923c',
+  btnPrimaryGradient: 'linear-gradient(135deg, #f97316, #db2777)',
+  btnPrimaryGradientDark: 'linear-gradient(135deg, #9a3412, #831843)',
+  tableHeaderGradient: 'linear-gradient(135deg, #f97316, #db2777)',
+  tableHeaderGradientDark: 'linear-gradient(135deg, #9a3412, #831843)',
+  duplicateIcon: '#be123c',
+  systemBorder: '#a8a29e',
+  navActiveBg: '#fff1e6', navActiveBgDark: 'rgba(251,146,60,0.18)',
+  navActiveText: '#c2410c', navActiveTextDark: '#fb923c',
+  navActiveBorder: '#c2410c', navActiveBorderDark: '#fb923c',
+  avatarGradient: 'linear-gradient(135deg, #f97316, #db2777)',
+  avatarGradientDark: 'linear-gradient(135deg, #9a3412, #831843)',
+  families: EXECUTIVE.families,
+};
+
 export const APPEARANCE_PALETTES: Record<AppearanceId, AppearancePalette> = {
   existing: EXISTING,
   'light-professional': LIGHT_PROFESSIONAL,
   'dark-professional': DARK_PROFESSIONAL,
   modern: MODERN,
   executive: EXECUTIVE,
+  'ocean-gradient': OCEAN_GRADIENT,
+  'sunset-gradient': SUNSET_GRADIENT,
 };
 
 // ── The CSS custom property names master.css's shared classes read.
