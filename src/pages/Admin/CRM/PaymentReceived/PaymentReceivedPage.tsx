@@ -495,16 +495,16 @@ const PaymentReceivedPage: React.FC = () => {
                   <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={rows.length === 0}
                     style={{ cursor: rows.length === 0 ? 'not-allowed' : 'pointer' }} />
                 </th>
-                {['Actions', 'Receipt No.', 'Customer Name', 'Building', 'Wing', 'Flat No.', 'Instalment Date', 'Received Date', 'Maintenance', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
+                {['Actions', 'Receipt No.', 'Customer Name', 'Building/Wing/Flat', 'Instalment Date', 'Received Date', 'Maintenance', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={16} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
+                <tr><td colSpan={14} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={16} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
+                <tr><td colSpan={14} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -535,9 +535,14 @@ const PaymentReceivedPage: React.FC = () => {
                       <div style={{ fontWeight: 600 }}>{r.customer_name || '—'}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code || '—'}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.building_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.wing_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.flat_no || '—'}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
+                      {(r.wing_name || r.flat_no) && (
+                        <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
+                          {r.wing_name ? `Wing ${r.wing_name}` : ''}{r.wing_name && r.flat_no ? ' • ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.payment_tag === 'Extra Pay' ? '—' : formatDMY(r.inst_date)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMY(r.payment_date || r.created_at)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#16a34a', fontWeight: 600, whiteSpace: 'nowrap' }}>{rupee(r.maintenance || 0)}</td>
