@@ -815,18 +815,6 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   const flatsRef = useRef<HTMLDivElement>(null);
   const shopsRef = useRef<HTMLDivElement>(null);
   const parkingRef = useRef<HTMLDivElement>(null);
-  // Quick-jump pill nav (item: colorful minimized redesign) — every section
-  // is reachable in one click instead of scrolling the whole form.
-  const sectionNavItems = [
-    { label: 'Project Details', ref: projectDetailsRef },
-    { label: 'Wings', ref: wingsRef },
-    { label: 'Floors', ref: floorsRef },
-    { label: 'Flats', ref: flatsRef },
-    { label: 'Shops', ref: shopsRef },
-    { label: 'Parking', ref: parkingRef },
-  ];
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement>) =>
-    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const validationChecks: { field: string; message: string; failed: () => boolean; sectionRef: React.RefObject<HTMLDivElement> }[] = [
     { field: 'projectDetails', message: 'Please fill all Project Details fields, including Company.', sectionRef: projectDetailsRef,
       failed: () => (!isEdit && !businessCompanyId) || !projectName.trim() || !location.trim() || !buildingName.trim() },
@@ -964,30 +952,6 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         errors={activeErrors.map((c) => ({ field: c.field, message: c.message }))}
         onErrorClick={revealInvalidField}
       />
-
-      {/* Section jump nav — one blue pill per section (matching that
-          section's icon chip shade), click to smooth-scroll there.
-          Centered, per the redesign screenshot. */}
-      <div className="flex flex-wrap items-center justify-center gap-2" style={{ marginBottom: 20 }}>
-        {sectionNavItems.map((item, idx) => {
-          const { color, soft, icon: Icon } = SECTION_STYLE[idx];
-          return (
-            <button
-              key={item.label}
-              type="button"
-              onClick={() => scrollToSection(item.ref)}
-              className="flex items-center gap-1.5"
-              style={{
-                padding: '7px 12px 7px 8px', borderRadius: 999, border: 'none',
-                background: soft, color, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              <Icon size={14} />
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
 
       {/* ── Step 1: Project Details ─────────────────────────────────────── */}
       <SectionCard t={t} sectionRef={projectDetailsRef}>
