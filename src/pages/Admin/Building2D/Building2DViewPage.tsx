@@ -29,7 +29,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { MdArrowBack, MdCheckCircle } from 'react-icons/md';
+import { MdArrowBack, MdCheckCircle, MdKeyboardArrowDown } from 'react-icons/md';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { FetchBuildingList, ViewBuilding } from '../../../services/buildingService';
 import { Building, BuildingFlat, BuildingShop, BuildingWing } from '../../../types/index';
@@ -250,20 +250,24 @@ const Building2DViewPage: React.FC = () => {
           <h1 style={{ fontSize: 20, fontWeight: 800, color: t.textPrimary, margin: 0, lineHeight: '34px', wordBreak: 'break-word' }}>
             {selectedBuildingName ? `${selectedBuildingName} 2D View` : 'Building View'}
           </h1>
-          <select
-            value={selectedBuildingId}
-            onChange={(e) => setSelectedBuildingId(e.target.value)}
-            disabled={loadingBuildings}
-            style={{
-              height: 34, padding: '0 12px', borderRadius: 8, fontSize: 13, minWidth: 240, textAlign: 'center',
-              background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, cursor: 'pointer',
-            }}
-          >
-            <option value="">{loadingBuildings ? 'Loading buildings...' : '-- Select Building --'}</option>
-            {buildings.filter((b) => b.is_active || b.id === selectedBuildingId).map((b) => (
-              <option key={b.id} value={b.id}>{b.building_name} ({b.project_name})</option>
-            ))}
-          </select>
+          <div className="relative" style={{ minWidth: 240 }}>
+            <select
+              value={selectedBuildingId}
+              onChange={(e) => setSelectedBuildingId(e.target.value)}
+              disabled={loadingBuildings}
+              style={{
+                width: '100%', height: 34, appearance: 'none', padding: '0 30px 0 12px', borderRadius: 8, fontSize: 13,
+                background: loadingBuildings ? t.insetBg : t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
+                cursor: loadingBuildings ? 'not-allowed' : 'pointer', outline: 'none',
+              }}
+            >
+              <option value="">{loadingBuildings ? 'Loading buildings...' : '-- Select Building --'}</option>
+              {buildings.filter((b) => b.is_active || b.id === selectedBuildingId).map((b) => (
+                <option key={b.id} value={b.id}>{b.building_name} ({b.project_name})</option>
+              ))}
+            </select>
+            <MdKeyboardArrowDown size={16} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: t.textSecondary, pointerEvents: 'none' }} />
+          </div>
         </div>
 
         <div className="flex items-center justify-end flex-wrap" style={{ gap: 14 }}>

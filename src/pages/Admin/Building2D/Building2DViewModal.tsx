@@ -17,7 +17,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
-import { MdClose } from 'react-icons/md';
+import { MdClose, MdKeyboardArrowDown } from 'react-icons/md';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { FetchBuildingList, ViewBuilding } from '../../../services/buildingService';
 import { Building } from '../../../types/index';
@@ -104,20 +104,24 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
               {selectedBuildingName ? `${selectedBuildingName} 2D View` : 'Building 2D View'}
             </h2>
 
-            <select
-              value={selectedBuildingId}
-              onChange={(e) => setSelectedBuildingId(e.target.value)}
-              disabled={loadingBuildings}
-              style={{
-                height: 30, padding: '0 12px', borderRadius: 8, fontSize: 12.5, minWidth: 210, textAlign: 'center',
-                background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, cursor: 'pointer',
-              }}
-            >
-              <option value="">{loadingBuildings ? 'Loading buildings...' : '-- Select Building --'}</option>
-              {buildings.filter((b) => b.is_active || b.id === selectedBuildingId).map((b) => (
-                <option key={b.id} value={b.id}>{b.building_name} ({b.project_name})</option>
-              ))}
-            </select>
+            <div className="relative" style={{ minWidth: 210, flexShrink: 0 }}>
+              <select
+                value={selectedBuildingId}
+                onChange={(e) => setSelectedBuildingId(e.target.value)}
+                disabled={loadingBuildings}
+                style={{
+                  width: '100%', height: 30, appearance: 'none', padding: '0 28px 0 12px', borderRadius: 8, fontSize: 12.5,
+                  background: loadingBuildings ? t.insetBg : t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
+                  cursor: loadingBuildings ? 'not-allowed' : 'pointer', outline: 'none',
+                }}
+              >
+                <option value="">{loadingBuildings ? 'Loading buildings...' : '-- Select Building --'}</option>
+                {buildings.filter((b) => b.is_active || b.id === selectedBuildingId).map((b) => (
+                  <option key={b.id} value={b.id}>{b.building_name} ({b.project_name})</option>
+                ))}
+              </select>
+              <MdKeyboardArrowDown size={15} style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', color: t.textSecondary, pointerEvents: 'none' }} />
+            </div>
           </div>
 
           <div className="flex items-center justify-end" style={{ gap: 14, flexWrap: 'nowrap', height: 30, flexShrink: 0 }}>
