@@ -784,7 +784,7 @@ const DueReportPage: React.FC = () => {
           <table className="due-report-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Customer Name', 'Company / Project / Location', 'Building / Wing / Flat', 'Assigned Employee', 'Contact (Email / Mobile)', 'Payment For', 'Months Pending', 'Amount', 'Status', 'Detail', 'Follow Up'].map((h) => (
+                {['Customer Name', 'Company / Project / Location', 'Building Details', 'Assigned Employee', 'Contact (Email / Mobile)', 'Payment For', 'Months Pending', 'Amount', 'Status', 'Detail', 'Follow Up'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>

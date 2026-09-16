@@ -293,7 +293,7 @@ const PaymentUpcomingPage: React.FC = () => {
           <table className="payment-upcoming-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Customer Name', 'Assigned Employee', 'Company / Project / Location', 'Building / Wing / Flat', 'Contact (Email / Mobile)', 'Payment For', 'Due Date', 'Amount', 'Status'].map((h) => (
+                {['Customer Name', 'Assigned Employee', 'Company / Project / Location', 'Building Details', 'Contact (Email / Mobile)', 'Payment For', 'Due Date', 'Amount', 'Status'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
