@@ -1982,7 +1982,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Monthly EMI After Possession (₹)" required error={errorFor('monthlyEmiAfterPossession')} fieldRef={setFieldRef('monthlyEmiAfterPossession') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} />
           </Field>
-          <Field t={t} label="Total EMI Tenure (Months)" required error={errorFor('totalEmiTenure')} fieldRef={setFieldRef('totalEmiTenure') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Total EMI Tenure Before Possession (Months)" required error={errorFor('totalEmiTenure')} fieldRef={setFieldRef('totalEmiTenure') as React.Ref<HTMLDivElement>}>
             {/* 2-digit cap — maxLength blocks typing a 3rd digit, and the
                 max clamp inside NumberField covers paste edge cases, so a
                 newly-typed value can never exceed the 60-month limit
@@ -2002,13 +2002,13 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Booster Amount Before Possession (₹)">
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} />
           </Field>
-          <Field t={t} label="Booster Interval Before Possession (Months)">
+          <Field t={t} label="Booster Interval Before (Months)">
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} />
           </Field>
           <Field t={t} label="Booster Amount After Possession (₹)">
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} />
           </Field>
-          <Field t={t} label="Booster Interval After Possession (Months)">
+          <Field t={t} label="Booster Interval After (Months)">
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} />
           </Field>
           {!isView && (
