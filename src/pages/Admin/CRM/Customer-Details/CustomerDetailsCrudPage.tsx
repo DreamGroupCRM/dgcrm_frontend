@@ -1521,7 +1521,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             </button>
             <div>
               <h1 className="cust-crud-title">View Customer</h1>
-              <p className="cust-crud-subtitle">Customer details</p>
             </div>
           </div>
           {customerCode && (
@@ -1655,9 +1654,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <h1 className="cust-crud-title">
               {mode === 'add' ? 'Create Customer' : mode === 'edit' ? 'Edit Customer' : 'View Customer'}
             </h1>
-            <p className="cust-crud-subtitle">
-              {mode === 'add' ? 'Add new customer details' : 'Customer details'}
-            </p>
           </div>
         </div>
 

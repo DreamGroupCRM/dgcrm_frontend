@@ -778,8 +778,7 @@ const DueReportPage: React.FC = () => {
         </div>
         <div>
           <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Payment Dues</h1>
-          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Every overdue amount across every customer, and a form to collect one directly</p>
-        </div>
+          </div>
       </div>
 
       {/* ── Stat boxes — every Payment For category plus a grand Total,

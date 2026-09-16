@@ -928,24 +928,6 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
 
   return (
     <div style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 40, width: '100%' }}>
-      {/* Breadcrumb + page heading — full page width, blue-on-white only. */}
-      <div style={{ width: '100%', marginBottom: 18 }}>
-        <div style={{ fontSize: 12.5, color: '#3b82f6', fontWeight: 600 }}>
-          <span
-            onClick={() => navigate('/admin/masters/building')}
-            style={{ cursor: 'pointer', color: t.accentText }}
-          >
-            Buildings
-          </span>
-          <span style={{ margin: '0 6px', color: t.textMuted }}>/</span>
-          <span style={{ color: t.accentText }}>
-            {isEdit ? 'Edit Building' : isView ? 'View Building' : 'New Building'}
-          </span>
-        </div>
-        <h1 style={{ fontSize: 21, fontWeight: 800, color: t.accentText, margin: '4px 0 0' }}>
-          {PAGE_TITLES[mode]}
-        </h1>
-      </div>
 
       <ValidationErrorSummary
         t={t}

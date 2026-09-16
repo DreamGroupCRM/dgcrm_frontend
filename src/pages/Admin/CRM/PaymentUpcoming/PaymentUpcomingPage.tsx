@@ -208,8 +208,7 @@ const PaymentUpcomingPage: React.FC = () => {
         </div>
         <div>
           <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Payment Upcoming</h1>
-          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Every not-yet-due installment in a chosen date range, per customer, so you can plan follow-ups</p>
-        </div>
+          </div>
       </div>
 
       {/* ── Per-category stat boxes — every Payment For option, moved to
