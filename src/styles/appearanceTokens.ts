@@ -355,6 +355,61 @@ const SUNSET_GRADIENT: AppearancePalette = {
   families: EXECUTIVE.families,
 };
 
+// ── 'coral-reef' — built from the user-supplied Coolors palette (Light
+// Cyan #D6FFF6, Russian Violet #231651, Medium Turquoise #4DCCBD, Spanish
+// Blue #2374AB, Light Coral #FF8484). Light mode's gradient/nav tint pull
+// from the palette's cool/light end (turquoise→blue, cyan tint); dark
+// mode's gradient pulls from its dark end (violet→blue) instead of just
+// darkening the same two stops, so it reads as a deliberate dark palette
+// rather than a dimmed light one. Light Coral is reserved for the
+// duplicate-marker icon — the palette's one warm accent, kept to a single
+// narrow role rather than spent on a semantic status color. ─────────────
+const CORAL_REEF: AppearancePalette = {
+  label: 'Coral Reef',
+  accent: '#2374AB', accentDark: '#4DCCBD',
+  accentHover: '#1c5d87', accentHoverDark: '#7fdcd0',
+  accentFocus: '#2374AB', accentFocusDark: '#4DCCBD',
+  btnPrimaryGradient: 'linear-gradient(135deg, #4DCCBD, #2374AB)',
+  btnPrimaryGradientDark: 'linear-gradient(135deg, #231651, #2374AB)',
+  tableHeaderGradient: 'linear-gradient(135deg, #4DCCBD, #2374AB)',
+  tableHeaderGradientDark: 'linear-gradient(135deg, #231651, #2374AB)',
+  duplicateIcon: '#FF8484',
+  systemBorder: '#94a3b8',
+  navActiveBg: '#D6FFF6', navActiveBgDark: 'rgba(77,204,189,0.18)',
+  navActiveText: '#2374AB', navActiveTextDark: '#4DCCBD',
+  navActiveBorder: '#2374AB', navActiveBorderDark: '#4DCCBD',
+  avatarGradient: 'linear-gradient(135deg, #4DCCBD, #2374AB)',
+  avatarGradientDark: 'linear-gradient(135deg, #231651, #2374AB)',
+  families: LIGHT_PROFESSIONAL.families,
+};
+
+// ── 'neutral-gray' — the requested "gray" option: no brand hue at all, a
+// flat slate accent (not a gradient — a gradient would itself read as a
+// color choice, working against the point of a neutral option). Dark mode
+// isn't just a dimmed light mode — it moves to a genuinely dark slate
+// (#1e293b) so the table header/buttons stay visibly a surface, not just
+// gray-on-gray. Semantic status colors (warning/danger/success) stay the
+// same universal hues every other palette uses — a neutral palette
+// shouldn't make "rejected" or "approved" harder to read at a glance. ───
+const NEUTRAL_GRAY: AppearancePalette = {
+  label: 'Gray',
+  accent: '#475569', accentDark: '#cbd5e1',
+  accentHover: '#334155', accentHoverDark: '#e2e8f0',
+  accentFocus: '#64748b', accentFocusDark: '#cbd5e1',
+  btnPrimaryGradient: '#475569',
+  btnPrimaryGradientDark: '#1e293b',
+  tableHeaderGradient: '#475569',
+  tableHeaderGradientDark: '#1e293b',
+  duplicateIcon: '#dc2626',
+  systemBorder: '#94a3b8',
+  navActiveBg: '#f1f5f9', navActiveBgDark: 'rgba(148,163,184,0.18)',
+  navActiveText: '#475569', navActiveTextDark: '#cbd5e1',
+  navActiveBorder: '#475569', navActiveBorderDark: '#cbd5e1',
+  avatarGradient: '#475569',
+  avatarGradientDark: '#1e293b',
+  families: EXISTING.families,
+};
+
 export const APPEARANCE_PALETTES: Record<AppearanceId, AppearancePalette> = {
   existing: EXISTING,
   'light-professional': LIGHT_PROFESSIONAL,
@@ -363,6 +418,8 @@ export const APPEARANCE_PALETTES: Record<AppearanceId, AppearancePalette> = {
   executive: EXECUTIVE,
   'ocean-gradient': OCEAN_GRADIENT,
   'sunset-gradient': SUNSET_GRADIENT,
+  'coral-reef': CORAL_REEF,
+  'neutral-gray': NEUTRAL_GRAY,
 };
 
 // ── The CSS custom property names master.css's shared classes read.

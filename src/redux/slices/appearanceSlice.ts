@@ -33,7 +33,7 @@ import { STORAGE_KEYS } from '../../constants';
 
 export type AppearanceId =
   | 'existing' | 'light-professional' | 'dark-professional' | 'modern' | 'executive'
-  | 'ocean-gradient' | 'sunset-gradient';
+  | 'ocean-gradient' | 'sunset-gradient' | 'coral-reef' | 'neutral-gray';
 
 export const APPEARANCE_OPTIONS: { id: AppearanceId; label: string; implemented: boolean }[] = [
   { id: 'existing', label: 'Existing / Current', implemented: true },
@@ -43,6 +43,8 @@ export const APPEARANCE_OPTIONS: { id: AppearanceId; label: string; implemented:
   { id: 'executive', label: 'Executive', implemented: true },
   { id: 'ocean-gradient', label: 'Ocean Gradient', implemented: true },
   { id: 'sunset-gradient', label: 'Sunset Gradient', implemented: true },
+  { id: 'coral-reef', label: 'Coral Reef', implemented: true },
+  { id: 'neutral-gray', label: 'Gray', implemented: true },
 ];
 
 interface AppearanceState {
