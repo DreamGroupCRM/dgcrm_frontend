@@ -639,7 +639,7 @@ const DueReportPage: React.FC = () => {
             errors={activeErrors.map((c) => ({ field: c.field, message: c.message }))}
             onErrorClick={revealInvalidField}
           />
-          <div className="due-report-form-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-3.5">
+          <div className="due-report-form-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
             <div ref={setFieldRef('customer')}>
               <label style={fieldLabelStyle}>Customer Name</label>
               <SearchableSelect t={t} placeholder="Select or type customer name" options={customerOptions} value={apCustomerSearch} onChange={handleCustomerSearchChange} />
@@ -680,8 +680,6 @@ const DueReportPage: React.FC = () => {
               <label style={fieldLabelStyle}>Payment Date</label>
               <input type="date" value={apPaymentDate} onChange={(e) => setApPaymentDate(e.target.value)} style={fieldInputStyle()} />
             </div>
-          </div>
-          <div className="due-report-form-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
             <div ref={setFieldRef('payment_for')}>
               <label style={fieldLabelStyle}>Payment For</label>
               <select value={apPaymentForKey} onChange={(e) => handlePaymentForChange(e.target.value)} style={fieldInputStyle(!!errorFor('payment_for'))}>
@@ -757,8 +755,8 @@ const DueReportPage: React.FC = () => {
                 Clicking it opens a popup listing those follow-ups. */}
             <button type="button" title="Open follow-ups due today / tomorrow" onClick={() => setFollowUpListOpen(true)}
               className="due-report-followup-badge flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold"
-              style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
-              <MdNoteAdd size={15} style={{ color: 'var(--brand-gradient)' }} />
+              style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <MdNoteAdd size={15} style={{ color: '#fff' }} />
               <span className="due-report-followup-badge-text">Today: {followUpCounts.today} · Tmrw: {followUpCounts.tomorrow}</span>
             </button>
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
@@ -936,9 +934,9 @@ const DueReportPage: React.FC = () => {
         <div className="due-report-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="due-report-modal rounded-2xl w-full" style={{ maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
             onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
-              <div style={{ fontSize: 14.5, fontWeight: 800, color: t.textPrimary }}>Follow-ups — Today &amp; Tomorrow</div>
-              <button type="button" onClick={() => setFollowUpListOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary }}>
+            <div className="flex items-center justify-between px-5 py-4 rounded-t-2xl" style={{ background: 'var(--grad-green)' }}>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: '#fff' }}>Follow-ups — Today &amp; Tomorrow</div>
+              <button type="button" onClick={() => setFollowUpListOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#fff' }}>
                 <MdClose size={20} />
               </button>
             </div>

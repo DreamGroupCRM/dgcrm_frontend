@@ -453,13 +453,11 @@ const PaymentApprovalsPage: React.FC = () => {
               oversized next to the fields beside it. ─────────────────── */}
           <div className="pa-filter-actions flex items-center gap-2">
             <button type="button" onClick={handleFilter}
-              className="inline-flex items-center gap-1.5 rounded-xl text-xs font-bold"
-              style={{ padding: '0 14px', height: 38, background: 'var(--brand-gradient)', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 14px', height: 38, borderRadius: 10, fontSize: 12.5, fontWeight: 700, background: 'var(--brand-gradient)', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <MdFilterAlt size={15} /> Filter
             </button>
             <button type="button" onClick={handleResetFilters}
-              className="inline-flex items-center gap-1.5 rounded-xl text-xs font-bold"
-              style={{ padding: '0 14px', height: 38, background: 'var(--brand-gradient)', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 14px', height: 38, borderRadius: 10, fontSize: 12.5, fontWeight: 700, background: 'var(--brand-gradient)', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <MdClose size={15} /> Reset
             </button>
           </div>
