@@ -12,7 +12,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
   createTheme({
     palette: {
       mode,
-      primary:   { main: '#4e342e', contrastText: '#ffffff' },
+      primary:   { main: '#0000FF', contrastText: '#ffffff' },
       secondary: { main: '#64748b', contrastText: '#ffffff' },
       background: {
         default: mode === 'dark' ? '#000000' : '#ffffff',
@@ -25,8 +25,8 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
       },
       divider: mode === 'dark' ? '#1a1a1a' : '#e5e7eb',
       action: {
-        hover        : mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(78,52,46,0.06)',
-        selected     : mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(78,52,46,0.10)',
+        hover        : mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0, 0, 255,0.06)',
+        selected     : mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0, 0, 255,0.10)',
         hoverOpacity : 0.05,
       },
     },
@@ -78,8 +78,8 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
             backgroundColor: theme.palette.mode === 'dark' ? '#0d0d0d' : '#ffffff',
             color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000',
             '& fieldset': { borderColor: theme.palette.mode === 'dark' ? '#2a2a2a' : '#d1d5db' },
-            '&:hover fieldset': { borderColor: theme.palette.mode === 'dark' ? '#404040' : '#4e342e' },
-            '&.Mui-focused fieldset': { borderColor: theme.palette.mode === 'dark' ? '#525252' : '#4e342e' },
+            '&:hover fieldset': { borderColor: theme.palette.mode === 'dark' ? '#404040' : '#0000FF' },
+            '&.Mui-focused fieldset': { borderColor: theme.palette.mode === 'dark' ? '#525252' : '#0000FF' },
           }),
           input: { fontFamily: '"Roboto", "Inter", "Arial", sans-serif' },
         },
@@ -89,7 +89,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
           root: ({ theme }) => ({
             fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             color: theme.palette.mode === 'dark' ? '#a3a3a3' : '#4b5563',
-            '&.Mui-focused': { color: theme.palette.mode === 'dark' ? '#d4d4d4' : '#4e342e' },
+            '&.Mui-focused': { color: theme.palette.mode === 'dark' ? '#d4d4d4' : '#0000FF' },
           }),
         },
       },
@@ -163,7 +163,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
             color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000',
             '&:hover': {
               backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#efebe9',
-              color: theme.palette.mode === 'dark' ? '#d4d4d4' : '#4e342e',
+              color: theme.palette.mode === 'dark' ? '#d4d4d4' : '#0000FF',
             },
           }),
         },
@@ -183,7 +183,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
           root: ({ theme }) => ({
             fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             backgroundColor: theme.palette.mode === 'dark' ? '#141414' : '#efebe9',
-            color: theme.palette.mode === 'dark' ? '#a3a3a3' : '#4e342e',
+            color: theme.palette.mode === 'dark' ? '#a3a3a3' : '#0000FF',
           }),
         },
       },

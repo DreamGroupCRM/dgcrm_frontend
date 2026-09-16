@@ -117,7 +117,7 @@ export interface AppearancePalette {
   systemBorder: string;
   // Sidebar's active-nav-item highlight + Header's avatar badge — until
   // this Architecture Review pass, these were fixed in theme.ts's
-  // getTheme(isDark) as a #4e342e-based blue completely independent of
+  // getTheme(isDark) as a #0000FF-based blue completely independent of
   // any appearance (the shell every page renders inside never responded
   // to Appearance at all). Existing's values below are copied verbatim
   // from theme.ts so nothing visually changes today; the other palettes
@@ -140,17 +140,17 @@ const EXISTING: AppearancePalette = {
   accent: '#4338ca', accentDark: '#4338ca',
   accentHover: '#3730a3', accentHoverDark: '#4f46e5',
   accentFocus: '#4f46e5', accentFocusDark: '#4f46e5',
-  btnPrimaryGradient: '#4e342e',
-  btnPrimaryGradientDark: '#4e342e',
-  tableHeaderGradient: '#4e342e',
-  tableHeaderGradientDark: '#4e342e',
+  btnPrimaryGradient: '#0000FF',
+  btnPrimaryGradientDark: '#0000FF',
+  tableHeaderGradient: '#0000FF',
+  tableHeaderGradientDark: '#0000FF',
   duplicateIcon: '#dc2626',
   systemBorder: '#a1a1aa',
   navActiveBg: '#efebe9', navActiveBgDark: '#1a1a1a',
-  navActiveText: '#4e342e', navActiveTextDark: '#ffffff',
-  navActiveBorder: '#4e342e', navActiveBorderDark: '#333333',
-  avatarGradient: '#4e342e',
-  avatarGradientDark: '#4e342e',
+  navActiveText: '#0000FF', navActiveTextDark: '#ffffff',
+  navActiveBorder: '#0000FF', navActiveBorderDark: '#333333',
+  avatarGradient: '#0000FF',
+  avatarGradientDark: '#0000FF',
   families: {
     accentInfo:   { bg: '#e0e7ff', fg: '#4338ca', bgDark: 'rgba(99,102,241,0.18)',  fgDark: '#a5b4fc' },
     info:         { bg: '#dbeafe', fg: '#1d4ed8', bgDark: 'rgba(59,130,246,0.18)',  fgDark: '#93c5fd' },
@@ -172,7 +172,7 @@ const LIGHT_PROFESSIONAL: AppearancePalette = {
   label: 'Light Professional',
   accent: '#0369a1', accentDark: '#38bdf8',
   accentHover: '#075985', accentHoverDark: '#7dd3fc',
-  accentFocus: '#4e342e', accentFocusDark: '#38bdf8',
+  accentFocus: '#0000FF', accentFocusDark: '#38bdf8',
   btnPrimaryGradient: '#0369a1',
   btnPrimaryGradientDark: '#075985',
   tableHeaderGradient: '#0369a1',
@@ -186,7 +186,7 @@ const LIGHT_PROFESSIONAL: AppearancePalette = {
   avatarGradientDark: '#075985',
   families: {
     accentInfo:   { bg: '#e6f6fb', fg: '#0369a1', bgDark: 'rgba(56,189,248,0.16)',  fgDark: '#7dd3fc' },
-    info:         { bg: '#e6f0fa', fg: '#4e342e', bgDark: 'rgba(56,189,248,0.16)',  fgDark: '#7dd3fc' },
+    info:         { bg: '#e6f0fa', fg: '#0000FF', bgDark: 'rgba(56,189,248,0.16)',  fgDark: '#7dd3fc' },
     infoSky:      { bg: '#e6fffa', fg: '#0987a0', bgDark: 'rgba(45,212,191,0.16)',  fgDark: '#5eead4' },
     warning:      { bg: '#fffbea', fg: '#975a16', bgDark: 'rgba(214,158,46,0.16)',  fgDark: '#f6e05e' },
     warningAmber: { bg: '#fff5e6', fg: '#9a5b13', bgDark: 'rgba(221,142,42,0.16)',  fgDark: '#fbd38d' },

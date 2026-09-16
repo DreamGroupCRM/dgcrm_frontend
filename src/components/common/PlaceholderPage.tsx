@@ -29,7 +29,7 @@ const PlaceholderPage: React.FC<PlaceholderPageProps> = ({ title, description })
         className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
         style={{ background: t.insetBg }}
       >
-        <MdConstruction size={40} style={{ color: isDark ? '#3b82f6' : '#4e342e' }} />
+        <MdConstruction size={40} style={{ color: isDark ? '#3b82f6' : '#0000FF' }} />
       </div>
 
       <h1 className="text-2xl font-bold mb-3" style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>
@@ -50,7 +50,7 @@ const PlaceholderPage: React.FC<PlaceholderPageProps> = ({ title, description })
       <div
         className="mt-6 px-4 py-2 rounded-xl text-sm font-semibold text-white"
         style={{
-          background: '#4e342e',
+          background: '#0000FF',
           fontFamily: t.fontFamily,
         }}
       >

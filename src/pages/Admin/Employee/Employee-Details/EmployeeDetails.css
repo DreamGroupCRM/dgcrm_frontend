@@ -164,7 +164,7 @@
 .emp-id-value {
   font-size: 18px;
   font-weight: 800;
-  color: #4e342e;
+  color: #0000FF;
   line-height: 1;
 }
 
@@ -181,7 +181,7 @@
 .emp-module-panel {
   padding: 14px;
   border-radius: 16px;
-  background: rgba(78,52,46,0.10);
+  background: rgba(0, 0, 255,0.10);
   border: 1px solid var(--emp-surface-border);
 }
 
@@ -297,8 +297,8 @@
   border-radius: 999px;
   font-size: 11.5px;
   font-weight: 600;
-  color: #4e342e;
-  background: rgba(78, 52, 46, 0.1);
+  color: #0000FF;
+  background: rgba(0, 0, 255, 0.1);
 }
 
 /* ── View Employee / View Customer — Uploaded Documents grid, 2 cards per
@@ -358,10 +358,10 @@
   gap: 3px;
   font-size: 11px;
   font-weight: 700;
-  color: #4e342e;
+  color: #0000FF;
   padding: 6px 12px;
   border-radius: 8px;
-  background: rgba(78, 52, 46, 0.1);
+  background: rgba(0, 0, 255, 0.1);
 }
 
 /* ── Employee card row-action dropdown (View/Edit/Delete/Activate) —

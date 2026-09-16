@@ -465,7 +465,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
                   {existingLogoUrl ? (
                     <img src={existingLogoUrl} alt="logo" className="w-full h-full object-contain" />
                   ) : (
-                    <MdBusiness size={20} style={{ color: '#4e342e' }} />
+                    <MdBusiness size={20} style={{ color: '#0000FF' }} />
                   )}
                 </div>
                 <input

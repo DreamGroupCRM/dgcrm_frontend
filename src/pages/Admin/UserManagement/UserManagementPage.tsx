@@ -228,7 +228,7 @@ const UserManagementPage: React.FC = () => {
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
       <div className="um-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <StatCard label="Total Users" value={rows.length} icon={MdPeople} color="#4e342e" bg="" loading={loading}
+        <StatCard label="Total Users" value={rows.length} icon={MdPeople} color="#0000FF" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Active" value={activeCount} icon={MdCheckCircle} color="#16a34a" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />

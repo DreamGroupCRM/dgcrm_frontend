@@ -298,7 +298,7 @@ const SchemeSummaryRow: React.FC<{
   const cards: SchemeSummaryCard[] = [
     { label: 'Remaining to Allocate', value: formatINR(remaining), icon: MdSavings, color: remaining > 0 ? '#dc2626' : '#16a34a' },
     { label: 'Total Flat Cost', value: formatINR(totalCost), icon: MdHome, color: '#7c3aed' },
-    { label: 'Booking + Remaining', value: formatINR(bookingAmount + remainingBookingAmount), icon: MdAccountBalanceWallet, color: '#4e342e' },
+    { label: 'Booking + Remaining', value: formatINR(bookingAmount + remainingBookingAmount), icon: MdAccountBalanceWallet, color: '#0000FF' },
     { label: 'EMI Tenure (Before)', value: `${tenureBefore} month${tenureBefore === 1 ? '' : 's'}`, icon: MdSchedule, color: '#0891b2' },
     { label: 'Monthly EMI (Before)', value: formatINR(emiBefore), icon: MdTrendingDown, color: '#ea580c' },
     { label: 'Monthly EMI (After)', value: formatINR(emiAfter), icon: MdTrendingUp, color: '#16a34a' },

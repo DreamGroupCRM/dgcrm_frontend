@@ -203,7 +203,7 @@ const CustomerDashboard: React.FC = () => {
       </div>
 
       {loadingBookings ? (
-        <div className="flex-1 flex items-center justify-center"><CircularProgress size={28} sx={{ color: '#4e342e' }} /></div>
+        <div className="flex-1 flex items-center justify-center"><CircularProgress size={28} sx={{ color: '#0000FF' }} /></div>
       ) : bookingsError ? (
         <div className="flex-1 flex items-center justify-center"><p style={{ color: t.textMuted }}>Couldn't load your bookings. Please try again later.</p></div>
       ) : bookings.length === 0 ? (
@@ -226,9 +226,9 @@ const CustomerDashboard: React.FC = () => {
                     onClick={() => setSelectedId(b.id)}
                     className="px-3.5 py-2 rounded-lg text-sm font-semibold"
                     style={{
-                      background: active ? '#4e342e' : t.surfaceBg,
+                      background: active ? '#0000FF' : t.surfaceBg,
                       color: active ? '#fff' : t.textSecondary,
-                      border: `1px solid ${active ? '#4e342e' : t.surfaceBorder}`,
+                      border: `1px solid ${active ? '#0000FF' : t.surfaceBorder}`,
                       cursor: 'pointer',
                     }}
                   >
@@ -240,14 +240,14 @@ const CustomerDashboard: React.FC = () => {
           )}
 
           {loadingDetail || !detail ? (
-            <div className="flex items-center justify-center" style={{ padding: 60 }}><CircularProgress size={26} sx={{ color: '#4e342e' }} /></div>
+            <div className="flex items-center justify-center" style={{ padding: 60 }}><CircularProgress size={26} sx={{ color: '#0000FF' }} /></div>
           ) : (
             <>
               {/* Payment summary — Total Amount / Total Paid / Total Due, the
                   headline numbers a customer needs to understand where they
                   stand at a glance. */}
               <div className="cd-stat-grid grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ marginBottom: 18 }}>
-                <StatCard label="Total Amount" value={rupee(totalAmount)} icon={MdApartment} color="#4e342e" bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+                <StatCard label="Total Amount" value={rupee(totalAmount)} icon={MdApartment} color="#0000FF" bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
                 <StatCard label="Total Paid" value={rupee(totalPaid)} icon={MdCheckCircle} color="#16a34a" bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
                 <StatCard label="Total Due" value={rupee(totalDue)} icon={MdErrorOutline} color={totalDue > 0 ? '#dc2626' : '#16a34a'} bg="" surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
               </div>

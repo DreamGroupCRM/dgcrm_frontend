@@ -178,7 +178,7 @@ const AttendancePage: React.FC = () => {
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.check_out_time || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, whiteSpace: 'nowrap' }}>
                       {r.latitude != null && r.longitude != null ? (
-                        <a href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`} target="_blank" rel="noreferrer" style={{ color: '#4e342e' }}>View on Map</a>
+                        <a href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`} target="_blank" rel="noreferrer" style={{ color: '#0000FF' }}>View on Map</a>
                       ) : <span style={{ color: t.textSecondary }}>—</span>}
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary }}>{r.remarks || '—'}</td>

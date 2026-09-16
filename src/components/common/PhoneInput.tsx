@@ -178,7 +178,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
                   className="w-full flex items-center gap-2 text-left"
                   style={{
                     padding: '8px 12px', border: 'none', cursor: 'pointer', fontFamily: theme.fontFamily,
-                    background: c.code === code ? 'rgba(78,52,46,0.1)' : 'transparent', color: theme.textPrimary, fontSize: 12.5,
+                    background: c.code === code ? 'rgba(0, 0, 255,0.1)' : 'transparent', color: theme.textPrimary, fontSize: 12.5,
                   }}
                 >
                   <c.flag title={c.name} style={flagStyle} />
@@ -201,7 +201,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       {onAdd && !disabled && (
         <button type="button" onClick={onAdd} title="Add another mobile number"
           className="flex items-center justify-center rounded-lg flex-shrink-0"
-          style={{ width: 22, height: 22, background: theme.insetBg, border: `1px solid ${theme.inputBorder}`, color: '#4e342e', cursor: 'pointer' }}>
+          style={{ width: 22, height: 22, background: theme.insetBg, border: `1px solid ${theme.inputBorder}`, color: '#0000FF', cursor: 'pointer' }}>
           <MdAdd size={14} />
         </button>
       )}

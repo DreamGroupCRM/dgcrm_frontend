@@ -417,7 +417,7 @@ const PaymentApprovalsPage: React.FC = () => {
         <StatCard label="Total Approved This Month" value={stats?.approved_this_month ?? 0} icon={MdEventAvailable} color="#16a34a" bg="" loading={!stats}
           onClick={() => navigate(ROUTES.ADMIN.PAYMENT_RECEIVED)}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-        <StatCard label="Total Approved Today" value={stats?.approved_today ?? 0} icon={MdToday} color="#4e342e" bg="" loading={!stats}
+        <StatCard label="Total Approved Today" value={stats?.approved_today ?? 0} icon={MdToday} color="#0000FF" bg="" loading={!stats}
           onClick={() => navigate(ROUTES.ADMIN.PAYMENT_RECEIVED)}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
@@ -561,7 +561,7 @@ const PaymentApprovalsPage: React.FC = () => {
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount + (r.maintenance || 0))}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(78,52,46,0.18)' : '#efebe9', color: '#4e342e', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                      <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', color: '#0000FF', fontSize: 10.5, whiteSpace: 'nowrap' }}>
                         {r.mode_of_payment || '—'}
                       </span>
                     </td>
@@ -642,7 +642,7 @@ const PaymentApprovalsPage: React.FC = () => {
                     </button>
                     <button type="button" onClick={() => viewModal.data && setReceiptPreview(viewModal.data)}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold"
-                      style={{ background: isDark ? 'rgba(78,52,46,0.18)' : '#efebe9', border: 'none', color: '#4e342e', cursor: 'pointer' }}>
+                      style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', border: 'none', color: '#0000FF', cursor: 'pointer' }}>
                       <MdVisibility size={15} /> View Receipt
                     </button>
                     <button type="button" disabled={approvingId === viewModal.row.id}

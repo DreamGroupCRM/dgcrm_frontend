@@ -56,7 +56,7 @@ interface StatBoxSpec { label: string; value: number; color: string; icon: IconT
 // Friendly label + color per payment_for_key, reused by both the top
 // category boxes and the table's own Payment For column badge.
 const PAYMENT_FOR_KEY_META: Record<PaymentForKey, { label: string; color: string; icon: IconType }> = {
-  EMIAmount: { label: 'Monthly Installment', color: '#4e342e', icon: MdPayments },
+  EMIAmount: { label: 'Monthly Installment', color: '#0000FF', icon: MdPayments },
   BookingAmount: { label: 'Booking Amount', color: '#dc2626', icon: MdReceiptLong },
   PayAfterbooking: { label: 'Remaining Booking Amount', color: '#ea580c', icon: MdSchedule },
   PossessionAmount: { label: 'Possession Amount', color: '#7c3aed', icon: MdVpnKey },

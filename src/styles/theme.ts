@@ -27,7 +27,7 @@ export const getTheme = (isDark: boolean) => ({
 
   // ── Hover / Active states ────────────────────────────────────────────────
   hoverBg       : isDark ? '#1a1a1a' : '#efebe9',   // dark=dark-gray, light=light-brown
-  hoverText     : isDark ? '#d4d4d4' : '#4e342e',
+  hoverText     : isDark ? '#d4d4d4' : '#0000FF',
   hoverBorder   : isDark ? '#2a2a2a' : '#d7ccc8',
 
   // ── Sidebar ──────────────────────────────────────────────────────────────
@@ -36,10 +36,10 @@ export const getTheme = (isDark: boolean) => ({
   sidebarText   : isDark ? '#c8c8c8' : '#111111',
   sidebarTextMuted : isDark ? '#4a4a4a' : '#6b7280',
   sidebarActiveBg : isDark ? '#1a1a1a' : '#efebe9',
-  sidebarActiveText: isDark ? '#ffffff' : '#4e342e',
-  sidebarActiveBorder: isDark ? '#333333' : '#4e342e',
+  sidebarActiveText: isDark ? '#ffffff' : '#0000FF',
+  sidebarActiveBorder: isDark ? '#333333' : '#0000FF',
   sidebarHoverBg: isDark ? '#141414' : '#efebe9',
-  sidebarHoverText: isDark ? '#d4d4d4' : '#4e342e',
+  sidebarHoverText: isDark ? '#d4d4d4' : '#0000FF',
 
   // ── Header ───────────────────────────────────────────────────────────────
   headerBg      : isDark ? '#000000' : '#ffffff',
@@ -51,7 +51,7 @@ export const getTheme = (isDark: boolean) => ({
   // ── Inputs / Forms ───────────────────────────────────────────────────────
   inputBg       : isDark ? '#0d0d0d' : '#ffffff',
   inputBorder   : isDark ? '#2a2a2a' : '#d1d5db',
-  inputFocusBorder: isDark ? '#404040' : '#4e342e',
+  inputFocusBorder: isDark ? '#404040' : '#0000FF',
   inputText     : isDark ? '#ffffff' : '#000000',
 
   // ── Buttons ──────────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@ export const getTheme = (isDark: boolean) => ({
   tableRowBorder: isDark ? '#141414' : '#f3f4f6',
 
   // ── Profile Avatar fill color (kept intentional) ─────────────────────────
-  avatarGradient: '#4e342e',
+  avatarGradient: '#0000FF',
 });
 
 export type AppTheme = ReturnType<typeof getTheme>;

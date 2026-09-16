@@ -56,7 +56,7 @@ interface DateRangePresetFilterProps {
 }
 
 const DateRangePresetFilter: React.FC<DateRangePresetFilterProps> = ({
-  t, preset, onPresetChange, customFrom, customTo, onCustomFromChange, onCustomToChange, accentColor = '#4e342e',
+  t, preset, onPresetChange, customFrom, customTo, onCustomFromChange, onCustomToChange, accentColor = '#0000FF',
 }) => (
   <div className="flex items-center flex-wrap gap-2">
     <div className="flex items-center gap-1.5 flex-wrap" style={{ marginRight: 8 }}>

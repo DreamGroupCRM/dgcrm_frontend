@@ -25,7 +25,7 @@ const rupeeCompact = (n: number): string => {
 interface CardDef { label: string; value: string; icon: React.ReactNode; color: string; caption: string }
 
 const quickActions = [
-  { label: 'Add Lead', icon: <MdLeaderboard size={20} />, color: '#4e342e' },
+  { label: 'Add Lead', icon: <MdLeaderboard size={20} />, color: '#0000FF' },
   { label: 'Mark Attendance', icon: <MdEventAvailable size={20} />, color: '#059669' },
   { label: 'View Payments', icon: <MdPayment size={20} />, color: '#dc2626' },
   { label: 'Customers', icon: <MdContactPage size={20} />, color: '#7c3aed' },

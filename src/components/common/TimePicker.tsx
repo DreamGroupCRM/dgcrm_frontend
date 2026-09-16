@@ -80,8 +80,8 @@ const ScrollColumn: React.FC<{
             style={{
               display: 'block', width: '100%', scrollSnapAlign: 'center',
               padding: '7px 0', border: 'none', cursor: 'pointer', fontFamily: theme.fontFamily,
-              background: isSelected ? 'rgba(78,52,46,0.12)' : 'transparent',
-              color: isSelected ? '#4e342e' : theme.textSecondary,
+              background: isSelected ? 'rgba(0, 0, 255,0.12)' : 'transparent',
+              color: isSelected ? '#0000FF' : theme.textSecondary,
               fontWeight: isSelected ? 700 : 500, fontSize: 13,
             }}
           >
@@ -187,8 +187,8 @@ export const TimePicker: React.FC<TimePickerProps> = ({ theme, value, onChange, 
                   key={mer} type="button" onClick={() => commit(hour12, roundedMinute, mer)}
                   style={{
                     display: 'block', width: '100%', padding: '7px 0', border: 'none', cursor: 'pointer',
-                    fontFamily: theme.fontFamily, background: isSelected ? 'rgba(78,52,46,0.12)' : 'transparent',
-                    color: isSelected ? '#4e342e' : theme.textSecondary, fontWeight: isSelected ? 700 : 500, fontSize: 13,
+                    fontFamily: theme.fontFamily, background: isSelected ? 'rgba(0, 0, 255,0.12)' : 'transparent',
+                    color: isSelected ? '#0000FF' : theme.textSecondary, fontWeight: isSelected ? 700 : 500, fontSize: 13,
                   }}
                 >
                   {mer}

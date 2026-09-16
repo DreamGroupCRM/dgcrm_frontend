@@ -216,7 +216,7 @@ const BuildingListPage: React.FC = () => {
           .master-stat-grid-5 replaces the old 7-column grid. */}
       <div className="master-stat-grid-5">
         <StatCard label="Total Projects" value={summary?.total_projects ?? 0} icon={MdBusiness}
-          color="#4e342e" bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loading} compact labelFontSize={14}
+          color="#0000FF" bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loading} compact labelFontSize={14}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Buildings" value={summary?.total_buildings ?? allBuildings.length} icon={MdApartment}
           color="#7c3aed" bg={isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff'} loading={loading} compact labelFontSize={14}
@@ -449,8 +449,8 @@ const BuildingListPage: React.FC = () => {
                 onClick={() => setPage(pg)}
                 className="master-page-btn"
                 style={{
-                  border: `1px solid ${pg === safePage ? '#4e342e' : t.surfaceBorder}`,
-                  background: pg === safePage ? '#4e342e' : t.btnSecondaryBg,
+                  border: `1px solid ${pg === safePage ? '#0000FF' : t.surfaceBorder}`,
+                  background: pg === safePage ? '#0000FF' : t.btnSecondaryBg,
                   color: pg === safePage ? '#fff' : t.textPrimary,
                   fontWeight: pg === safePage ? 700 : 400,
                 }}
