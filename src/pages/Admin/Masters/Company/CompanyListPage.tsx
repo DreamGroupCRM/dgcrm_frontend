@@ -13,7 +13,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { companyService } from '../../../../services/companyService';
 import { Company } from '../../../../types';
-import { formatDate, showAlert } from '../../../../utils';
+import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
 import { ROUTES } from '../../../../constants';
 import MasterIconButtons from '../../../../components/masters/MasterIconButtons';
 import SortableTh from '../../../../components/masters/SortableTh';
@@ -225,7 +225,7 @@ const CompanyListPage: React.FC = () => {
                           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
                             style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}` }}>
                             {company.logo_url && company.logo_url !== 'string' ? (
-                              <img src={company.logo_url} alt="" className="w-full h-full object-contain" />
+                              <img src={resolveFileUrl(company.logo_url)} alt="" className="w-full h-full object-contain" />
                             ) : (
                               <MdBusiness size={16} className="master-row-icon" />
                             )}

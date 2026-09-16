@@ -188,8 +188,7 @@ const ChangeRequestsPage: React.FC = () => {
       </div>
 
       {detailsRow && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-          onClick={() => setDetailsRow(null)}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} className="rounded-2xl"
             style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxWidth: 520, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
             <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${t.divider}` }}>

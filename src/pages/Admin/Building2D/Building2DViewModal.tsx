@@ -86,24 +86,24 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
     <div
       className="building-2d-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.55)' }}
-      onClick={onClose}
     >
       <div
         className="building-2d-modal-card rounded-2xl w-full flex flex-col"
         style={{ maxWidth: 860, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, fontFamily: t.fontFamily }}
-        onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Header — a single compact row: Heading left, building switcher
-            centered, color legend + Cancel icon right-aligned as a group
-            (legend sits right before the X, not the dropdown — no Back
-            button anywhere in this popup; X, Escape, or backdrop-click are
-            the only ways to leave). ─────────────────────────────────────── */}
-        <div className="building-2d-modal-header grid items-center gap-3" style={{ padding: '8px 20px', borderBottom: `1px solid ${t.divider}` }}>
-          <h2 style={{ fontSize: 16, fontWeight: 800, color: t.textPrimary, margin: 0, lineHeight: '30px', wordBreak: 'break-word', minWidth: 0 }}>
-            {selectedBuildingName ? `${selectedBuildingName} 2D View` : 'Building 2D View'}
-          </h2>
+        {/* ── Header — a single compact row: heading + building switcher
+            grouped together on the left (switcher sits right next to the
+            heading it controls, not centered off on its own), color legend
+            + Cancel icon right-aligned as a group (legend sits right before
+            the X, not the dropdown — no Back button anywhere in this popup;
+            X or Escape are the only ways to leave — backdrop-click is
+            deliberately NOT a close trigger, see the backdrop div below). */}
+        <div className="building-2d-modal-header flex items-center justify-between gap-3" style={{ padding: '8px 20px', borderBottom: `1px solid ${t.divider}` }}>
+          <div className="flex items-center" style={{ gap: 14, minWidth: 0 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 800, color: t.textPrimary, margin: 0, lineHeight: '30px', wordBreak: 'break-word', flexShrink: 0 }}>
+              {selectedBuildingName ? `${selectedBuildingName} 2D View` : 'Building 2D View'}
+            </h2>
 
-          <div className="flex justify-center">
             <select
               value={selectedBuildingId}
               onChange={(e) => setSelectedBuildingId(e.target.value)}
@@ -120,7 +120,7 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
             </select>
           </div>
 
-          <div className="flex items-center justify-end" style={{ gap: 14, flexWrap: 'nowrap', height: 30 }}>
+          <div className="flex items-center justify-end" style={{ gap: 14, flexWrap: 'nowrap', height: 30, flexShrink: 0 }}>
             <div className="flex items-center" style={{ gap: 12 }}>
               {(['blocked', 'available', 'booked'] as UnitStatus[]).map((s) => (
                 <span key={s} className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
@@ -130,9 +130,11 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
               ))}
             </div>
 
+            {/* Blue-filled (not just outlined) so it stays clearly visible
+                against the header regardless of surrounding theme. */}
             <button type="button" onClick={onClose} title="Close" aria-label="Close"
               className="flex items-center justify-center rounded-lg"
-              style={{ width: 30, height: 30, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer', flexShrink: 0 }}>
+              style={{ width: 30, height: 30, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
               <MdClose size={16} />
             </button>
           </div>

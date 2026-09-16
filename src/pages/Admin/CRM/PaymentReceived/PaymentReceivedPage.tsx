@@ -423,6 +423,8 @@ const PaymentReceivedPage: React.FC = () => {
         <div className="pr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-3.5">
           <FilterSelect t={t} label="Received By" value={draftReceivedBy} onChange={setDraftReceivedBy}
             placeholder="--All--" options={employeeNameOptions.map((n) => ({ value: n, label: n }))} />
+          <FilterSelect t={t} label="Company" value={draftCompany} onChange={setDraftCompany}
+            placeholder="--Select--" options={companyNameOptions.map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Building Name" value={draftBuildingName} onChange={handleBuildingChange}
             placeholder="--Select--" options={buildings.map((b) => b.building_name).filter((v, i, arr) => arr.indexOf(v) === i).map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Wing" value={draftWingName} onChange={handleWingChange}
@@ -431,8 +433,6 @@ const PaymentReceivedPage: React.FC = () => {
             placeholder="--Select--" options={flatsInScope.map((f) => ({ value: f.flat_no, label: f.flat_no }))} disabled={!selectedWing} />
           <FilterSelect t={t} label="ModeOfPayment" value={draftMode} onChange={setDraftMode}
             placeholder="--Select Payment Method--" options={MODE_OF_PAYMENT_OPTIONS.map((m) => ({ value: m, label: m }))} />
-          <FilterSelect t={t} label="Company" value={draftCompany} onChange={setDraftCompany}
-            placeholder="--Select--" options={companyNameOptions.map((n) => ({ value: n, label: n }))} />
         </div>
         <div className="pr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />

@@ -325,7 +325,7 @@ const UserManagementPage: React.FC = () => {
       </div>
 
       {pwTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => !savingPw && setPwTarget(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div className="rounded-2xl w-full" style={{ maxWidth: 420, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: t.textPrimary }}>Set New Password</div>
@@ -361,7 +361,7 @@ const UserManagementPage: React.FC = () => {
       )}
 
       {editTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => !savingEdit && setEditTarget(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div className="rounded-2xl w-full" style={{ maxWidth: 440, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: t.textPrimary }}>Edit Admin Details</div>
@@ -419,7 +419,7 @@ const UserManagementPage: React.FC = () => {
       )}
 
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => !creating && closeCreateModal()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div className="rounded-2xl w-full" style={{ maxWidth: 440, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: t.textPrimary }}>

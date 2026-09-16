@@ -646,6 +646,12 @@ const DueReportPage: React.FC = () => {
               {errorFor('customer') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('customer')}</p>}
             </div>
             <div>
+              {/* V_22.0 — no longer free-typed; read straight off the
+                  selected customer's building's linked business Company. */}
+              <label style={fieldLabelStyle}>Company</label>
+              <input type="text" readOnly value={apDerivedCompanyName} placeholder="—" style={readOnlyInputStyle} />
+            </div>
+            <div>
               <label style={fieldLabelStyle}>Building Name</label>
               <input type="text" readOnly value={apSelectedCustomer?.building_name || ''} placeholder="—" style={readOnlyInputStyle} />
             </div>
@@ -692,12 +698,6 @@ const DueReportPage: React.FC = () => {
                 {errorFor('amount') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('amount')}</p>}
               </div>
             )}
-            <div>
-              {/* V_22.0 — no longer free-typed; read straight off the
-                  selected customer's building's linked business Company. */}
-              <label style={fieldLabelStyle}>Company</label>
-              <input type="text" readOnly value={apDerivedCompanyName} placeholder="—" style={readOnlyInputStyle} />
-            </div>
             <div ref={setFieldRef('mode_of_payment')}>
               <label style={fieldLabelStyle}>Mode of Payment</label>
               <select value={apModeOfPayment} onChange={(e) => setApModeOfPayment(e.target.value)} style={fieldInputStyle(!!errorFor('mode_of_payment'))}>
@@ -888,7 +888,7 @@ const DueReportPage: React.FC = () => {
       {/* ── Follow-up modal (V_22.0) — note + follow-up date + assigned
           employee for the row's customer, backed by the Task entity. ──── */}
       {followUpRow && createPortal(
-        <div className="due-report-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={closeFollowUp}>
+        <div className="due-report-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="due-report-modal rounded-2xl w-full" style={{ maxWidth: 440, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
@@ -933,7 +933,7 @@ const DueReportPage: React.FC = () => {
       {/* ── Follow-up list popup — the badge's own click target, listing
           every open follow-up due today/tomorrow across the team. ────── */}
       {followUpListOpen && createPortal(
-        <div className="due-report-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setFollowUpListOpen(false)}>
+        <div className="due-report-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="due-report-modal rounded-2xl w-full" style={{ maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.divider}` }}>

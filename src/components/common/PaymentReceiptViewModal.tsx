@@ -32,7 +32,7 @@ export const PaymentReceiptViewModal: React.FC<PaymentReceiptViewModalProps> = (
   const emiMonth = tx.inst_date ? new Date(tx.inst_date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '—';
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.55)' }} onClick={onClose}>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.55)' }}>
       <div className="rounded-2xl w-full" style={{ maxWidth: 480, background: '#fff', maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
         <div className="p-4" style={{ border: '2px solid #1e3a8a', borderRadius: 14, margin: 12 }}>
           <div className="flex items-start justify-between mb-2">

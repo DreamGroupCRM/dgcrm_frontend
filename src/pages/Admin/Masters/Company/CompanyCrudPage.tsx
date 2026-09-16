@@ -18,7 +18,7 @@ import { PhoneInput } from '../../../../components/common/PhoneInput';
 import { phoneNumberError } from '../../../../utils/phoneValidation';
 import { pincodeError, panError, gstError, sanitizeDigits, sanitizeAlphanumericUpper } from '../../../../utils/fieldValidation';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
-import { showAlert } from '../../../../utils';
+import { showAlert, resolveFileUrl } from '../../../../utils';
 import { companyService, CompanyPayload } from '../../../../services/companyService';
 import { Company } from '../../../../types';
 import { ROUTES, VALIDATION } from '../../../../constants';
@@ -463,7 +463,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
                   style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}` }}
                 >
                   {existingLogoUrl ? (
-                    <img src={existingLogoUrl} alt="logo" className="w-full h-full object-contain" />
+                    <img src={resolveFileUrl(existingLogoUrl)} alt="logo" className="w-full h-full object-contain" />
                   ) : (
                     <MdBusiness size={20} style={{ color: 'var(--brand-gradient)' }} />
                   )}

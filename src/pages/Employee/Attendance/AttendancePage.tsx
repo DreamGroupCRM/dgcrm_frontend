@@ -330,7 +330,7 @@ const AttendancePage: React.FC = () => {
 
       {/* ── Quick action modal (Leave / Half Day / WFH) ─────────────── */}
       {quickAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => !submittingQuick && setQuickAction(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div className="rounded-2xl w-full" style={{ maxWidth: 420, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
               <div className="flex items-center gap-2" style={{ fontSize: 15, fontWeight: 800, color: t.textPrimary }}>

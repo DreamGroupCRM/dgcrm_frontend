@@ -191,8 +191,7 @@ const AttendancePage: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="att-admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-          onClick={() => setShowModal(false)}>
+        <div className="att-admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} className="rounded-2xl"
             style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxWidth: 480, width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
             <div className="p-4" style={{ borderBottom: `1px solid ${t.divider}` }}>

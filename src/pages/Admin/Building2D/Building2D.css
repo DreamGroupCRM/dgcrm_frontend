@@ -40,12 +40,13 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
+/* Layout itself (flex, items-center, justify-between, gap) is set inline
+   via Tailwind utility classes on the element — heading+dropdown grouped
+   on the left, legend+close grouped on the right. This class only adds
+   what Tailwind can't: the narrow-screen wrap behavior below. */
 .building-2d-modal-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  flex-wrap: wrap;
 }
-.building-2d-modal-header > *:first-child { justify-self: start; }
-.building-2d-modal-header > *:nth-child(3) { justify-self: end; }
 
 .building-2d-modal-box {
   flex: 1;
@@ -78,20 +79,19 @@
   justify-content: center;
 }
 
-/* Narrow screens — heading + close icon share the top row (close always
-   reachable at a glance), the building dropdown drops to its own
-   full-width row underneath. */
+/* Narrow screens — heading+dropdown group takes the full top row (dropdown
+   grows to fill it), legend+close group drops to its own full-width row
+   underneath (close stays right-aligned there, always reachable). */
 @media (max-width: 767px) {
   .building-2d-modal-header {
-    grid-template-columns: 1fr auto;
-    row-gap: 12px;
+    row-gap: 10px;
   }
-  .building-2d-modal-header > *:nth-child(2) {
-    grid-column: 1 / -1;
-    justify-self: stretch;
+  .building-2d-modal-header > * {
+    flex: 1 1 100%;
   }
-  .building-2d-modal-header > *:nth-child(2) select {
-    width: 100%;
+  .building-2d-modal-header > *:first-child select {
+    flex: 1;
+    min-width: 0;
   }
   .building-2d-modal-canvas { min-height: 320px; }
 }

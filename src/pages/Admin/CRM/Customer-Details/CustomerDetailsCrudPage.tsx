@@ -502,7 +502,7 @@ interface PreviewData {
 }
 
 const CustomerPreviewModal: React.FC<{ data: PreviewData; onClose: () => void }> = ({ data, onClose }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
     <div className="rounded-2xl w-full" style={{ maxWidth: 720, maxHeight: '90vh', overflowY: 'auto', background: 'var(--cust-surface-bg)', border: '1px solid var(--cust-surface-border)' }}
       onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--cust-divider)' }}>

@@ -308,7 +308,7 @@ const AuditHistoryPage: React.FC = () => {
       </div>
 
       {detailEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setDetailEntry(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div className="rounded-2xl w-full" style={{ maxWidth: 600, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '80vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.divider}` }}>
               <div>

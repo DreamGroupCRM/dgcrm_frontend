@@ -1124,10 +1124,6 @@ const CustomerDetailsListPage: React.FC = () => {
           </button>
         </div>
       </div>
-      {!assignmentEnabled && (
-        <p style={{ fontSize: 10.5, color: t.textSecondary, margin: '0 0 12px' }}>ⓘ Select one or more customers to enable</p>
-      )}
-
       {/* ── Table / Grid ──────────────────────────────────────────────── */}
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         {view === 'grid' ? (
@@ -1297,7 +1293,6 @@ const CustomerDetailsListPage: React.FC = () => {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.45)' }}
-          onClick={() => setInfoModal(null)}
         >
           <div
             className="rounded-2xl w-full"
@@ -1410,8 +1405,7 @@ const CustomerDetailsListPage: React.FC = () => {
           rest of this app keeps one-off styling inline rather than in a
           new CSS file. ──────────────────────────────────────────────── */}
       {receiptModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.55)' }}
-          onClick={() => setReceiptModal(null)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.55)' }}>
           <style>{`
             @media print {
               body * { visibility: hidden; }
