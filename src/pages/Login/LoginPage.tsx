@@ -417,15 +417,15 @@ const LoginPage: React.FC = () => {
         >
             {/* ── Tagline + Logo + Title + Hindi slogan (real image) ── */}
             <div className="text-center mb-7">
-              <p className="login-tagline-en mb-3">0% Interest - Loan Free Home for Every Indian</p>
+             
               <div className="flex justify-center mb-3">
                 {/* Real Dream Group logo — responsive size */}
                 <Logo size="lg" />
               </div>
-              <h1 className="font-display text-3xl font-bold text-white mb-1">
+              <h1 className="font-display text-4xl font-bold text-white mb-3">
                 Dream Group CRM
               </h1>
-              <p className="login-tagline-hi" lang="hi">Humaara Sapna, Har Hindustani Ka Ghar Ho Apna</p>
+              <p className="login-tagline-en">Humaara Sapna, Har Hindustani Ka Ghar Ho Apna</p>
             </div>
 
             {/* Divider */}
