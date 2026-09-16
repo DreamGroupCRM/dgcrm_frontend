@@ -519,8 +519,8 @@ const EmployeeDetailsListPage: React.FC = () => {
           <div className="master-table-scroll">
             <table className="master-table" style={{ minWidth: 980 }}>
               <thead>
-                <tr style={{ background: t.tableHeaderBg }}>
-                  <th className="master-table-actions-th" style={{
+                <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
+                  <th className="master-table-actions-th master-table-header-gradient" style={{
                     width: 64, minWidth: 64, maxWidth: 64,
                     borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
                     borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
