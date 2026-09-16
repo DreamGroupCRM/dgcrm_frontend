@@ -19,6 +19,7 @@ import { formatDate, showAlert } from '../../../../utils';
 import SortableTh, { SortDir } from '../../../../components/masters/SortableTh';
 import StatCard from '../../../../components/masters/StatCard';
 import MultiStatCard from '../../../../components/masters/MultiStatCard';
+import Building2DViewModal from '../../Building2D/Building2DViewModal';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
@@ -70,6 +71,10 @@ const BuildingListPage: React.FC = () => {
   const [exportingCsv, setExportingCsv] = useState(false);
   const [page, setPage]                 = useState(1);
   const [limit, setLimit]               = useState(5);
+  // Row's "View 2D Structure" icon opens the 2D view as a popup (see
+  // Building2DViewModal) instead of navigating to a new page — this just
+  // holds which building it's preselected to, empty string means closed.
+  const [viewBuildingId, setViewBuildingId] = useState('');
 
   useEffect(() => { dispatch(setPageTitle('Building')); }, [dispatch]);
 
@@ -364,7 +369,7 @@ const BuildingListPage: React.FC = () => {
                             </button>
                           )}
                           <button type="button" title="View 2D Structure" className="master-icon-btn"
-                            onClick={() => navigate(`/admin/building-2d-view?buildingId=${b.id}`)}>
+                            onClick={() => setViewBuildingId(b.id)}>
                             <MdViewQuilt size={15} />
                           </button>
                         </div>
@@ -476,6 +481,10 @@ const BuildingListPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {viewBuildingId && (
+        <Building2DViewModal initialBuildingId={viewBuildingId} onClose={() => setViewBuildingId('')} />
+      )}
     </div>
   );
 };

@@ -37,24 +37,26 @@ import { ROUTES } from '../../../constants';
 import { UnitVM, UnitStatus } from './types';
 import './Building2D.css';
 
-const flatStatus = (f: BuildingFlat): UnitStatus => {
+// Exported — Building2DViewModal (the popup opened from Building Master's
+// row icon) reuses these instead of duplicating the status/color logic.
+export const flatStatus = (f: BuildingFlat): UnitStatus => {
   if (f.is_active === false) return 'blocked';
   if (f.booked_by_customer_id) return 'booked';
   return 'available';
 };
-const shopStatus = (s: BuildingShop): UnitStatus => {
+export const shopStatus = (s: BuildingShop): UnitStatus => {
   if (s.is_active === false) return 'blocked';
   if (s.booked_by_customer_id) return 'booked';
   return 'available';
 };
 
 // Exactly the 3 colors asked for: Green = Available, Yellow = Booked,
-// Dark Red = Unavailable (an admin-disabled flat/shop).
-const STATUS_COLOR: Record<UnitStatus, string> = { available: '#16a34a', booked: '#eab308', blocked: '#8b0000' };
-const STATUS_TEXT: Record<UnitStatus, string> = { available: 'Available', booked: 'Booked', blocked: 'Unavailable' };
+// Dark Red = Not for Sale (an admin-disabled flat/shop).
+export const STATUS_COLOR: Record<UnitStatus, string> = { available: '#16a34a', booked: '#eab308', blocked: '#8b0000' };
+export const STATUS_TEXT: Record<UnitStatus, string> = { available: 'Available', booked: 'Booked', blocked: 'Not for Sale' };
 // Booked's fill is a bright true yellow — dark text reads far better on it
 // than white; Available/Unavailable stay dark enough for white text.
-const STATUS_TEXT_COLOR: Record<UnitStatus, string> = { available: '#ffffff', booked: '#1f2937', blocked: '#ffffff' };
+export const STATUS_TEXT_COLOR: Record<UnitStatus, string> = { available: '#ffffff', booked: '#1f2937', blocked: '#ffffff' };
 
 interface PickerNavState {
   pickerMode?: boolean;
@@ -74,10 +76,23 @@ export interface SelectedUnitForCustomer {
   no: string;
 }
 
-interface FloorRow { id: string; label: string; sortOrder: number; flats: { id: string; flat_no: string; area_sqft: number | null; status: UnitStatus; bookedByName: string | null }[] }
+export interface FloorRow { id: string; label: string; sortOrder: number; flats: { id: string; flat_no: string; area_sqft: number | null; status: UnitStatus; bookedByName: string | null }[] }
+
+// Ground-first (ascending sort_order) per wing — see WingColumn's
+// column-reverse comment for why that order is what stacks correctly.
+export const floorsOf = (w: BuildingWing): FloorRow[] =>
+  [...w.floors]
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((f) => ({
+      id: f.id, label: f.label, sortOrder: f.sort_order,
+      flats: f.flats.map((fl) => ({
+        id: fl.id, flat_no: fl.flat_no, area_sqft: fl.area_sqft,
+        status: flatStatus(fl), bookedByName: fl.booked_by_customer_name ?? null,
+      })),
+    }));
 
 // ── One colored square — a flat or a shop — carrying its own number + area
-const UnitBlock: React.FC<{
+export const UnitBlock: React.FC<{
   no: string; area: number | null; status: UnitStatus; selected: boolean; clickable: boolean; onClick: () => void; extraTitle?: string;
 }> = ({ no, area, status, selected, clickable, onClick, extraTitle }) => (
   <div
@@ -101,7 +116,7 @@ const UnitBlock: React.FC<{
 );
 
 // ── One wing — floors stacked ground-up, tallest wing sets the height ───
-const WingColumn: React.FC<{
+export const WingColumn: React.FC<{
   wing: BuildingWing; floors: FloorRow[]; pickerMode: boolean;
   selectedId: string | null;
   onSelect: (unit: { id: string; no: string; status: UnitStatus; floorLabel: string; areaSqft: number | null; bookedByName: string | null }) => void;
@@ -188,19 +203,6 @@ const Building2DViewPage: React.FC = () => {
 
   const wings = buildingDetail?.wings ?? [];
   const shops = buildingDetail?.shops ?? [];
-
-  // Ground-first (ascending sort_order) per wing — see WingColumn's
-  // column-reverse comment for why that order is what stacks correctly.
-  const floorsOf = (w: BuildingWing): FloorRow[] =>
-    [...w.floors]
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map((f) => ({
-        id: f.id, label: f.label, sortOrder: f.sort_order,
-        flats: f.flats.map((fl) => ({
-          id: fl.id, flat_no: fl.flat_no, area_sqft: fl.area_sqft,
-          status: flatStatus(fl), bookedByName: fl.booked_by_customer_name ?? null,
-        })),
-      }));
 
   const handleSelectFlat = (w: BuildingWing, unit: { id: string; no: string; status: UnitStatus; floorLabel: string; areaSqft: number | null; bookedByName: string | null }) => {
     setSelectedUnit({
