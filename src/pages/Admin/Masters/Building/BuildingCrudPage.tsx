@@ -282,7 +282,7 @@ const FloorAccordionItem: React.FC<{
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
               <thead>
-                <tr style={{ background: t.tableHeaderBg }}>
+                <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                   {['Flat No.', 'Flat Type', 'Area (Sq Ft)', 'Status'].map((h) => (
                     <th key={h} style={{
                       padding: '8px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,

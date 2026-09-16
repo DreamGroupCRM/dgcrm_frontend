@@ -4,8 +4,9 @@
 // Every stat card (StatCard/MultiStatCard — Building/Employee/Customer
 // List, Payment Due/Approvals/Received/Upcoming) shares one brand fill —
 // an orange-to-purple gradient, distinct from the Add-X button/icon blue
-// (master.css's --brand-gradient) and the table-header teal
-// (--grad-table-header) — instead of a per-card accent color, per explicit
+// (master.css's --brand-gradient) but the SAME gradient every table
+// header band uses (master.css's --grad-table-header — kept in sync with
+// this literal) — instead of a per-card accent color, per explicit
 // product decision — so this deliberately ignores both the caller's
 // `color` prop and the active appearance's tint (a tint would shift the
 // fill away from the brand color toward whatever accent the viewer has

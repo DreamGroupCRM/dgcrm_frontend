@@ -206,13 +206,14 @@ html.dark .master-table td {
      refresh BUTTON fill, AND every icon's color (see this file's
      .master-icon-btn/.master-row-icon below — kept in sync with this
      literal, not aliased to a var, since one sets a stylesheet rule and
-     the other a JS/inline-style string); table header bands get their own
-     teal (--grad-table-header); top summary boxes get their own grey (see
-     statGradients.ts's STAT_CARD_BRAND_COLOR). Deliberately not an alias
-     of --grad-sky, which stays its own blue for the few section headers
-     still opting into it directly. */
+     the other a JS/inline-style string); table header bands share the
+     SAME orange-to-purple gradient as the top summary boxes (see
+     statGradients.ts's STAT_CARD_BRAND_GRADIENT — kept in sync with this
+     literal, not aliased to a var, for the same JS/inline-style reason).
+     Deliberately not an alias of --grad-sky, which stays its own blue for
+     the few section headers still opting into it directly. */
   --brand-gradient: #0000FF;
-  --grad-table-header: #0A7474;
+  --grad-table-header: linear-gradient(to right, #cc5333, #23074d);
 }
 
 /* ── Flat brand-blue table-header band — Company/Department/BankAccount/

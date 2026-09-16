@@ -132,7 +132,7 @@ const AdminDashboard: React.FC = () => {
           <div className="overflow-x-auto responsive-table">
             <table className="w-full">
               <thead>
-                <tr style={{ background: t.tableHeaderBg }}>
+                <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                   {['#', 'Name', 'Mobile', 'Status', 'Date'].map((h) => (
                     <th key={h} className="text-left px-6 py-3 text-xs uppercase font-semibold tracking-wider" style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>
                       {h}

@@ -387,7 +387,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
               <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 12 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
                   <thead>
-                    <tr style={{ background: t.insetBg }}>
+                    <tr className="master-table-header-gradient" style={{ background: t.insetBg }}>
                       {['#', 'Designation Name', 'Status', 'Action'].map((h) => (
                         <th
                           key={h}

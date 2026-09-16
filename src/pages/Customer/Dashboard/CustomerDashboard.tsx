@@ -309,7 +309,7 @@ const CustomerDashboard: React.FC = () => {
                 <div className="overflow-x-auto">
                   <table className="cd-table w-full" style={{ borderCollapse: 'collapse', minWidth: 620 }}>
                     <thead>
-                      <tr style={{ background: t.tableHeaderBg }}>
+                      <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                         {['#', 'Installment', 'Date', 'Amount', 'Status'].map((h) => (
                           <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase' }}>{h}</th>
                         ))}
@@ -353,7 +353,7 @@ const CustomerDashboard: React.FC = () => {
                   <div className="overflow-x-auto">
                     <table className="cd-table w-full" style={{ borderCollapse: 'collapse', minWidth: 720 }}>
                       <thead>
-                        <tr style={{ background: t.tableHeaderBg }}>
+                        <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                           {['Receipt #', 'Payment For', 'Amount', 'Mode', 'Date', 'Status'].map((h) => (
                             <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase' }}>{h}</th>
                           ))}

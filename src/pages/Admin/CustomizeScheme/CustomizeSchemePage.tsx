@@ -413,7 +413,7 @@ const SummaryTable: React.FC<{ t: Theme; accent: string; heading: string; rows: 
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
         <thead>
-          <tr style={{ background: t.insetBg }}>
+          <tr className="master-table-header-gradient" style={{ background: t.insetBg }}>
             <th style={{ textAlign: 'left', padding: '6px 10px', fontSize: 9.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 40 }}>#</th>
             <th style={{ textAlign: 'left', padding: '6px 10px', fontSize: 9.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Payment Details</th>
             <th style={{ textAlign: 'right', padding: '6px 10px', fontSize: 9.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Amount (Rs.)</th>
@@ -442,7 +442,7 @@ const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; ro
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
         <thead>
-          <tr style={{ background: t.insetBg }}>
+          <tr className="master-table-header-gradient" style={{ background: t.insetBg }}>
             <th style={{ textAlign: 'left', padding: '6px 10px', fontSize: 9.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 56 }}>Sr No</th>
             <th style={{ textAlign: 'left', padding: '6px 10px', fontSize: 9.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 110 }}>Inst Date</th>
             <th style={{ textAlign: 'left', padding: '6px 10px', fontSize: 9.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>({section}) Mode Of Payment</th>

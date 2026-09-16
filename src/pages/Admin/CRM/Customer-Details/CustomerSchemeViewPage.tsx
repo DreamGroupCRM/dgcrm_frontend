@@ -14,7 +14,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdArrowBack, MdCalculate, MdListAlt, MdPerson, MdApartment, MdPhone,
-  MdEmail, MdChat, MdLocationOn, MdBadge,
+  MdEmail, MdChat, MdLocationOn, MdBadge, MdExpandMore, MdExpandLess,
 } from 'react-icons/md';
 
 import { AppTheme } from '../../../../styles/theme';
@@ -51,16 +51,26 @@ const SectionCard: React.FC<{ t: Theme; isDark: boolean; children: React.ReactNo
   </div>
 );
 
-const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradient: string; subtitle: string }> = ({ icon, title, gradient, subtitle }) => (
-  <div className="flex flex-wrap items-center justify-between gap-2 px-5 sm:px-6 py-4" style={{ background: gradient }}>
+// Accordion header — EMI Scheme and EMI Schedule both collapse/expand on
+// click, chevron flips to show current state; the whole colored bar is the
+// click target, not just the chevron, so it's an obvious, generous hit area.
+const ResultPanelHeader: React.FC<{ icon: React.ReactNode; title: string; gradient: string; subtitle: string; expanded: boolean; onToggle: () => void }> = ({ icon, title, gradient, subtitle, expanded, onToggle }) => (
+  <button
+    type="button" onClick={onToggle}
+    className="flex flex-wrap items-center justify-between gap-2 px-5 sm:px-6 py-4 w-full text-left"
+    style={{ background: gradient, border: 'none', cursor: 'pointer' }}
+  >
     <div className="flex items-center gap-2.5">
       <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.2)' }}>
         {icon}
       </span>
       <h2 style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>{title}</h2>
     </div>
-    <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>{subtitle}</div>
-  </div>
+    <div className="flex items-center gap-3">
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>{subtitle}</div>
+      {expanded ? <MdExpandLess size={20} color="#fff" /> : <MdExpandMore size={20} color="#fff" />}
+    </div>
+  </button>
 );
 
 const InfoField: React.FC<{ t: Theme; icon: React.ReactNode; label: string; value: React.ReactNode }> = ({ t, icon, label, value }) => (
@@ -81,7 +91,7 @@ const SummaryTable: React.FC<{ t: Theme; accent: string; heading: string; rows: 
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
         <thead>
-          <tr style={{ background: t.insetBg }}>
+          <tr className="master-table-header-gradient" style={{ background: t.insetBg }}>
             <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 40 }}>#</th>
             <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Payment Details</th>
             <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Amount (Rs.)</th>
@@ -116,7 +126,7 @@ const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; ro
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
         <thead>
-          <tr style={{ background: t.insetBg }}>
+          <tr className="master-table-header-gradient" style={{ background: t.insetBg }}>
             <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 56 }}>Sr No</th>
             <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 110 }}>Inst Date</th>
             <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>({section}) Mode Of Payment</th>
@@ -171,6 +181,10 @@ const CustomerSchemeViewPage: React.FC = () => {
   const [data, setData] = useState<CustomerSchemeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // EMI Scheme/Schedule accordions — both start open so the report reads
+  // exactly as before until the viewer chooses to collapse one.
+  const [schemeExpanded, setSchemeExpanded] = useState(true);
+  const [scheduleExpanded, setScheduleExpanded] = useState(true);
   // Extra Pay-settled overlay is a non-critical enhancement on top of the
   // plain schedule above — fetched separately, never blocks the page's own
   // loading/error state, and silently stays null (no strikethrough shown)
@@ -262,21 +276,32 @@ const CustomerSchemeViewPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Customer Info ───────────────────────────────────────────── */}
+      {/* ── Customer Info — background matches EMI Scheme/Schedule's green
+          (was its own blue) so all three sections read as one consistent
+          report. "Payments Complete By" now lives here, right-aligned in
+          the customer-name row, instead of its own standalone box below. ── */}
       <SectionCard t={t} isDark={isDark}>
-        <div className="px-5 sm:px-6 py-5" style={{ background: 'var(--grad-sky)' }}>
-          <div className="flex items-center gap-3.5 mb-5">
-            {c.customer_image ? (
-              <img src={c.customer_image} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover', border: '2px solid rgba(255,255,255,0.5)' }} />
-            ) : (
-              <div className="flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 56, height: 56, background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: 17.5, fontWeight: 800 }}>
-                {fullName(c).charAt(0).toUpperCase()}
+        <div className="px-5 sm:px-6 py-5" style={{ background: 'var(--grad-green)' }}>
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+            <div className="flex items-center gap-3.5">
+              {c.customer_image ? (
+                <img src={c.customer_image} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover', border: '2px solid rgba(255,255,255,0.5)' }} />
+              ) : (
+                <div className="flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 56, height: 56, background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: 17.5, fontWeight: 800 }}>
+                  {fullName(c).charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{fullName(c)}</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>{c.customer_code}{flatLine ? ` · ${flatLine}` : ''}</div>
+              </div>
+            </div>
+            {paymentsCompleteBy && (
+              <div className="rounded-xl flex-shrink-0" style={{ background: 'rgba(255,255,255,0.16)', padding: '8px 16px', textAlign: 'right' }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Payments Complete By</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{formatDMY(paymentsCompleteBy)}</div>
               </div>
             )}
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{fullName(c)}</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>{c.customer_code}{flatLine ? ` · ${flatLine}` : ''}</div>
-            </div>
           </div>
           <div className="grid gap-x-5 gap-y-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
             <InfoField t={t} icon={<MdPhone size={15} />} label="Mobile" value={c.mobile_number} />
@@ -291,56 +316,45 @@ const CustomerSchemeViewPage: React.FC = () => {
         </div>
       </SectionCard>
 
-      {/* ── Item 12: "your payment will be end as on" — highlighted final
-          payment date, computed from the last row of whichever schedule
-          phase actually has one (see paymentsCompleteBy above). ────────── */}
-      {paymentsCompleteBy && (
-        <div
-          className="flex items-center gap-3 rounded-2xl mb-5 px-5 py-4"
-          style={{ background: isDark ? 'rgba(16,185,129,0.14)' : '#ecfdf5', border: `1px solid ${isDark ? 'rgba(16,185,129,0.35)' : '#a7f3d0'}` }}
-        >
-          <div className="flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 38, height: 38, background: isDark ? 'rgba(16,185,129,0.25)' : '#d1fae5' }}>
-            <MdCalculate size={19} style={{ color: '#059669' }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: 0.4 }}>Payments Complete By</div>
-            <div style={{ fontSize: 16.5, fontWeight: 800, color: isDark ? '#6ee7b7' : '#047857' }}>{formatDMY(paymentsCompleteBy)}</div>
-          </div>
-        </div>
-      )}
-
-      {/* ── EMI Scheme summary ──────────────────────────────────────── */}
+      {/* ── EMI Scheme summary — accordion, background now matches EMI
+          Schedule's green (was its own blue). ──────────────────────── */}
       <SectionCard t={t} isDark={isDark}>
         <ResultPanelHeader
           icon={<MdCalculate size={17} color="#fff" />} title="EMI Scheme"
-          gradient="var(--grad-sky)"
+          gradient="var(--grad-green)"
           subtitle={`Total Cost of Flat: ${formatINR(c.flat_amount)}`}
+          expanded={schemeExpanded} onToggle={() => setSchemeExpanded((v) => !v)}
         />
-        <div className="p-5 sm:p-6">
-          <SummaryTable t={t} accent={accent} heading="A) Mode of Payment (Before Possession)" rows={data.summaryA} total={data.totalA} totalLabel="Total (A) (Before Possession)" />
-          <SummaryTable t={t} accent={accent} heading="B) After Possession" rows={data.summaryB} total={data.totalB} totalLabel="Total (B) (After Possession)" />
-          <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: accent }}>{formatINR(data.grandTotal)}</span>
+        {schemeExpanded && (
+          <div className="p-5 sm:p-6">
+            <SummaryTable t={t} accent={accent} heading="A) Mode of Payment (Before Possession)" rows={data.summaryA} total={data.totalA} totalLabel="Total (A) (Before Possession)" />
+            <SummaryTable t={t} accent={accent} heading="B) After Possession" rows={data.summaryB} total={data.totalB} totalLabel="Total (B) (After Possession)" />
+            <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Total Cost of Flat (A + B)</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: accent }}>{formatINR(data.grandTotal)}</span>
+            </div>
           </div>
-        </div>
+        )}
       </SectionCard>
 
-      {/* ── EMI Schedule — full dated breakdown ─────────────────────── */}
+      {/* ── EMI Schedule — full dated breakdown, also an accordion. ────── */}
       <SectionCard t={t} isDark={isDark}>
         <ResultPanelHeader
           icon={<MdListAlt size={17} color="#fff" />} title="EMI Schedule"
           gradient="var(--grad-green)"
           subtitle={`Schedule ${formatINR(c.flat_amount)}`}
+          expanded={scheduleExpanded} onToggle={() => setScheduleExpanded((v) => !v)}
         />
-        <div className="p-5 sm:p-6">
-          <ScheduleTable t={t} accent={accent} section="A" rows={data.scheduleA} total={data.totalA} totalLabel="(A) Total Before Possession" gridRows={gridRows?.slice(0, data.scheduleA.length)} />
-          <ScheduleTable t={t} accent={accent} section="B" rows={data.scheduleB} total={data.totalB} totalLabel="(B) Total After Possession" gridRows={gridRows?.slice(data.scheduleA.length)} />
-          <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: accent }}>{formatINR(data.grandTotal)}</span>
+        {scheduleExpanded && (
+          <div className="p-5 sm:p-6">
+            <ScheduleTable t={t} accent={accent} section="A" rows={data.scheduleA} total={data.totalA} totalLabel="(A) Total Before Possession" gridRows={gridRows?.slice(0, data.scheduleA.length)} />
+            <ScheduleTable t={t} accent={accent} section="B" rows={data.scheduleB} total={data.totalB} totalLabel="(B) Total After Possession" gridRows={gridRows?.slice(data.scheduleA.length)} />
+            <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: isDark ? 'rgba(67,56,202,0.12)' : '#eef2ff' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>Total (A + B)</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: accent }}>{formatINR(data.grandTotal)}</span>
+            </div>
           </div>
-        </div>
+        )}
       </SectionCard>
 
       {/* ── Footer — same shared `master-crud-footer` class every other

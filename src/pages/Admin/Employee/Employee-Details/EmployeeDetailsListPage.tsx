@@ -256,6 +256,10 @@ const EmployeeDetailsListPage: React.FC = () => {
   const [exportingCsv, setExportingCsv] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  // Total/Active/Inactive summary boxes double as a status filter — click
+  // one to apply it to the table below (same click-to-filter convention as
+  // Customer List's All/Assigned/Un Assigned boxes).
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -270,7 +274,8 @@ const EmployeeDetailsListPage: React.FC = () => {
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await FetchEmployeeDetails(page, limit, debouncedSearch);
+      const res = await FetchEmployeeDetails(page, limit, debouncedSearch, false,
+        statusFilter === 'all' ? undefined : { status: statusFilter });
       if (res.success) {
         setAllEmployees(res.rows ?? []);
         setTotal(res.total ?? 0);
@@ -283,12 +288,13 @@ const EmployeeDetailsListPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch]);
+  }, [page, limit, debouncedSearch, statusFilter]);
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
-  // A search narrowing the result set out from under an already-deep page
-  // number would otherwise land on an empty or out-of-range page.
-  useEffect(() => { setPage(1); }, [debouncedSearch]);
+  // A search (or status filter) narrowing the result set out from under an
+  // already-deep page number would otherwise land on an empty or
+  // out-of-range page.
+  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter]);
 
   // close the row action menu on outside click — the menu itself now lives
   // in a document.body portal (see RowActionMenu), so it's tagged with
@@ -438,12 +444,14 @@ const EmployeeDetailsListPage: React.FC = () => {
           boxes; font sizes come from the shared StatCard CSS class, same as
           every other list page. ──────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-        {[
-          { label: 'Total Employees', value: summary.total_employees, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
-          { label: 'Active Employees', value: summary.active_employees, icon: MdLayers, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
-          { label: 'Inactive Employees', value: summary.inactive_employees, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
-        ].map((card) => (
-          <StatCard key={card.label} {...card} loading={loading} compact
+        {([
+          { filterKey: 'all', label: 'Total Employees', value: summary.total_employees, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
+          { filterKey: 'active', label: 'Active Employees', value: summary.active_employees, icon: MdLayers, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
+          { filterKey: 'inactive', label: 'Inactive Employees', value: summary.inactive_employees, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
+        ] as const).map(({ filterKey, ...card }) => (
+          <StatCard key={filterKey} {...card} loading={loading} compact
+            active={statusFilter === filterKey}
+            onClick={() => setStatusFilter(filterKey)}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
       </div>
