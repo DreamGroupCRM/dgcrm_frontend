@@ -219,15 +219,20 @@ html.dark .master-table td {
 /* ── Flat brand-blue table-header band — Company/Department/BankAccount/
    Building masters, and (V_17.0) Employee/Customer lists too. Applied via
    className on the header <tr>(s) *and* on the sticky Actions <th> (which
-   otherwise paints over the row with its own opaque background), so the
-   whole header reads as one continuous band regardless of theme — unlike
-   the old flat tableHeaderBg/insetBg, this doesn't need a light/dark
-   variant since it supplies its own contrast. */
+   otherwise paints over the row with its own opaque background).
+   The gradient is painted on EACH <th> individually (not just the <tr>) —
+   a single gradient stretched across the whole row makes the left-most
+   columns read bright/light and the right-most columns read dark, i.e.
+   "some columns light, some dark", per explicit product decision every
+   column header must look identical, matching the Actions column's own
+   look. Doesn't need a light/dark theme variant since it supplies its own
+   contrast either way. */
 .master-table-header-gradient {
   background: var(--grad-table-header) !important;
 }
 
 .master-table-header-gradient th {
+  background: var(--grad-table-header) !important;
   color: #ffffff !important;
   border-color: rgba(255, 255, 255, 0.25) !important;
 }
