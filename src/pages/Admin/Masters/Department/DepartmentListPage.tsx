@@ -188,11 +188,11 @@ const DepartmentListPage: React.FC = () => {
             <MdAdd size={18} /> Add Department
           </button>
           <button type="button" onClick={handleExportCsv} title="Export CSV" className="master-btn-icon"
-            style={{ background: '#0000FF', border: '1px solid #0000FF', color: '#fff' }}>
+            style={{ background: '#0096FF', border: '1px solid #0096FF', color: '#fff' }}>
             <MdDownload size={18} />
           </button>
           <button type="button" onClick={fetchDepartments} title="Refresh" className="master-btn-icon"
-            style={{ background: '#0000FF', border: '1px solid #0000FF', color: '#fff' }}>
+            style={{ background: '#0096FF', border: '1px solid #0096FF', color: '#fff' }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>

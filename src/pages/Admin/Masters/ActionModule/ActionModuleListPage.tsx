@@ -307,7 +307,7 @@ const ActionModuleListPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2" onClick={actionAccordion.toggle} style={{ cursor: 'pointer', userSelect: 'none', flex: '0 0 auto' }}>
-            <MdBolt size={22} style={{ color: '#0000FF' }} />
+            <MdBolt size={22} style={{ color: '#0096FF' }} />
             <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, fontFamily: t.fontFamily }}>Action Master</span>
             <MdKeyboardArrowDown size={22} style={{ color: t.textPrimary, transition: 'transform 0.3s ease', transform: actionAccordion.isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
           </div>

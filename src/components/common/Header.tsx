@@ -177,7 +177,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
         onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
       >
         {masterEnabled
-          ? <MdCheckBox size={18} style={{ color: '#0000FF', flexShrink: 0 }} />
+          ? <MdCheckBox size={18} style={{ color: '#0096FF', flexShrink: 0 }} />
           : <MdCheckBoxOutlineBlank size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
         }
         Enable Master
@@ -298,7 +298,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             onClick={() => dispatch(toggleTheme())}
             title={isDark ? 'Switch to Light' : 'Switch to Dark'}
             isDark={isDark}
-            hoverColor={isDark ? '#facc15' : '#0000FF'}
+            hoverColor={isDark ? '#facc15' : '#0096FF'}
           >
             {isDark ? <FiSun size={17} /> : <FiMoon size={17} />}
           </IconBtn>
@@ -371,7 +371,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
                   onClick={() => { dispatch(toggleTheme()); setMoreOpen(false); }}
                   onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.hoverBg)}
                   onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}>
-                  {isDark ? <FiSun size={17} style={{ color: '#facc15' }} /> : <FiMoon size={17} style={{ color: '#0000FF' }} />}
+                  {isDark ? <FiSun size={17} style={{ color: '#facc15' }} /> : <FiMoon size={17} style={{ color: '#0096FF' }} />}
                   {isDark ? 'Switch to Light' : 'Switch to Dark'}
                 </button>
 

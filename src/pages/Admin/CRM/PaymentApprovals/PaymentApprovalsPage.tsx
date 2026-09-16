@@ -642,7 +642,7 @@ const PaymentApprovalsPage: React.FC = () => {
                     </button>
                     <button type="button" onClick={() => viewModal.data && setReceiptPreview(viewModal.data)}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold"
-                      style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', border: 'none', color: '#0000FF', cursor: 'pointer' }}>
+                      style={{ background: isDark ? 'rgba(0, 150, 255,0.18)' : '#e0f2ff', border: 'none', color: '#0096FF', cursor: 'pointer' }}>
                       <MdVisibility size={15} /> View Receipt
                     </button>
                     <button type="button" disabled={approvingId === viewModal.row.id}

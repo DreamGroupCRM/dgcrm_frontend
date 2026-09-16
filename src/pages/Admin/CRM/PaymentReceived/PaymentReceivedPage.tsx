@@ -515,7 +515,7 @@ const PaymentReceivedPage: React.FC = () => {
                       <div className="pr-row-actions flex items-center gap-1.5">
                         <button type="button" title="View Receipt" onClick={() => handleViewReceipt(r)}
                           className="flex items-center justify-center rounded-lg"
-                          style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', border: 'none', color: '#0000FF', cursor: 'pointer' }}>
+                          style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 150, 255,0.18)' : '#e0f2ff', border: 'none', color: '#0096FF', cursor: 'pointer' }}>
                           <MdVisibility size={13} />
                         </button>
                         <button type="button" title="Download Receipt" disabled={downloadingId === r.id} onClick={() => handleDownloadReceipt(r)}
