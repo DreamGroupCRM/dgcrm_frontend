@@ -203,7 +203,7 @@ const CustomerDashboard: React.FC = () => {
       </div>
 
       {loadingBookings ? (
-        <div className="flex-1 flex items-center justify-center"><CircularProgress size={28} sx={{ color: '#0000FF' }} /></div>
+        <div className="flex-1 flex items-center justify-center"><CircularProgress size={28} sx={{ color: 'var(--brand-gradient)' }} /></div>
       ) : bookingsError ? (
         <div className="flex-1 flex items-center justify-center"><p style={{ color: t.textMuted }}>Couldn't load your bookings. Please try again later.</p></div>
       ) : bookings.length === 0 ? (
@@ -226,9 +226,9 @@ const CustomerDashboard: React.FC = () => {
                     onClick={() => setSelectedId(b.id)}
                     className="px-3.5 py-2 rounded-lg text-sm font-semibold"
                     style={{
-                      background: active ? '#0000FF' : t.surfaceBg,
+                      background: active ? 'var(--brand-gradient)' : t.surfaceBg,
                       color: active ? '#fff' : t.textSecondary,
-                      border: `1px solid ${active ? '#0000FF' : t.surfaceBorder}`,
+                      border: `1px solid ${active ? 'var(--brand-gradient)' : t.surfaceBorder}`,
                       cursor: 'pointer',
                     }}
                   >
@@ -240,7 +240,7 @@ const CustomerDashboard: React.FC = () => {
           )}
 
           {loadingDetail || !detail ? (
-            <div className="flex items-center justify-center" style={{ padding: 60 }}><CircularProgress size={26} sx={{ color: '#0000FF' }} /></div>
+            <div className="flex items-center justify-center" style={{ padding: 60 }}><CircularProgress size={26} sx={{ color: 'var(--brand-gradient)' }} /></div>
           ) : (
             <>
               {/* Payment summary — Total Amount / Total Paid / Total Due, the

@@ -202,16 +202,20 @@ html.dark .master-table td {
   --grad-teal: #0891b2;
   --grad-grey: #64748b;
   /* Brand colors, split by surface per explicit product decision:
-     --brand-gradient (#0000FF) is the Add-X / submit / filter / export /
-     refresh BUTTON fill, AND every icon's color (see this file's
-     .master-icon-btn/.master-row-icon below — kept in sync with this
-     literal, not aliased to a var, since one sets a stylesheet rule and
-     the other a JS/inline-style string); table header bands share the
-     SAME orange-to-purple gradient as the top summary boxes (see
-     statGradients.ts's STAT_CARD_BRAND_GRADIENT — kept in sync with this
-     literal, not aliased to a var, for the same JS/inline-style reason).
-     Deliberately not an alias of --grad-sky, which stays its own blue for
-     the few section headers still opting into it directly. */
+     --brand-gradient (#0000FF default) is the Add-X / submit / filter /
+     export / refresh BUTTON fill, AND every icon's color (see this file's
+     .master-icon-btn/.master-row-icon below). This :root value is only the
+     unauthenticated-page fallback — appearanceTokens.ts's useAppearanceTokens()
+     overrides it (same key, same value as --master-btn-primary-gradient) on
+     DashboardLayout's root once the user is logged in, which is what makes
+     the Settings-icon Appearance selector change every button/icon that
+     reads this var instead of just the table header band; table header
+     bands share the SAME orange-to-purple gradient as the top summary boxes
+     (see statGradients.ts's STAT_CARD_BRAND_GRADIENT — kept in sync with
+     this literal, not aliased to a var, since one sets a stylesheet rule
+     and the other a JS/inline-style string). Deliberately not an alias of
+     --grad-sky, which stays its own blue for the few section headers still
+     opting into it directly. */
   --brand-gradient: #0000FF;
   --grad-table-header: linear-gradient(to right, #cc5333, #23074d);
 }
@@ -303,8 +307,8 @@ html.dark .master-table td {
   background: none;
   cursor: pointer;
   flex-shrink: 0;
-  border: 1.5px solid #0000FF;
-  color: #0000FF;
+  border: 1.5px solid var(--brand-gradient);
+  color: var(--brand-gradient);
   transition: background 0.15s ease, transform 0.1s ease;
 }
 
@@ -328,7 +332,7 @@ html.dark .master-icon-btn:hover {
 /* Small icon shown inline next to a name/value cell (company/bank/project/
    building/department name, account holder name, branch name) — item 7. */
 .master-row-icon {
-  color: #0000FF;
+  color: var(--brand-gradient);
   flex-shrink: 0;
 }
 

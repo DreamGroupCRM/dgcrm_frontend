@@ -86,11 +86,11 @@ const ProfileModal: React.FC = () => {
       color: t.inputText,
       '& fieldset': { borderColor: t.inputBorder },
       '&:hover fieldset': { borderColor: t.inputFocusBorder },
-      '&.Mui-focused fieldset': { borderColor: '#0000FF' },
+      '&.Mui-focused fieldset': { borderColor: 'var(--brand-gradient)' },
       '&.Mui-error fieldset': { borderColor: '#ef4444' },
     },
     '& .MuiInputLabel-root': { color: t.textSecondary },
-    '& .MuiInputLabel-root.Mui-focused': { color: '#0000FF' },
+    '& .MuiInputLabel-root.Mui-focused': { color: 'var(--brand-gradient)' },
     '& .MuiFormHelperText-root': { color: '#ef4444' },
   };
 
@@ -111,7 +111,7 @@ const ProfileModal: React.FC = () => {
       className="flex items-center gap-2.5 p-2.5 rounded-xl"
       style={{ background: t.insetBg }}
     >
-      <span className="text-lg flex-shrink-0" style={{ color: '#0000FF' }}>{icon}</span>
+      <span className="text-lg flex-shrink-0" style={{ color: 'var(--brand-gradient)' }}>{icon}</span>
       <div className="min-w-0">
         <p className="text-xs font-medium leading-none mb-0.5"
           style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>
@@ -145,7 +145,7 @@ const ProfileModal: React.FC = () => {
         <div
           className="flex-shrink-0 relative px-5 pt-5 pb-4 text-center"
           style={{
-            background: isDark ? '#0f172a' : '#0000FF',
+            background: isDark ? '#0f172a' : 'var(--brand-gradient)',
           }}
         >
           <button
@@ -198,7 +198,7 @@ const ProfileModal: React.FC = () => {
           {/* Loading state */}
           {loading && (
             <div className="flex justify-center py-6">
-              <CircularProgress size={28} sx={{ color: '#0000FF' }} />
+              <CircularProgress size={28} sx={{ color: 'var(--brand-gradient)' }} />
             </div>
           )}
 
@@ -219,7 +219,7 @@ const ProfileModal: React.FC = () => {
                     className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
                     style={{
                       background: isDark ? t.insetBg : '#efebe9',
-                      color     : isDark ? '#a3a3a3' : '#0000FF',
+                      color     : isDark ? '#a3a3a3' : 'var(--brand-gradient)',
                     }}
                   >
                     {/* Show the human-readable role name e.g. "Super Admin" */}
@@ -249,7 +249,7 @@ const ProfileModal: React.FC = () => {
                   className="w-full flex items-center gap-2 p-2.5 rounded-xl text-sm font-semibold transition-all"
                   style={{ background: t.insetBg, color: t.textPrimary, border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
                 >
-                  <MdLockOutline size={17} style={{ color: '#0000FF' }} />
+                  <MdLockOutline size={17} style={{ color: 'var(--brand-gradient)' }} />
                   Change Password
                 </button>
 
@@ -316,7 +316,7 @@ const ProfileModal: React.FC = () => {
                       type="submit"
                       disabled={pwdSaving}
                       className="w-full py-2 rounded-xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                      style={{ background: '#0000FF', border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
+                      style={{ background: 'var(--brand-gradient)', border: 'none', cursor: 'pointer', fontFamily: t.fontFamily }}
                     >
                       {pwdSaving ? (<><CircularProgress size={16} sx={{ color: 'white' }} /> Updating...</>) : 'Update Password'}
                     </button>

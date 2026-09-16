@@ -351,7 +351,7 @@ const CompactFileUpload: React.FC<{ t: Theme; isView?: boolean; accept?: string;
           {previewUrl ? (
             <img src={previewUrl} alt="" className="rounded-lg flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'cover' }} />
           ) : (
-            <MdInsertDriveFile size={16} style={{ color: '#0000FF', flexShrink: 0 }} />
+            <MdInsertDriveFile size={16} style={{ color: 'var(--brand-gradient)', flexShrink: 0 }} />
           )}
           <span className="truncate" style={{ fontSize: 11.5, color: t.textPrimary, flex: 1 }}>{displayName}</span>
           {!isView && (
@@ -401,7 +401,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
       {previewUrl ? (
         <img src={previewUrl} alt="" className="rounded-lg mx-auto mb-1.5" style={{ width: 48, height: 48, objectFit: 'cover' }} />
       ) : (
-        <MdCloudUpload size={26} style={{ color: '#0000FF', margin: '0 auto 6px' }} />
+        <MdCloudUpload size={26} style={{ color: 'var(--brand-gradient)', margin: '0 auto 6px' }} />
       )}
       {displayName ? (
         <div className="flex items-center justify-center gap-2">
@@ -415,7 +415,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
         </div>
       ) : (
         <button type="button" disabled={isView} onClick={() => inputRef.current?.click()}
-          style={{ background: 'transparent', border: 'none', cursor: isView ? 'not-allowed' : 'pointer', color: '#0000FF', fontSize: 11, fontWeight: 700, fontFamily: t.fontFamily }}>
+          style={{ background: 'transparent', border: 'none', cursor: isView ? 'not-allowed' : 'pointer', color: 'var(--brand-gradient)', fontSize: 11, fontWeight: 700, fontFamily: t.fontFamily }}>
           Upload {label}
         </button>
       )}
@@ -427,7 +427,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
 const RadioOption: React.FC<{ t: Theme; label: string; selected: boolean; onSelect: () => void; disabled?: boolean }> = ({ t, label, selected, onSelect, disabled }) => (
   <button type="button" disabled={disabled} onClick={onSelect}
     className="flex items-center gap-2" style={{ background: 'transparent', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', padding: 0 }}>
-    {selected ? <MdRadioButtonChecked size={18} style={{ color: '#0000FF' }} /> : <MdRadioButtonUnchecked size={18} style={{ color: t.textSecondary }} />}
+    {selected ? <MdRadioButtonChecked size={18} style={{ color: 'var(--brand-gradient)' }} /> : <MdRadioButtonUnchecked size={18} style={{ color: t.textSecondary }} />}
     <span style={{ fontSize: 12, color: t.textPrimary, fontWeight: 600 }}>{label}</span>
   </button>
 );
@@ -444,7 +444,7 @@ const AmountField: React.FC<{ t: Theme; isView?: boolean; disabled?: boolean; pl
       <input type="text" inputMode="decimal" placeholder={placeholder} value={formatAmountDisplay(value)} readOnly={isView || disabled} disabled={isView || disabled}
         onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ''))}
         style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
-      {compact && <span style={{ color: '#0000FF', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
+      {compact && <span style={{ color: 'var(--brand-gradient)', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
     </div>
   );
 };
@@ -1374,7 +1374,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Upload Aadhar Card Photo" required error={errorFor('aadharPhoto')} fieldRef={setFieldRef('aadharPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange} />
-            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: '#0000FF', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
+            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-gradient)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
           <Field t={t} label="Aadhar Number" required error={errorFor('aadharNumber')} fieldRef={setFieldRef('aadharNumber') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView} maxLength={12}
@@ -1382,7 +1382,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Upload Pancard Photo" required error={errorFor('pancardPhoto')} fieldRef={setFieldRef('pancardPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange} />
-            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0000FF', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
+            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: 'var(--brand-gradient)', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
           <Field t={t} label="Pancard Number" error={errorFor('pancardNumber')} fieldRef={setFieldRef('pancardNumber') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView} maxLength={10}
@@ -1403,7 +1403,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               {age && (
                 <div className="rounded-xl px-2 py-2 flex-shrink-0" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
                   <p style={{ fontSize: 9, color: t.textSecondary, margin: 0, fontWeight: 600 }}>Age</p>
-                  <p style={{ fontSize: 10.5, color: '#0000FF', margin: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>{age.years}y {age.months}m</p>
+                  <p style={{ fontSize: 10.5, color: 'var(--brand-gradient)', margin: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>{age.years}y {age.months}m</p>
                 </div>
               )}
             </div>
@@ -1447,7 +1447,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <button type="button"
               onClick={() => navigate(ROUTES.ADMIN.BUILDING_2D_VIEW, { state: { pickerMode: true, returnPath: routerLocation.pathname } })}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold"
-              style={{ background: t.insetBg, color: '#0000FF', border: `1px solid ${t.inputBorder}`, cursor: 'pointer' }}>
+              style={{ background: t.insetBg, color: 'var(--brand-gradient)', border: `1px solid ${t.inputBorder}`, cursor: 'pointer' }}>
               <MdGridView size={16} /> Select Flat (Building View)
             </button>
           </div>
@@ -1690,7 +1690,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 not buried inline in the Payment Details grid. */}
             <button type="button" onClick={handlePreview} disabled={saving}
               className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold"
-              style={{ background: t.insetBg, color: '#0000FF', border: `1px solid ${t.inputBorder}`, cursor: saving ? 'not-allowed' : 'pointer' }}>
+              style={{ background: t.insetBg, color: 'var(--brand-gradient)', border: `1px solid ${t.inputBorder}`, cursor: saving ? 'not-allowed' : 'pointer' }}>
               <MdVisibility size={16} /> Preview
             </button>
             <button type="button" onClick={handleSubmit} disabled={saving}

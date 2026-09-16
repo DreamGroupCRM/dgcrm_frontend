@@ -212,7 +212,7 @@ const RowActionMenu: React.FC<{
     }}
   >
     <button type="button" title="View" onClick={onView} className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
-      <MdVisibility size={14} color="#0000FF" /> View
+      <MdVisibility size={14} color="var(--brand-gradient)" /> View
     </button>
     <button type="button" title="Edit" onClick={onEdit} className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
       <MdEdit size={13} color="#7c3aed" /> Edit
@@ -477,7 +477,7 @@ const EmployeeDetailsListPage: React.FC = () => {
         <div className="master-actions">
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
             title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'} className="master-btn-icon"
-            style={{ background: '#0000FF', border: '1px solid #0000FF', color: '#fff' }}>
+            style={{ background: 'var(--brand-gradient)', border: '1px solid var(--brand-gradient)', color: '#fff' }}>
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
           </button>
           <button type="button" onClick={() => navigate('/admin/employee/employee-details/add')} className="master-btn-primary">
@@ -557,7 +557,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                         </td>
                         <td>
                           <button type="button" onClick={() => navigate(`/admin/employee/employee-details/view/${emp.id}`)}
-                            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#0000FF', fontWeight: 600 }}>
+                            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand-gradient)', fontWeight: 600 }}>
                             {emp.employee_code}
                           </button>
                         </td>
@@ -567,7 +567,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                               <img src={resolveFileUrl(emp.profile_photo_url)} alt="" className="rounded-full" style={{ width: 30, height: 30, objectFit: 'cover', flexShrink: 0 }} />
                             ) : (
                               <div className="flex items-center justify-center rounded-full text-white font-bold"
-                                style={{ width: 30, height: 30, background: '#0000FF', fontSize: 11, flexShrink: 0 }}>
+                                style={{ width: 30, height: 30, background: 'var(--brand-gradient)', fontSize: 11, flexShrink: 0 }}>
                                 {initials(emp.first_name, emp.last_name)}
                               </div>
                             )}

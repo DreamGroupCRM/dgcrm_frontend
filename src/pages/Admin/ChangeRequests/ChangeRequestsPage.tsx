@@ -159,7 +159,7 @@ const ChangeRequestsPage: React.FC = () => {
                       <td style={{ padding: '12px 14px', fontSize: 12, color: isDark ? '#fff' : '#000' }}>
                         <button type="button" onClick={() => setDetailsRow(row)}
                           className="flex items-center gap-1.5" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, fontSize: 12 }}>
-                          {summarize(row)} <MdVisibility size={14} color="#0000FF" />
+                          {summarize(row)} <MdVisibility size={14} color="var(--brand-gradient)" />
                         </button>
                       </td>
                       <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary }}>

@@ -260,7 +260,7 @@ const RowActionMenu: React.FC<{
     <button type="button" onClick={onView}
       className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
       style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-      <MdVisibility size={14} color="#0000FF" /> View
+      <MdVisibility size={14} color="var(--brand-gradient)" /> View
     </button>
     <button type="button" onClick={onEdit}
       className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
@@ -1104,7 +1104,7 @@ const CustomerDetailsListPage: React.FC = () => {
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
             title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
             className="cust-view-toggle-btn flex items-center justify-center rounded-xl"
-            style={{ width: 40, height: 40, background: '#0000FF', border: '1px solid #0000FF', color: '#fff', cursor: 'pointer' }}>
+            style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: '1px solid var(--brand-gradient)', color: '#fff', cursor: 'pointer' }}>
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
           </button>
           <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
@@ -1221,7 +1221,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                       {c.customer_code ? (
                         <button type="button" onClick={() => navigate(`/admin/crm/customer-details/view/${c.id}`)}
-                          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, color: '#0000FF' }}>
+                          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, color: 'var(--brand-gradient)' }}>
                           {c.customer_code}
                         </button>
                       ) : (
@@ -1357,7 +1357,7 @@ const CustomerDetailsListPage: React.FC = () => {
                                   </button>
                                   <button type="button" title="View Receipt" onClick={() => openReceipt(p.id)}
                                     className="flex items-center justify-center rounded-lg"
-                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: '#0000FF', cursor: 'pointer' }}>
+                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-gradient)', cursor: 'pointer' }}>
                                     <MdVisibility size={13} />
                                   </button>
                                   {isAdmin && (
@@ -1391,7 +1391,7 @@ const CustomerDetailsListPage: React.FC = () => {
 
                   {(infoModal.payments || []).length > 0 && (
                     <div className="flex items-center justify-between rounded-xl px-4 py-3 mt-4" style={{ background: t.insetBg }}>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: '#0000FF' }}>Grand Total:</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--brand-gradient)' }}>Grand Total:</span>
                       <span className="rounded-lg px-3 py-1.5" style={{ border: '1px solid #16a34a', fontSize: 13, fontWeight: 800, color: '#16a34a' }}>
                         ₹ {infoModal.payments!.reduce((s, p) => s + p.amount, 0).toLocaleString('en-IN')}
                       </span>

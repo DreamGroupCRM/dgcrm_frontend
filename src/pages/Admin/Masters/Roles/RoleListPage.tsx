@@ -243,7 +243,7 @@ const RoleListPage: React.FC = () => {
               style={{ padding: '4px 10px', width: 'auto', border: `1px solid ${t.surfaceBorder}`, background: t.btnSecondaryBg, color: t.textPrimary, cursor: safePage === 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
             {pageBtns().map((pg) => (
               <button key={pg} onClick={() => setPage(pg)} className="master-page-btn"
-                style={{ border: `1px solid ${pg === safePage ? '#0000FF' : t.surfaceBorder}`, background: pg === safePage ? '#0000FF' : t.btnSecondaryBg, color: pg === safePage ? '#fff' : t.textPrimary, fontWeight: pg === safePage ? 700 : 400 }}>
+                style={{ border: `1px solid ${pg === safePage ? 'var(--brand-gradient)' : t.surfaceBorder}`, background: pg === safePage ? 'var(--brand-gradient)' : t.btnSecondaryBg, color: pg === safePage ? '#fff' : t.textPrimary, fontWeight: pg === safePage ? 700 : 400 }}>
                 {pg}
               </button>
             ))}

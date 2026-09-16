@@ -253,7 +253,7 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
             <Box component="div"
               sx={{
                 width: 36, height: 36, borderRadius: 2,
-                background: '#0000FF',
+                background: 'var(--brand-gradient)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >

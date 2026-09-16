@@ -484,8 +484,8 @@ const BuildingListPage: React.FC = () => {
                 onClick={() => setPage(pg)}
                 className="master-page-btn"
                 style={{
-                  border: `1px solid ${pg === safePage ? '#0000FF' : t.surfaceBorder}`,
-                  background: pg === safePage ? '#0000FF' : t.btnSecondaryBg,
+                  border: `1px solid ${pg === safePage ? 'var(--brand-gradient)' : t.surfaceBorder}`,
+                  background: pg === safePage ? 'var(--brand-gradient)' : t.btnSecondaryBg,
                   color: pg === safePage ? '#fff' : t.textPrimary,
                   fontWeight: pg === safePage ? 700 : 400,
                 }}

@@ -317,6 +317,11 @@ export interface AppearanceCssVars {
   '--master-accent-focus': string;
   '--master-btn-primary-gradient': string;
   '--grad-table-header': string;
+  // Overrides master.css's :root literal of the same name — this is what
+  // makes every button/icon/pagination-control that reads var(--brand-
+  // gradient) (rather than a hardcoded #0000FF) follow the selected
+  // appearance instead of always rendering fixed brand blue.
+  '--brand-gradient': string;
 }
 
 export function useAppearanceTokens() {
@@ -332,6 +337,11 @@ export function useAppearanceTokens() {
     '--master-accent-focus': isDark ? palette.accentFocusDark : palette.accentFocus,
     '--master-btn-primary-gradient': isDark ? palette.btnPrimaryGradientDark : palette.btnPrimaryGradient,
     '--grad-table-header': isDark ? palette.tableHeaderGradientDark : palette.tableHeaderGradient,
+    // Same value as --master-btn-primary-gradient — one appearance-driven
+    // "brand" color feeding both, since every button/icon/pagination
+    // control this pass wires up is conceptually the same primary action
+    // color as the "Add X" button.
+    '--brand-gradient': isDark ? palette.btnPrimaryGradientDark : palette.btnPrimaryGradient,
   };
 
   const family = (f: StatusFamily) => {

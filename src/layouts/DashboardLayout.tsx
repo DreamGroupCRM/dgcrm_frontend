@@ -8,6 +8,7 @@ import Sidebar from '../components/common/Sidebar';
 import Header from '../components/common/Header';
 import ProfileModal from '../components/common/ProfileModal';
 import { getTheme } from '../styles/theme';
+import { useAppearanceTokens } from '../styles/appearanceTokens';
 import '../styles/Responsive.css';
 
 const DashboardLayout: React.FC = () => {
@@ -16,6 +17,15 @@ const DashboardLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const isDark = mode === 'dark';
   const t = getTheme(isDark);
+  // Setting these CSS custom properties here — the single ancestor of both
+  // Sidebar and every routed page's content (via Outlet) — means the
+  // Settings-icon Appearance selection reaches every button/icon/table
+  // header/pagination control that reads var(--brand-gradient) etc.
+  // app-wide, instead of only the ~30 individual pages that used to spread
+  // this same object on their own root div (still harmless to do, now
+  // redundant — a descendant re-declaring an identical CSS var value is a
+  // no-op).
+  const { cssVars } = useAppearanceTokens();
 
   return (
     <div
@@ -27,6 +37,7 @@ const DashboardLayout: React.FC = () => {
         // affected by transforms/position on elements in between, unlike
         // the `position:fixed` offsets those footers compute from it.
         ['--sidebar-w' as string]: sidebarCollapsed ? '70px' : '260px',
+        ...cssVars,
       } as React.CSSProperties}
     >
       {/* Mobile backdrop */}

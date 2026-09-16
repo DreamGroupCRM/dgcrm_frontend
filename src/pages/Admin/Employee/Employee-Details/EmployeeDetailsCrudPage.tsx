@@ -1247,7 +1247,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Aadhar Number" required error={errorFor('aadhar_number')} fieldRef={setFieldRef('aadhar_number') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter aadhar number" value={form.aadhar_number} readOnly={isView} disabled={isView} maxLength={12}
               onChange={(e) => set('aadhar_number', sanitizeDigits(e.target.value, 12))} className={fieldClass} />
-            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: '#0000FF', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
+            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-gradient)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
           <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
             file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={handlePanCardChange}
@@ -1255,7 +1255,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="PAN Number" required error={errorFor('pan_number')} fieldRef={setFieldRef('pan_number') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter PAN number" value={form.pan_number} readOnly={isView} disabled={isView} maxLength={10}
               onChange={(e) => set('pan_number', sanitizeAlphanumericUpper(e.target.value, 10))} className={fieldClass} />
-            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: '#0000FF', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
+            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: 'var(--brand-gradient)', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
         </div>
 
@@ -1315,7 +1315,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }}
               />
               {compactINR(form.salary) && (
-                <span style={{ color: '#0000FF', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(form.salary)}</span>
+                <span style={{ color: 'var(--brand-gradient)', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(form.salary)}</span>
               )}
             </div>
           </Field>
