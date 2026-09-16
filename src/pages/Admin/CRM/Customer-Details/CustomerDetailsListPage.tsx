@@ -1339,7 +1339,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
                         <thead>
-                          <tr style={{ background: '#0A7474' }}>
+                          <tr className="master-table-header-gradient">
                             {['Actions', 'Rec Number', 'Installment Date', 'Received Date', 'Mode Of Payment', 'Payment For', 'Maintenance', 'Amount', 'Company'].map((h) => (
                               <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{h}</th>
                             ))}
