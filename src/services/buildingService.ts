@@ -224,16 +224,22 @@ function toWizardPayload(payload: CreateBuildingPayload) {
 export type BuildingSortKey = 'id' | 'project_name' | 'building_name' | 'wings' | 'floors' | 'flats' | 'shops' | 'parking' | 'created_at';
 
 // ── Fetch list of all buildings ─────────────────────────────────────────────
-// No `is_active` filter — the list must show every building, active and
-// disabled alike (disabled ones render greyed-out, never removed), so the
-// backend's optional is_active filter is deliberately left unset here.
-/** GET /api/buildings?page=1&limit=10&search=...&sort=...&sort_dir=... */
+// includeDisabled defaults to true (no is_active filter sent) so every
+// existing caller — building/customer/payment dropdowns and filters — keeps
+// its prior "search across every building, active or not" behavior
+// unchanged. BuildingListPage is the one exception: its "Show Disabled"
+// toggle explicitly passes this through, since Building Master itself
+// should only show what's actually in use by default (a disabled building
+// is never removed from the database — see disableBuilding's comment —
+// just hidden here unless the toggle is on, e.g. to re-enable one).
+/** GET /api/buildings?page=1&limit=10&search=...&sort=...&sort_dir=...&is_active=true */
 export const FetchBuildingList = async (
   page: number,
   limit: number,
   search?: string,
   sort?: BuildingSortKey,
-  sortDir?: 'asc' | 'desc'
+  sortDir?: 'asc' | 'desc',
+  includeDisabled = true
 ): Promise<BuildingListResponse> => {
   const params: Record<string, string | number | boolean> = {
     page,
@@ -244,6 +250,7 @@ export const FetchBuildingList = async (
   }
   if (sort) params.sort = sort;
   if (sortDir) params.sort_dir = sortDir;
+  if (!includeDisabled) params.is_active = true;
   const res = await axiosInstance.get('/buildings', {
     params,
     headers: { [API_NAME_HEADER]: 'FetchBuildingList' },
@@ -326,11 +333,16 @@ export const UpdateBuilding = async (
 
 // ── Disable / Enable building ────────────────────────────────────────────────
 // Replaces the old hard-sounding "Delete Building" — a building (and
-// everything under it) is only ever soft-disabled, never removed; it keeps
-// showing up in Building Master (greyed out) instead of disappearing.
-/** PATCH /api/buildings/:id/disable */
-export const DisableBuilding = async (id: string): Promise<BuildingDeleteResponse> => {
+// everything under it) is only ever soft-disabled, never removed; it's just
+// filtered out of the default list view instead of disappearing for good.
+// If the building still has customers booked into it, the backend responds
+// 409 (message includes the count) instead of disabling outright — the
+// caller (BuildingListPage) shows that as a Yes/No confirm and, on Yes,
+// calls this again with force=true to disable anyway.
+/** PATCH /api/buildings/:id/disable?force=true */
+export const DisableBuilding = async (id: string, force = false): Promise<BuildingDeleteResponse> => {
   const res = await axiosInstance.patch(`/buildings/${id}/disable`, undefined, {
+    params: force ? { force: true } : undefined,
     headers: { [API_NAME_HEADER]: 'DisableBuilding' },
   });
   return res.data;

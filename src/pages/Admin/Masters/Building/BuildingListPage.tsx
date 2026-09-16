@@ -75,6 +75,10 @@ const BuildingListPage: React.FC = () => {
   // Building2DViewModal) instead of navigating to a new page — this just
   // holds which building it's preselected to, empty string means closed.
   const [viewBuildingId, setViewBuildingId] = useState('');
+  // A disabled building is filtered out of this list by default (see
+  // FetchBuildingList's includeDisabled) — this toggle is the only way back
+  // to a disabled building, e.g. to re-enable it.
+  const [showDisabled, setShowDisabled] = useState(false);
 
   useEffect(() => { dispatch(setPageTitle('Building')); }, [dispatch]);
 
@@ -86,7 +90,7 @@ const BuildingListPage: React.FC = () => {
   const fetchBuildings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await FetchBuildingList(page, limit, debouncedSearch, sortKey, sortDir);
+      const res = await FetchBuildingList(page, limit, debouncedSearch, sortKey, sortDir, showDisabled);
       if (res.success) {
         setAllBuildings(res.rows ?? []);
         setTotal(res.total ?? 0);
@@ -99,12 +103,13 @@ const BuildingListPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch, sortKey, sortDir]);
+  }, [page, limit, debouncedSearch, sortKey, sortDir, showDisabled]);
 
   useEffect(() => { fetchBuildings(); }, [fetchBuildings]);
-  // A search narrowing the result set out from under an already-deep page
-  // number would otherwise land on an empty or out-of-range page.
-  useEffect(() => { setPage(1); }, [debouncedSearch]);
+  // A search (or toggling which buildings are even in the result set)
+  // narrowing things out from under an already-deep page number would
+  // otherwise land on an empty or out-of-range page.
+  useEffect(() => { setPage(1); }, [debouncedSearch, showDisabled]);
 
   const toggleSort = (key: BuildingSortKey) => {
     if (key === sortKey) {
@@ -116,19 +121,23 @@ const BuildingListPage: React.FC = () => {
   };
 
   // ── disable / enable (replaces the old hard-sounding Delete) ───────────
-  // A disabled building is never removed — it keeps appearing in this list
-  // (greyed out below) rather than disappearing, and its data stays intact.
-  const handleToggleActive = async (building: Building) => {
+  // A disabled building is never removed from the database, it's just
+  // filtered out of this list by default (see FetchBuildingList's
+  // includeDisabled) — the "Show Disabled" toggle is the only way back to
+  // one, e.g. to re-enable it.
+  const handleToggleActive = async (building: Building, force = false) => {
     const disabling = building.is_active;
-    const result = await showAlert.confirm(
-      disabling
-        ? `Are you sure you want to disable "${building.building_name}"? It will be greyed out but not removed.`
-        : `Are you sure you want to enable "${building.building_name}"?`,
-      disabling ? 'Disable Building?' : 'Enable Building?'
-    );
-    if (!result.isConfirmed) return;
+    if (!force) {
+      const result = await showAlert.confirm(
+        disabling
+          ? `Are you sure you want to disable "${building.building_name}"? It will be hidden from this list but not removed.`
+          : `Are you sure you want to enable "${building.building_name}"?`,
+        disabling ? 'Disable Building?' : 'Enable Building?'
+      );
+      if (!result.isConfirmed) return;
+    }
     try {
-      const res = disabling ? await DisableBuilding(building.id) : await EnableBuilding(building.id);
+      const res = disabling ? await DisableBuilding(building.id, force) : await EnableBuilding(building.id);
       if (res.success) {
         toast.success(disabling ? 'Building Disabled Successfully' : 'Building Enabled Successfully', { autoClose: 1000 });
         fetchBuildings();
@@ -136,14 +145,16 @@ const BuildingListPage: React.FC = () => {
         toast.error(res.message || 'Failed to update building status');
       }
     } catch (e) {
-      // Backend blocks disabling a building that still has customers booked
-      // into one of its flats/shops, throwing a 409 with the exact affected
-      // count — surfaced here via SweetAlert (same pattern used elsewhere
-      // for a duplicate-entry 409) instead of the generic toast fallback.
+      // Backend warns rather than blocks when the building still has
+      // customers booked into one of its flats/shops, throwing a 409 with
+      // the exact affected count — surfaced here as a Yes/No confirm (not
+      // the generic toast fallback), and a "Yes" retries with force=true to
+      // disable anyway.
       const status = (e as { response?: { status?: number; data?: { message?: string } } })?.response?.status;
       const message = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
       if (status === 409 && message) {
-        showAlert.error(message);
+        const proceed = await showAlert.confirm(message, 'Customers Associated With This Building');
+        if (proceed.isConfirmed) await handleToggleActive(building, true);
       } else {
         toast.error('Failed to update building status. Please try again.');
       }
@@ -254,6 +265,24 @@ const BuildingListPage: React.FC = () => {
         </div>
 
         <div className="master-actions">
+          {/* Disabled buildings are hidden from the list by default (see
+              FetchBuildingList's includeDisabled) — this is the only way
+              back to one, e.g. to re-enable it. Gated the same as the
+              Disable/Enable action itself (Admin/Superadmin only). */}
+          {canToggleActive && (
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: t.textPrimary, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              title="Show buildings that have been disabled"
+            >
+              <input
+                type="checkbox"
+                checked={showDisabled}
+                onChange={(e) => setShowDisabled(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              Show Disabled
+            </label>
+          )}
           <button onClick={() => navigate('/admin/masters/building/add')} className="master-btn-primary">
             <MdAdd size={18} /> Add Building
           </button>
@@ -323,8 +352,9 @@ const BuildingListPage: React.FC = () => {
                 </tr>
               ) : (
                 pageRows.map((b, idx) => {
-                  // Disabled buildings stay in the list (never removed) but
-                  // render greyed-out, per the Disable-replaces-Delete rule.
+                  // Disabled buildings only ever appear here when "Show
+                  // Disabled" is on (see fetchBuildings) — rendered greyed
+                  // out rather than looking like any other active row.
                   const isDisabled = !b.is_active;
                   const rowBg = isDisabled ? (isDark ? '#1c1c1c' : '#f1f1f1') : (idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg);
                   const rowTextColor = isDisabled ? (isDark ? '#6b7280' : '#9ca3af') : undefined;
