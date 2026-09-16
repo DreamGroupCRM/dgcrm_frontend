@@ -90,27 +90,27 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
     >
       <div
         className="building-2d-modal-card rounded-2xl w-full flex flex-col"
-        style={{ maxWidth: 1180, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, fontFamily: t.fontFamily }}
+        style={{ maxWidth: 1000, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, fontFamily: t.fontFamily }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Header — a single compact row: Heading left, building switcher
-            centered, Cancel icon right (no Back button anywhere in this
-            popup — X, Escape, or backdrop-click are the only ways to leave).
-            The color legend used to live stacked under the X here; it now
-            lives inside the picture frame itself (where the building name
-            used to sit) — see the canvas below. ─────────────────────────── */}
+        {/* ── Header — a single compact row: Heading left, building switcher +
+            color legend as one grouped unit (this group sits centered as a
+            whole, which naturally leaves the switcher itself left-of-center
+            and the legend right-of-center), Cancel icon right (no Back
+            button anywhere in this popup — X, Escape, or backdrop-click are
+            the only ways to leave). ─────────────────────────────────────── */}
         <div className="building-2d-modal-header grid items-center gap-3" style={{ padding: '12px 20px', borderBottom: `1px solid ${t.divider}` }}>
           <h2 style={{ fontSize: 18, fontWeight: 800, color: t.textPrimary, margin: 0, lineHeight: 1.3, wordBreak: 'break-word', minWidth: 0 }}>
             {selectedBuildingName ? `${selectedBuildingName} 2D View` : 'Building 2D View'}
           </h2>
 
-          <div className="flex justify-center">
+          <div className="flex items-center justify-center" style={{ gap: 28, flexWrap: 'wrap' }}>
             <select
               value={selectedBuildingId}
               onChange={(e) => setSelectedBuildingId(e.target.value)}
               disabled={loadingBuildings}
               style={{
-                padding: '9px 14px', borderRadius: 9, fontSize: 13, minWidth: 280, textAlign: 'center',
+                padding: '9px 14px', borderRadius: 9, fontSize: 13, minWidth: 260, textAlign: 'center',
                 background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, cursor: 'pointer',
               }}
             >
@@ -119,6 +119,15 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
                 <option key={b.id} value={b.id}>{b.building_name} ({b.project_name})</option>
               ))}
             </select>
+
+            <div className="flex items-center" style={{ gap: 18 }}>
+              {(['blocked', 'available', 'booked'] as UnitStatus[]).map((s) => (
+                <span key={s} className="flex items-center gap-1.5" style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 3, background: STATUS_COLOR[s], display: 'inline-block', flexShrink: 0 }} />
+                  {STATUS_TEXT[s]}
+                </span>
+              ))}
+            </div>
           </div>
 
           <div className="flex justify-end">
@@ -153,19 +162,6 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
                   padding: '28px 36px', color: t.textPrimary,
                 }}
               >
-                {/* Color legend — where the building name used to sit, per
-                    explicit design spec (the name already shows in the
-                    header above). Horizontal, red/green/yellow, evenly
-                    spaced like tab stops. */}
-                <div className="flex items-center justify-center" style={{ gap: 40, marginBottom: 20 }}>
-                  {(['blocked', 'available', 'booked'] as UnitStatus[]).map((s) => (
-                    <span key={s} className="flex items-center gap-1.5" style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                      <span style={{ width: 13, height: 13, borderRadius: 4, background: STATUS_COLOR[s], display: 'inline-block', flexShrink: 0 }} />
-                      {STATUS_TEXT[s]}
-                    </span>
-                  ))}
-                </div>
-
                 <div className="flex items-end justify-center" style={{ gap: 56 }}>
                   {wings.map((w) => (
                     <WingColumn
