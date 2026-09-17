@@ -41,6 +41,18 @@ export const authService = {
   },
 
   /**
+   * "Didn't get the code?" — POST /api/auth/resend-otp with { otpToken }.
+   * Reissues a code for the login attempt already proved by otpToken (no
+   * email/password re-entry) and returns a FRESH otpToken, so the
+   * 10-minute window restarts along with the code. Rate-limited per
+   * account: too soon and the backend answers 429 with how long to wait.
+   */
+  resendOtp: async (otpToken: string): Promise<LoginOtpResponse> => {
+    const response = await axiosInstance.post('/auth/resend-otp', { otpToken });
+    return response.data as LoginOtpResponse;
+  },
+
+  /**
    * Step 3 (first login only) — POST /api/auth/set-new-password with
    * { resetToken, new_password }. Consumes the resetToken from verify-otp
    * and returns a real session, so the user isn't asked to log in again.

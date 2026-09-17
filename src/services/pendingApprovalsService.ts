@@ -11,7 +11,11 @@ import axiosInstance from './axiosConfig';
 
 export type PendingApprovalEntityType =
   | 'performaInvoice' | 'channelSalesDar' | 'supplier' | 'bookingLetter'
-  | 'toCollect' | 'toPay' | 'product' | 'gstInvoice' | 'channelPartner' | 'lead';
+  | 'toCollect' | 'toPay' | 'product' | 'gstInvoice' | 'channelPartner' | 'lead'
+  // V_23.0 — employee deletion now goes through this same review queue:
+  // a non-admin's Delete becomes a request, and the employee stays fully
+  // active until an admin approves it here.
+  | 'employee';
 
 export interface PendingApprovalRow {
   entity_type: PendingApprovalEntityType;

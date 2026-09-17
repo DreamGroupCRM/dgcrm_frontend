@@ -169,6 +169,11 @@ export interface EmployeeSingleResponse {
 export interface EmployeeDeleteResponse {
   success : boolean;
   message?: string;
+  // true when the caller isn't an admin: nothing was deleted, a request
+  // was filed on the Pending Admin Approval queue instead and the
+  // employee stays fully active until an admin decides. See the backend's
+  // employees.service.ts deleteEmployee.
+  pending?: boolean;
 }
 
 // Plain (non-file) fields collected by the CRUD form.

@@ -39,6 +39,7 @@ const MODULE_LABEL: Record<PendingApprovalEntityType, string> = {
   gstInvoice: 'GST Invoice',
   channelPartner: 'Channel Partner',
   lead: 'Lead',
+  employee: 'Employee',
 };
 
 const rowKey = (r: PendingApprovalRow) => `${r.entity_type}:${r.id}`;

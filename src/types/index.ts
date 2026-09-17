@@ -315,15 +315,20 @@ export interface RoleResponse {
   message?: string;
 }
 
+// base_role must be one of the three application roles the backend
+// accepts (admin | employee | customer — see CreateRoleSchema's
+// APPLICATION_BASE_ROLES). description is optional and nullable.
 export interface CreateRolePayload {
   name: string;
   base_role: string;
+  description?: string | null;
   is_active: boolean;
 }
 
 export interface UpdateRolePayload {
   name: string;
   base_role: string;
+  description?: string | null;
   is_active: boolean;
 }
 

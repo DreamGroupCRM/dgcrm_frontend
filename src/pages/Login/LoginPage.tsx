@@ -18,7 +18,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { loginThunk, verifyOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
+import { loginThunk, verifyOtpThunk, resendOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
 import { clearError, resetLoginFlow } from '../../redux/slices/authSlice';
 import { ROUTES } from '../../constants';
 import { showAlert, homeRouteForRole } from '../../utils';
@@ -28,7 +28,13 @@ import Logo from '../../components/ui/Logo';
 // (not dimmed) so the artwork itself, including its own illustrated login
 // box, reads clearly; the real login card is centered on top of it so it
 // lands on that same illustrated box regardless of viewport size.
-import loginBgImage from '../../assets/images/login_circuit_panel.jpg';
+// Vector, not a photo: the previous JPEG was a 79 KB circuit-board panel
+// that had nothing to do with housing and went visibly soft the moment the
+// browser scaled it past its native size (it is stretched with object-fit:
+// cover across every viewport). An SVG is resolution-independent, so it
+// stays crisp on a 4K monitor and on a phone alike, at under 10 KB and
+// with no decode cost worth measuring. See the file itself for the scene.
+import loginBgImage from '../../assets/images/login_community_skyline.svg';
 
 import {
   TextField,
@@ -65,6 +71,11 @@ const validatePassword = (pwd: string): string => {
   if (!/[0-9]/.test(pwd)) return 'Password must contain at least one number.';
   return '';
 };
+
+// Matches the backend's own OTP_RESEND_COOLDOWN_SECONDS, so the Resend
+// button is simply unavailable during the window rather than firing a
+// request the server will answer with 429.
+const RESEND_COOLDOWN_SECONDS = 30;
 
 /** Returns the FIRST failing rule for the OTP, or '' if valid */
 const validateOtp = (otp: string): string => {
@@ -126,6 +137,14 @@ const LoginPage: React.FC = () => {
   const [otpError, setOtpError] = useState('');
   const [otpTouched, setOtpTouched] = useState(false);
   const [justRequestedOtp, setJustRequestedOtp] = useState(false);
+  // "Didn't get the code?" — its own busy flag and countdown, kept out of
+  // the shared `loading` so the code boxes and Verify button stay usable
+  // while a resend is in flight (the previous code is still valid until
+  // the new one lands). RESEND_COOLDOWN_SECONDS matches the backend's own
+  // per-account limit, so the button is simply unavailable rather than
+  // earning a 429.
+  const [resending, setResending] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
 
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordError, setNewPasswordError] = useState('');
@@ -169,6 +188,39 @@ const LoginPage: React.FC = () => {
       return () => clearTimeout(focusTimer);
     }
   }, [step]);
+
+  // ── Resend cooldown tick. Starts whenever a code is issued (arriving on
+  //    the OTP step, or a successful resend) and counts down to zero. ──
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = window.setTimeout(() => setResendIn((n) => n - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendIn]);
+
+  useEffect(() => {
+    if (step === 'otp') setResendIn(RESEND_COOLDOWN_SECONDS);
+  }, [step]);
+
+  const handleResendOtp = useCallback(async () => {
+    if (!otpToken || resending || resendIn > 0) return;
+    setResending(true);
+    try {
+      const result = await dispatch(resendOtpThunk(otpToken));
+      if (resendOtpThunk.fulfilled.match(result)) {
+        // Clear the boxes: the code they hold (if any) is the old one.
+        setOtpDigits(Array(6).fill(''));
+        setOtpError('');
+        setOtpTouched(false);
+        setResendIn(RESEND_COOLDOWN_SECONDS);
+        otpInputRefs.current[0]?.focus();
+        showAlert.success(result.payload.message || 'A new code has been sent to your email', 'Code resent');
+      } else {
+        showAlert.warning((result.payload as string) || 'Could not resend the code. Please try again.', 'Resend failed');
+      }
+    } finally {
+      setResending(false);
+    }
+  }, [otpToken, resending, resendIn, dispatch]);
 
   // ── OTP box handlers (6-box PIN-style input) ──
   const handleOtpDigitChange = (index: number, rawValue: string) => {
@@ -392,8 +444,18 @@ const LoginPage: React.FC = () => {
   return (
     <div className="login-page-container">
 
+      {/* Decorative only — the page's meaning lives in the card, so this is
+          hidden from assistive tech. fetchPriority high because it is the
+          first thing painted behind the form. */}
       <div className="login-background">
-        <img src={loginBgImage} alt="" aria-hidden="true" className="login-bg-image" style={{ opacity: 1 }} />
+        <img
+          src={loginBgImage}
+          alt=""
+          aria-hidden="true"
+          className="login-bg-image"
+          decoding="async"
+          fetchPriority="high"
+        />
       </div>
 
       {/* Centered, standalone login card — no carousel/side panel. Tagline +
@@ -403,16 +465,16 @@ const LoginPage: React.FC = () => {
         <div
           className="login-card animate-fade-in"
           style={{
-            // Darker glass than before — the new background photo is a
-            // bright glowing panel, so a near-transparent card (the old
-            // rgba(255,255,255,0.08)) let it wash the fields out. This
-            // keeps the photo at full opacity while still giving the form
-            // a readable dark panel to sit on, echoing the photo's own
-            // dark login-box + cyan glow.
-            background: 'rgba(3,12,24,0.72)',
+            // Glass tuned to the dusk-skyline background: the scene already
+            // carries its own readability wash (see the SVG's vignette), so
+            // the card no longer has to fight a bright photo. Slightly
+            // lighter than before, with a warm amber edge picked from the
+            // horizon glow rather than the old cyan, so the form reads as
+            // part of the scene instead of pasted onto it.
+            background: 'rgba(6,13,34,0.66)',
             backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(125,211,252,0.35)',
-            boxShadow: '0 0 45px rgba(56,189,248,0.25), 0 25px 50px rgba(0,0,0,0.55)',
+            border: '1px solid rgba(255,214,164,0.28)',
+            boxShadow: '0 0 45px rgba(255,190,130,0.14), 0 25px 50px rgba(0,0,0,0.55)',
           }}
         >
             {/* ── Tagline + Logo + Title + Hindi slogan (real image) ── */}
@@ -600,6 +662,19 @@ const LoginPage: React.FC = () => {
                     'Verify & Sign In'
                   )}
                 </button>
+
+                <div className="flex items-center justify-center gap-1.5 text-xs text-white/50 pt-1">
+                  <span>Didn&rsquo;t get the code?</span>
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={resending || resendIn > 0}
+                    className="font-semibold text-white/80 hover:text-white disabled:text-white/40
+                      disabled:cursor-not-allowed underline underline-offset-2"
+                  >
+                    {resending ? 'Sending...' : resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+                  </button>
+                </div>
 
                 <button
                   type="button"

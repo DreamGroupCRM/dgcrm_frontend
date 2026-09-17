@@ -29,6 +29,7 @@ import { phoneNumberError } from '../../../../utils/phoneValidation';
 import { aadhaarError, panError, sanitizeDigits, sanitizeAlphanumericUpper } from '../../../../utils/fieldValidation';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { AccordionSection } from '../../../../components/common/Accordion';
+import { useCanChangeEmail, EMAIL_ADMIN_ONLY_MESSAGE } from '../../../../utils/emailPermission';
 import './EmployeeDetails.css';
 
 // Employee Status badge colors for View mode — same palette as
@@ -486,6 +487,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const navigate = useNavigate();
   const { isDark, t, accent, cssVars: appearanceCssVars } = useAppearanceTokens();
   const isView = mode === 'view';
+
+  // An employee's email is their login credential, so only an Admin may
+  // change it — on an existing record. On Add there is nothing to protect
+  // yet (the account is being created here), and the route is already
+  // admin-only. The server enforces the same rule; see
+  // utils/emailPermission.ts.
+  const canEditEmail = useCanChangeEmail();
+  const emailLocked = !isView && mode !== 'add' && !canEditEmail;
 
   const [fetching, setFetching] = useState(mode !== 'add');
 
@@ -1219,8 +1228,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* Row 2 of 4 — Contact */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <Field t={t} label="Email" required error={errorFor('email')} fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
-            <input type="email" placeholder="Enter email address" value={form.email} readOnly={isView} disabled={isView}
-              onChange={(e) => set('email', e.target.value)} className={fieldClass} />
+            <input type="email" placeholder="Enter email address" value={form.email}
+              readOnly={isView || emailLocked} disabled={isView || emailLocked}
+              title={emailLocked ? EMAIL_ADMIN_ONLY_MESSAGE : undefined}
+              onChange={(e) => set('email', e.target.value)}
+              className={emailLocked && !isView ? `${fieldClass} emp-field-view` : fieldClass} />
+            {emailLocked && (
+              <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 4 }}>{EMAIL_ADMIN_ONLY_MESSAGE}</div>
+            )}
           </Field>
           <Field t={t} label="Mobile Number" required error={errorFor('mobile_number')} fieldRef={setFieldRef('mobile_number') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView} code={form.mobile_country_code} onCodeChange={(v) => set('mobile_country_code', v)}

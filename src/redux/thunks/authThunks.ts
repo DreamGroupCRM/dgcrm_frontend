@@ -32,6 +32,27 @@ export const loginThunk = createAsyncThunk(
  * Step 2 of login — verifies the OTP emailed in step 1. Resolves to either a
  * real session, or (first login only) a resetToken forcing a password reset.
  */
+/**
+ * Reissues the login OTP for the attempt already in progress. Resolves to
+ * the same shape as loginThunk (a fresh otpToken + message), so the slice
+ * can reuse the identical reducer.
+ */
+export const resendOtpThunk = createAsyncThunk(
+  'auth/resendOtp',
+  async (otpToken: string, { rejectWithValue }) => {
+    try {
+      const response = await authService.resendOtp(otpToken);
+      if (!response.success) {
+        return rejectWithValue(response.message || 'Could not resend the code');
+      }
+      return response;
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      return rejectWithValue(err.response?.data?.message || 'Could not resend the code');
+    }
+  }
+);
+
 export const verifyOtpThunk = createAsyncThunk(
   'auth/verifyOtp',
   async (credentials: VerifyOtpCredentials, { rejectWithValue }) => {

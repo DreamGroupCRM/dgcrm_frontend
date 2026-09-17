@@ -229,6 +229,11 @@ const RowActionMenu: React.FC<{
 
 const EmployeeDetailsListPage: React.FC = () => {
   const dispatch = useAppDispatch();
+  // Admins delete straight away; everyone else's Delete files a request on
+  // the Pending Admin Approval queue (the backend decides either way —
+  // this only picks the right wording up front).
+  const actorRole = useAppSelector((s) => s.auth.role);
+  const canDeleteImmediately = actorRole === 'admin' || actorRole === 'superadmin';
   const navigate = useNavigate();
   const { isDark, t, accent } = useAppearanceTokens();
 
@@ -323,19 +328,31 @@ const EmployeeDetailsListPage: React.FC = () => {
     return arr;
   };
 
+  // Deleting an employee is only immediate for an admin. For anyone else
+  // the backend files a request on the Pending Admin Approval queue and
+  // leaves the employee completely untouched until an admin approves or
+  // rejects it — so the confirmation and the result message both have to
+  // say which of the two is about to happen, rather than promising a
+  // permanent delete the caller may not be able to perform.
   const handleDelete = async (emp: Employee) => {
     setOpenMenuId(null);
     const result = await showAlert.confirm(
-      `This will permanently delete ${emp.first_name} ${emp.last_name}'s record.`,
-      'Delete Employee?'
+      canDeleteImmediately
+        ? `This will permanently delete ${emp.first_name} ${emp.last_name}'s record.`
+        : `This sends a request to delete ${emp.first_name} ${emp.last_name}. They stay active until an admin approves it.`,
+      canDeleteImmediately ? 'Delete Employee?' : 'Request Deletion?'
     );
     if (!result.isConfirmed) return;
     try {
-      await DeleteEmployee(emp.id);
-      toast.success('Employee deleted successfully.');
+      const res = await DeleteEmployee(emp.id);
+      toast.success(
+        res.pending
+          ? 'Delete request sent for admin approval.'
+          : 'Employee deleted successfully.'
+      );
       fetchEmployees();
-    } catch {
-      toast.error('Failed to delete employee.');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to delete employee.');
     }
   };
 

@@ -121,7 +121,14 @@ const UserManagementPage: React.FC = () => {
 
   const handleDelete = async (row: UserManagementRow) => {
     const result = await showAlert.confirm(
-      `This will delete the login account for ${row.first_name} ${row.last_name || ''}. Their Employee/Customer record (if any) is not affected.`,
+      // Deleting a login account now also removes the linked Employee, so
+      // User Management and Employee Details stop disagreeing about
+      // whether that person still exists. A linked Customer is still left
+      // alone — for customers, is_active IS the delete flag, so cascading
+      // would erase them from the CRM rather than just revoke a login.
+      row.linked_employee_name
+        ? `This will delete the login account for ${row.first_name} ${row.last_name || ''} and remove ${row.linked_employee_name} from Employee Details.`
+        : `This will delete the login account for ${row.first_name} ${row.last_name || ''}. Their Customer record (if any) is not affected.`,
       'Delete User?'
     );
     if (!result.isConfirmed) return;
@@ -271,6 +278,22 @@ const UserManagementPage: React.FC = () => {
               ) : (
                 rows.map((row) => {
                   const isSelf = currentUser?.id === row.id;
+                  // The Super Admin account is protected: it is created by
+                  // the backend and the whole authorization model leans on
+                  // it (requireSuperAdmin), so it is not an ordinary row to
+                  // be edited, disabled or deleted here — not even by
+                  // another Super Admin. The server enforces this too
+                  // (userManagement.service.ts's guardTarget); this is the
+                  // matching UI so the action never looks available.
+                  const isProtectedSuperAdmin = row.base_role === 'superadmin';
+                  // Edit joins Disable/Delete in being blocked for your own
+                  // account: changing your own email from this screen is
+                  // exactly the lockout the protection exists to prevent.
+                  // Your own name/email stay editable via Profile.
+                  const locked = isSelf || isProtectedSuperAdmin;
+                  const lockReason = isProtectedSuperAdmin
+                    ? 'The Super Admin account is protected'
+                    : 'Not available for your own account';
                   const linkedTo = row.linked_employee_name ? `${row.linked_employee_name} (Employee)`
                     : row.linked_customer_name ? `${row.linked_customer_name} (Customer)` : '—';
                   return (
@@ -296,21 +319,29 @@ const UserManagementPage: React.FC = () => {
                       <td style={{ padding: '12px 14px' }}>
                         <div className="um-row-actions flex items-center gap-2">
                           {row.base_role === 'admin' && (
-                            <button type="button" title="Edit admin details" onClick={() => openEditModal(row)} className="master-icon-btn">
+                            <button type="button" title={locked ? lockReason : 'Edit admin details'}
+                              onClick={() => !locked && openEditModal(row)} disabled={locked}
+                              className="master-icon-btn" style={{ opacity: locked ? 0.4 : 1, cursor: locked ? 'not-allowed' : 'pointer' }}>
                               <MdEdit size={15} />
                             </button>
                           )}
-                          <button type="button" title={isSelf ? "You can't disable your own account" : row.is_active ? 'Disable' : 'Enable'}
-                            onClick={() => !isSelf && handleToggleActive(row)} disabled={isSelf || busyId === row.id}
-                            className="master-icon-btn" style={{ opacity: isSelf ? 0.4 : 1, cursor: isSelf ? 'not-allowed' : 'pointer', color: row.is_active ? '#dc2626' : '#16a34a' }}>
+                          <button type="button" title={locked ? lockReason : row.is_active ? 'Disable' : 'Enable'}
+                            onClick={() => !locked && handleToggleActive(row)} disabled={locked || busyId === row.id}
+                            className="master-icon-btn" style={{ opacity: locked ? 0.4 : 1, cursor: locked ? 'not-allowed' : 'pointer', color: row.is_active ? '#dc2626' : '#16a34a' }}>
                             {row.is_active ? <MdCancel size={15} /> : <MdCheckCircle size={15} />}
                           </button>
-                          <button type="button" title="Set new password" onClick={() => { setPwTarget(row); setNewPassword(''); }} className="master-icon-btn">
+                          {/* Set-password stays available for your own
+                              account (that's a normal thing to do) but not
+                              for the protected Super Admin. */}
+                          <button type="button" title={isProtectedSuperAdmin && !isSelf ? lockReason : 'Set new password'}
+                            onClick={() => { if (!(isProtectedSuperAdmin && !isSelf)) { setPwTarget(row); setNewPassword(''); } }}
+                            disabled={isProtectedSuperAdmin && !isSelf}
+                            className="master-icon-btn" style={{ opacity: isProtectedSuperAdmin && !isSelf ? 0.4 : 1, cursor: isProtectedSuperAdmin && !isSelf ? 'not-allowed' : 'pointer' }}>
                             <MdKey size={15} />
                           </button>
-                          <button type="button" title={isSelf ? "You can't delete your own account" : 'Delete'}
-                            onClick={() => !isSelf && handleDelete(row)} disabled={isSelf || busyId === row.id}
-                            className="master-icon-btn" style={{ opacity: isSelf ? 0.4 : 1, cursor: isSelf ? 'not-allowed' : 'pointer', color: '#dc2626' }}>
+                          <button type="button" title={locked ? lockReason : 'Delete'}
+                            onClick={() => !locked && handleDelete(row)} disabled={locked || busyId === row.id}
+                            className="master-icon-btn" style={{ opacity: locked ? 0.4 : 1, cursor: locked ? 'not-allowed' : 'pointer', color: '#dc2626' }}>
                             <MdDelete size={15} />
                           </button>
                         </div>

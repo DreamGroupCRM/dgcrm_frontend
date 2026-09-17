@@ -4,7 +4,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { User, BaseRole, Permissions } from '../../types';
 import { STORAGE_KEYS } from '../../constants';
-import { loginThunk, logoutThunk, verifyOtpThunk, setNewPasswordThunk } from '../thunks/authThunks';
+import { loginThunk, logoutThunk, verifyOtpThunk, resendOtpThunk, setNewPasswordThunk } from '../thunks/authThunks';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -106,6 +106,19 @@ const authSlice = createSlice({
     });
     builder.addCase(loginThunk.rejected, (state, action) => {
       state.loading = false;
+      state.error = action.payload as string;
+    });
+
+    // ── Resend OTP — same payload shape as step 1, so it simply replaces
+    //    the otpToken/message. Deliberately does NOT touch `loading`: the
+    //    OTP boxes and Verify button must stay usable while a resend is in
+    //    flight (the previous code is still valid until the new one is
+    //    stored), and the Resend button tracks its own busy state.
+    builder.addCase(resendOtpThunk.fulfilled, (state, action) => {
+      state.otpToken = action.payload.otpToken;
+      state.otpMessage = action.payload.message || 'A new one-time code has been sent to your email';
+    });
+    builder.addCase(resendOtpThunk.rejected, (state, action) => {
       state.error = action.payload as string;
     });
 

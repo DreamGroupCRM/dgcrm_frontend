@@ -34,6 +34,7 @@ import { PhoneInput } from '../../../../components/common/PhoneInput';
 import { phoneNumberError } from '../../../../utils/phoneValidation';
 import { aadhaarError, panError, sanitizeDigits, sanitizeAlphanumericUpper } from '../../../../utils/fieldValidation';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
+import { useCanChangeEmail, EMAIL_ADMIN_ONLY_MESSAGE } from '../../../../utils/emailPermission';
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './CustomerDetails.css';
 
@@ -588,6 +589,13 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const routerLocation = useLocation();
   const { isDark, t, cssVars: appearanceCssVars } = useAppearanceTokens();
   const isView = mode === 'view';
+
+  // A customer's email is their portal login credential, so only an Admin
+  // may change it on an existing record. Same rule (and same message) as
+  // the Employee form; the server enforces it independently — see
+  // utils/emailPermission.ts.
+  const canEditEmail = useCanChangeEmail();
+  const emailLocked = !isView && mode !== 'add' && !canEditEmail;
 
   const [fetching, setFetching] = useState(mode !== 'add');
   const [saving, setSaving] = useState(false);
@@ -1351,8 +1359,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => setLastName(e.target.value)} className={fieldClass} />
           </Field>
           <Field t={t} label="Email ID" required error={errorFor('email')} fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
-            <input type="email" placeholder="Enter email address" value={email} readOnly={isView} disabled={isView}
-              onChange={(e) => setEmail(e.target.value)} className={fieldClass} />
+            <input type="email" placeholder="Enter email address" value={email}
+              readOnly={isView || emailLocked} disabled={isView || emailLocked}
+              title={emailLocked ? EMAIL_ADMIN_ONLY_MESSAGE : undefined}
+              onChange={(e) => setEmail(e.target.value)}
+              className={emailLocked && !isView ? `${fieldClass} cust-field-view` : fieldClass} />
+            {emailLocked && (
+              <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 4 }}>{EMAIL_ADMIN_ONLY_MESSAGE}</div>
+            )}
           </Field>
           <Field t={t} label="Customer Photo" required error={errorFor('customerPhoto')} fieldRef={setFieldRef('customerPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} accept="image/*" value={customerPhoto} onChange={setCustomerPhoto} />

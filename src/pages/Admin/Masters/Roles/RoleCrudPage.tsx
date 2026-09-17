@@ -13,6 +13,7 @@ import {
   useMediaQuery,
   Chip,
   Divider,
+  MenuItem,
 } from '@mui/material';
 import { FiArrowLeft, FiSave, FiEdit2 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
@@ -22,6 +23,25 @@ import {
   updateRole,
 } from '../../../../services/roleService';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
+
+// The three application roles the backend accepts (CreateRoleSchema's
+// APPLICATION_BASE_ROLES). `base_role` is what every authorization check
+// in the app actually reads, so a Role Master row has to map onto one of
+// them — a role created with anything else silently behaves like an
+// employee. This form used to hardcode 'employee' for every role it
+// created or updated, with no way to pick, which is why an Admin or
+// Customer role could never be made here.
+//
+// Super Admin is deliberately absent: it is a protected, backend-created
+// account, not a fourth assignable application role.
+const BASE_ROLE_OPTIONS = [
+  { value: 'admin', label: 'Admin', hint: 'full access, including Masters' },
+  { value: 'employee', label: 'Employee', hint: 'access limited to assigned modules' },
+  { value: 'customer', label: 'Customer', hint: 'customer portal only' },
+];
+
+const baseRoleLabel = (value: string) =>
+  BASE_ROLE_OPTIONS.find((o) => o.value === value)?.label || value || '—';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Props
@@ -45,11 +65,21 @@ interface FieldProps {
   textPrim: string;
   textSec: string;
   id?: string;
+  // Not every field on this form is mandatory any more (Description
+  // isn't), so the red asterisk is opt-out rather than unconditional.
+  required?: boolean;
+  // Renders a dropdown instead of a text box. Used by Role Type, which
+  // must be one of the three application roles and never free text.
+  options?: { value: string; label: string; hint?: string }[];
+  // Read-only mode shows the option's label, not its raw stored value.
+  displayValue?: string;
+  helper?: string;
 }
 
 const Field: React.FC<FieldProps> = ({
   label, value, onChange, onBlur, error,
-  readOnly, isDark, borderC, textPrim, id,
+  readOnly, isDark, borderC, textPrim, textSec, id,
+  required = true, options, displayValue, helper,
 }) => (
   // component="div" pins MUI Box's polymorphic `component` prop explicitly
   // (it already renders a div by default — this changes no behavior).
@@ -66,7 +96,7 @@ const Field: React.FC<FieldProps> = ({
       }}
     >
       {label}
-      {!readOnly && <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>}
+      {!readOnly && required && <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>}
     </Typography>
 
     {readOnly ? (
@@ -79,16 +109,17 @@ const Field: React.FC<FieldProps> = ({
           fontWeight: 500, minHeight: 44,
         }}
       >
-        {value || '—'}
+        {displayValue ?? value ?? '—'}
       </Box>
     ) : (
       <TextField
         fullWidth size="small" value={value}
+        select={Boolean(options)}
         onChange={(e) => onChange?.(e.target.value)}
         onBlur={onBlur}
         error={!!error}
-        helperText={error}
-        placeholder={`Enter ${label}`}
+        helperText={error || helper}
+        placeholder={options ? undefined : `Enter ${label}`}
         sx={{
           '& .MuiOutlinedInput-root': {
             background: isDark ? '#0f172a' : '#fff',
@@ -97,10 +128,17 @@ const Field: React.FC<FieldProps> = ({
             '&:hover fieldset': { borderColor: error ? '#ef4444' : '#3b82f6' },
             '&.Mui-focused fieldset': { borderColor: error ? '#ef4444' : '#3b82f6' },
           },
-          '& .MuiFormHelperText-root': { color: '#ef4444', fontSize: '0.82rem', mt: 0.5, ml: 0 },
+          '& .MuiFormHelperText-root': { color: error ? '#ef4444' : textSec, fontSize: '0.82rem', mt: 0.5, ml: 0 },
           '& input': { color: textPrim },
+          '& .MuiSelect-select': { color: textPrim },
         }}
-      />
+      >
+        {options?.map((opt) => (
+          <MenuItem key={opt.value} value={opt.value}>
+            {opt.label}{opt.hint ? ` — ${opt.hint}` : ''}
+          </MenuItem>
+        ))}
+      </TextField>
     )}
   </Box>
 );
@@ -124,6 +162,8 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
   // ── state ──────────────────────────────────────────────────────────────
   const [name, setName]           = useState('');
   const [nameError, setNameError] = useState('');
+  const [baseRole, setBaseRole]   = useState('employee');
+  const [description, setDescription] = useState('');
   const [isActive, setIsActive]   = useState(true);
   const [fetching, setFetching]   = useState(false);
   const [saving, setSaving]       = useState(false);
@@ -141,6 +181,12 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
     try {
       const res = await fetchRoleById(id!);
       setName(res.data.name || '');
+      // These two were fetched and then thrown away — the form only ever
+      // rendered Name, so opening an existing role showed none of its
+      // actual configuration and saving silently reset base_role to
+      // 'employee'.
+      setBaseRole(res.data.base_role || 'employee');
+      setDescription(res.data.description || '');
       setIsActive(res.data.is_active ?? true);
     } catch (err: any) {
       console.error('[RoleCrudPage] loadRole error:', err);
@@ -172,10 +218,20 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
     setSaving(true);
     try {
       if (mode === 'add') {
-        await createRole({ name: name.trim(), base_role: 'employee', is_active: true });
+        await createRole({
+          name: name.trim(),
+          base_role: baseRole,
+          description: description.trim() || null,
+          is_active: true,
+        });
         toast.success('Role Created Successfully', { autoClose: 1000 });
       } else if (mode === 'edit') {
-        await updateRole(id!, { name: name.trim(), base_role: 'employee', is_active: isActive });
+        await updateRole(id!, {
+          name: name.trim(),
+          base_role: baseRole,
+          description: description.trim() || null,
+          is_active: isActive,
+        });
         toast.success('Role Updated Successfully', { autoClose: 1000 });
       }
       navigate('/admin/masters/roles');
@@ -290,6 +346,34 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
             onChange={(v) => { setName(v); if (nameError) setNameError(''); }}
             onBlur={validateName}
             error={nameError}
+            readOnly={mode === 'view'}
+            isDark={isDark}
+            borderC={borderC}
+            textPrim={textPrim}
+            textSec={textSec}
+          />
+
+          <Field
+            id="role-base-role-field"
+            label="Role Type"
+            value={baseRole}
+            displayValue={baseRoleLabel(baseRole)}
+            options={BASE_ROLE_OPTIONS}
+            onChange={setBaseRole}
+            helper="Decides what this role can reach across the app."
+            readOnly={mode === 'view'}
+            isDark={isDark}
+            borderC={borderC}
+            textPrim={textPrim}
+            textSec={textSec}
+          />
+
+          <Field
+            id="role-description-field"
+            label="Description"
+            value={description}
+            onChange={setDescription}
+            required={false}
             readOnly={mode === 'view'}
             isDark={isDark}
             borderC={borderC}

@@ -29,21 +29,24 @@
   background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d97706' fill-opacity='.35'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4z'/%3E%3C/g%3E%3C/svg%3E");
 }
 
-/* ── Login page background: a circuit-board/login-panel graphic, shown at
-   full opacity/clarity (the artwork is the page's visual centerpiece, not
-   a dimmed texture) — object-position:center keeps its own illustrated
-   login box centered under our real .login-card at any viewport size.
-   (ResetPasswordPage/CustomerLoginPage still use the dimmed 0.5 look via
-   their own inline style — this rule is LoginPage.tsx's own now that it
-   sets opacity inline instead of relying on this shared default.) ─────── */
+/* ── Login page background: a residential-community skyline at dusk
+   (login_community_skyline.svg), shown at full opacity — the artwork
+   carries its own readability wash so the form stays legible without the
+   stylesheet dimming it a second time, and being vector it stays sharp at
+   any viewport or pixel density.
+
+   object-position bottom, not center: the scene's interest (skyline,
+   street, trees) lives along its lower edge, so as `cover` crops a wide
+   viewport it's the empty upper sky that goes, never the buildings.
+   LoginPage.tsx is this class's only consumer. ───────────────────────── */
 .login-bg-image {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
-  opacity: 0.5;
+  object-position: center bottom;
+  opacity: 1;
 }
 
 .login-tagline-en {

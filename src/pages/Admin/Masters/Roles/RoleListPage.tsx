@@ -22,7 +22,17 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 // other columns in the table (matches Company/Department/Building/Bank).
 const ACTION_COL_WIDTH = 96;
 
-type SortKey = 'id' | 'name' | 'created_at' | 'updated_at';
+type SortKey = 'id' | 'name' | 'base_role' | 'created_at' | 'updated_at';
+
+// Same three application roles the Role Master form offers (and the only
+// values the backend's CreateRoleSchema accepts) — mapped to their display
+// labels so the list reads "Employee", not the raw stored slug.
+const BASE_ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  employee: 'Employee',
+  customer: 'Customer',
+};
+const baseRoleLabel = (value: string) => BASE_ROLE_LABELS[value] || value || '—';
 
 const RoleListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -60,7 +70,12 @@ const RoleListPage: React.FC = () => {
   // ── instant client-side filter on every keypress — zero API calls ───────
   useEffect(() => {
     const q = search.trim().toLowerCase();
-    setFiltered(q ? allRoles.filter((r) => r.name.toLowerCase().includes(q)) : allRoles);
+    setFiltered(q
+      ? allRoles.filter((r) =>
+          r.name.toLowerCase().includes(q)
+          || (r.base_role || '').toLowerCase().includes(q)
+          || (r.description || '').toLowerCase().includes(q))
+      : allRoles);
     setPage(1);
   }, [search, allRoles]);
 
@@ -71,6 +86,7 @@ const RoleListPage: React.FC = () => {
     switch (key) {
       case 'id': return Number(r.id);
       case 'name': return r.name?.toLowerCase() || '';
+      case 'base_role': return r.base_role?.toLowerCase() || '';
       case 'created_at': return r.created_at || '';
       case 'updated_at': return r.updated_at || '';
     }
@@ -92,18 +108,23 @@ const RoleListPage: React.FC = () => {
       } else {
         toast.error(res.message || 'Failed to Delete');
       }
-    } catch {
-      toast.error('Failed to delete role. Please try again.');
+    } catch (err: any) {
+      // A role still assigned to users is refused with a 409 naming the
+      // count — that message is the whole point, so show it rather than a
+      // generic failure the user can't act on.
+      toast.error(err?.response?.data?.message || 'Failed to delete role. Please try again.');
     }
   };
 
   // ── export CSV ───────────────────────────────────────────────────────────
   const exportCSV = () => {
     if (sorted.length === 0) { toast.info('No data to Export'); return; }
-    const headers = ['ID', 'Role Name', 'Status', 'Created At', 'Updated At'];
+    const headers = ['ID', 'Role Name', 'Role Type', 'Description', 'Status', 'Created At', 'Updated At'];
     const rows    = sorted.map((r) => [
       r.id,
       `"${r.name}"`,
+      `"${baseRoleLabel(r.base_role)}"`,
+      `"${(r.description || '').replace(/"/g, '""')}"`,
       r.is_active ? 'Active' : 'Inactive',
       formatDate(r.created_at),
       formatDate(r.updated_at),
@@ -164,7 +185,7 @@ const RoleListPage: React.FC = () => {
       {/* ── Table card ───────────────────────────────────────────────────── */}
       <div className="master-table-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="master-table-scroll">
-          <table className="master-table" style={{ minWidth: 650 }}>
+          <table className="master-table" style={{ minWidth: 880 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <th className="master-table-actions-th master-table-header-gradient" style={{
@@ -174,6 +195,8 @@ const RoleListPage: React.FC = () => {
                 }}>Actions</th>
                 <SortableTh label="ID" active={sortKey === 'id'} dir={sortDir} onClick={() => toggleSort('id')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Role Name" active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <SortableTh label="Role Type" active={sortKey === 'base_role'} dir={sortDir} onClick={() => toggleSort('base_role')} style={{ borderBottom: `1px solid ${t.divider}` }} />
+                <th style={{ borderBottom: `1px solid ${t.divider}` }}>Description</th>
                 <th style={{ borderBottom: `1px solid ${t.divider}` }}>Status</th>
                 <SortableTh label="Created At" active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} style={{ borderBottom: `1px solid ${t.divider}` }} />
                 <SortableTh label="Updated At" active={sortKey === 'updated_at'} dir={sortDir} onClick={() => toggleSort('updated_at')} style={{ borderBottom: `1px solid ${t.divider}` }} />
@@ -182,9 +205,9 @@ const RoleListPage: React.FC = () => {
 
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48 }}>Loading...</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 48 }}>Loading...</td></tr>
               ) : pageRows.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48 }}>
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 48 }}>
                   {search ? 'No roles match your search.' : 'No roles found.'}
                 </td></tr>
               ) : (
@@ -212,6 +235,10 @@ const RoleListPage: React.FC = () => {
                           <MdSecurity size={16} className="master-row-icon" />
                           {role.name}
                         </div>
+                      </td>
+                      <td>{baseRoleLabel(role.base_role)}</td>
+                      <td style={{ color: role.description ? undefined : t.textSecondary }}>
+                        {role.description || '—'}
                       </td>
                       <td>{statusBadge(role.is_active)}</td>
                       <td>{formatDate(role.created_at)}</td>
