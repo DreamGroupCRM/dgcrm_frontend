@@ -23,17 +23,23 @@ import { AppTheme } from '../../../styles/theme';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { CircularProgress } from '@mui/material';
 import {
-  MdLogout, MdApartment, MdCall, MdEmail, MdHome, MdCalendarToday, MdCheckCircle,
-  MdErrorOutline, MdSchedule, MdDescription, MdCreditCard, MdBadge,
+  MdLogout, MdApartment, MdCalendarToday, MdCheckCircle, MdClose, MdReceiptLong,
+  MdErrorOutline, MdSchedule, MdDescription, MdCreditCard, MdBadge, MdOpenInNew,
+  MdHistory, MdPerson, MdPhone, MdMailOutline,
 } from 'react-icons/md';
 import Logo from '../../../components/ui/Logo';
 import StatCard from '../../../components/masters/StatCard';
-import { formatDate } from '../../../utils';
+import { formatDate, resolveFileUrl } from '../../../utils';
+import { AccordionSection } from '../../../components/common/Accordion';
+import { PaymentReceiptViewModal } from '../../../components/common/PaymentReceiptViewModal';
+import { PaymentReceipt } from '../../../types/index';
 import { paymentForLabel } from '../../../services/paymentService';
 import {
   fetchMyBookings, fetchMyBookingDetail, fetchMyBookingPayments, fetchMyBookingDueGrid,
+  fetchMyPaymentReceipt,
   PortalBookingSummary, PortalBookingDetail, PortalPaymentRow, PortalDueGrid,
 } from '../../../services/customerPortalService';
+import { toast } from 'react-toastify';
 import './CustomerDashboard.css';
 
 type Theme = AppTheme;
@@ -62,6 +68,91 @@ const ApprovalPill: React.FC<{ approved: boolean }> = ({ approved }) => (
     {approved ? <MdCheckCircle size={13} /> : <MdSchedule size={13} />} {approved ? 'Approved' : 'Pending Approval'}
   </span>
 );
+
+// ── Document preview popup ────────────────────────────────────────────
+// Documents used to be plain <a target="_blank"> links pointing at the
+// RAW stored path (e.g. "/files/customers/abc.jpg"). On the customer
+// portal — served from the frontend origin, not the API origin — that
+// path resolves against the wrong host, so clicking a document opened a
+// blank tab or a 404 rather than the file. Two fixes, both here:
+// resolveFileUrl() puts the API origin back on a root-relative path (the
+// same helper every staff-side document card already uses), and the file
+// now opens in this in-page preview instead of a new tab.
+const DocumentPreviewModal: React.FC<{
+  t: Theme; label: string; url: string; onClose: () => void;
+}> = ({ t, label, url, onClose }) => {
+  // An image renders inline; anything else (PDF, docx) goes in an <iframe>,
+  // which browsers render natively for PDFs and offer to download
+  // otherwise. Either way there is an "Open in new tab" escape hatch.
+  const isImage = /\.(jpe?g|png|gif|webp|bmp|svg)(\?|$)/i.test(url);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
+      <div className="rounded-2xl w-full flex flex-col" style={{ maxWidth: 820, maxHeight: '90vh', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="flex items-center justify-between gap-3 px-5 py-3" style={{ borderBottom: `1px solid ${t.divider}` }}>
+          <h3 style={{ fontSize: 14.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>{label}</h3>
+          <div className="flex items-center gap-2">
+            <a href={url} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+              style={{ background: t.insetBg, color: t.hoverText, border: `1px solid ${t.surfaceBorder}`, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+              <MdOpenInNew size={14} /> Open in new tab
+            </a>
+            <button type="button" onClick={onClose} aria-label="Close"
+              className="flex items-center justify-center rounded-lg"
+              style={{ width: 30, height: 30, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer' }}>
+              <MdClose size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center" style={{ background: t.insetBg, overflow: 'auto', minHeight: 320 }}>
+          {isImage
+            ? <img src={url} alt={label} style={{ maxWidth: '100%', maxHeight: '72vh', objectFit: 'contain' }} />
+            : <iframe title={label} src={url} style={{ width: '100%', height: '72vh', border: 'none', background: '#fff' }} />}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── One document tile ─────────────────────────────────────────────────
+const DocumentTile: React.FC<{
+  t: Theme; label: string; url: string | null; onOpen: (label: string, url: string) => void;
+}> = ({ t, label, url, onOpen }) => {
+  const resolved = resolveFileUrl(url);
+  const isImage = !!resolved && /\.(jpe?g|png|gif|webp|bmp|svg)(\?|$)/i.test(resolved);
+  const disabled = !resolved;
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => resolved && onOpen(label, resolved)}
+      className="rounded-xl overflow-hidden text-left"
+      style={{
+        width: 168, border: `1px solid ${t.surfaceBorder}`, background: t.insetBg,
+        cursor: disabled ? 'default' : 'pointer', padding: 0,
+      }}
+    >
+      <div className="w-full flex items-center justify-center overflow-hidden"
+        style={{ height: 104, background: isImage ? t.insetBg : disabled ? t.insetBg : 'var(--brand-gradient)' }}>
+        {isImage
+          ? <img src={resolved} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <MdDescription size={32} color={disabled ? t.textMuted : '#fff'} />}
+      </div>
+      <div className="px-3 py-2">
+        <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary }}>{label}</div>
+        <div style={{ fontSize: 10.5, color: disabled ? t.textMuted : t.hoverText, fontWeight: 600 }}>
+          {disabled ? 'Not uploaded' : 'Tap to view'}
+        </div>
+      </div>
+    </button>
+  );
+};
 
 const Section: React.FC<{ t: Theme; title: string; icon: React.ElementType; children: React.ReactNode }> = ({ t, title, icon: Icon, children }) => (
   <div style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 20, marginBottom: 18 }}>
@@ -98,6 +189,19 @@ const CustomerDashboard: React.FC = () => {
   const [dueGrid, setDueGrid] = useState<PortalDueGrid | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
+  // Which document is open in the preview popup, and which transaction's
+  // receipt is open. Both null when nothing is showing.
+  const [docPreview, setDocPreview] = useState<{ label: string; url: string } | null>(null);
+  const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
+  const [receiptLoadingId, setReceiptLoadingId] = useState<number | null>(null);
+
+  // Payment Schedule and Payment History are now collapsible, so a
+  // customer with a long EMI schedule can fold it away and get to their
+  // history without scrolling past forty rows. Both start open — that is
+  // the state they were effectively in before.
+  const [openSchedule, setOpenSchedule] = useState(true);
+  const [openHistory, setOpenHistory] = useState(true);
+
   useEffect(() => {
     (async () => {
       try {
@@ -132,6 +236,23 @@ const CustomerDashboard: React.FC = () => {
       }
     })();
   }, [selectedId]);
+
+  // Receipts are only issued for approved payments (the same rule staff
+  // see) — an unapproved row's button says so instead of failing silently.
+  const openReceipt = async (p: PortalPaymentRow) => {
+    if (!p.is_approved) {
+      toast.info('This payment is still awaiting approval — its receipt will be available once approved.');
+      return;
+    }
+    setReceiptLoadingId(p.id);
+    try {
+      setReceipt(await fetchMyPaymentReceipt(p.id));
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Could not load this receipt. Please try again.');
+    } finally {
+      setReceiptLoadingId(null);
+    }
+  };
 
   const handleLogout = async () => {
     await dispatch(logoutThunk());
@@ -172,6 +293,11 @@ const CustomerDashboard: React.FC = () => {
   );
 
   const firstName = profile?.first_name || '';
+  // Every document the booking can carry, uploaded or not. The old
+  // .filter(d => d.url) meant a customer whose Aadhar/PAN/forms hadn't
+  // been uploaded yet saw NO Documents section at all and no way to tell
+  // whether that was a bug or simply nothing on file — each tile now says
+  // which it is.
   const documents = detail
     ? [
         { label: 'Aadhar Card', url: detail.aadhar_card },
@@ -179,8 +305,17 @@ const CustomerDashboard: React.FC = () => {
         { label: 'Application Form', url: detail.application_form },
         { label: 'Declaration Form', url: detail.declaration_form },
         { label: 'Allotment Letter', url: detail.allotment_letter },
-      ].filter((d) => d.url)
+      ]
     : [];
+
+  // A shop booking carries no wing/floor/flat (the two sides are mutually
+  // exclusive), so the property fields have to branch rather than render
+  // an empty flat row.
+  const isShop = detail?.unit_type === 'shop' || (detail?.shop_id != null);
+  const unitNo = isShop ? detail?.shop?.shop_no : detail?.flat?.flat_number;
+  const unitArea = isShop ? detail?.shop?.area_sqft : detail?.flat?.area_sqft;
+  const photoUrl = resolveFileUrl(detail?.customer_image);
+  const fullName = [detail?.name, detail?.middle_name, detail?.last_name].filter(Boolean).join(' ');
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: t.subtleBg, fontFamily: t.fontFamily }}>
@@ -218,7 +353,10 @@ const CustomerDashboard: React.FC = () => {
             <div className="flex gap-2 flex-wrap" style={{ marginBottom: 18 }}>
               {bookings.map((b) => {
                 const active = b.id === selectedId;
-                const label = [b.building_name, b.wing_name, b.flat_no ? `Flat ${b.flat_no}` : null].filter(Boolean).join(' • ') || b.customer_code;
+                const label = (b.unit_type === 'shop'
+                  ? [b.building_name, b.shop_no ? `Shop ${b.shop_no}` : null]
+                  : [b.building_name, b.wing_name, b.flat_no ? `Flat ${b.flat_no}` : null]
+                ).filter(Boolean).join(' • ') || b.customer_code;
                 return (
                   <button
                     key={b.id}
@@ -243,6 +381,38 @@ const CustomerDashboard: React.FC = () => {
             <div className="flex items-center justify-center" style={{ padding: 60 }}><CircularProgress size={26} sx={{ color: 'var(--brand-gradient)' }} /></div>
           ) : (
             <>
+              {/* Who you are — photo, name, customer code and the contact
+                  details on file. This used to be absent entirely: the
+                  portal opened straight into payment figures, and a
+                  customer's own photo and mobile number were only visible
+                  buried inside the Personal Details grid below. */}
+              <div className="cd-profile-card flex items-center gap-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 18, marginBottom: 18 }}>
+                <div className="flex items-center justify-center rounded-full overflow-hidden flex-shrink-0"
+                  style={{ width: 76, height: 76, background: t.insetBg, border: `2px solid ${t.surfaceBorder}` }}>
+                  {photoUrl
+                    ? <img src={photoUrl} alt={fullName || 'Customer photo'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <MdPerson size={38} color={t.textMuted} />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div style={{ fontSize: 17, fontWeight: 800, color: t.textPrimary, lineHeight: 1.25 }}>
+                    {fullName || '—'}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: t.textMuted, fontWeight: 600, marginTop: 1 }}>
+                    Customer ID · {detail.customer_code}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1" style={{ marginTop: 7 }}>
+                    <span className="flex items-center gap-1.5" style={{ fontSize: 12.5, color: t.textSecondary, fontWeight: 500 }}>
+                      <MdPhone size={14} />
+                      {detail.mobile_number ? `${detail.mobile_country_code || ''} ${detail.mobile_number}`.trim() : '—'}
+                    </span>
+                    <span className="flex items-center gap-1.5 min-w-0" style={{ fontSize: 12.5, color: t.textSecondary, fontWeight: 500 }}>
+                      <MdMailOutline size={14} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{detail.email || '—'}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Payment summary — Total Amount / Total Paid / Total Due, the
                   headline numbers a customer needs to understand where they
                   stand at a glance. */}
@@ -253,14 +423,20 @@ const CustomerDashboard: React.FC = () => {
               </div>
 
               {/* Booking overview */}
-              <Section t={t} title="Booking Overview" icon={MdApartment}>
+              <Section t={t} title={isShop ? 'Shop Booking' : 'Flat Booking'} icon={MdApartment}>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <Field t={t} label="Customer Code" value={detail.customer_code} />
-                  <Field t={t} label="Building" value={detail.building?.name} />
-                  <Field t={t} label="Wing" value={detail.wing?.name} />
-                  <Field t={t} label="Flat No" value={detail.flat?.flat_number} />
-                  <Field t={t} label="Floor" value={detail.flat?.floor?.name} />
                   <Field t={t} label="Company" value={detail.company_name} />
+                  <Field t={t} label="Building" value={detail.building?.name} />
+                  {/* Wing and Floor only exist on the flat side — a shop is
+                      a ground-level unit with neither. */}
+                  {!isShop && <Field t={t} label="Wing" value={detail.wing?.name} />}
+                  {!isShop && <Field t={t} label="Floor" value={detail.flat?.floor?.name} />}
+                  <Field t={t} label={isShop ? 'Shop No' : 'Flat No'} value={unitNo} />
+                  {/* Area and type were never shown at all, which is what
+                      "flat details area etc" was asking for. */}
+                  <Field t={t} label={isShop ? 'Unit Type' : 'Flat Type'} value={isShop ? 'Shop' : detail.flat?.flat_type} />
+                  <Field t={t} label="Area" value={unitArea != null ? `${unitArea} Sqft` : null} />
+                  <Field t={t} label="Parking No" value={detail.parking_no} />
                   <Field t={t} label="Possession" value={detail.possession_granted ? <span style={{ color: '#16a34a' }}>Granted</span> : <span style={{ color: '#ea580c' }}>Pending</span>} />
                 </div>
               </Section>
@@ -268,7 +444,7 @@ const CustomerDashboard: React.FC = () => {
               {/* Personal details */}
               <Section t={t} title="Personal Details" icon={MdBadge}>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <Field t={t} label="Full Name" value={[detail.name, detail.middle_name, detail.last_name].filter(Boolean).join(' ')} />
+                  <Field t={t} label="Full Name" value={fullName} />
                   <Field t={t} label="Mobile" value={detail.mobile_number ? `${detail.mobile_country_code || ''} ${detail.mobile_number}` : null} />
                   <Field t={t} label="WhatsApp" value={detail.whatsapp_number ? `${detail.whatsapp_country_code || ''} ${detail.whatsapp_number}` : null} />
                   <Field t={t} label="Alternate Number" value={detail.alternate_number} />
@@ -281,29 +457,34 @@ const CustomerDashboard: React.FC = () => {
                 </div>
               </Section>
 
-              {/* Documents */}
-              {documents.length > 0 && (
-                <Section t={t} title="Documents" icon={MdDescription}>
-                  <div className="flex flex-wrap gap-3">
-                    {documents.map((d) => (
-                      <a
-                        key={d.label}
-                        href={d.url!}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold"
-                        style={{ background: t.insetBg, color: t.hoverText, border: `1px solid ${t.surfaceBorder}`, textDecoration: 'none' }}
-                      >
-                        <MdCreditCard size={15} /> {d.label}
-                      </a>
-                    ))}
-                  </div>
-                </Section>
-              )}
+              {/* Documents — each opens in the in-page preview above rather
+                  than a new tab against an unresolved path. */}
+              <Section t={t} title="My Documents" icon={MdDescription}>
+                <div className="flex flex-wrap gap-3">
+                  {documents.map((d) => (
+                    <DocumentTile
+                      key={d.label} t={t} label={d.label} url={d.url}
+                      onOpen={(label, url) => setDocPreview({ label, url })}
+                    />
+                  ))}
+                </div>
+                {documents.every((d) => !d.url) && (
+                  <p style={{ fontSize: 12.5, color: t.textMuted, marginTop: 12 }}>
+                    None of your documents have been uploaded yet. Contact your relationship manager if you expected to see them here.
+                  </p>
+                )}
+              </Section>
 
-              {/* Due grid — read-only, no Add Payment (that's staff-only) */}
-              <Section t={t} title="Payment Schedule" icon={MdCalendarToday}>
-                <p style={{ fontSize: 12, color: t.textMuted, marginTop: -8, marginBottom: 12 }}>
+              {/* Due grid — read-only, no Add Payment (that's staff-only).
+                  Collapsible: a 60-month EMI schedule is a lot to scroll
+                  past on a phone just to reach the history below. */}
+              <AccordionSection
+                theme={t} icon={<MdCalendarToday size={16} color="#fff" />}
+                title={`Payment Schedule (${(dueGrid?.rows ?? []).length})`}
+                gradient="var(--grad-green)"
+                open={openSchedule} onToggle={() => setOpenSchedule((o) => !o)}
+              >
+                <p style={{ fontSize: 12, color: t.textMuted, marginTop: 0, marginBottom: 12 }}>
                   {dueCounts.due} due now &middot; {dueCounts.upcoming} upcoming &middot; {dueCounts.paid} paid
                 </p>
                 <div className="overflow-x-auto">
@@ -343,10 +524,19 @@ const CustomerDashboard: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
-              </Section>
+              </AccordionSection>
 
-              {/* Payment history */}
-              <Section t={t} title="Payment History" icon={MdCall}>
+              {/* Payment history — every transaction on this booking, each
+                  with its own receipt. The list was already unfiltered
+                  server-side (findAllForCustomer returns all of them); what
+                  was missing was a way to actually open the receipt for a
+                  given row, which is what the Receipt button adds. */}
+              <AccordionSection
+                theme={t} icon={<MdHistory size={16} color="#fff" />}
+                title={`Payment History (${payments.length})`}
+                gradient="var(--grad-green)"
+                open={openHistory} onToggle={() => setOpenHistory((o) => !o)}
+              >
                 {payments.length === 0 ? (
                   <p style={{ fontSize: 13, color: t.textMuted, textAlign: 'center', padding: '20px 0' }}>No payments recorded yet.</p>
                 ) : (
@@ -354,7 +544,7 @@ const CustomerDashboard: React.FC = () => {
                     <table className="cd-table w-full" style={{ borderCollapse: 'collapse', minWidth: 720 }}>
                       <thead>
                         <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                          {['Receipt #', 'Payment For', 'Amount', 'Mode', 'Date', 'Status'].map((h) => (
+                          {['Receipt #', 'Payment For', 'Amount', 'Mode', 'Date', 'Status', 'Receipt'].map((h) => (
                             <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase' }}>{h}</th>
                           ))}
                         </tr>
@@ -368,16 +558,58 @@ const CustomerDashboard: React.FC = () => {
                             <td style={{ padding: '10px 12px', fontSize: 13, color: t.textSecondary }}>{p.mode_of_payment || '—'}</td>
                             <td style={{ padding: '10px 12px', fontSize: 13, color: t.textSecondary }}>{p.created_at ? formatDate(p.created_at) : '—'}</td>
                             <td style={{ padding: '10px 12px' }}><ApprovalPill approved={p.is_approved} /></td>
+                            <td style={{ padding: '10px 12px' }}>
+                              <button
+                                type="button"
+                                onClick={() => openReceipt(p)}
+                                disabled={receiptLoadingId === p.id}
+                                title={p.is_approved ? 'View receipt' : 'Available once this payment is approved'}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+                                style={{
+                                  background: p.is_approved ? 'var(--brand-gradient)' : t.insetBg,
+                                  color: p.is_approved ? '#fff' : t.textMuted,
+                                  border: p.is_approved ? 'none' : `1px solid ${t.surfaceBorder}`,
+                                  fontSize: 11.5, fontWeight: 700,
+                                  cursor: receiptLoadingId === p.id ? 'wait' : 'pointer',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                <MdReceiptLong size={14} />
+                                {receiptLoadingId === p.id ? 'Loading...' : 'Receipt'}
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 )}
-              </Section>
+              </AccordionSection>
             </>
           )}
         </div>
+      )}
+
+      {/* Document preview — in-page, so a tap on a document card shows the
+          file right here instead of opening a tab at an unresolved path. */}
+      {docPreview && (
+        <DocumentPreviewModal
+          t={t} label={docPreview.label} url={docPreview.url}
+          onClose={() => setDocPreview(null)}
+        />
+      )}
+
+      {/* Transaction receipt — the same component, and the same underlying
+          receipt data, staff see on Payment Received. Download simply opens
+          the browser's own print dialog: the jsPDF exporter used on the
+          staff side is part of the admin bundle, and pulling it into the
+          customer bundle for this one button is not worth the weight. */}
+      {receipt && (
+        <PaymentReceiptViewModal
+          data={receipt}
+          onClose={() => setReceipt(null)}
+          onDownload={() => window.print()}
+        />
       )}
     </div>
   );

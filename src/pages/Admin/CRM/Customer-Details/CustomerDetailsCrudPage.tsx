@@ -930,6 +930,17 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     { field: 'dateOfBirth', section: 'personal', message: 'Please select the Date of Birth.', failed: () => dateOfBirth === '' },
     { field: 'companyName', section: 'property', message: 'Please select the Company Name.', failed: () => companyName.trim() === '' },
     { field: 'projectName', section: 'property', message: 'Please select the Project Name.', failed: () => projectName.trim() === '' },
+    // The booked unit itself was never validated on this form — Building,
+    // Wing, Floor, Flat No and Shop No could all be left blank and the
+    // customer still saved, producing a booking attached to no property at
+    // all (and an empty Building Details column on the list). Each is now
+    // required, with the flat-side and shop-side checks gated on unitType
+    // so only the fields actually on screen can block the save.
+    { field: 'buildingName', section: 'property', message: 'Please select the Building Name.', failed: () => buildingName.trim() === '' },
+    { field: 'wingName', section: 'property', message: 'Please select the Wing.', failed: () => unitType === 'flat' && wingName.trim() === '' },
+    { field: 'floorLabel', section: 'property', message: 'Please select the Floor.', failed: () => unitType === 'flat' && floorLabel.trim() === '' },
+    { field: 'flatNo', section: 'property', message: 'Please select the Flat No.', failed: () => unitType === 'flat' && flatNo.trim() === '' },
+    { field: 'shopNo', section: 'property', message: 'Please select the Shop No.', failed: () => unitType === 'shop' && shopNo.trim() === '' },
     { field: 'parkingNo', section: 'property', message: 'Please enter the Parking No.', failed: () => wantsParking === 'yes' && parkingNo.trim() === '' },
     { field: 'totalCost', section: 'payment', message: 'Please enter the Total Cost.', failed: () => totalCost.trim() === '' },
     { field: 'bookingDate', section: 'payment', message: 'Please select the Booking Date.', failed: () => bookingDate === '' },
@@ -1468,8 +1479,21 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
         )}
 
-        {/* Row 1 of 2 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
+        {/* ONE 6-column grid, not two stacked grids. Split across two grids
+            (6 + 6) this section actually rendered THREE rows: row 1 held 7
+            fields for a flat booking in a building that also has shops
+            (Company, Project, Building, Location, Unit Type, Wing, Floor),
+            so the 7th wrapped onto a line of its own before row 2 even
+            began. Flowing every field through a single grid instead means
+            the browser packs them 6-per-row, and every combination fits in
+            exactly two rows:
+              flat  + shops in building : 12 fields -> 6 + 6
+              flat  + no shops          : 11 fields -> 6 + 5
+              shop                      :  9 fields -> 6 + 3
+            (one less each when Purchase Parking is "No" and Parking No is
+            hidden). Nothing here is position-dependent, so the fields keep
+            their existing order and behaviour. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <Field t={t} label="Company Name" required error={errorFor('companyName')} fieldRef={setFieldRef('companyName') as React.Ref<HTMLDivElement>}>
             <SearchableSelect t={t} placeholder="Select company" options={companyNameOptions} value={companyName} disabled={isView}
               onChange={setCompanyName} />
@@ -1478,7 +1502,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <SearchableSelect t={t} placeholder="Select project" options={projectNameOptions} value={projectName} disabled={isView}
               onChange={(v) => { setProjectName(v); setBuildingName(''); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
           </Field>
-          <Field t={t} label="Building Name">
+          <Field t={t} label="Building Name" required error={errorFor('buildingName')} fieldRef={setFieldRef('buildingName') as React.Ref<HTMLDivElement>}>
             <SearchableSelect t={t} placeholder="Select building" options={buildingNameOptions} value={buildingName} disabled={isView}
               onChange={(v) => { setBuildingName(v); setWingName(''); setFloorLabel(''); setFlatNo(''); setShopNo(''); }} />
           </Field>
@@ -1500,25 +1524,21 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           )}
           {unitType === 'flat' && (
             <>
-              <Field t={t} label="Wing">
+              <Field t={t} label="Wing" required error={errorFor('wingName')} fieldRef={setFieldRef('wingName') as React.Ref<HTMLDivElement>}>
                 <SearchableSelect
                   t={t} placeholder={loadingBuildingDetail ? 'Loading wings...' : 'Select wing'} options={wingNameOptions} value={wingName}
                   disabled={isView || !selectedBuilding || loadingBuildingDetail}
                   onChange={(v) => { setWingName(v); setFloorLabel(''); setFlatNo(''); }} />
               </Field>
-              <Field t={t} label="Floor">
+              <Field t={t} label="Floor" required error={errorFor('floorLabel')} fieldRef={setFieldRef('floorLabel') as React.Ref<HTMLDivElement>}>
                 <SearchableSelect t={t} placeholder="Select floor" options={floorLabelOptions} value={floorLabel} disabled={isView || !selectedWing}
                   onChange={(v) => { setFloorLabel(v); setFlatNo(''); }} />
               </Field>
             </>
           )}
-        </div>
-
-        {/* Row 2 of 2 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           {unitType === 'flat' ? (
             <>
-              <Field t={t} label="Flat No">
+              <Field t={t} label="Flat No" required error={errorFor('flatNo')} fieldRef={setFieldRef('flatNo') as React.Ref<HTMLDivElement>}>
                 <SearchableSelect
                   t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNo} disabled={isView || !selectedFloor}
                   onChange={setFlatNo}
@@ -1552,7 +1572,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             </>
           ) : (
             <>
-              <Field t={t} label="Shop No">
+              <Field t={t} label="Shop No" required error={errorFor('shopNo')} fieldRef={setFieldRef('shopNo') as React.Ref<HTMLDivElement>}>
                 <SearchableSelect
                   t={t} placeholder="Select shop number" options={shopNoOptions} value={shopNo} disabled={isView || !selectedBuilding}
                   onChange={setShopNo}

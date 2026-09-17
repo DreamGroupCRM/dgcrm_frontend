@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1600" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Abstract AI neural network on black">
+  <title>AI neural network — Dream Group CRM</title>
+  <desc>A luminous neural-network core on near-black, drawn as vector so it stays sharp at any size. The 1:1 viewBox with slice cropping keeps the core centred on both a wide desktop and a tall phone.</desc>
+  <defs>
+    <!-- Near-black ground with a faint cool lift toward the centre, so the
+         page never reads as a flat #000 rectangle. -->
+    <radialGradient id="ground" cx="0.5" cy="0.46" r="0.72">
+      <stop offset="0%"   stop-color="#0d1622"/>
+      <stop offset="45%"  stop-color="#070b12"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </radialGradient>
+
+    <!-- The core's glow. Cyan through to deep blue — a technology palette
+         that stays dark enough for white form text to sit over it. -->
+    <radialGradient id="coreGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%"   stop-color="#7fe7ff" stop-opacity="0.95"/>
+      <stop offset="22%"  stop-color="#35b8f0" stop-opacity="0.55"/>
+      <stop offset="55%"  stop-color="#1668c4" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#0b2b6b" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="coreBody" cx="0.42" cy="0.38" r="0.7">
+      <stop offset="0%"   stop-color="#d9f6ff"/>
+      <stop offset="40%"  stop-color="#5cc9f5"/>
+      <stop offset="100%" stop-color="#0e5fa8"/>
+    </radialGradient>
+
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#5cc9f5" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#1e5fd0" stop-opacity="0.15"/>
+    </linearGradient>
+
+    <!-- Circuit traces sitting behind the network, at low contrast. -->
+    <pattern id="circuit" width="200" height="200" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="#2bb3e8" stroke-opacity="0.20" stroke-width="1.5">
+        <path d="M0 40 H70 L96 66 H200"/>
+        <path d="M0 150 H44 L78 116 H142 L168 142 H200"/>
+        <path d="M40 0 V52 L66 78 V200"/>
+        <path d="M150 0 V88 L124 114 V200"/>
+      </g>
+      <g fill="#2bb3e8" fill-opacity="0.32">
+        <circle cx="70" cy="40" r="3"/><circle cx="96" cy="66" r="3"/>
+        <circle cx="44" cy="150" r="3"/><circle cx="142" cy="116" r="3"/>
+        <circle cx="66" cy="78" r="3"/><circle cx="124" cy="114" r="3"/>
+      </g>
+    </pattern>
+
+    <!-- Softens the traces away from the centre so they never compete with
+         the login card sitting on top. -->
+    <radialGradient id="circuitMask" cx="0.5" cy="0.5" r="0.62">
+      <stop offset="0%"   stop-color="#fff" stop-opacity="0.15"/>
+      <stop offset="52%"  stop-color="#fff" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0.1"/>
+    </radialGradient>
+    <mask id="circuitFade">
+      <rect width="1600" height="1600" fill="url(#circuitMask)"/>
+    </mask>
+
+    <!-- Readability wash: darkest exactly where the form sits. -->
+    <radialGradient id="wash" cx="0.5" cy="0.5" r="0.62">
+      <stop offset="0%"   stop-color="#000000" stop-opacity="0.45"/>
+      <stop offset="60%"  stop-color="#000000" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1600" height="1600" fill="url(#ground)"/>
+  <rect width="1600" height="1600" fill="url(#circuit)" mask="url(#circuitFade)"/>
+
+  <g transform="translate(800,800)">
+    <!-- Ambient halo -->
+    <circle r="640" fill="url(#coreGlow)" opacity="0.55"/>
+
+    <!-- Orbital rings, tilted to read as a sphere rather than flat circles -->
+    <g fill="none" stroke="url(#edge)" stroke-width="1.6">
+      <ellipse rx="520" ry="196" transform="rotate(-24)" opacity="0.75"/>
+      <ellipse rx="520" ry="196" transform="rotate(28)"  opacity="0.65"/>
+      <ellipse rx="430" ry="430" opacity="0.45"/>
+      <ellipse rx="300" ry="300" opacity="0.34"/>
+    </g>
+
+    <!-- Synapses: every node wired back to the core. Drawn before the nodes
+         so the dots sit on top of their own connections. -->
+    <g stroke="#4fc3f7" stroke-opacity="0.55" stroke-width="1.6" fill="none">
+      <path d="M0 0 L-486 -122"/><path d="M0 0 L-352 -338"/><path d="M0 0 L-118 -474"/>
+      <path d="M0 0 L168 -452"/><path d="M0 0 L392 -286"/><path d="M0 0 L498 -74"/>
+      <path d="M0 0 L462 176"/><path d="M0 0 L306 372"/><path d="M0 0 L86 486"/>
+      <path d="M0 0 L-176 448"/><path d="M0 0 L-402 274"/><path d="M0 0 L-506 44"/>
+      <path d="M0 0 L-262 -196"/><path d="M0 0 L214 -238"/><path d="M0 0 L268 148"/>
+      <path d="M0 0 L-148 268"/>
+      <!-- Node-to-node links, the part that makes it read as a network
+           rather than a starburst. -->
+      <path d="M-486 -122 L-352 -338"/><path d="M-352 -338 L-118 -474"/>
+      <path d="M-118 -474 L168 -452"/><path d="M168 -452 L392 -286"/>
+      <path d="M392 -286 L498 -74"/><path d="M498 -74 L462 176"/>
+      <path d="M462 176 L306 372"/><path d="M306 372 L86 486"/>
+      <path d="M86 486 L-176 448"/><path d="M-176 448 L-402 274"/>
+      <path d="M-402 274 L-506 44"/><path d="M-506 44 L-486 -122"/>
+      <path d="M-262 -196 L214 -238"/><path d="M214 -238 L268 148"/>
+      <path d="M268 148 L-148 268"/><path d="M-148 268 L-262 -196"/>
+    </g>
+
+    <!-- Outer nodes -->
+    <g fill="#8fe4ff">
+      <g opacity="0.9">
+        <circle cx="-486" cy="-122" r="7"/><circle cx="-352" cy="-338" r="5"/>
+        <circle cx="-118" cy="-474" r="8"/><circle cx="168"  cy="-452" r="5"/>
+        <circle cx="392"  cy="-286" r="7"/><circle cx="498"  cy="-74"  r="6"/>
+        <circle cx="462"  cy="176"  r="8"/><circle cx="306"  cy="372"  r="5"/>
+        <circle cx="86"   cy="486"  r="7"/><circle cx="-176" cy="448"  r="6"/>
+        <circle cx="-402" cy="274"  r="8"/><circle cx="-506" cy="44"   r="5"/>
+      </g>
+      <g opacity="0.75">
+        <circle cx="-262" cy="-196" r="5"/><circle cx="214" cy="-238" r="5"/>
+        <circle cx="268"  cy="148"  r="5"/><circle cx="-148" cy="268"  r="5"/>
+      </g>
+    </g>
+
+    <!-- Halo rings immediately around the core -->
+    <g fill="none" stroke="#7fe7ff">
+      <circle r="150" stroke-opacity="0.35" stroke-width="1.4"/>
+      <circle r="112" stroke-opacity="0.22" stroke-width="10"/>
+    </g>
+
+    <!-- The core itself -->
+    <circle r="250" fill="url(#coreGlow)"/>
+    <circle r="72"  fill="url(#coreBody)"/>
+    <circle r="30"  fill="#ffffff" opacity="0.92"/>
+  </g>
+
+  <!-- Data motes scattered through the field -->
+  <g fill="#8fe4ff">
+    <g opacity="0.5">
+      <circle cx="176"  cy="238"  r="2.4"/><circle cx="1432" cy="196"  r="2"/>
+      <circle cx="268"  cy="1348" r="2.6"/><circle cx="1364" cy="1420" r="2.2"/>
+      <circle cx="92"   cy="792"  r="2"/>  <circle cx="1522" cy="840"  r="2.4"/>
+      <circle cx="796"  cy="92"   r="2.2"/><circle cx="820"  cy="1516" r="2"/>
+    </g>
+    <g opacity="0.3">
+      <circle cx="430"  cy="150"  r="1.8"/><circle cx="1180" cy="318"  r="1.8"/>
+      <circle cx="366"  cy="1176" r="1.8"/><circle cx="1258" cy="1132" r="1.8"/>
+      <circle cx="620"  cy="1462" r="1.8"/><circle cx="1046" cy="140"  r="1.8"/>
+    </g>
+  </g>
+
+  <rect width="1600" height="1600" fill="url(#wash)"/>
+</svg>

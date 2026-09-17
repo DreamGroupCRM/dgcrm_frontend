@@ -8,7 +8,7 @@
 // checks), so no customer/user id is ever passed from here; axiosInstance
 // already attaches the bearer token.
 import axiosInstance from './axiosConfig';
-import { PaymentFor } from '../types/index';
+import { PaymentFor, PaymentReceipt } from '../types/index';
 import { DueGridRow } from './paymentService';
 
 export interface PortalBookingSummary {
@@ -21,6 +21,10 @@ export interface PortalBookingSummary {
   flat_amount: number;
   possession_granted: boolean;
   customer_image: string | null;
+  // Which kind of unit this booking is. A shop booking has no wing/flat at
+  // all, so the booking switcher has to label it by its shop number.
+  unit_type: 'flat' | 'shop';
+  shop_no: string | null;
 }
 
 export interface PortalBookingDetail {
@@ -39,7 +43,21 @@ export interface PortalBookingDetail {
   date_of_birth: string | null;
   building: { id: number; name: string } | null;
   wing: { id: number; name: string } | null;
-  flat: { id: number; flat_number: string; floor?: { id: number; name: string } | null } | null;
+  // flat_type/area_sqft ride along on the relation — they are what the
+  // portal's "Flat Type" and "Area" fields read, and they live on the Flat
+  // row, not on Customer.
+  flat: {
+    id: number; flat_number: string; flat_type?: string | null; area_sqft?: number | null;
+    floor?: { id: number; name: string } | null;
+  } | null;
+  // A shop booking is mutually exclusive with wing/flat above. unit_type
+  // is derived server-side from which of shop_id/flat_id is set — the
+  // Customer row has no such column of its own.
+  shop: { id: number; shop_no: string; area_sqft?: number | null } | null;
+  shop_id: number | null;
+  flat_id: number | null;
+  unit_type?: 'flat' | 'shop';
+  parking_no: string | null;
   customer_image: string | null;
   aadhar_card_no: string;
   pan_card_no: string | null;
@@ -96,6 +114,17 @@ export const fetchMyBookingDetail = async (id: string | number): Promise<PortalB
 export const fetchMyBookingPayments = async (id: string | number): Promise<PortalPaymentRow[]> => {
   const res = await axiosInstance.get(`/customer-portal/bookings/${id}/payments`);
   return res.data.rows ?? [];
+};
+
+/**
+ * GET /api/customer-portal/payments/:transactionId/receipt
+ * One transaction's receipt, in the same shape the staff-side receipt
+ * modal renders — ownership-scoped server-side to the caller's own
+ * transactions, and only available once the payment has been approved.
+ */
+export const fetchMyPaymentReceipt = async (transactionId: string | number): Promise<PaymentReceipt> => {
+  const res = await axiosInstance.get(`/customer-portal/payments/${transactionId}/receipt`);
+  return res.data.data;
 };
 
 /** GET /api/customer-portal/bookings/:id/due-grid */

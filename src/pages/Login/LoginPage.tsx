@@ -28,13 +28,15 @@ import Logo from '../../components/ui/Logo';
 // (not dimmed) so the artwork itself, including its own illustrated login
 // box, reads clearly; the real login card is centered on top of it so it
 // lands on that same illustrated box regardless of viewport size.
-// Vector, not a photo: the previous JPEG was a 79 KB circuit-board panel
-// that had nothing to do with housing and went visibly soft the moment the
-// browser scaled it past its native size (it is stretched with object-fit:
-// cover across every viewport). An SVG is resolution-independent, so it
-// stays crisp on a 4K monitor and on a phone alike, at under 10 KB and
-// with no decode cost worth measuring. See the file itself for the scene.
-import loginBgImage from '../../assets/images/login_community_skyline.svg';
+// Vector, not a raster photo. A generated JPEG/PNG would have to be picked
+// at one resolution and then stretched by object-fit: cover across every
+// viewport from a 4K monitor to a phone — which is exactly how the
+// original circuit-board JPEG ended up looking soft. This is drawn as SVG
+// instead, so it is pixel-exact at any size and density while staying
+// under 10 KB. Its viewBox is square with slice cropping, so the neural
+// core stays centred whether the viewport is wide (desktop) or tall
+// (mobile) — see the file itself.
+import loginBgImage from '../../assets/images/login_ai_tech_black.svg';
 
 import {
   TextField,
@@ -465,16 +467,16 @@ const LoginPage: React.FC = () => {
         <div
           className="login-card animate-fade-in"
           style={{
-            // Glass tuned to the dusk-skyline background: the scene already
-            // carries its own readability wash (see the SVG's vignette), so
-            // the card no longer has to fight a bright photo. Slightly
-            // lighter than before, with a warm amber edge picked from the
-            // horizon glow rather than the old cyan, so the form reads as
-            // part of the scene instead of pasted onto it.
-            background: 'rgba(6,13,34,0.66)',
+            // Glass tuned to the black AI background: near-black so it sits
+            // in the artwork rather than on it, with a cyan edge and glow
+            // picked straight out of the neural core behind it. The
+            // background carries its own readability wash (see the SVG's
+            // `wash` gradient), so the card only has to supply contrast for
+            // the fields themselves.
+            background: 'rgba(4,10,18,0.72)',
             backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,214,164,0.28)',
-            boxShadow: '0 0 45px rgba(255,190,130,0.14), 0 25px 50px rgba(0,0,0,0.55)',
+            border: '1px solid rgba(125,211,252,0.30)',
+            boxShadow: '0 0 45px rgba(56,189,248,0.18), 0 25px 50px rgba(0,0,0,0.65)',
           }}
         >
             {/* ── Tagline + Logo + Title + Hindi slogan (real image) ── */}

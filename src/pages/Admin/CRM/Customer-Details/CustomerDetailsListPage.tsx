@@ -244,6 +244,20 @@ const computeCustomerMenuPos = (rect: DOMRect): { top: number; left: number } =>
   return { top, left };
 };
 
+// One line describing whichever unit this customer actually booked. A shop
+// booking carries no wing/flat at all (the two sides are mutually
+// exclusive — see the Customer form's unitType), so the flat-only template
+// this used to inline rendered "Dream Vista, undefined Wing, undefined"
+// for every shop customer on the grid view. The table's own Building
+// Details cell already branched on unit_type; this gives the card the same
+// treatment from one place.
+const unitLabel = (c: Customer): string => {
+  if (!c.building_name) return '—';
+  return c.unit_type === 'shop'
+    ? `${c.building_name}, Shop ${c.shop_no || '—'}`
+    : `${c.building_name}, ${c.wing_name || '—'} Wing, ${c.flat_no || '—'}`;
+};
+
 const RowActionMenu: React.FC<{
   t: Theme; pos: { top: number; left: number };
   onView: () => void; onEdit: () => void; onDelete: () => void;
@@ -367,7 +381,7 @@ const CustomerCard: React.FC<{
         </div>
         <div className="flex items-center gap-1.5">
           <MdBadge size={14} className="flex-shrink-0" />
-          {c.building_name ? `${c.building_name}, ${c.wing_name} Wing, ${c.flat_no}` : '—'}
+          {unitLabel(c)}
         </div>
       </div>
 
@@ -943,7 +957,7 @@ const CustomerDetailsListPage: React.FC = () => {
       }
       const header = [
         'Employee Code', 'Employee Name', 'Customer Name', 'Mobile', 'Email', 'Company', 'Project', 'Building',
-        'Wing / Shop', 'Flat / Shop No', 'Flat Type / Area', 'Booking Date', 'Monthly EMI', 'Monthly Installment Date',
+        'Wing / Shop', 'Flat / Shop No', 'Unit Type / Area', 'Booking Date', 'Monthly EMI', 'Monthly Installment Date',
       ];
       const rows = exportRows.map((c) => [
         c.assigned_employee_code || '', c.assigned_employee_name || '', c.customer_name, c.mobile_number, c.email,
@@ -1175,7 +1189,7 @@ const CustomerDetailsListPage: React.FC = () => {
                   <input type="checkbox" title="Select all active customers on this page"
                     checked={activePageRows.length > 0 && activePageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
-                {['Action', 'Customer ID', 'Customer Name', 'Employee Name', 'Contact Details', 'Company / Project', 'Building Details', 'Flat Type / Area', 'Flat Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
+                {['Action', 'Customer ID', 'Customer Name', 'Employee Name', 'Contact Details', 'Company / Project', 'Building Details', 'Unit Type / Area', 'Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
                     {h}
                   </th>

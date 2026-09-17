@@ -29,3 +29,19 @@
   .cd-logout-btn-text { font-size: 12px !important; }
   .cd-stat-grid { gap: 6px !important; }
 }
+
+/* ── Profile card (photo + name + contact) ──────────────────────────────
+   On a phone the photo and the details stack and centre rather than
+   squeezing a 76px avatar and a full email onto one 320px line. The
+   contact row already wraps on its own (flex-wrap), so only the outer
+   direction needs flipping. */
+@media (max-width: 479px) {
+  .cd-profile-card {
+    flex-direction: column !important;
+    text-align: center;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+  .cd-profile-card > div:last-child { width: 100%; }
+  .cd-profile-card .flex-wrap { justify-content: center; }
+}
