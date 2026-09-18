@@ -4,6 +4,10 @@
 import axios from 'axios';
 import { STORAGE_KEYS } from '../constants';
 
+// Uploads carry files (up to 10 MB), so they get their own, much longer
+// budget than ordinary JSON calls — see the request interceptor below.
+const UPLOAD_TIMEOUT_MS = 120000;
+
 // Create axios instance
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
@@ -20,9 +24,14 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // Let the browser set the multipart boundary itself for file uploads
+    // Let the browser set the multipart boundary itself for file uploads,
+    // and give them room to finish: the 10s default above is fine for JSON
+    // but aborts a multi-megabyte document on a slow connection long
+    // before the server has it, which surfaces to the user as a mysterious
+    // failed save rather than "still uploading".
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
+      config.timeout = UPLOAD_TIMEOUT_MS;
     }
     return config;
   },

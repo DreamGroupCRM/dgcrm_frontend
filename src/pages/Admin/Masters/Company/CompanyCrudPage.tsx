@@ -18,6 +18,7 @@ import { PhoneInput } from '../../../../components/common/PhoneInput';
 import { phoneNumberError } from '../../../../utils/phoneValidation';
 import { pincodeError, panError, gstError, sanitizeDigits, sanitizeAlphanumericUpper } from '../../../../utils/fieldValidation';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
+import { IMAGE_ACCEPT, IMAGE_TYPE_LABELS, IMAGE_MAX_MB, validateFileSelection } from '../../../../constants/uploads';
 import { showAlert, resolveFileUrl } from '../../../../utils';
 import { companyService, CompanyPayload } from '../../../../services/companyService';
 import { Company } from '../../../../types';
@@ -208,7 +209,14 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
   };
 
   const handleFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLogoFile(e.target.files?.[0] ?? null);
+    const picked = e.target.files?.[0] ?? null;
+    if (!picked) { setLogoFile(null); return; }
+    // Immediate feedback on a wrong pick; the server re-validates by
+    // extension, mime and real magic bytes regardless. Clearing the input
+    // lets the same file be re-picked after a correction.
+    const problem = validateFileSelection(picked, IMAGE_ACCEPT, IMAGE_TYPE_LABELS, IMAGE_MAX_MB);
+    if (problem) { toast.error(problem); e.target.value = ''; return; }
+    setLogoFile(picked);
   };
 
 
@@ -559,7 +567,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT}
                   onChange={handleFilePick}
                   style={{ display: 'none' }}
                 />

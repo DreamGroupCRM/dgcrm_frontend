@@ -30,6 +30,10 @@ import { aadhaarError, panError, sanitizeDigits, sanitizeAlphanumericUpper } fro
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { AccordionSection } from '../../../../components/common/Accordion';
 import { useCanChangeEmail, EMAIL_ADMIN_ONLY_MESSAGE } from '../../../../utils/emailPermission';
+import {
+  DOCUMENT_ACCEPT, IMAGE_ACCEPT, DOCUMENT_TYPE_LABELS, IMAGE_TYPE_LABELS,
+  DOCUMENT_MAX_MB, IMAGE_MAX_MB, validateFileSelection,
+} from '../../../../constants/uploads';
 import './EmployeeDetails.css';
 
 // Employee Status badge colors for View mode — same palette as
@@ -189,9 +193,26 @@ const FileUploadBox: React.FC<{
           </div>
         </div>
       </button>
+      {/* Pre-checked here so a wrong pick is refused instantly rather than
+          after the whole file has been uploaded. The server re-validates
+          everything (extension, mime AND real magic bytes) regardless —
+          this only saves the round trip and gives an immediate message.
+          The input is cleared on rejection so re-picking the same file
+          still fires onChange. */}
       <input
         ref={inputRef} type="file" hidden accept={accept}
-        onChange={(e) => onChange(e.target.files?.[0] ?? null)}
+        onChange={(e) => {
+          const picked = e.target.files?.[0] ?? null;
+          if (!picked) { onChange(null); return; }
+          const isImageOnly = accept === IMAGE_ACCEPT;
+          const problem = validateFileSelection(
+            picked, accept,
+            isImageOnly ? IMAGE_TYPE_LABELS : DOCUMENT_TYPE_LABELS,
+            isImageOnly ? IMAGE_MAX_MB : DOCUMENT_MAX_MB
+          );
+          if (problem) { toast.error(problem); e.target.value = ''; return; }
+          onChange(picked);
+        }}
       />
     </Field>
   );
@@ -1253,7 +1274,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         {/* Row 3 of 4 — ID proofs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
+          <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept={DOCUMENT_ACCEPT} required
             file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={handleAadharCardChange}
             fieldRef={setFieldRef('aadhar_card') as React.Ref<HTMLDivElement>} />
           <Field t={t} label="Aadhar Number" required error={errorFor('aadhar_number')} fieldRef={setFieldRef('aadhar_number') as React.Ref<HTMLDivElement>}>
@@ -1261,7 +1282,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => set('aadhar_number', sanitizeDigits(e.target.value, 12))} className={fieldClass} />
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-gradient)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept=".jpg,.jpeg,.png,.pdf" required
+          <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept={DOCUMENT_ACCEPT} required
             file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={handlePanCardChange}
             fieldRef={setFieldRef('pan_card') as React.Ref<HTMLDivElement>} />
           <Field t={t} label="PAN Number" required error={errorFor('pan_number')} fieldRef={setFieldRef('pan_number') as React.Ref<HTMLDivElement>}>
@@ -1282,7 +1303,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => set('address', e.target.value)} className={fieldClass} style={{ resize: 'vertical' }}
             />
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload Profile Photo" hint="JPG, PNG (Max 2MB)" accept=".jpg,.jpeg,.png" required
+          <FileUploadBox t={t} isView={isView} label="Upload Profile Photo" hint="JPG, PNG (Max 2MB)" accept={IMAGE_ACCEPT} required
             file={files.profile_photo} existingUrl={existingUrls.profile_photo} onChange={setFile('profile_photo')}
             fieldRef={setFieldRef('profile_photo') as React.Ref<HTMLDivElement>} />
         </div>
@@ -1331,9 +1352,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               )}
             </div>
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Resume" hint="PDF, DOC, DOCX (Max 5MB)" accept=".pdf,.doc,.docx"
+          <FileUploadBox t={t} isView={isView} label="Resume" hint="PDF, DOC, DOCX (Max 5MB)" accept={DOCUMENT_ACCEPT}
             file={files.resume} existingUrl={existingUrls.resume} onChange={setFile('resume')} />
-          <FileUploadBox t={t} isView={isView} label="Appointment Letter" hint="PDF, DOC, DOCX (Max 5MB)" accept=".pdf,.doc,.docx"
+          <FileUploadBox t={t} isView={isView} label="Appointment Letter" hint="PDF, DOC, DOCX (Max 5MB)" accept={DOCUMENT_ACCEPT}
             file={files.appointment_letter} existingUrl={existingUrls.appointment_letter} onChange={setFile('appointment_letter')} />
           <Field t={t} label="Employee Status" required>
             <select value={form.status} disabled={isView} onChange={(e) => set('status', e.target.value as EmployeeStatus)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
@@ -1376,7 +1397,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter branch name" value={form.branch} readOnly={isView} disabled={isView}
               onChange={(e) => set('branch', e.target.value)} className={fieldClass} />
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload Bank Passbook Photo" hint="JPG, PNG (Max 2MB)" accept=".jpg,.jpeg,.png" required
+          <FileUploadBox t={t} isView={isView} label="Upload Bank Passbook Photo" hint="JPG, PNG (Max 2MB)" accept={IMAGE_ACCEPT} required
             file={files.passbook_photo} existingUrl={existingUrls.passbook_photo} onChange={setFile('passbook_photo')}
             fieldRef={setFieldRef('passbook_photo') as React.Ref<HTMLDivElement>} />
         </div>

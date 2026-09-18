@@ -35,6 +35,10 @@ import { phoneNumberError } from '../../../../utils/phoneValidation';
 import { aadhaarError, panError, sanitizeDigits, sanitizeAlphanumericUpper } from '../../../../utils/fieldValidation';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { useCanChangeEmail, EMAIL_ADMIN_ONLY_MESSAGE } from '../../../../utils/emailPermission';
+import {
+  DOCUMENT_ACCEPT, IMAGE_ACCEPT, DOCUMENT_TYPE_LABELS, IMAGE_TYPE_LABELS,
+  DOCUMENT_MAX_MB, IMAGE_MAX_MB, validateFileSelection,
+} from '../../../../constants/uploads';
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './CustomerDetails.css';
 
@@ -346,7 +350,22 @@ const CompactFileUpload: React.FC<{ t: Theme; isView?: boolean; accept?: string;
   return (
     <div>
       <input ref={inputRef} type="file" accept={accept} style={{ display: 'none' }}
-        onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
+        onChange={(e) => {
+          const picked = e.target.files?.[0] ?? null;
+          if (!picked) { onChange(null); return; }
+          // Instant feedback on a wrong pick. The server re-validates by
+          // extension, mime AND real magic bytes regardless — this only
+          // saves uploading a file that would be refused. Clearing the
+          // input lets the same file be re-picked after a correction.
+          const isImageOnly = accept === IMAGE_ACCEPT;
+          const problem = validateFileSelection(
+            picked, accept,
+            isImageOnly ? IMAGE_TYPE_LABELS : DOCUMENT_TYPE_LABELS,
+            isImageOnly ? IMAGE_MAX_MB : DOCUMENT_MAX_MB
+          );
+          if (problem) { toast.error(problem); e.target.value = ''; return; }
+          onChange(picked);
+        }} />
       {displayName ? (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
           {previewUrl ? (
@@ -397,8 +416,14 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
 
   return (
     <div className="rounded-xl p-4 text-center" style={{ border: `1.5px dashed ${t.inputBorder}`, background: t.inputBg }}>
-      <input ref={inputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }}
-        onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
+      <input ref={inputRef} type="file" accept={DOCUMENT_ACCEPT} style={{ display: 'none' }}
+        onChange={(e) => {
+          const picked = e.target.files?.[0] ?? null;
+          if (!picked) { onChange(null); return; }
+          const problem = validateFileSelection(picked, DOCUMENT_ACCEPT, DOCUMENT_TYPE_LABELS, DOCUMENT_MAX_MB);
+          if (problem) { toast.error(problem); e.target.value = ''; return; }
+          onChange(picked);
+        }} />
       {previewUrl ? (
         <img src={previewUrl} alt="" className="rounded-lg mx-auto mb-1.5" style={{ width: 48, height: 48, objectFit: 'cover' }} />
       ) : (
@@ -1380,7 +1405,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             )}
           </Field>
           <Field t={t} label="Customer Photo" required error={errorFor('customerPhoto')} fieldRef={setFieldRef('customerPhoto') as React.Ref<HTMLDivElement>}>
-            <CompactFileUpload t={t} isView={isView} accept="image/*" value={customerPhoto} onChange={setCustomerPhoto} />
+            <CompactFileUpload t={t} isView={isView} accept={IMAGE_ACCEPT} value={customerPhoto} onChange={setCustomerPhoto} />
           </Field>
         </div>
 
