@@ -36,16 +36,66 @@ export const roleLabelFor = (role: BaseRole | null): string =>
 // the frontend dev server instead of the API. Also passes through any
 // already-absolute URL unchanged, so legacy rows saved before this fix
 // keep working until they're backfilled.
+// Uploaded files are served from `/api/files/...`, NOT `/files/...`. The
+// production IIS site reverse-proxies only `^api/(.*)` to the Node backend
+// (dgcrm_frontend/public/web.config); any other path falls through to the
+// SPA catch-all and is rewritten to /index.html. A browser asking for
+// `/files/customers/x.jpg` therefore received index.html with a 200 — the
+// image rendered broken and a "download" saved an HTML page. That is the
+// "uploaded files are not visible" bug, and it was never a permissions,
+// folder or disk problem: the files live in MySQL's file_blobs table and
+// were always there.
+//
+// Rows written before the fix still hold the legacy `/files/...` value, so
+// that shape is remapped HERE, at render time, rather than by rewriting
+// the database. That keeps old and new uploads working side by side with
+// no migration to run and nothing to undo on a rollback.
+const LEGACY_FILES_PREFIX = '/files/';
+const FILES_PREFIX = '/api/files/';
+
+const toServedPath = (path: string): string =>
+  path.startsWith(LEGACY_FILES_PREFIX)
+    ? FILES_PREFIX + path.slice(LEGACY_FILES_PREFIX.length)
+    : path;
+
 export const resolveFileUrl = (url: string | null | undefined): string => {
   if (!url) return '';
-  // Only a root-relative path ('/files/...') needs resolving — anything
-  // else (an already-absolute http(s) URL from a legacy row, a blob: URL
-  // from a freshly-picked local file preview, a data: URI, or a
-  // protocol-relative '//host/...') is left exactly as it is.
-  if (!url.startsWith('/') || url.startsWith('//')) return url;
+
+  // blob: (a freshly-picked local file preview) and data: URIs are already
+  // complete and must never be rewritten.
+  if (/^(blob|data):/i.test(url)) return url;
+
+  // An absolute http(s) URL from a legacy row, saved back when fileUrl()
+  // baked in scheme+host. Its host may well be wrong (that was the earlier
+  // mixed-content bug), so keep only the path and let it resolve against
+  // the page's own origin — the same normalisation scripts/fix-absolute-
+  // file-urls.ts performs in the database, applied at render time so it
+  // works whether or not that script has been run.
+  if (/^https?:\/\//i.test(url)) {
+    try {
+      const { pathname, search } = new URL(url);
+      if (pathname.startsWith(LEGACY_FILES_PREFIX) || pathname.startsWith(FILES_PREFIX)) {
+        return resolveFileUrl(toServedPath(pathname) + search);
+      }
+    } catch { /* not parseable — fall through and use it as-is */ }
+    return url;
+  }
+
+  // Protocol-relative '//host/...' — someone else's origin, leave alone.
+  if (url.startsWith('//')) return url;
+  // Anything else that isn't root-relative isn't ours to resolve.
+  if (!url.startsWith('/')) return url;
+
+  const path = toServedPath(url);
+
+  // Production: VITE_API_BASE_URL is '/api' (same origin as the page), so
+  // the relative path is already correct and is returned untouched. Local
+  // dev: it is an absolute 'http://localhost:5000/api', because Vite and
+  // the API run on different ports — there the path has to be pinned to
+  // the API's origin or it would resolve against the dev server.
   const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-  if (/^https?:\/\//i.test(apiBase)) return new URL(apiBase).origin + url;
-  return url;
+  if (/^https?:\/\//i.test(apiBase)) return new URL(apiBase).origin + path;
+  return path;
 };
 
 /**
