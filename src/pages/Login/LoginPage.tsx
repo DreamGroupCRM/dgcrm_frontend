@@ -23,6 +23,7 @@ import { clearError, resetLoginFlow } from '../../redux/slices/authSlice';
 import { ROUTES } from '../../constants';
 import { showAlert, homeRouteForRole } from '../../utils';
 import { authService } from '../../services/authService';
+import { takeLogoutReason } from '../../services/axiosConfig';
 import Logo from '../../components/ui/Logo';
 // Circuit-board/login-panel background — shown at full brightness/clarity
 // (not dimmed) so the artwork itself, including its own illustrated login
@@ -154,6 +155,16 @@ const LoginPage: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
 
   // ── Redirect if already authenticated ──
+  // If the previous session ended for a reason the server told us about,
+  // say which. Being signed out because the account was used on another
+  // machine is a different event from a session timing out, and landing on
+  // a blank login form with no explanation is what makes the first one
+  // feel like a bug. Read-and-clear, so it is shown exactly once.
+  useEffect(() => {
+    const reason = takeLogoutReason();
+    if (reason) showAlert.warning(reason, 'Signed out');
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated && role) {
       navigate(

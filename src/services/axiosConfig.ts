@@ -44,6 +44,41 @@ axiosInstance.interceptors.request.use(
 // state before the user ever sees why it failed).
 const PUBLIC_AUTH_PATHS = ['/auth/login', '/auth/verify-otp', '/auth/set-new-password', '/auth/register'];
 
+// Why a session ended, as reported by the server (see the backend's
+// shared/session.ts). Being signed out because someone logged in
+// elsewhere is a different event from a session simply timing out, and the
+// login page has to say so — the reason is stashed here because the
+// redirect below is a full page load, which discards in-memory state.
+export const LOGOUT_REASON_KEY = 'dgcrm.logout_reason';
+
+const LOGOUT_MESSAGES: Record<string, string> = {
+  SESSION_SUPERSEDED: 'You have been logged out because your account was logged in from another system.',
+  SESSION_IDLE: 'Your session expired due to inactivity. Please log in again.',
+  ACCOUNT_DISABLED: 'Your account is no longer active. Please contact your administrator.',
+};
+
+export const clearStoredSession = (): void => {
+  localStorage.removeItem(STORAGE_KEYS.TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.USER);
+  localStorage.removeItem(STORAGE_KEYS.ROLE);
+  localStorage.removeItem(STORAGE_KEYS.PERMISSIONS);
+};
+
+/** Records why the session ended, for the login page to show once. */
+export const setLogoutReason = (code: string | undefined): void => {
+  const message = (code && LOGOUT_MESSAGES[code]) || LOGOUT_MESSAGES.SESSION_IDLE;
+  try { localStorage.setItem(LOGOUT_REASON_KEY, message); } catch { /* private mode */ }
+};
+
+/** Reads and clears the reason, so it is shown exactly once. */
+export const takeLogoutReason = (): string | null => {
+  try {
+    const message = localStorage.getItem(LOGOUT_REASON_KEY);
+    if (message) localStorage.removeItem(LOGOUT_REASON_KEY);
+    return message;
+  } catch { return null; }
+};
+
 // Response interceptor — handle 401
 axiosInstance.interceptors.response.use(
   (response) => response,
@@ -51,12 +86,12 @@ axiosInstance.interceptors.response.use(
     const url: string = error.config?.url || '';
     const isPublicAuthCall = PUBLIC_AUTH_PATHS.some((path) => url.includes(path));
     if (error.response?.status === 401 && !isPublicAuthCall) {
-      // Token expired/invalid on an authenticated request — clear the
-      // session and send the user back to login
-      localStorage.removeItem(STORAGE_KEYS.TOKEN);
-      localStorage.removeItem(STORAGE_KEYS.USER);
-      localStorage.removeItem(STORAGE_KEYS.ROLE);
-      localStorage.removeItem(STORAGE_KEYS.PERMISSIONS);
+      // Token expired/invalid, or the server has retired this session —
+      // clear it and send the user back to login, carrying the reason so
+      // the login page can explain what happened instead of silently
+      // dumping them on a fresh form.
+      setLogoutReason(error.response?.data?.code);
+      clearStoredSession();
       window.location.href = '/login';
     }
     return Promise.reject(error);
