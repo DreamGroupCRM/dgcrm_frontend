@@ -16,16 +16,12 @@
   height: 100%;
   overflow: auto;
   display: flex;
-  /* flex-start (not center) — same reasoning as
-     .building-2d-modal-canvas below: centering an overflowing scrollable
-     flex child can leave its top edge unreachable by scroll in some
-     browsers, which is what made a building taller than the fixed box
-     look cut off/broken when opened as a full page from the sidebar
-     (the popup version never had this bug since it already used
-     flex-start). Horizontal centering is kept since width overflow is
-     rare here. */
+  /* flex-start, never center — centering an overflowing scrollable flex
+     child leaves its start edge unreachable by scroll. That was already
+     known for the vertical axis (a tall building looked cut off); it is
+     equally true horizontally, which is what the shared block further
+     down now fixes for both. */
   align-items: flex-start;
-  justify-content: center;
 }
 
 @media (max-width: 767px) {
@@ -74,9 +70,8 @@
    building cut off below the fold).
    align-items: flex-start (not center) — a building tall enough to
    overflow the frame must scroll from its true top; centering an
-   overflowing flex child can leave its top edge unreachable by scroll
-   in some browsers. Horizontal centering is kept since width overflow
-   is rare here. */
+   overflowing flex child leaves its start edge unreachable by scroll.
+   The same applies horizontally — see the shared block below. */
 .building-2d-modal-canvas {
   width: 100%;
   flex: 1;
@@ -84,7 +79,73 @@
   overflow: auto;
   display: flex;
   align-items: flex-start;
-  justify-content: center;
+}
+
+/* ── Scroll container behaviour, shared by the page and the popup ───────
+   BOTH axes scroll, and both are actually reachable.
+
+   The bug this replaces: the canvas used `justify-content: center`, and a
+   centered flex child that overflows spills equally off BOTH edges — but
+   overflow only ever creates scrollable area on the END side, never the
+   start. Measured on a real 3-wing/20-floor building: the card was 1180px
+   wide in a 1063px viewport (117px of overflow), yet scrollWidth exposed
+   only 59px, the card's left edge sat at -117px, and scrollLeft could not
+   go below 0. So the left half of Wing A was permanently unreachable and
+   the horizontal scrollbar had almost nothing to scroll. Vertical was
+   fine purely because it already used `align-items: flex-start`.
+
+   `margin: auto` on the child does what centering was meant to do without
+   the trap: spare space is distributed as real margin when the picture
+   FITS, and collapses to nothing when it overflows, so the full width
+   stays scrollable. Applied to the direct child rather than the container
+   so the empty/loading states (which are text in the canvas itself) still
+   sit centered. */
+.building-2d-canvas,
+.building-2d-modal-canvas {
+  justify-content: flex-start;
+  /* Keep a scroll gesture inside the picture instead of chaining it to
+     the page once an edge is reached. */
+  overscroll-behavior: contain;
+}
+.building-2d-canvas > *,
+.building-2d-modal-canvas > * {
+  margin: auto;
+  flex-shrink: 0;
+}
+
+/* The app's global scrollbar (index.css) is a 5px translucent sliver.
+   That is fine beside a list, but on this picture it is the only clue
+   that there is more building to see, so give this canvas a slightly
+   wider, clearly visible one on both axes. Firefox gets the standards
+   properties; WebKit/Blink get the pseudo-elements. */
+.building-2d-canvas,
+.building-2d-modal-canvas {
+  scrollbar-width: auto;
+  scrollbar-color: rgba(100, 116, 139, 0.65) transparent;
+}
+.building-2d-canvas::-webkit-scrollbar,
+.building-2d-modal-canvas::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+.building-2d-canvas::-webkit-scrollbar-track,
+.building-2d-modal-canvas::-webkit-scrollbar-track {
+  background: rgba(100, 116, 139, 0.12);
+  border-radius: 999px;
+}
+.building-2d-canvas::-webkit-scrollbar-thumb,
+.building-2d-modal-canvas::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.65);
+  border-radius: 999px;
+}
+.building-2d-canvas::-webkit-scrollbar-thumb:hover,
+.building-2d-modal-canvas::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.9);
+}
+/* Where the two bars meet, so the corner isn't a bare white square. */
+.building-2d-canvas::-webkit-scrollbar-corner,
+.building-2d-modal-canvas::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* Narrow screens — heading+dropdown group takes the full top row (dropdown

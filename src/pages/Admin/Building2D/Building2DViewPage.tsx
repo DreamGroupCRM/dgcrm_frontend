@@ -91,6 +91,38 @@ export const floorsOf = (w: BuildingWing): FloorRow[] =>
       })),
     }));
 
+// ── Picture scale ────────────────────────────────────────────────────
+// Every measurement the building picture is built from, in one place and
+// shared with Building2DViewModal (which imports UnitBlock/WingColumn from
+// here), so the page and the popup can never drift apart.
+//
+// These were reduced from their original values because a realistic
+// building did not fit: 3 wings of 4 flats laid out 1180px wide inside a
+// ~1063px frame. The old numbers, for reference, were unit 66x58, flat gap
+// 6, floor gap 8, label 44, wing gap 56, card padding 24/32 — the same
+// building now comes out around 955px and fits without scrolling at all on
+// a normal desktop, while staying comfortably readable.
+//
+// Buildings bigger than this (more wings, more flats per floor) still
+// overflow, which is expected and is what the scroll container in
+// Building2D.css is for — both axes, and both actually reachable.
+export const SCALE = {
+  unitW: 56,
+  unitH: 48,
+  /** Gap between flats on the same floor. */
+  flatGap: 5,
+  /** Gap between stacked floors. */
+  floorGap: 6,
+  /** Gap between a floor's label and its first flat. */
+  labelGap: 8,
+  /** Width of the "Ground"/"1 Floor" label column. */
+  labelW: 36,
+  /** Gap between wings. */
+  wingGap: 36,
+  /** Padding inside the building card. */
+  cardPad: '20px 24px',
+} as const;
+
 // ── One colored square — a flat or a shop — carrying its own number + area
 export const UnitBlock: React.FC<{
   no: string; area: number | null; status: UnitStatus; selected: boolean; clickable: boolean; onClick: () => void; extraTitle?: string;
@@ -99,7 +131,7 @@ export const UnitBlock: React.FC<{
     onClick={clickable ? onClick : undefined}
     title={`${no} — ${STATUS_TEXT[status]}${extraTitle ? ` — ${extraTitle}` : ''}`}
     style={{
-      width: 66, height: 58, borderRadius: 9, flexShrink: 0,
+      width: SCALE.unitW, height: SCALE.unitH, borderRadius: 8, flexShrink: 0,
       background: STATUS_COLOR[status],
       border: selected ? '3px solid #1d4ed8' : '2px solid rgba(255,255,255,0.65)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -108,8 +140,8 @@ export const UnitBlock: React.FC<{
       transition: 'transform 0.1s ease', userSelect: 'none',
     }}
   >
-    <div style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.1 }}>{no}</div>
-    <div style={{ fontSize: 9.5, fontWeight: 600, opacity: 0.92, marginTop: 2 }}>
+    <div style={{ fontSize: 11, fontWeight: 800, lineHeight: 1.1 }}>{no}</div>
+    <div style={{ fontSize: 9, fontWeight: 600, opacity: 0.92, marginTop: 1 }}>
       {area != null ? `${area} sqft` : '—'}
     </div>
   </div>
@@ -126,13 +158,13 @@ export const WingColumn: React.FC<{
     {/* column-reverse: floors are listed Ground-first in the array, so the
         first DOM child (Ground) lands at the bottom and each subsequent
         floor stacks upward — exactly how a real building reads. */}
-    <div className="flex flex-col-reverse" style={{ gap: 8 }}>
+    <div className="flex flex-col-reverse" style={{ gap: SCALE.floorGap }}>
       {floors.map((floor) => (
-        <div key={floor.id} className="flex items-center" style={{ gap: 8 }}>
-          <div style={{ width: 44, textAlign: 'right', fontSize: 10, fontWeight: 700, opacity: 0.65, flexShrink: 0 }}>
+        <div key={floor.id} className="flex items-center" style={{ gap: SCALE.labelGap }}>
+          <div style={{ width: SCALE.labelW, textAlign: 'right', fontSize: 9.5, fontWeight: 700, opacity: 0.65, flexShrink: 0 }}>
             {floor.label}
           </div>
-          <div className="flex" style={{ gap: 6 }}>
+          <div className="flex" style={{ gap: SCALE.flatGap }}>
             {floor.flats.map((fl) => (
               <UnitBlock
                 key={fl.id}
@@ -307,14 +339,14 @@ const Building2DViewPage: React.FC = () => {
             <div
               style={{
                 background: t.subtleBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 18,
-                padding: '24px 32px', color: t.textPrimary,
+                padding: SCALE.cardPad, color: t.textPrimary,
               }}
             >
-              <div style={{ textAlign: 'center', fontWeight: 800, fontSize: 15, marginBottom: 20 }}>
+              <div style={{ textAlign: 'center', fontWeight: 800, fontSize: 14, marginBottom: 16 }}>
                 {buildingDetail.building_name}
               </div>
 
-              <div className="flex items-end justify-center" style={{ gap: 56 }}>
+              <div className="flex items-end justify-center" style={{ gap: SCALE.wingGap }}>
                 {wings.map((w) => (
                   <WingColumn
                     key={w.id}
@@ -332,7 +364,7 @@ const Building2DViewPage: React.FC = () => {
                   <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, opacity: 0.65, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     Ground Floor — Shops
                   </div>
-                  <div className="flex flex-wrap items-center justify-center" style={{ gap: 6 }}>
+                  <div className="flex flex-wrap items-center justify-center" style={{ gap: SCALE.flatGap }}>
                     {shops.map((s) => (
                       <UnitBlock
                         key={s.id}

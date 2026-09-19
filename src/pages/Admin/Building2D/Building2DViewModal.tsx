@@ -23,7 +23,7 @@ import { FetchBuildingList, ViewBuilding } from '../../../services/buildingServi
 import { Building } from '../../../types/index';
 import { UnitStatus } from './types';
 import {
-  STATUS_COLOR, STATUS_TEXT, UnitBlock, WingColumn, floorsOf, shopStatus,
+  STATUS_COLOR, STATUS_TEXT, SCALE, UnitBlock, WingColumn, floorsOf, shopStatus,
 } from './Building2DViewPage';
 import './Building2D.css';
 
@@ -164,10 +164,10 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
               <div
                 style={{
                   background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 18,
-                  padding: '28px 36px', color: t.textPrimary,
+                  padding: SCALE.cardPad, color: t.textPrimary,
                 }}
               >
-                <div className="flex items-end justify-center" style={{ gap: 56 }}>
+                <div className="flex items-end justify-center" style={{ gap: SCALE.wingGap }}>
                   {wings.map((w) => (
                     <WingColumn
                       key={w.id}
@@ -185,7 +185,7 @@ const Building2DViewModal: React.FC<Building2DViewModalProps> = ({ initialBuildi
                     <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, opacity: 0.65, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                       Ground Floor — Shops
                     </div>
-                    <div className="flex flex-wrap items-center justify-center" style={{ gap: 6 }}>
+                    <div className="flex flex-wrap items-center justify-center" style={{ gap: SCALE.flatGap }}>
                       {shops.map((s) => (
                         <UnitBlock
                           key={s.id}
