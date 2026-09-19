@@ -28,7 +28,7 @@ import { DobPicker } from '../../../../components/common/DobPicker';
 import { TimePicker } from '../../../../components/common/TimePicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
 import { phoneNumberError } from '../../../../utils/phoneValidation';
-import { aadhaarError, panError, sanitizeDigits, sanitizeAlphanumericUpper } from '../../../../utils/fieldValidation';
+import { aadhaarError, panError, sanitizeDigits, sanitizeAlphanumericUpper, EMAIL_FORMAT_MESSAGE, hasEmailFormatError } from '../../../../utils/fieldValidation';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { AccordionSection } from '../../../../components/common/Accordion';
 import { useCanChangeEmail, EMAIL_ADMIN_ONLY_MESSAGE } from '../../../../utils/emailPermission';
@@ -548,6 +548,38 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // yet (the account is being created here), and the route is already
   // admin-only. The server enforces the same rule; see
   // utils/emailPermission.ts.
+  // ── Email format, checked as soon as the user leaves the field ──────
+  // An improper address is caught immediately rather than at submit, so
+  // the user fixes it while they are still looking at it. The popup is
+  // modal, which is what actually stops them moving on; once they dismiss
+  // it focus goes back to the email box.
+  //
+  // Two deliberate limits, so this warns without trapping anyone:
+  //   • Only fires for a NON-EMPTY value. Tabbing through an untouched
+  //     field must not nag — submit still catches a missing email.
+  //   • Never fires when focus is leaving for a button or a link. Cancel,
+  //     Go Back and the accordion headers have to stay clickable even
+  //     while the address is half-typed.
+  const emailAlertOpen = useRef(false);
+  const handleEmailBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (!hasEmailFormatError(form.email)) return;
+    const next = e.relatedTarget as HTMLElement | null;
+    if (next && (next.tagName === 'BUTTON' || next.tagName === 'A' || next.closest?.('button, a'))) return;
+    // Guard against re-entry: refocusing below fires another blur when the
+    // alert closes, which would otherwise stack popups.
+    if (emailAlertOpen.current) return;
+    emailAlertOpen.current = true;
+    const input = e.target;
+    showAlert.error(EMAIL_FORMAT_MESSAGE, 'Invalid Email Address').finally(() => {
+      emailAlertOpen.current = false;
+      // Next tick, not immediately: SweetAlert restores focus to whatever
+      // was active when it opened (by then, the field the user tabbed
+      // INTO). Focusing in the same turn would be undone by that
+      // restoration and the caret would end up in the wrong box.
+      setTimeout(() => { input.focus(); input.select(); }, 0);
+    });
+  };
+
   const canEditEmail = useCanChangeEmail();
   const emailLocked = !isView && mode !== 'add' && !canEditEmail;
 
@@ -908,6 +940,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     { field: 'last_name', section: 'personal', message: 'Please enter the Last Name.', failed: () => !form.last_name.trim() },
     { field: 'date_of_birth', section: 'personal', message: 'Please enter the Date of Birth.', failed: () => !form.date_of_birth },
     { field: 'email', section: 'personal', message: 'Please enter the Email address.', failed: () => !form.email.trim() },
+    // Format, not just presence. The on-blur check below catches this the
+    // moment the user leaves the field; this is the backstop for a form
+    // submitted without the field ever being blurred (autofill, Enter from
+    // another field), and it uses the SAME rule so the two can't disagree.
+    { field: 'email', section: 'personal', message: EMAIL_FORMAT_MESSAGE, failed: () => hasEmailFormatError(form.email) },
     { field: 'mobile_number', section: 'personal', message: 'Please enter the Mobile Number.', failed: () => !form.mobile_number.trim() },
     { field: 'mobile_number', section: 'personal', message: phoneNumberError(form.mobile_country_code, form.mobile_number), failed: () => !!phoneNumberError(form.mobile_country_code, form.mobile_number) },
     { field: 'alternate_number', section: 'personal', message: phoneNumberError(form.alternate_country_code, form.alternate_number), failed: () => !!phoneNumberError(form.alternate_country_code, form.alternate_number) },
@@ -1297,6 +1334,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               readOnly={isView || emailLocked} disabled={isView || emailLocked}
               title={emailLocked ? EMAIL_ADMIN_ONLY_MESSAGE : undefined}
               onChange={(e) => set('email', e.target.value)}
+              onBlur={handleEmailBlur}
               className={emailLocked && !isView ? `${fieldClass} emp-field-view` : fieldClass} />
             {emailLocked && (
               <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 4 }}>{EMAIL_ADMIN_ONLY_MESSAGE}</div>
@@ -1400,11 +1438,22 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             file={files.resume} existingUrl={existingUrls.resume} onChange={setFile('resume')} />
           <FileUploadBox t={t} isView={isView} label="Appointment Letter" hint="PDF, DOC, DOCX (Max 5MB)" accept={DOCUMENT_ACCEPT}
             file={files.appointment_letter} existingUrl={existingUrls.appointment_letter} onChange={setFile('appointment_letter')} />
-          <Field t={t} label="Employee Status" required>
-            <select value={form.status} disabled={isView} onChange={(e) => set('status', e.target.value as EmployeeStatus)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
-              {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </Field>
+          {/* Employee Status is NOT offered while ADDING. A deactivated
+              employee cannot log in, so creating one in that state has no
+              meaning — a new employee is always Active, which is what
+              INITIAL_FORM already sets. Deactivating happens later, from
+              the row menu on the Employee List.
+
+              Still shown on Edit and View: an existing employee genuinely
+              has a status, and this is where it is read and changed from
+              inside the record. */}
+          {mode !== 'add' && (
+            <Field t={t} label="Employee Status" required>
+              <select value={form.status} disabled={isView} onChange={(e) => set('status', e.target.value as EmployeeStatus)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
+                {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+          )}
         </div>
       </AccordionSection>
 

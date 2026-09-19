@@ -41,3 +41,39 @@ export function gstError(value: string, required = false): string {
 // (rather than only catching it on submit). ────────────────────────────
 export const sanitizeDigits = (v: string, maxLen: number): string => v.replace(/[^\d]/g, '').slice(0, maxLen);
 export const sanitizeAlphanumericUpper = (v: string, maxLen: number): string => v.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, maxLen);
+
+// ── Email ──────────────────────────────────────────────────────────────
+// Deliberately mirrors what the SERVER accepts — every backend schema uses
+// zod's .email() (see shared/schemas/index.ts), whose pattern requires a
+// local part, an @, a dotted domain and a TLD of at least two letters.
+// Keeping the two in step means a value this passes is never rejected by
+// the API afterwards, and vice versa.
+//
+// Intentionally NOT the "full RFC 5322" monster regex. That one accepts
+// quoted local parts, comments and bare hostnames like `user@localhost`,
+// none of which are a real address for a person logging into this CRM,
+// and it is unreadable to anyone maintaining it later. This rejects the
+// mistakes people actually make: a missing @, a missing domain, a missing
+// or one-letter TLD, a trailing dot, consecutive dots, and stray spaces.
+const EMAIL_PATTERN = /^[A-Za-z0-9_'+-]+(?:\.[A-Za-z0-9_'+-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/;
+
+/** The one message every email field shows, so the wording never drifts. */
+export const EMAIL_FORMAT_MESSAGE =
+  'Email address is not valid. Please enter a proper email address, for example name@company.com.';
+
+export function emailError(value: string, required = false): string {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return required ? 'Please enter the Email address.' : '';
+  // Guard the regex against a pathological input before running it.
+  if (trimmed.length > 254) return EMAIL_FORMAT_MESSAGE;
+  if (!EMAIL_PATTERN.test(trimmed)) return EMAIL_FORMAT_MESSAGE;
+  return '';
+}
+
+/** True only for a value that is present AND badly formatted — what an
+ *  on-blur check wants, so tabbing through an untouched empty field does
+ *  not nag the user (submit still catches a missing required email). */
+export function hasEmailFormatError(value: string): boolean {
+  const trimmed = (value || '').trim();
+  return trimmed !== '' && !!emailError(trimmed);
+}
