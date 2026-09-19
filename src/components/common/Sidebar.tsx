@@ -148,10 +148,8 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
 // Every page here is the SAME component the admin routes use. What differs
 // is server-side and not negotiable from the client: Customer Details,
 // Payment Dues and Payment Received return only the customers an admin has
-// assigned to this employee (customer_assignments), and Audit History
-// returns only this user's own entries. See the backend's
-// customerAssignment.repository.ts (resolveCustomerScope) and
-// audit.service.ts.
+// assigned to this employee (customer_assignments). See the backend's
+// customerAssignment.repository.ts (resolveCustomerScope).
 //
 // Attendance and Leave stay below the CRM group — they are the employee's
 // own HR pages, not customer work, and both were already self-scoped.
@@ -170,7 +168,10 @@ const employeeNavItems: NavItem[] = [
 
   { label: 'Customize Scheme', path: ROUTES.EMPLOYEE.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
   { label: 'Building View', path: ROUTES.EMPLOYEE.BUILDING_2D_VIEW, icon: <MdGridView /> },
-  { label: 'Audit History', path: ROUTES.EMPLOYEE.AUDIT_HISTORY, icon: <MdHistory /> },
+  // Audit History is deliberately NOT here. An audit trail carries the
+  // old/new field values of every user's actions, so it stays admin-only
+  // (the backend's /api/audit router is requireAdmin, and nothing in this
+  // app relaxes that).
 
   { label: 'Attendance', path: ROUTES.EMPLOYEE.ATTENDANCE, icon: <MdEventAvailable /> },
   { label: 'Leave', path: ROUTES.EMPLOYEE.LEAVES, icon: <MdBeachAccess /> },

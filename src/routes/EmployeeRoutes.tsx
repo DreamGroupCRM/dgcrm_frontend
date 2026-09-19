@@ -16,10 +16,12 @@ const EmployeeDashboard = lazy(() => import('../pages/Employee/Dashboard/Employe
 //
 // They now mount the SAME components the admin routes use. That is safe
 // because the scoping is server-side, not a prop: those endpoints return
-// only the customers assigned to the caller (customer_assignments), and
-// Audit History returns only the caller's own entries. An employee cannot
-// widen that from the client — see the backend's
-// customerAssignment.repository.ts and audit.service.ts.
+// only the customers assigned to the caller (customer_assignments). An
+// employee cannot widen that from the client — see the backend's
+// customerAssignment.repository.ts.
+//
+// Audit History is NOT among them: it stays admin-only, and /api/audit is
+// requireAdmin server-side.
 const CustomerDetailsListPage = lazy(() => import('../pages/Admin/CRM/Customer-Details/CustomerDetailsListPage'));
 const CustomerDetailsCrudPage = lazy(() => import('../pages/Admin/CRM/Customer-Details/CustomerDetailsCrudPage'));
 const CustomerSchemeViewPage = lazy(() => import('../pages/Admin/CRM/Customer-Details/CustomerSchemeViewPage'));
@@ -27,7 +29,6 @@ const DueReportPage = lazy(() => import('../pages/Admin/CRM/DueReport/DueReportP
 const PaymentReceivedPage = lazy(() => import('../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage'));
 const CustomizeSchemePage = lazy(() => import('../pages/Admin/CustomizeScheme/CustomizeSchemePage'));
 const Building2DViewPage = lazy(() => import('../pages/Admin/Building2D/Building2DViewPage'));
-const AuditHistoryPage = lazy(() => import('../pages/Admin/AuditHistory/AuditHistoryPage'));
 const LeadListPage = lazy(() => import('../pages/Employee/Leads/LeadListPage'));
 const LeadCrudPage = lazy(() => import('../pages/Employee/Leads/LeadCrudPage'));
 // Attendance — replaces its former PlaceholderPage, backed by the existing
@@ -62,7 +63,6 @@ const EmployeeRoutes: React.FC = () => (
       <Route path="payment-dues" element={<DueReportPage />} />
       <Route path="customize-scheme" element={<CustomizeSchemePage />} />
       <Route path="building-2d-view" element={<Building2DViewPage />} />
-      <Route path="audit-history" element={<AuditHistoryPage />} />
       <Route path="attendance" element={<AttendancePage />} />
       <Route path="leaves" element={<LeavePage />} />
     </Route>
