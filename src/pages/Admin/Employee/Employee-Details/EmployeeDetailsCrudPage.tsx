@@ -56,11 +56,6 @@ type Theme = AppTheme;
 const WORKING_HOURS_OPTIONS = ['8', '9', '10'];
 const HOLIDAYS_OPTIONS = ['Sunday Only', 'Alternate Saturdays + Sunday', 'All Saturdays + Sunday', 'Custom / As per Company Policy'];
 const ACCOUNT_TYPE_OPTIONS = ['Savings', 'Current'];
-const STATUS_OPTIONS: { value: EmployeeStatus; label: string }[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-];
-
 // Sticky crud-footer height, matching every other Master CRUD page's
 // convention — page wrapper reserves this much bottom padding so the
 // fixed footer never overlaps form content.
@@ -1086,7 +1081,15 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // sticky footer below is untouched from the add/edit return further down
   // — same markup, same behavior, same positioning.
   if (isView) {
-    const statusStyle = VIEW_STATUS_STYLES[form.status] || VIEW_STATUS_STYLES.active;
+    // Mirrors the Employee List's employeeStatusStyle. The form no longer
+    // offers a status dropdown anywhere — a new employee is always Active
+    // and enabling/disabling is done from the list's row menu, which sets
+    // is_active (and cascades to the login user). So is_active decides the
+    // badge; the status column is still consulted so a legacy 'on_leave'
+    // value keeps showing as On Leave.
+    const statusStyle = !form.is_active
+      ? VIEW_STATUS_STYLES.inactive
+      : (VIEW_STATUS_STYLES[form.status] || VIEW_STATUS_STYLES.active);
     const deptLabels = departmentOptions.filter((d) => form.department_ids.includes(d.value)).map((d) => d.label);
     const desigLabels = designationOptions.filter((d) => form.designation_ids.includes(d.value)).map((d) => d.label);
     const visibleLabels = visibleEmployeeOptions.filter((e) => visibleEmployeeIds.includes(e.value)).map((e) => e.label);
@@ -1438,22 +1441,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             file={files.resume} existingUrl={existingUrls.resume} onChange={setFile('resume')} />
           <FileUploadBox t={t} isView={isView} label="Appointment Letter" hint="PDF, DOC, DOCX (Max 5MB)" accept={DOCUMENT_ACCEPT}
             file={files.appointment_letter} existingUrl={existingUrls.appointment_letter} onChange={setFile('appointment_letter')} />
-          {/* Employee Status is NOT offered while ADDING. A deactivated
-              employee cannot log in, so creating one in that state has no
-              meaning — a new employee is always Active, which is what
-              INITIAL_FORM already sets. Deactivating happens later, from
-              the row menu on the Employee List.
-
-              Still shown on Edit and View: an existing employee genuinely
-              has a status, and this is where it is read and changed from
-              inside the record. */}
-          {mode !== 'add' && (
-            <Field t={t} label="Employee Status" required>
-              <select value={form.status} disabled={isView} onChange={(e) => set('status', e.target.value as EmployeeStatus)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
-                {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </Field>
-          )}
         </div>
       </AccordionSection>
 

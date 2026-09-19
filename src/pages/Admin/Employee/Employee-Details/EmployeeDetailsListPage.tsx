@@ -58,6 +58,25 @@ const STATUS_STYLES: Record<EmployeeStatus, { bg: string; color: string; label: 
   inactive: { bg: '#fee2e2', color: '#dc2626', label: 'Inactive' },
 };
 
+// An employee carries TWO separate flags, and the badge has to tell the
+// truth about both:
+//
+//   is_active  the enabled/disabled flag the row menu's Activate /
+//              Deactivate sets (PATCH /employees/:id/active-status). This
+//              is the one that decides whether the person can log in — it
+//              cascades to their login user.
+//   status     the employees.status column (active / on_leave / inactive).
+//
+// The Employee form no longer offers a status dropdown at all — a new
+// employee is always Active, and enabling/disabling is done from the row
+// menu. So is_active is now the only one an admin actually changes, and a
+// deactivated employee whose status column still reads 'active' would
+// otherwise show a green "Active" badge on a greyed-out card. is_active
+// therefore wins; status is still consulted so a legacy 'on_leave' value
+// keeps rendering as On Leave rather than being flattened away.
+const employeeStatusStyle = (emp: { status: EmployeeStatus; is_active: boolean }) =>
+  (!emp.is_active ? STATUS_STYLES.inactive : STATUS_STYLES[emp.status] || STATUS_STYLES.active);
+
 const initials = (first: string, last: string) => `${first?.[0] || ''}${last?.[0] || ''}`.toUpperCase();
 
 // ── Grid card — module scope (not defined inside the page component) so
@@ -73,7 +92,7 @@ const EmployeeCard: React.FC<{
   emp: Employee; t: Theme; isDark: boolean; accent: string;
   navigate: NavigateFunction; renderActionMenu: (emp: Employee) => React.ReactNode;
 }> = ({ emp, t, isDark, accent, navigate, renderActionMenu }) => {
-  const status = STATUS_STYLES[emp.status] || STATUS_STYLES.active;
+  const status = employeeStatusStyle(emp);
   // Deactivated (is_active=false, but not deleted — a deleted employee
   // never reaches this list at all) — whole card reads as "grayed out"
   // rather than disappearing, so it stays visible and its row menu
@@ -396,7 +415,7 @@ const EmployeeDetailsListPage: React.FC = () => {
         formatDate(e.date_of_birth), formatDate(e.joining_date),
         e.department || (e.department_names || []).join('; '), e.designation || (e.designation_names || []).join('; '),
         e.visible_employees_count ?? 0,
-        STATUS_STYLES[e.status]?.label || e.status,
+        employeeStatusStyle(e).label,
       ]);
       const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -554,7 +573,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                   <tr><td colSpan={10} style={{ textAlign: 'center', padding: 48 }}>No employees found.</td></tr>
                 ) : (
                   pageRows.map((emp, idx) => {
-                    const status = STATUS_STYLES[emp.status] || STATUS_STYLES.active;
+                    const status = employeeStatusStyle(emp);
                     const isInactive = !emp.is_active;
                     const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
                     return (
