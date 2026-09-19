@@ -23,7 +23,30 @@ export const getTheme = (isDark: boolean) => ({
   fontFamily    : '"Inter", "Roboto", "Arial", sans-serif',
   textPrimary   : isDark ? '#ffffff' : '#000000',
   textSecondary : isDark ? '#a3a3a3' : '#111827',
-  textMuted     : isDark ? '#525252' : '#374151',
+  // Dark value was '#525252', which is 2.5:1 against the dark page/card —
+  // below the 3:1 floor for ANY text and well below the 4.5:1 needed for
+  // normal-size text, so helper text, captions, "Not uploaded" labels,
+  // empty-state lines and disabled-field values were effectively
+  // unreadable in black theme. '#8f8f8f' is the same neutral grey, one
+  // step lighter, and clears 4.5:1 on all three dark surfaces. The LIGHT
+  // value is untouched.
+  textMuted     : isDark ? '#8f8f8f' : '#374151',
+  // Accent color that is safe as TEXT or an ICON.
+  //
+  // --brand-gradient is tuned to be a BUTTON FILL with white text on it,
+  // so every appearance palette picks a deep, saturated hue. Used as a
+  // text color on the black theme those all land around 2.3-3.5:1 —
+  // section headings, required-field asterisks, links and icons drawn in
+  // "brand color" faded into the background. Buttons must keep the deep
+  // fill, so ink is a SEPARATE token: use accentText (or the CSS variable
+  // it aliases) wherever the accent is the INK, and --brand-gradient
+  // wherever it is the PAINT.
+  //
+  // Deliberately the CSS variable rather than a literal, so it follows the
+  // user's selected Appearance exactly like every other brand surface —
+  // appearanceTokens.ts computes it per palette and per theme, and
+  // master.css carries the fallback for pages rendered before login.
+  accentText    : 'var(--brand-ink)',
 
   // ── Hover / Active states ────────────────────────────────────────────────
   hoverBg       : isDark ? '#1a1a1a' : '#efebe9',   // dark=dark-gray, light=light-brown
@@ -34,7 +57,10 @@ export const getTheme = (isDark: boolean) => ({
   sidebarBg     : isDark ? '#000000' : '#ffffff',
   sidebarBorder : isDark ? '#1a1a1a' : '#e5e7eb',
   sidebarText   : isDark ? '#c8c8c8' : '#111111',
-  sidebarTextMuted : isDark ? '#4a4a4a' : '#6b7280',
+  // Dark value was '#4a4a4a' — 2.2:1 on the black sidebar, i.e. section
+  // captions in the nav were barely there. Same hue, lightened to clear
+  // 4.5:1. Light value untouched.
+  sidebarTextMuted : isDark ? '#8a8a8a' : '#6b7280',
   sidebarActiveBg : isDark ? '#1a1a1a' : '#efebe9',
   sidebarActiveText: isDark ? '#ffffff' : '#0000FF',
   sidebarActiveBorder: isDark ? '#333333' : '#0000FF',

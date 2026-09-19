@@ -1,17 +1,19 @@
 // ==========================================
 // DREAM GROUP CRM - EMPLOYEE CRUD PAGE
 // ==========================================
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdArrowBack, MdCloudUpload, MdPerson, MdBusinessCenter, MdAccountBalance,
-  MdGroups, MdDescription, MdCheckCircle, MdOpenInNew,
+  MdGroups, MdDescription, MdCheckCircle, MdOpenInNew, MdVisibility, MdDownload,
 } from 'react-icons/md';
 
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
-import { formatDate, resolveFileUrl } from '../../../../utils';
+import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
+import DocumentViewerModal from '../../../../components/common/DocumentViewerModal';
+import { previewKindFor, downloadDocument } from '../../../../services/documentService';
 import {
   ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
   fetchEmployeePermissions, FetchEmployeeDetails,
@@ -183,9 +185,9 @@ const FileUploadBox: React.FC<{
           background: isView ? t.insetBg : t.inputBg, cursor: isView ? 'default' : 'pointer', textAlign: 'left',
         }}
       >
-        <MdCloudUpload size={18} style={{ color: '#4338ca', flexShrink: 0 }} />
+        <MdCloudUpload size={18} style={{ color: t.accentText, flexShrink: 0 }} />
         <div className="min-w-0">
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: '#4338ca' }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: t.accentText }}>
             {displayName ? 'Change File' : label.startsWith('Upload') ? label : `Upload ${label}`}
           </div>
           <div style={{ fontSize: 10, color: t.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -449,53 +451,85 @@ const ViewValue: React.FC<{ label: string; value: React.ReactNode; className?: s
 );
 
 // ── View mode — one uploaded-document card (Aadhar/PAN/Resume/Appointment
-// Letter/Passbook). Shows an inline thumbnail for image uploads, a generic
-// document icon otherwise, and a "View" link that opens the file in a new
-// tab — no download machinery of our own, just the URL the backend already
-// serves uploaded files from.
-// Real preview, not just a filename — an image renders as an actual
-// thumbnail spanning the card's top; a PDF/other document gets a clear
-// document icon block instead, since there's no reasonable inline
-// thumbnail for those. Either way, the whole card opens the file in a new
-// tab (the browser's own image/PDF viewer) on click, not just a small
-// "View" link tucked into a corner.
-const DocumentCard: React.FC<{ t: Theme; label: string; url?: string | null }> = ({ t, label, url }) => {
-  const isImage = !!url && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url);
-  const content = (
-    <>
-      <div
+// Letter/Passbook). Shows an inline thumbnail for image uploads and a
+// document icon otherwise, with two explicit actions: Quick View and
+// Download.
+//
+// It used to be a plain <a target="_blank"> wrapping the whole card, which
+// pointed a new tab at the raw file URL. That lost the user's place in the
+// record, and on a DOCX/XLSX it silently turned into a download. Now the
+// card opens the shared DocumentViewerModal (components/common), which
+// fetches the file over the authenticated axios instance — the session
+// token travels as a header, and no file has to be publicly readable for
+// the preview to work.
+const DocumentCard: React.FC<{
+  t: Theme; label: string; url?: string | null;
+  onQuickView: (label: string, url: string) => void;
+}> = ({ t, label, url, onQuickView }) => {
+  const resolved = url ? resolveFileUrl(url) : '';
+  const kind = previewKindFor(resolved);
+  const isImage = !!resolved && kind === 'image';
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!resolved) return;
+    setDownloading(true);
+    try {
+      await downloadDocument(resolved, label);
+    } catch {
+      showAlert.error('That file could not be downloaded. It may have been removed.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="emp-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg }}>
+      <button
+        type="button"
+        disabled={!resolved}
+        onClick={() => resolved && onQuickView(label, resolved)}
+        aria-label={resolved ? `Quick view ${label}` : `${label} not uploaded`}
         className="w-full flex items-center justify-center overflow-hidden"
         style={{
-          height: 120,
-          background: isImage ? t.insetBg : url ? 'var(--master-btn-primary-gradient, #0000FF)' : t.insetBg,
+          height: 120, padding: 0, border: 'none',
+          cursor: resolved ? 'pointer' : 'default',
+          background: isImage ? t.insetBg : resolved ? 'var(--master-btn-primary-gradient, var(--brand-gradient))' : t.insetBg,
         }}
       >
-        {isImage && url ? (
-          <img src={url} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <MdDescription size={34} color={url ? '#fff' : t.textSecondary} />
-        )}
-      </div>
+        {isImage
+          ? <img src={resolved} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <MdDescription size={34} color={resolved ? '#fff' : t.textMuted} />}
+      </button>
       <div className="flex items-center justify-between gap-2 px-3.5 py-2.5">
         <div className="min-w-0">
           <div className="emp-doc-card-label">{label}</div>
-          <div className="emp-doc-card-status">{url ? 'Uploaded' : 'Not uploaded'}</div>
+          <div className="emp-doc-card-status">{resolved ? 'Uploaded' : 'Not uploaded'}</div>
         </div>
-        {url && (
-          <span className="emp-doc-card-link" style={{ flexShrink: 0 }}>
-            <MdOpenInNew size={12} /> Open
-          </span>
+        {resolved && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => onQuickView(label, resolved)}
+              title="Quick View"
+              aria-label={`Quick view ${label}`}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.accentText, display: 'inline-flex', padding: 4 }}
+            >
+              <MdVisibility size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={downloading}
+              title="Download"
+              aria-label={`Download ${label}`}
+              style={{ background: 'none', border: 'none', cursor: downloading ? 'wait' : 'pointer', color: t.accentText, display: 'inline-flex', padding: 4, opacity: downloading ? 0.5 : 1 }}
+            >
+              <MdDownload size={16} />
+            </button>
+          </div>
         )}
       </div>
-    </>
-  );
-  return url ? (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="emp-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg, textDecoration: 'none' }}>
-      {content}
-    </a>
-  ) : (
-    <div className="emp-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg, cursor: 'default' }}>
-      {content}
     </div>
   );
 };
@@ -516,6 +550,12 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // utils/emailPermission.ts.
   const canEditEmail = useCanChangeEmail();
   const emailLocked = !isView && mode !== 'add' && !canEditEmail;
+
+  // Quick View — which document, if any, the shared viewer is showing.
+  // Kept at page level so the modal renders above the whole record and
+  // closing it leaves the page exactly where it was.
+  const [preview, setPreview] = useState<{ label: string; url: string } | null>(null);
+  const openPreview = useCallback((label: string, url: string) => setPreview({ label, url }), []);
 
   const [fetching, setFetching] = useState(mode !== 'add');
 
@@ -1161,12 +1201,16 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               duplicated here) — the remaining 4 documents fill 2 rows of 2
               at the .emp-doc-grid breakpoint. */}
           <div className="emp-doc-grid">
-            <DocumentCard t={t} label="Aadhar Card" url={existingUrls.aadhar_card} />
-            <DocumentCard t={t} label="PAN Card" url={existingUrls.pan_card} />
-            <DocumentCard t={t} label="Resume" url={existingUrls.resume} />
-            <DocumentCard t={t} label="Appointment Letter" url={existingUrls.appointment_letter} />
+            <DocumentCard t={t} label="Aadhar Card" url={existingUrls.aadhar_card} onQuickView={openPreview} />
+            <DocumentCard t={t} label="PAN Card" url={existingUrls.pan_card} onQuickView={openPreview} />
+            <DocumentCard t={t} label="Resume" url={existingUrls.resume} onQuickView={openPreview} />
+            <DocumentCard t={t} label="Appointment Letter" url={existingUrls.appointment_letter} onQuickView={openPreview} />
           </div>
         </div>
+
+        {preview && (
+          <DocumentViewerModal t={t} label={preview.label} url={preview.url} onClose={() => setPreview(null)} />
+        )}
 
         {/* ── Sticky footer — Go Back only, exactly as every other mode's
             footer (same markup/behavior/positioning; !isView below just
@@ -1280,7 +1324,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Aadhar Number" required error={errorFor('aadhar_number')} fieldRef={setFieldRef('aadhar_number') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter aadhar number" value={form.aadhar_number} readOnly={isView} disabled={isView} maxLength={12}
               onChange={(e) => set('aadhar_number', sanitizeDigits(e.target.value, 12))} className={fieldClass} />
-            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-gradient)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
+            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
           <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept={DOCUMENT_ACCEPT} required
             file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={handlePanCardChange}
@@ -1288,7 +1332,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="PAN Number" required error={errorFor('pan_number')} fieldRef={setFieldRef('pan_number') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter PAN number" value={form.pan_number} readOnly={isView} disabled={isView} maxLength={10}
               onChange={(e) => set('pan_number', sanitizeAlphanumericUpper(e.target.value, 10))} className={fieldClass} />
-            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: 'var(--brand-gradient)', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
+            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
         </div>
 
@@ -1348,7 +1392,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }}
               />
               {compactINR(form.salary) && (
-                <span style={{ color: 'var(--brand-gradient)', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(form.salary)}</span>
+                <span style={{ color: 'var(--brand-ink)', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compactINR(form.salary)}</span>
               )}
             </div>
           </Field>

@@ -11,6 +11,7 @@
 
 import React from 'react';
 import { AppTheme } from '../../styles/theme';
+import { statusColors } from '../../styles/statusColors';
 
 export const iconBtnStyle: React.CSSProperties = {
   background: 'none', border: 'none', cursor: 'pointer',
@@ -39,19 +40,33 @@ export const getAccordionHeaderStyle = (t: AppTheme, isOpen: boolean): React.CSS
 // `fontSize` defaults to the original 10.5px so existing callers are
 // unaffected — added when deduping RoleListPage.tsx's near-identical local
 // `statusBadge`, whose only real difference was its 12.5px text.
-export const StatusBadge: React.FC<{ isActive: boolean; t: AppTheme; isDark: boolean; fontSize?: number }> = ({ isActive, t: _t, isDark, fontSize = 10.5 }) => (
-  <span style={{
-    display: 'inline-flex', alignItems: 'center',
-    padding: '2px 10px', borderRadius: 20, fontSize, fontWeight: 500,
-    background: isActive
-      ? isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7'
-      : isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2',
-    color: isActive
-      ? isDark ? '#4ade80' : '#16a34a'
-      : isDark ? '#f87171' : '#dc2626',
-  }}>
-    {isActive ? 'Active' : 'Inactive'}
-  </span>
+//
+// Colors come from styles/statusColors.ts and are the SAME in light and
+// dark theme. This used to branch on `isDark` and paint a different green
+// and red in black theme, which made the theme toggle change what a status
+// looked like — a status color is information, not styling. The chip
+// carries its own light background and dark-on-light text, so it reads
+// clearly on the white page and on the black one alike.
+//
+// `isDark` is still accepted (and ignored) so the ~dozen existing call
+// sites do not all have to change at once.
+export const StatusChip: React.FC<{
+  label: string; status?: string; fontSize?: number;
+}> = ({ label, status, fontSize = 10.5 }) => {
+  const c = statusColors(status ?? label);
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
+      padding: '2px 10px', borderRadius: 20, fontSize, fontWeight: 600,
+      background: c.bg, color: c.fg,
+    }}>
+      {label}
+    </span>
+  );
+};
+
+export const StatusBadge: React.FC<{ isActive: boolean; t?: AppTheme; isDark?: boolean; fontSize?: number }> = ({ isActive, fontSize = 10.5 }) => (
+  <StatusChip label={isActive ? 'Active' : 'Inactive'} fontSize={fontSize} />
 );
 
 // ── Form fields — shared input/label styling for any Crud-style page ────

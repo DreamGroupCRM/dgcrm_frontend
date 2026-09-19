@@ -1,14 +1,14 @@
 // ==========================================
 // DREAM GROUP CRM - CUSTOMER DETAILS CRUD PAGE
 // ==========================================
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MdArrowBack, MdSave, MdPerson, MdApartment, MdClose, MdKeyboardArrowDown, MdAdd,
   MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew, MdGridView,
-  MdPayments, MdDescription, MdVisibility, MdRadioButtonChecked, MdRadioButtonUnchecked,
+  MdPayments, MdDescription, MdVisibility, MdDownload, MdRadioButtonChecked, MdRadioButtonUnchecked,
 } from 'react-icons/md';
 import { FaWhatsapp } from 'react-icons/fa';
 
@@ -28,6 +28,8 @@ import { Building, Company, ParkingChoice } from '../../../../types/index';
 // this page's bundle; only the shape of the payload it navigates back with.
 import type { SelectedUnitForCustomer } from '../../Building2D/Building2DViewPage';
 import { showAlert, resolveFileUrl } from '../../../../utils';
+import DocumentViewerModal from '../../../../components/common/DocumentViewerModal';
+import { previewKindFor, downloadDocument } from '../../../../services/documentService';
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
 import { DobPicker } from '../../../../components/common/DobPicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
@@ -164,38 +166,78 @@ const ViewValue: React.FC<{ label: string; value: React.ReactNode; className?: s
 );
 
 // ── View Customer — one uploaded-document card (Aadhar/PAN/Application
-// Form/Declaration Form/Allotment Letter). Real preview — an image renders
-// as an actual thumbnail, a PDF/other document gets an icon block — and
-// the whole card opens the file in a new tab, matching Employee View's
-// DocumentCard exactly (item 16's "same document-preview behavior").
-const CustomerDocumentCard: React.FC<{ t: Theme; label: string; url?: string | null }> = ({ t, label, url }) => {
-  const isImage = !!url && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url);
-  const content = (
-    <>
-      <div className="w-full flex items-center justify-center overflow-hidden"
-        style={{ height: 120, background: isImage ? t.insetBg : url ? 'var(--grad-purple)' : t.insetBg }}>
-        {isImage && url ? (
-          <img src={url} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <MdDescription size={34} color={url ? '#fff' : t.textSecondary} />
-        )}
-      </div>
+// Form/Declaration Form/Allotment Letter). An image renders as a real
+// thumbnail, anything else gets an icon block, and the card offers two
+// explicit actions: Quick View and Download.
+//
+// It used to be an <a target="_blank"> around the whole card pointing at
+// the raw file URL, which lost the user's place in the record and turned
+// into a silent download for DOCX/XLSX. It now opens the shared
+// DocumentViewerModal (components/common), which fetches the file over
+// the authenticated axios instance — nothing has to be publicly readable
+// for the preview to work. Matches Employee View's DocumentCard exactly.
+const CustomerDocumentCard: React.FC<{
+  t: Theme; label: string; url?: string | null;
+  onQuickView: (label: string, url: string) => void;
+}> = ({ t, label, url, onQuickView }) => {
+  const resolved = url ? resolveFileUrl(url) : '';
+  const isImage = !!resolved && previewKindFor(resolved) === 'image';
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!resolved) return;
+    setDownloading(true);
+    try {
+      await downloadDocument(resolved, label);
+    } catch {
+      showAlert.error('That file could not be downloaded. It may have been removed.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="cust-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg }}>
+      <button
+        type="button"
+        disabled={!resolved}
+        onClick={() => resolved && onQuickView(label, resolved)}
+        aria-label={resolved ? `Quick view ${label}` : `${label} not uploaded`}
+        className="w-full flex items-center justify-center overflow-hidden"
+        style={{
+          height: 120, padding: 0, border: 'none',
+          cursor: resolved ? 'pointer' : 'default',
+          background: isImage ? t.insetBg : resolved ? 'var(--grad-purple)' : t.insetBg,
+        }}
+      >
+        {isImage
+          ? <img src={resolved} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <MdDescription size={34} color={resolved ? '#fff' : t.textMuted} />}
+      </button>
       <div className="flex items-center justify-between gap-2 px-3.5 py-2.5">
         <div className="min-w-0">
           <div className="cust-doc-card-label">{label}</div>
-          <div className="cust-doc-card-status">{url ? 'Uploaded' : 'Not uploaded'}</div>
+          <div className="cust-doc-card-status">{resolved ? 'Uploaded' : 'Not uploaded'}</div>
         </div>
-        {url && <span className="cust-doc-card-link" style={{ flexShrink: 0 }}><MdOpenInNew size={12} /> Open</span>}
+        {resolved && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              type="button" onClick={() => onQuickView(label, resolved)}
+              title="Quick View" aria-label={`Quick view ${label}`}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.accentText, display: 'inline-flex', padding: 4 }}
+            >
+              <MdVisibility size={16} />
+            </button>
+            <button
+              type="button" onClick={handleDownload} disabled={downloading}
+              title="Download" aria-label={`Download ${label}`}
+              style={{ background: 'none', border: 'none', cursor: downloading ? 'wait' : 'pointer', color: t.accentText, display: 'inline-flex', padding: 4, opacity: downloading ? 0.5 : 1 }}
+            >
+              <MdDownload size={16} />
+            </button>
+          </div>
+        )}
       </div>
-    </>
-  );
-  return url ? (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="cust-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg, textDecoration: 'none' }}>
-      {content}
-    </a>
-  ) : (
-    <div className="cust-doc-card" style={{ border: `1px solid ${t.surfaceBorder}`, background: t.insetBg, cursor: 'default' }}>
-      {content}
     </div>
   );
 };
@@ -371,7 +413,7 @@ const CompactFileUpload: React.FC<{ t: Theme; isView?: boolean; accept?: string;
           {previewUrl ? (
             <img src={previewUrl} alt="" className="rounded-lg flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'cover' }} />
           ) : (
-            <MdInsertDriveFile size={16} style={{ color: 'var(--brand-gradient)', flexShrink: 0 }} />
+            <MdInsertDriveFile size={16} style={{ color: 'var(--brand-ink)', flexShrink: 0 }} />
           )}
           <span className="truncate" style={{ fontSize: 11.5, color: t.textPrimary, flex: 1 }}>{displayName}</span>
           {!isView && (
@@ -427,7 +469,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
       {previewUrl ? (
         <img src={previewUrl} alt="" className="rounded-lg mx-auto mb-1.5" style={{ width: 48, height: 48, objectFit: 'cover' }} />
       ) : (
-        <MdCloudUpload size={26} style={{ color: 'var(--brand-gradient)', margin: '0 auto 6px' }} />
+        <MdCloudUpload size={26} style={{ color: 'var(--brand-ink)', margin: '0 auto 6px' }} />
       )}
       {displayName ? (
         <div className="flex items-center justify-center gap-2">
@@ -441,7 +483,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
         </div>
       ) : (
         <button type="button" disabled={isView} onClick={() => inputRef.current?.click()}
-          style={{ background: 'transparent', border: 'none', cursor: isView ? 'not-allowed' : 'pointer', color: 'var(--brand-gradient)', fontSize: 11, fontWeight: 700, fontFamily: t.fontFamily }}>
+          style={{ background: 'transparent', border: 'none', cursor: isView ? 'not-allowed' : 'pointer', color: 'var(--brand-ink)', fontSize: 11, fontWeight: 700, fontFamily: t.fontFamily }}>
           Upload {label}
         </button>
       )}
@@ -453,7 +495,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
 const RadioOption: React.FC<{ t: Theme; label: string; selected: boolean; onSelect: () => void; disabled?: boolean }> = ({ t, label, selected, onSelect, disabled }) => (
   <button type="button" disabled={disabled} onClick={onSelect}
     className="flex items-center gap-2" style={{ background: 'transparent', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', padding: 0 }}>
-    {selected ? <MdRadioButtonChecked size={18} style={{ color: 'var(--brand-gradient)' }} /> : <MdRadioButtonUnchecked size={18} style={{ color: t.textSecondary }} />}
+    {selected ? <MdRadioButtonChecked size={18} style={{ color: 'var(--brand-ink)' }} /> : <MdRadioButtonUnchecked size={18} style={{ color: t.textSecondary }} />}
     <span style={{ fontSize: 12, color: t.textPrimary, fontWeight: 600 }}>{label}</span>
   </button>
 );
@@ -470,7 +512,7 @@ const AmountField: React.FC<{ t: Theme; isView?: boolean; disabled?: boolean; pl
       <input type="text" inputMode="decimal" placeholder={placeholder} value={formatAmountDisplay(value)} readOnly={isView || disabled} disabled={isView || disabled}
         onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ''))}
         style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
-      {compact && <span style={{ color: 'var(--brand-gradient)', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
+      {compact && <span style={{ color: 'var(--brand-ink)', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
     </div>
   );
 };
@@ -614,6 +656,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const routerLocation = useLocation();
   const { isDark, t, cssVars: appearanceCssVars } = useAppearanceTokens();
   const isView = mode === 'view';
+
+  // Quick View — which document the shared viewer is showing, if any. Kept
+  // at page level so closing the preview leaves the record exactly where
+  // the user left it.
+  const [preview, setPreview] = useState<{ label: string; url: string } | null>(null);
+  const openPreview = useCallback((label: string, url: string) => setPreview({ label, url }), []);
 
   // A customer's email is their portal login credential, so only an Admin
   // may change it on an existing record. Same rule (and same message) as
@@ -1312,11 +1360,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
             <SectionHeader t={t} icon={<MdDescription size={16} />} title="Uploaded Documents" gradient="var(--grad-green)" />
             <div className="cust-doc-grid">
-              <CustomerDocumentCard t={t} label="Aadhar Card" url={typeof aadharPhoto === 'string' ? aadharPhoto : null} />
-              <CustomerDocumentCard t={t} label="Pancard" url={typeof pancardPhoto === 'string' ? pancardPhoto : null} />
-              <CustomerDocumentCard t={t} label="Application Form" url={typeof applicationForm === 'string' ? applicationForm : null} />
-              <CustomerDocumentCard t={t} label="Declaration Form" url={typeof declarationForm === 'string' ? declarationForm : null} />
-              <CustomerDocumentCard t={t} label="Allotment Letter" url={typeof allotmentLetter === 'string' ? allotmentLetter : null} />
+              <CustomerDocumentCard t={t} label="Aadhar Card" url={typeof aadharPhoto === 'string' ? aadharPhoto : null} onQuickView={openPreview} />
+              <CustomerDocumentCard t={t} label="Pancard" url={typeof pancardPhoto === 'string' ? pancardPhoto : null} onQuickView={openPreview} />
+              <CustomerDocumentCard t={t} label="Application Form" url={typeof applicationForm === 'string' ? applicationForm : null} onQuickView={openPreview} />
+              <CustomerDocumentCard t={t} label="Declaration Form" url={typeof declarationForm === 'string' ? declarationForm : null} onQuickView={openPreview} />
+              <CustomerDocumentCard t={t} label="Allotment Letter" url={typeof allotmentLetter === 'string' ? allotmentLetter : null} onQuickView={openPreview} />
+              {preview && (
+                <DocumentViewerModal t={t} label={preview.label} url={preview.url} onClose={() => setPreview(null)} />
+              )}
             </div>
           </div>
         </div>
@@ -1425,7 +1476,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Upload Aadhar Card Photo" required error={errorFor('aadharPhoto')} fieldRef={setFieldRef('aadharPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange} />
-            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-gradient)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
+            {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
           <Field t={t} label="Aadhar Number" required error={errorFor('aadharNumber')} fieldRef={setFieldRef('aadharNumber') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView} maxLength={12}
@@ -1433,7 +1484,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Upload Pancard Photo" required error={errorFor('pancardPhoto')} fieldRef={setFieldRef('pancardPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange} />
-            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: 'var(--brand-gradient)', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
+            {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
           <Field t={t} label="Pancard Number" error={errorFor('pancardNumber')} fieldRef={setFieldRef('pancardNumber') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView} maxLength={10}
@@ -1454,7 +1505,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               {age && (
                 <div className="rounded-xl px-2 py-2 flex-shrink-0" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
                   <p style={{ fontSize: 9, color: t.textSecondary, margin: 0, fontWeight: 600 }}>Age</p>
-                  <p style={{ fontSize: 10.5, color: 'var(--brand-gradient)', margin: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>{age.years}y {age.months}m</p>
+                  <p style={{ fontSize: 10.5, color: 'var(--brand-ink)', margin: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>{age.years}y {age.months}m</p>
                 </div>
               )}
             </div>
@@ -1498,7 +1549,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <button type="button"
               onClick={() => navigate(ROUTES.ADMIN.BUILDING_2D_VIEW, { state: { pickerMode: true, returnPath: routerLocation.pathname } })}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold"
-              style={{ background: t.insetBg, color: 'var(--brand-gradient)', border: `1px solid ${t.inputBorder}`, cursor: 'pointer' }}>
+              style={{ background: t.insetBg, color: 'var(--brand-ink)', border: `1px solid ${t.inputBorder}`, cursor: 'pointer' }}>
               <MdGridView size={16} /> Select Flat (Building View)
             </button>
           </div>
@@ -1750,7 +1801,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 not buried inline in the Payment Details grid. */}
             <button type="button" onClick={handlePreview} disabled={saving}
               className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold"
-              style={{ background: t.insetBg, color: 'var(--brand-gradient)', border: `1px solid ${t.inputBorder}`, cursor: saving ? 'not-allowed' : 'pointer' }}>
+              style={{ background: t.insetBg, color: 'var(--brand-ink)', border: `1px solid ${t.inputBorder}`, cursor: saving ? 'not-allowed' : 'pointer' }}>
               <MdVisibility size={16} /> Preview
             </button>
             <button type="button" onClick={handleSubmit} disabled={saving}

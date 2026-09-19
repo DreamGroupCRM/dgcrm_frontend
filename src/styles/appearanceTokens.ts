@@ -44,6 +44,12 @@ import { AppearanceId } from '../redux/slices/appearanceSlice';
 // byte-identical to the literal it was given — zero regression. ─────────
 const TINT_RATIO = 0.32;
 
+// How far the accent is lifted toward white to become readable INK on the
+// black theme (see '--brand-ink'). 0.45 puts every current palette between
+// 4.9:1 and 8.2:1 on the dark page, card and inset surfaces, while leaving
+// the hue clearly recognisable as the brand color.
+const ACCENT_INK_LIFT = 0.45;
+
 function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace('#', '');
   const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
@@ -68,29 +74,20 @@ function tintGradientCss(gradient: string, accent: string, ratio: number): strin
   return gradient.replace(/#[0-9a-fA-F]{3,6}/g, (hex) => mixHex(hex, accent, ratio));
 }
 
-// ── Status "family" — the semantic bucket a badge-style status belongs to,
-// independent of which literal appearance is active. Lead statuses map to
-// families once; each appearance then only needs to color 10 families
-// instead of every individual status value. Reusable for any future
-// badge-like status (Customer active/inactive, payment approval, etc.). ──
-export type StatusFamily =
-  | 'accentInfo' | 'info' | 'infoSky' | 'warning' | 'warningAmber'
-  | 'neutral' | 'neutralMuted' | 'danger' | 'violet' | 'success';
+// ── Status "family" — the semantic bucket a badge-style status belongs to.
+// The type and the status->family mapping now live in styles/statusColors.ts
+// (one file for every module's statuses, not just Leads) and are re-exported
+// here so existing importers keep working unchanged. The COLORS for a family
+// are no longer per-appearance/per-theme — see `family` in
+// useAppearanceTokens() below for why. ─────────────────────────────────────
+export type { StatusFamily } from './statusColors';
+import type { StatusFamily } from './statusColors';
+import { STATUS_FAMILY, familyColors } from './statusColors';
 
-export const LEAD_STATUS_FAMILY: Record<string, StatusFamily> = {
-  new: 'accentInfo',
-  follow_up: 'info',
-  call_back: 'infoSky',
-  ringing: 'warning',
-  switched_off: 'neutral',
-  wrong_number: 'danger',
-  not_interested: 'danger',
-  site_visit_scheduled: 'warningAmber',
-  visited: 'violet',
-  not_booked: 'neutral',
-  booked: 'success',
-  cancelled: 'neutralMuted',
-};
+/** @deprecated Use statusFamilyFor() from styles/statusColors.ts, which
+ *  covers every module's statuses rather than only Leads. Kept as an alias
+ *  so LeadStatusBadge and anything else importing it keeps working. */
+export const LEAD_STATUS_FAMILY: Record<string, StatusFamily> = STATUS_FAMILY;
 
 interface FamilyColorPair { bg: string; fg: string; bgDark: string; fgDark: string; }
 type FamilyColors = Record<StatusFamily, FamilyColorPair>;
@@ -434,6 +431,18 @@ export interface AppearanceCssVars {
   // gradient) (rather than a hardcoded #0000FF) follow the selected
   // appearance instead of always rendering fixed brand blue.
   '--brand-gradient': string;
+  // The accent as INK (text/icons), as opposed to --brand-gradient which
+  // is the accent as PAINT (button fills, header bands).
+  //
+  // Every palette's accent is chosen to carry white text on top of it, so
+  // they are all deep and saturated — and all of them land at 2.3-3.5:1
+  // when used as a text color on the black theme, which is why "brand
+  // colored" section headings, required-field asterisks, links and icons
+  // faded into the background there. In dark mode this is the same hue
+  // lifted toward white until it clears 4.5:1 on every dark surface; in
+  // light mode it is byte-identical to --brand-gradient, so light theme
+  // does not change at all.
+  '--brand-ink': string;
 }
 
 export function useAppearanceTokens() {
@@ -454,12 +463,27 @@ export function useAppearanceTokens() {
     // control this pass wires up is conceptually the same primary action
     // color as the "Add X" button.
     '--brand-gradient': isDark ? palette.btnPrimaryGradientDark : palette.btnPrimaryGradient,
+    '--brand-ink': isDark
+      ? mixHex(palette.btnPrimaryGradientDark, '#ffffff', ACCENT_INK_LIFT)
+      : palette.btnPrimaryGradient,
   };
 
-  const family = (f: StatusFamily) => {
-    const c = palette.families[f];
-    return isDark ? { bg: c.bgDark, fg: c.fgDark } : { bg: c.bg, fg: c.fg };
-  };
+  // Status/badge colors are NO LONGER resolved from the appearance palette
+  // or the light/dark mode. They now come from styles/statusColors.ts, the
+  // single semantic source of truth, and are identical in both themes and
+  // under every appearance.
+  //
+  // Why: a status color is what a row MEANS ("Approved" = green,
+  // "Rejected" = red). Resolving it through the theme made the same record
+  // render different colors in dark mode, and switching appearance
+  // recolored every status in the app — the theme was changing
+  // information, not presentation. The values returned here are exactly
+  // the 'existing' palette's light-mode literals, i.e. the colors this app
+  // has always shown in light mode, so nothing about light mode changes.
+  //
+  // palette.families is intentionally left in place: it still describes
+  // each appearance and is what a future non-status accent could read.
+  const family = (f: StatusFamily) => familyColors(f);
 
   return {
     appearance, isDark, t,

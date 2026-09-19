@@ -574,7 +574,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                         </td>
                         <td>
                           <button type="button" onClick={() => navigate(`/admin/employee/employee-details/view/${emp.id}`)}
-                            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand-gradient)', fontWeight: 600 }}>
+                            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand-ink)', fontWeight: 600 }}>
                             {emp.employee_code}
                           </button>
                         </td>

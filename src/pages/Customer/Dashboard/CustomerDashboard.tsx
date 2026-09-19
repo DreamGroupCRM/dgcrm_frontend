@@ -25,11 +25,16 @@ import { CircularProgress } from '@mui/material';
 import {
   MdLogout, MdApartment, MdCalendarToday, MdCheckCircle, MdClose, MdReceiptLong,
   MdErrorOutline, MdSchedule, MdDescription, MdCreditCard, MdBadge, MdOpenInNew,
-  MdHistory, MdPerson, MdPhone, MdMailOutline,
+  MdHistory, MdPerson, MdPhone, MdMailOutline, MdLockOutline,
 } from 'react-icons/md';
 import Logo from '../../../components/ui/Logo';
 import StatCard from '../../../components/masters/StatCard';
 import { formatDate, resolveFileUrl } from '../../../utils';
+import { statusColors } from '../../../styles/statusColors';
+import DocumentViewerModal from '../../../components/common/DocumentViewerModal';
+import ChangePasswordForm from '../../../components/common/ChangePasswordForm';
+import { previewKindFor } from '../../../services/documentService';
+import { ensureFileToken } from '../../../services/fileAccessService';
 import { AccordionSection } from '../../../components/common/Accordion';
 import { PaymentReceiptViewModal } from '../../../components/common/PaymentReceiptViewModal';
 import { PaymentReceipt } from '../../../types/index';
@@ -46,86 +51,52 @@ type Theme = AppTheme;
 
 const rupee = (n: number): string => `₹ ${n.toLocaleString('en-IN')}`;
 
-const STATUS_META: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  paid: { label: 'Paid', color: '#16a34a', bg: '#dcfce7', icon: MdCheckCircle },
-  due: { label: 'Due', color: '#dc2626', bg: '#fee2e2', icon: MdErrorOutline },
-  upcoming: { label: 'Upcoming', color: '#ea580c', bg: '#ffedd5', icon: MdSchedule },
+// Labels and icons are this page's own; the COLORS come from
+// styles/statusColors.ts, so a 'Paid' chip here is the exact same green as
+// a 'Paid' chip on the staff-side pages, in either theme.
+const STATUS_META: Record<string, { label: string; icon: React.ElementType }> = {
+  paid: { label: 'Paid', icon: MdCheckCircle },
+  due: { label: 'Due', icon: MdErrorOutline },
+  upcoming: { label: 'Upcoming', icon: MdSchedule },
 };
 const StatusPill: React.FC<{ status: string }> = ({ status }) => {
-  const m = STATUS_META[status] ?? STATUS_META.upcoming;
+  const key = STATUS_META[status] ? status : 'upcoming';
+  const m = STATUS_META[key];
+  const c = statusColors(key);
   const Icon = m.icon;
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold" style={{ background: m.bg, color: m.color, fontSize: 11 }}>
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold" style={{ background: c.bg, color: c.fg, fontSize: 11 }}>
       <Icon size={13} /> {m.label}
     </span>
   );
 };
-const ApprovalPill: React.FC<{ approved: boolean }> = ({ approved }) => (
-  <span
-    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold"
-    style={{ background: approved ? '#dcfce7' : '#ffedd5', color: approved ? '#16a34a' : '#ea580c', fontSize: 11 }}
-  >
-    {approved ? <MdCheckCircle size={13} /> : <MdSchedule size={13} />} {approved ? 'Approved' : 'Pending Approval'}
-  </span>
-);
-
-// ── Document preview popup ────────────────────────────────────────────
-// Documents used to be plain <a target="_blank"> links pointing at the
-// RAW stored path (e.g. "/files/customers/abc.jpg"). On the customer
-// portal — served from the frontend origin, not the API origin — that
-// path resolves against the wrong host, so clicking a document opened a
-// blank tab or a 404 rather than the file. Two fixes, both here:
-// resolveFileUrl() puts the API origin back on a root-relative path (the
-// same helper every staff-side document card already uses), and the file
-// now opens in this in-page preview instead of a new tab.
-const DocumentPreviewModal: React.FC<{
-  t: Theme; label: string; url: string; onClose: () => void;
-}> = ({ t, label, url, onClose }) => {
-  // An image renders inline; anything else (PDF, docx) goes in an <iframe>,
-  // which browsers render natively for PDFs and offer to download
-  // otherwise. Either way there is an "Open in new tab" escape hatch.
-  const isImage = /\.(jpe?g|png|gif|webp|bmp|svg)(\?|$)/i.test(url);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
+const ApprovalPill: React.FC<{ approved: boolean }> = ({ approved }) => {
+  const c = statusColors(approved ? 'approved' : 'pending_approval');
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-      <div className="rounded-2xl w-full flex flex-col" style={{ maxWidth: 820, maxHeight: '90vh', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex items-center justify-between gap-3 px-5 py-3" style={{ borderBottom: `1px solid ${t.divider}` }}>
-          <h3 style={{ fontSize: 14.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>{label}</h3>
-          <div className="flex items-center gap-2">
-            <a href={url} target="_blank" rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-              style={{ background: t.insetBg, color: t.hoverText, border: `1px solid ${t.surfaceBorder}`, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-              <MdOpenInNew size={14} /> Open in new tab
-            </a>
-            <button type="button" onClick={onClose} aria-label="Close"
-              className="flex items-center justify-center rounded-lg"
-              style={{ width: 30, height: 30, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer' }}>
-              <MdClose size={16} />
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 flex items-center justify-center" style={{ background: t.insetBg, overflow: 'auto', minHeight: 320 }}>
-          {isImage
-            ? <img src={url} alt={label} style={{ maxWidth: '100%', maxHeight: '72vh', objectFit: 'contain' }} />
-            : <iframe title={label} src={url} style={{ width: '100%', height: '72vh', border: 'none', background: '#fff' }} />}
-        </div>
-      </div>
-    </div>
+    <span
+      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold"
+      style={{ background: c.bg, color: c.fg, fontSize: 11 }}
+    >
+      {approved ? <MdCheckCircle size={13} /> : <MdSchedule size={13} />} {approved ? 'Approved' : 'Pending Approval'}
+    </span>
   );
 };
+
+// The portal's own document preview is gone — it now uses the SAME
+// DocumentViewerModal as the staff-side Employee and Customer pages
+// (components/common/DocumentViewerModal). That local copy rendered the
+// file by pointing an <img>/<iframe> at its URL, which only worked while
+// uploaded files were publicly readable, and its "Open in new tab" link
+// handed out that raw URL. The shared viewer fetches over the
+// authenticated axios instance instead, so a customer sees their own
+// documents and a URL on its own grants nothing.
 
 // ── One document tile ─────────────────────────────────────────────────
 const DocumentTile: React.FC<{
   t: Theme; label: string; url: string | null; onOpen: (label: string, url: string) => void;
 }> = ({ t, label, url, onOpen }) => {
   const resolved = resolveFileUrl(url);
-  const isImage = !!resolved && /\.(jpe?g|png|gif|webp|bmp|svg)(\?|$)/i.test(resolved);
+  const isImage = !!resolved && previewKindFor(resolved) === 'image';
   const disabled = !resolved;
   return (
     <button
@@ -147,7 +118,7 @@ const DocumentTile: React.FC<{
       <div className="px-3 py-2">
         <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary }}>{label}</div>
         <div style={{ fontSize: 10.5, color: disabled ? t.textMuted : t.hoverText, fontWeight: 600 }}>
-          {disabled ? 'Not uploaded' : 'Tap to view'}
+          {disabled ? 'Not uploaded' : 'Quick View'}
         </div>
       </div>
     </button>
@@ -192,6 +163,7 @@ const CustomerDashboard: React.FC = () => {
   // Which document is open in the preview popup, and which transaction's
   // receipt is open. Both null when nothing is showing.
   const [docPreview, setDocPreview] = useState<{ label: string; url: string } | null>(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
   const [receiptLoadingId, setReceiptLoadingId] = useState<number | null>(null);
 
@@ -253,6 +225,20 @@ const CustomerDashboard: React.FC = () => {
       setReceiptLoadingId(null);
     }
   };
+
+  // Uploaded files are behind a credential now, and an <img src> cannot
+  // send a header — so it carries a short-lived file token instead. A
+  // session that logged in AFTER this shipped already has one; this covers
+  // one that was already open, so thumbnails resolve instead of 401ing.
+  useEffect(() => {
+    void ensureFileToken();
+    // A long-running session can outlive a file token, and an expired one
+    // shows up as every image breaking at once with nothing for the app to
+    // catch (an <img> error never reaches axios). ensureFileToken() is a
+    // no-op unless the token is missing or close to expiring.
+    const id = window.setInterval(() => { void ensureFileToken(); }, 30 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const handleLogout = async () => {
     await dispatch(logoutThunk());
@@ -319,6 +305,38 @@ const CustomerDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: t.subtleBg, fontFamily: t.fontFamily }}>
+      {/* Change Password — same shared form as the staff side. */}
+      {showChangePassword && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setShowChangePassword(false)}
+          role="dialog" aria-modal="true" aria-label="Change password"
+        >
+          <div
+            className="rounded-2xl w-full"
+            style={{ maxWidth: 420, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 px-5 py-3" style={{ borderBottom: `1px solid ${t.divider}` }}>
+              <h3 className="flex items-center gap-2" style={{ fontSize: 14.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>
+                <MdLockOutline size={17} style={{ color: t.accentText }} /> Change Password
+              </h3>
+              <button
+                type="button" onClick={() => setShowChangePassword(false)} aria-label="Close"
+                className="flex items-center justify-center rounded-lg"
+                style={{ width: 30, height: 30, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer' }}
+              >
+                <MdClose size={16} />
+              </button>
+            </div>
+            <div className="px-5 py-4">
+              <ChangePasswordForm t={t} onSuccess={() => setShowChangePassword(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top bar */}
       <div className="cd-topbar flex items-center justify-between gap-2 px-5 py-3" style={{ background: t.pageBg, borderBottom: `1px solid ${t.divider}` }}>
         <Logo size="sm" withText textColor={isDark ? 'text-white' : 'text-gray-900'} />
@@ -326,6 +344,19 @@ const CustomerDashboard: React.FC = () => {
           <span className="cd-welcome-text" style={{ fontSize: 13.5, color: t.textSecondary, fontWeight: 500 }}>
             {firstName ? `Welcome, ${firstName}` : 'Welcome'}
           </span>
+          {/* Change Password — the customer's self-service entry point,
+              sitting beside Logout where an account action is expected.
+              Opens the SAME form employees use (ChangePasswordForm), which
+              posts to the same /api/auth/change-password endpoint: one
+              `users` table, one session mechanism, one implementation. */}
+          <button
+            type="button"
+            onClick={() => setShowChangePassword(true)}
+            className="cd-logout-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold"
+            style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: 'none', cursor: 'pointer' }}
+          >
+            <MdLockOutline size={16} /> <span className="cd-logout-btn-text">Change Password</span>
+          </button>
           <button
             type="button"
             onClick={handleLogout}
@@ -338,7 +369,7 @@ const CustomerDashboard: React.FC = () => {
       </div>
 
       {loadingBookings ? (
-        <div className="flex-1 flex items-center justify-center"><CircularProgress size={28} sx={{ color: 'var(--brand-gradient)' }} /></div>
+        <div className="flex-1 flex items-center justify-center"><CircularProgress size={28} sx={{ color: 'var(--brand-ink)' }} /></div>
       ) : bookingsError ? (
         <div className="flex-1 flex items-center justify-center"><p style={{ color: t.textMuted }}>Couldn't load your bookings. Please try again later.</p></div>
       ) : bookings.length === 0 ? (
@@ -378,7 +409,7 @@ const CustomerDashboard: React.FC = () => {
           )}
 
           {loadingDetail || !detail ? (
-            <div className="flex items-center justify-center" style={{ padding: 60 }}><CircularProgress size={26} sx={{ color: 'var(--brand-gradient)' }} /></div>
+            <div className="flex items-center justify-center" style={{ padding: 60 }}><CircularProgress size={26} sx={{ color: 'var(--brand-ink)' }} /></div>
           ) : (
             <>
               {/* Who you are — photo, name, customer code and the contact
@@ -590,10 +621,11 @@ const CustomerDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Document preview — in-page, so a tap on a document card shows the
-          file right here instead of opening a tab at an unresolved path. */}
+      {/* Quick View — the shared viewer, identical to the one the staff
+          pages use. Fetches over the authenticated API, shows images and
+          PDFs inline, and offers Download throughout. */}
       {docPreview && (
-        <DocumentPreviewModal
+        <DocumentViewerModal
           t={t} label={docPreview.label} url={docPreview.url}
           onClose={() => setDocPreview(null)}
         />

@@ -163,7 +163,7 @@ const MODE_OF_PAYMENT_OPTIONS = ['Cash', 'Cheque', 'Online', 'Other'];
 // category boxes (click-to-filter) and the table's own Payment For column
 // badge — same convention PaymentUpcomingPage uses.
 const PAYMENT_FOR_KEY_META: Record<PaymentFor, { label: string; color: string; icon: IconType }> = {
-  EMIAmount: { label: 'Monthly Installment', color: 'var(--brand-gradient)', icon: MdPayments },
+  EMIAmount: { label: 'Monthly Installment', color: 'var(--brand-ink)', icon: MdPayments },
   BookingAmount: { label: 'Booking Amount', color: '#dc2626', icon: MdReceiptLong },
   PayAfterbooking: { label: 'Remaining Booking Amount', color: '#ea580c', icon: MdSchedule },
   PossessionAmount: { label: 'Possession Amount', color: '#7c3aed', icon: MdVpnKey },
@@ -797,11 +797,11 @@ const DueReportPage: React.FC = () => {
               ) : (
                 pagedDueRows.map((r) => (
                   <tr key={r.key} style={{ borderTop: `1px solid ${t.divider}` }}>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: '#000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.customer_name}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.company_name || '—'}</div>
                       {(r.project_name || r.location) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
@@ -809,7 +809,7 @@ const DueReportPage: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
                       {(r.wing_name || r.flat_no) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
@@ -817,13 +817,13 @@ const DueReportPage: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.assigned_employee_name || '—'}</div>
                       {r.assigned_employee_code && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.assigned_employee_code}</div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary }}>
                       <div>{r.email || '—'}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.mobile_number || '—'}</div>
                     </td>
@@ -849,7 +849,7 @@ const DueReportPage: React.FC = () => {
                         <span style={{ color: t.textSecondary, fontSize: 11.5 }}>—</span>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       {r.months_pending && r.months_pending > 1 && r.per_month_amount != null
                         ? `${rupee(r.per_month_amount)} × ${r.months_pending} = ${rupee(r.amount)}`
                         : rupee(r.amount)}
@@ -867,7 +867,7 @@ const DueReportPage: React.FC = () => {
                       {r.dueRow && (
                         <button type="button" onClick={() => openFollowUp(r.dueRow as DueListDetailRow)} title="Schedule a follow-up"
                           className="flex items-center justify-center rounded-lg"
-                          style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-gradient)', cursor: 'pointer' }}>
+                          style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' }}>
                           <MdNoteAdd size={16} />
                         </button>
                       )}

@@ -62,6 +62,8 @@ export const clearStoredSession = (): void => {
   localStorage.removeItem(STORAGE_KEYS.USER);
   localStorage.removeItem(STORAGE_KEYS.ROLE);
   localStorage.removeItem(STORAGE_KEYS.PERMISSIONS);
+  // The file-access token is part of the session — it must not outlive it.
+  localStorage.removeItem(STORAGE_KEYS.FILE_TOKEN);
 };
 
 /** Records why the session ended, for the login page to show once. */

@@ -933,16 +933,16 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         <div style={{ fontSize: 12.5, color: '#3b82f6', fontWeight: 600 }}>
           <span
             onClick={() => navigate('/admin/masters/building')}
-            style={{ cursor: 'pointer', color: '#3b82f6' }}
+            style={{ cursor: 'pointer', color: t.accentText }}
           >
             Buildings
           </span>
-          <span style={{ margin: '0 6px', color: '#93c5fd' }}>/</span>
-          <span style={{ color: '#1d4ed8' }}>
+          <span style={{ margin: '0 6px', color: t.textMuted }}>/</span>
+          <span style={{ color: t.accentText }}>
             {isEdit ? 'Edit Building' : isView ? 'View Building' : 'New Building'}
           </span>
         </div>
-        <h1 style={{ fontSize: 21, fontWeight: 800, color: '#1d4ed8', margin: '4px 0 0' }}>
+        <h1 style={{ fontSize: 21, fontWeight: 800, color: t.accentText, margin: '4px 0 0' }}>
           {PAGE_TITLES[mode]}
         </h1>
       </div>
@@ -967,7 +967,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 per the sequence Company → Project → Location → Building.
                 Now mandatory — every building must link to a business
                 Company. Lists every entry in Company Master, same as before. */}
-            <label style={labelStyle}>Company {!isEdit && <span style={{ color: '#1d4ed8' }}>*</span>}</label>
+            <label style={labelStyle}>Company {!isEdit && <span style={{ color: t.accentText }}>*</span>}</label>
             <select
               value={businessCompanyId}
               disabled={isView}
@@ -981,7 +981,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             </select>
           </div>
           <div>
-            <label style={labelStyle}>Project Name <span style={{ color: '#1d4ed8' }}>*</span></label>
+            <label style={labelStyle}>Project Name <span style={{ color: t.accentText }}>*</span></label>
             <input
               type="text" placeholder="Enter project name" value={projectName}
               readOnly={isView} disabled={isView}
@@ -990,7 +990,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </div>
           <div>
-            <label style={labelStyle}>Location <span style={{ color: '#1d4ed8' }}>*</span></label>
+            <label style={labelStyle}>Location <span style={{ color: t.accentText }}>*</span></label>
             <input
               type="text" placeholder="Enter location" value={location}
               readOnly={isView} disabled={isView}
@@ -999,7 +999,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </div>
           <div>
-            <label style={labelStyle}>Building Name <span style={{ color: '#1d4ed8' }}>*</span></label>
+            <label style={labelStyle}>Building Name <span style={{ color: t.accentText }}>*</span></label>
             <input
               type="text" placeholder="Enter building name" value={buildingName}
               readOnly={isView} disabled={isView}
@@ -1113,7 +1113,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                   {w.name ? `${w.name} wing` : `Wing ${idx + 1}`}
                 </span>
               </div>
-              <label style={labelStyle}>No. of Floors <span style={{ color: '#1d4ed8' }}>*</span></label>
+              <label style={labelStyle}>No. of Floors <span style={{ color: t.accentText }}>*</span></label>
               <input
                 type="number" min={0} placeholder="e.g. 5" value={w.no_of_floors}
                 readOnly={isView} disabled={isView}
@@ -1328,7 +1328,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             sit below a divider). */}
         <div className="flex flex-wrap items-center gap-3 sm:gap-5">
           <label style={labelStyle}>
-            Do you have shops in this building? <span style={{ color: '#1d4ed8' }}>*</span>
+            Do you have shops in this building? <span style={{ color: t.accentText }}>*</span>
           </label>
           <div className="flex items-center gap-5">
             <label className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
@@ -1353,7 +1353,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             // revealed question + input + button read as their own group.
             <div className="flex flex-wrap items-center gap-3" style={{ marginLeft: 'auto' }}>
               <span style={{ fontWeight: 600, fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                How many shops in this building? <span style={{ color: '#1d4ed8' }}>*</span>
+                How many shops in this building? <span style={{ color: t.accentText }}>*</span>
               </span>
               <input
                 type="number" min={0} placeholder="e.g. 4" value={shopCountInput}
@@ -1475,7 +1475,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             separate stacked row/section). */}
         <div className="flex flex-wrap items-center gap-3 sm:gap-5">
           <label style={labelStyle}>
-            Do you have parking? <span style={{ color: '#1d4ed8' }}>*</span>
+            Do you have parking? <span style={{ color: t.accentText }}>*</span>
           </label>
           <div className="flex items-center gap-5">
             <label className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
@@ -1498,7 +1498,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             // Same right-pushed group treatment as the Shops section above.
             <div className="flex flex-wrap items-center gap-3" style={{ marginLeft: 'auto' }}>
               <span style={{ fontWeight: 600, fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                How many parking spaces are there in this building? <span style={{ color: '#1d4ed8' }}>*</span>
+                How many parking spaces are there in this building? <span style={{ color: t.accentText }}>*</span>
               </span>
               <input
                 type="number"

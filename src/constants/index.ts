@@ -10,6 +10,10 @@ export const APP_TAGLINE = 'Building Dreams. Building A Better Future.';
 // Only what is required to keep the user logged in across page refreshes is stored here.
 export const STORAGE_KEYS = {
   TOKEN: 'dgcrm_token',
+  // Short-lived, file-only token used to build <img src> URLs for
+  // protected uploads — a browser cannot put an Authorization header on an
+  // image request. Not a session token; see services/fileAccessService.ts.
+  FILE_TOKEN: 'dgcrm_file_token',
   USER: 'dgcrm_user',
   PERMISSIONS: 'dgcrm_permissions',
   THEME: 'dgcrm_theme',

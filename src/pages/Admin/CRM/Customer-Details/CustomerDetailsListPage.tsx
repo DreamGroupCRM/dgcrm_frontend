@@ -1244,7 +1244,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                       {c.customer_code ? (
                         <button type="button" onClick={() => navigate(`/admin/crm/customer-details/view/${c.id}`)}
-                          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, color: 'var(--brand-gradient)' }}>
+                          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, color: 'var(--brand-ink)' }}>
                           {c.customer_code}
                         </button>
                       ) : (
@@ -1379,7 +1379,7 @@ const CustomerDetailsListPage: React.FC = () => {
                                   </button>
                                   <button type="button" title="View Receipt" onClick={() => openReceipt(p.id)}
                                     className="flex items-center justify-center rounded-lg"
-                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-gradient)', cursor: 'pointer' }}>
+                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-ink)', cursor: 'pointer' }}>
                                     <MdVisibility size={13} />
                                   </button>
                                   {isAdmin && (
@@ -1413,7 +1413,7 @@ const CustomerDetailsListPage: React.FC = () => {
 
                   {(infoModal.payments || []).length > 0 && (
                     <div className="flex items-center justify-between rounded-xl px-4 py-3 mt-4" style={{ background: t.insetBg }}>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--brand-gradient)' }}>Grand Total:</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--brand-ink)' }}>Grand Total:</span>
                       <span className="rounded-lg px-3 py-1.5" style={{ border: '1px solid #16a34a', fontSize: 13, fontWeight: 800, color: '#16a34a' }}>
                         ₹ {infoModal.payments!.reduce((s, p) => s + p.amount, 0).toLocaleString('en-IN')}
                       </span>

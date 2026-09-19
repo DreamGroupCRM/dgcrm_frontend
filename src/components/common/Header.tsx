@@ -177,7 +177,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
         onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
       >
         {masterEnabled
-          ? <MdCheckBox size={18} style={{ color: 'var(--brand-gradient)', flexShrink: 0 }} />
+          ? <MdCheckBox size={18} style={{ color: 'var(--brand-ink)', flexShrink: 0 }} />
           : <MdCheckBoxOutlineBlank size={18} style={{ color: t.textPrimary, flexShrink: 0 }} />
         }
         Enable Master
@@ -371,7 +371,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
                   onClick={() => { dispatch(toggleTheme()); setMoreOpen(false); }}
                   onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.hoverBg)}
                   onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}>
-                  {isDark ? <FiSun size={17} style={{ color: '#facc15' }} /> : <FiMoon size={17} style={{ color: 'var(--brand-gradient)' }} />}
+                  {isDark ? <FiSun size={17} style={{ color: '#facc15' }} /> : <FiMoon size={17} style={{ color: 'var(--brand-ink)' }} />}
                   {isDark ? 'Switch to Light' : 'Switch to Dark'}
                 </button>
 

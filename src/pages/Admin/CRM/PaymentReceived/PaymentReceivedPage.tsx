@@ -515,7 +515,7 @@ const PaymentReceivedPage: React.FC = () => {
                       <div className="pr-row-actions flex items-center gap-1.5">
                         <button type="button" title="View Receipt" onClick={() => handleViewReceipt(r)}
                           className="flex items-center justify-center rounded-lg"
-                          style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-gradient)', cursor: 'pointer' }}>
+                          style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-ink)', cursor: 'pointer' }}>
                           <MdVisibility size={13} />
                         </button>
                         <button type="button" title="Download Receipt" disabled={downloadingId === r.id} onClick={() => handleDownloadReceipt(r)}
@@ -549,7 +549,7 @@ const PaymentReceivedPage: React.FC = () => {
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount + (r.maintenance || 0))}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', color: 'var(--brand-gradient)', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                      <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', color: 'var(--brand-ink)', fontSize: 10.5, whiteSpace: 'nowrap' }}>
                         {r.mode_of_payment || '—'}
                       </span>
                     </td>

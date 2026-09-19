@@ -4,6 +4,7 @@
 import Swal from 'sweetalert2';
 import { BaseRole, isAdminRole, isCustomerRole } from '../types';
 import { ROUTES } from '../constants';
+import { getFileToken } from '../services/fileAccessService';
 
 // Single source of truth for "where does this role land" — used by
 // PublicRoute/ProtectedRoute/LoginPage/Header/Sidebar so a new role (e.g.
@@ -94,8 +95,22 @@ export const resolveFileUrl = (url: string | null | undefined): string => {
   // the API run on different ports — there the path has to be pinned to
   // the API's origin or it would resolve against the dev server.
   const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-  if (/^https?:\/\//i.test(apiBase)) return new URL(apiBase).origin + path;
-  return path;
+  const base = /^https?:\/\//i.test(apiBase) ? new URL(apiBase).origin + path : path;
+
+  // Uploaded files are no longer public (see the backend's
+  // shared/fileAccess.ts). A browser will not put an Authorization header
+  // on an <img>/<iframe> request, so the credential rides in the query
+  // string instead — a short-lived token scoped to reading files and
+  // nothing else. Requests made through axios (the document viewer,
+  // Download) already send the session header and do not need this.
+  //
+  // Appended only to paths this app actually serves, and only when a token
+  // is present: with no token the URL is exactly what it was before, so
+  // nothing here can break a page on its own.
+  if (!path.startsWith(FILES_PREFIX)) return base;
+  const fk = getFileToken();
+  if (!fk) return base;
+  return base + (base.includes('?') ? '&' : '?') + 'fk=' + encodeURIComponent(fk);
 };
 
 /**

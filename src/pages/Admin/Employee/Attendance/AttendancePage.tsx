@@ -27,29 +27,24 @@ import { fetchAttendance, markAttendance, AttendanceRecord, AttendanceStatus } f
 import { fetchLeaves, reviewLeaveRequest, LeaveRecord, LeaveStatus, LEAVE_TYPE_LABEL, LeaveType, LEAVE_SESSION_LABEL } from '../../../../services/leaveService';
 import { formatDate, formatLastLogin } from '../../../../utils';
 import './AttendancePage.css';
+import { StatusChip } from '../../../../components/common/MasterListUI';
 
 type Tab = 'attendance' | 'leave';
 
 const ATT_STATUS_LABEL: Record<AttendanceStatus, string> = {
   present: 'Present', absent: 'Absent', half_day: 'Half Day', leave: 'Leave',
 };
-const ATT_STATUS_COLOR: Record<AttendanceStatus, string> = {
-  present: '#16a34a', absent: '#dc2626', half_day: '#d97706', leave: '#7c3aed',
-};
+// Colors come from styles/statusColors.ts, not a local map. The previous
+// `${color}1a` pattern painted a 10%-alpha background, so the chip's
+// appearance changed with whatever surface was behind it — pale in light
+// theme, near-black in dark. A status chip now looks the same in both.
 const AttStatusBadge: React.FC<{ status: AttendanceStatus }> = ({ status }) => (
-  <span className="inline-flex items-center px-2.5 py-1 rounded-full font-semibold"
-    style={{ background: `${ATT_STATUS_COLOR[status]}1a`, color: ATT_STATUS_COLOR[status], fontSize: 11 }}>
-    {ATT_STATUS_LABEL[status]}
-  </span>
+  <StatusChip label={ATT_STATUS_LABEL[status]} status={status} fontSize={11} />
 );
 
 const LV_STATUS_LABEL: Record<LeaveStatus, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
-const LV_STATUS_COLOR: Record<LeaveStatus, string> = { pending: '#d97706', approved: '#16a34a', rejected: '#dc2626' };
 const LvStatusBadge: React.FC<{ status: LeaveStatus }> = ({ status }) => (
-  <span className="inline-flex items-center px-2.5 py-1 rounded-full font-semibold"
-    style={{ background: `${LV_STATUS_COLOR[status]}1a`, color: LV_STATUS_COLOR[status], fontSize: 11 }}>
-    {LV_STATUS_LABEL[status]}
-  </span>
+  <StatusChip label={LV_STATUS_LABEL[status]} status={status} fontSize={11} />
 );
 const leaveTypeLabel = (v: string): string => LEAVE_TYPE_LABEL[v as LeaveType] || v;
 const daysInclusive = (from: string, to: string): number => {
@@ -285,7 +280,7 @@ const AttendancePage: React.FC = () => {
                         <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.check_out_time || '—'}</td>
                         <td style={{ padding: '12px 14px', fontSize: 11.5, whiteSpace: 'nowrap' }}>
                           {r.latitude != null && r.longitude != null ? (
-                            <a href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`} target="_blank" rel="noreferrer" style={{ color: '#0000FF' }}>View on Map</a>
+                            <a href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`} target="_blank" rel="noreferrer" style={{ color: t.accentText }}>View on Map</a>
                           ) : <span style={{ color: t.textSecondary }}>—</span>}
                         </td>
                         <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary }}>{r.remarks || '—'}</td>

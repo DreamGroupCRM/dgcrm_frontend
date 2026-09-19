@@ -56,7 +56,7 @@ interface StatBoxSpec { label: string; value: number; color: string; icon: IconT
 // Friendly label + color per payment_for_key, reused by both the top
 // category boxes and the table's own Payment For column badge.
 const PAYMENT_FOR_KEY_META: Record<PaymentForKey, { label: string; color: string; icon: IconType }> = {
-  EMIAmount: { label: 'Monthly Installment', color: 'var(--brand-gradient)', icon: MdPayments },
+  EMIAmount: { label: 'Monthly Installment', color: 'var(--brand-ink)', icon: MdPayments },
   BookingAmount: { label: 'Booking Amount', color: '#dc2626', icon: MdReceiptLong },
   PayAfterbooking: { label: 'Remaining Booking Amount', color: '#ea580c', icon: MdSchedule },
   PossessionAmount: { label: 'Possession Amount', color: '#7c3aed', icon: MdVpnKey },
@@ -312,17 +312,17 @@ const PaymentUpcomingPage: React.FC = () => {
               ) : (
                 pagedRows.map((r, i) => (
                   <tr key={`${r.customer_id}-${r.due_date}-${r.payment_for}-${i}`} style={{ borderTop: `1px solid ${t.divider}` }}>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: '#000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.customer_name}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.assigned_employee_name || '—'}</div>
                       {r.assigned_employee_code && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.assigned_employee_code}</div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.company_name || '—'}</div>
                       {(r.project_name || r.location) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
@@ -330,7 +330,7 @@ const PaymentUpcomingPage: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
                       {(r.wing_name || r.flat_no) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
@@ -338,7 +338,7 @@ const PaymentUpcomingPage: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary }}>
                       <div>{r.email || '—'}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.mobile_number || '—'}</div>
                     </td>
@@ -351,13 +351,13 @@ const PaymentUpcomingPage: React.FC = () => {
                       </span>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>{r.payment_for}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div className="flex items-center gap-1.5">
                         <MdEvent size={13} style={{ color: t.textSecondary }} />
                         {new Date(r.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#000', whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
                     <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                       <span style={{
                         display: 'inline-block', padding: '3px 10px', borderRadius: 999,

@@ -91,6 +91,10 @@ export interface SessionResponse {
   token: string;
   user: User;
   permissions: Permissions;
+  // Short-lived, file-only token for building <img src> URLs to protected
+  // uploads — see services/fileAccessService.ts. Optional so a client
+  // talking to a backend that predates protected file access still types.
+  fileToken?: string;
 }
 
 // POST /api/auth/verify-otp (step 2) response — either a full session
@@ -120,6 +124,10 @@ export interface LogoutResponse {
 export interface ChangePasswordCredentials {
   old_password: string;
   new_password: string;
+  // Sent so the SERVER can re-check that the two entries match, rather
+  // than the browser being the only thing that ever verified it. Optional
+  // on the wire (ChangePasswordSchema accepts a request without it).
+  confirm_password?: string;
 }
 
 export interface ChangePasswordResponse {

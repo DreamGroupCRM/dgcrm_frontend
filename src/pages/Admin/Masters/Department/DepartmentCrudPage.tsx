@@ -15,6 +15,7 @@ import { showAlert } from '../../../../utils';
 import { Designation, CreateDepartmentPayload } from '../../../../types/index';
 import { ViewDepartment, CreateDepartment, UpdateDepartment } from '../../../../services/departmentService';
 import { getDesignationAssignedEmployees } from '../../../../services/designationService';
+import { statusColors } from '../../../../styles/statusColors';
 
 // ── local id helper for not-yet-saved designation rows ──────────────────────
 let localIdCounter = 0;
@@ -52,18 +53,21 @@ const StatusToggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void;
   </button>
 );
 
-const StatusPill: React.FC<{ active: boolean }> = ({ active }) => (
-  <span
-    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-    style={{
-      background: active ? '#dcfce7' : '#f1f5f9',
-      color: active ? '#16a34a' : '#64748b',
-    }}
-  >
-    <span className="w-1.5 h-1.5 rounded-full bg-current" />
-    {active ? 'Enabled' : 'Disabled'}
-  </span>
-);
+// Colors from styles/statusColors.ts ('enabled'/'disabled' families) so
+// this pill can never drift from the Active/Inactive chips other pages
+// show for the same underlying is_active flag.
+const StatusPill: React.FC<{ active: boolean }> = ({ active }) => {
+  const c = statusColors(active ? 'enabled' : 'disabled');
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+      style={{ background: c.bg, color: c.fg }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+      {active ? 'Enabled' : 'Disabled'}
+    </span>
+  );
+};
 
 const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
   const { id } = useParams<{ id: string }>();

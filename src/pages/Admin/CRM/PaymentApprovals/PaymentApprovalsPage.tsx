@@ -567,7 +567,7 @@ const PaymentApprovalsPage: React.FC = () => {
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount + (r.maintenance || 0))}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', color: 'var(--brand-gradient)', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                      <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', color: 'var(--brand-ink)', fontSize: 10.5, whiteSpace: 'nowrap' }}>
                         {r.mode_of_payment || '—'}
                       </span>
                     </td>
@@ -657,7 +657,7 @@ const PaymentApprovalsPage: React.FC = () => {
                     </button>
                     <button type="button" onClick={() => viewModal.data && setReceiptPreview(viewModal.data)}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold"
-                      style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-gradient)', cursor: 'pointer' }}>
+                      style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-ink)', cursor: 'pointer' }}>
                       <MdVisibility size={15} /> View Receipt
                     </button>
                     <button type="button" disabled={approvingId === viewModal.row.id}

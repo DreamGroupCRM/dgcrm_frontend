@@ -217,7 +217,20 @@ html.dark .master-table td {
      --grad-sky, which stays its own blue for the few section headers still
      opting into it directly. */
   --brand-gradient: #0000FF;
+  /* The accent as INK rather than paint — see appearanceTokens.ts's
+     '--brand-ink', which overrides this once the user is logged in. This
+     :root value is the unauthenticated-page fallback and matches
+     --brand-gradient exactly, so light-theme public pages are unchanged. */
+  --brand-ink: #0000FF;
   --grad-table-header: linear-gradient(to right, #cc5333, #23074d);
+}
+
+/* Dark-theme fallback for the unauthenticated pages (login, reset
+   password), which render before useAppearanceTokens() has set the
+   variables above. #0000FF as text is 2.3:1 on a black surface; this is
+   the same blue lifted toward white to clear 4.5:1. */
+html.dark {
+  --brand-ink: #7373ff;
 }
 
 /* ── Flat brand-blue table-header band — Company/Department/BankAccount/
@@ -308,7 +321,7 @@ html.dark .master-table td {
   cursor: pointer;
   flex-shrink: 0;
   border: 1.5px solid var(--brand-gradient);
-  color: var(--brand-gradient);
+  color: var(--brand-ink);
   transition: background 0.15s ease, transform 0.1s ease;
 }
 
@@ -332,7 +345,7 @@ html.dark .master-icon-btn:hover {
 /* Small icon shown inline next to a name/value cell (company/bank/project/
    building/department name, account holder name, branch name) — item 7. */
 .master-row-icon {
-  color: var(--brand-gradient);
+  color: var(--brand-ink);
   flex-shrink: 0;
 }
 

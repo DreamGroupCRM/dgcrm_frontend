@@ -17,15 +17,12 @@ import { fetchEmployeeDashboardSummary } from '../../../services/dashboardServic
 import { fetchLeaves, submitLeaveRequest, LeaveRecord, LeaveStatus, GENERAL_LEAVE_TYPES, LEAVE_TYPE_LABEL, LeaveType } from '../../../services/leaveService';
 import { formatDate } from '../../../utils';
 import './LeavePage.css';
+import { StatusChip } from '../../../components/common/MasterListUI';
 
 const STATUS_LABEL: Record<LeaveStatus, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
-const STATUS_COLOR: Record<LeaveStatus, string> = { pending: '#d97706', approved: '#16a34a', rejected: '#dc2626' };
-
+// Colors from styles/statusColors.ts — identical in light and dark theme.
 const StatusBadge: React.FC<{ status: LeaveStatus }> = ({ status }) => (
-  <span className="inline-flex items-center px-2.5 py-1 rounded-full font-semibold"
-    style={{ background: `${STATUS_COLOR[status]}1a`, color: STATUS_COLOR[status], fontSize: 11 }}>
-    {STATUS_LABEL[status]}
-  </span>
+  <StatusChip label={STATUS_LABEL[status]} status={status} fontSize={11} />
 );
 
 const todayISO = () => new Date().toISOString().slice(0, 10);

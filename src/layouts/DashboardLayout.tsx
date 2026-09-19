@@ -1,7 +1,7 @@
 // ==========================================
 // DREAM GROUP CRM - DASHBOARD LAYOUT
 // ==========================================
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAppSelector } from '../hooks';
 import Sidebar from '../components/common/Sidebar';
@@ -9,6 +9,7 @@ import Header from '../components/common/Header';
 import ProfileModal from '../components/common/ProfileModal';
 import { getTheme } from '../styles/theme';
 import { useAppearanceTokens } from '../styles/appearanceTokens';
+import { ensureFileToken } from '../services/fileAccessService';
 import '../styles/Responsive.css';
 
 const DashboardLayout: React.FC = () => {
@@ -26,6 +27,24 @@ const DashboardLayout: React.FC = () => {
   // redundant — a descendant re-declaring an identical CSS var value is a
   // no-op).
   const { cssVars } = useAppearanceTokens();
+
+  // Uploaded files are no longer publicly readable (see the backend's
+  // shared/fileAccess.ts). A browser cannot put an Authorization header on
+  // an <img src>, so those URLs carry a short-lived file token instead,
+  // which resolveFileUrl() appends. Logging in returns one with the
+  // session, so this call normally finds it already there and does
+  // nothing — it exists for sessions that were ALREADY OPEN when this
+  // shipped, which would otherwise show broken photos until the user
+  // logged out and back in. It never throws and never blocks the render.
+  useEffect(() => {
+    void ensureFileToken();
+    // A long-running session can outlive a file token, and an expired one
+    // shows up as every image breaking at once with nothing for the app to
+    // catch (an <img> error never reaches axios). ensureFileToken() is a
+    // no-op unless the token is missing or close to expiring.
+    const id = window.setInterval(() => { void ensureFileToken(); }, 30 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   return (
     <div

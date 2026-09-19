@@ -50,7 +50,7 @@ type QuickActionKind = Extract<LeaveType, 'casual' | 'half_day' | 'work_from_hom
 const QUICK_ACTION_META: Record<QuickActionKind, { title: string; icon: React.ReactNode; color: string }> = {
   casual: { title: 'Mark Leave', icon: <MdEventBusy size={18} />, color: '#7c3aed' },
   half_day: { title: 'Half Day', icon: <MdWbSunny size={18} />, color: '#d97706' },
-  work_from_home: { title: 'Work From Home', icon: <MdHomeWork size={18} />, color: 'var(--brand-gradient)' },
+  work_from_home: { title: 'Work From Home', icon: <MdHomeWork size={18} />, color: 'var(--brand-ink)' },
 };
 
 const AttendancePage: React.FC = () => {
@@ -228,7 +228,7 @@ const AttendancePage: React.FC = () => {
 
           {mapLink ? (
             <a href={mapLink} target="_blank" rel="noreferrer" className="flex items-center gap-1.5"
-              style={{ fontSize: 11.5, color: 'var(--brand-gradient)', textDecoration: 'none' }}>
+              style={{ fontSize: 11.5, color: 'var(--brand-ink)', textDecoration: 'none' }}>
               <MdLocationOn size={15} /> Location captured — View on Map <MdMap size={13} />
             </a>
           ) : locationNote ? (
@@ -284,7 +284,7 @@ const AttendancePage: React.FC = () => {
                     <td style={{ whiteSpace: 'nowrap' }}>{r.check_out_time || '—'}</td>
                     <td>
                       {r.latitude != null && r.longitude != null ? (
-                        <a href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`} target="_blank" rel="noreferrer" style={{ color: 'var(--brand-gradient)', fontSize: 11 }}>View on Map</a>
+                        <a href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`} target="_blank" rel="noreferrer" style={{ color: 'var(--brand-ink)', fontSize: 11 }}>View on Map</a>
                       ) : '—'}
                     </td>
                   </tr>

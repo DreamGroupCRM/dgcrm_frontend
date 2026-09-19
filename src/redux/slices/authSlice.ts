@@ -5,6 +5,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { User, BaseRole, Permissions } from '../../types';
 import { STORAGE_KEYS } from '../../constants';
 import { loginThunk, logoutThunk, verifyOtpThunk, resendOtpThunk, setNewPasswordThunk } from '../thunks/authThunks';
+import { setFileToken } from '../../services/fileAccessService';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -49,6 +50,10 @@ const clearAuthStorage = () => {
   localStorage.removeItem(STORAGE_KEYS.USER);
   localStorage.removeItem(STORAGE_KEYS.ROLE);
   localStorage.removeItem(STORAGE_KEYS.PERMISSIONS);
+  // The file-access token grants reads of uploaded documents — it must be
+  // dropped with the rest of the session, not left behind on a shared or
+  // public machine.
+  localStorage.removeItem(STORAGE_KEYS.FILE_TOKEN);
 };
 
 // Commits a real session (token/user/permissions) into state + localStorage.
@@ -56,7 +61,7 @@ const clearAuthStorage = () => {
 // both can resolve straight to a usable session.
 function commitSession(
   state: AuthState,
-  session: { token: string; user: User; permissions: Permissions }
+  session: { token: string; user: User; permissions: Permissions; fileToken?: string }
 ) {
   state.isAuthenticated = true;
   state.user = session.user;
@@ -72,6 +77,11 @@ function commitSession(
   localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(session.user));
   localStorage.setItem(STORAGE_KEYS.ROLE, session.user.base_role);
   localStorage.setItem(STORAGE_KEYS.PERMISSIONS, JSON.stringify(session.permissions));
+  // Uploaded files are behind a credential now, and an <img src> cannot
+  // send a header — so the server hands out a short-lived, file-only token
+  // with the session. Storing it here means it is in place before the
+  // first protected page renders, with no extra round trip.
+  setFileToken(session.fileToken);
 }
 
 const authSlice = createSlice({
