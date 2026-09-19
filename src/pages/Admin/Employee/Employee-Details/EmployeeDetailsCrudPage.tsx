@@ -54,7 +54,46 @@ interface Props { mode: Mode; }
 type Theme = AppTheme;
 
 const WORKING_HOURS_OPTIONS = ['8', '9', '10'];
-const HOLIDAYS_OPTIONS = ['Sunday Only', 'Alternate Saturdays + Sunday', 'All Saturdays + Sunday', 'Custom / As per Company Policy'];
+// Weekly off. Nine choices: each of the seven days on its own, then the
+// two combined patterns.
+//
+// 'All Saturdays + Sunday' and 'Alternate Saturdays + Sunday' keep their
+// EXACT previous strings on purpose. `holidays` is a free-text VARCHAR
+// that is stored and read back verbatim (no enum, no backend validation,
+// and nothing in attendance or leave parses it), so every existing
+// employee already on one of those two keeps working untouched — no
+// migration, nothing to backfill.
+const HOLIDAYS_OPTIONS = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'All Saturdays + Sunday',
+  'Alternate Saturdays + Sunday',
+];
+
+/**
+ * The options to actually render, given whatever is currently stored.
+ *
+ * The two values this list used to offer and no longer does — 'Sunday
+ * Only' and 'Custom / As per Company Policy' — are still sitting on live
+ * employee records. Holidays is a REQUIRED field, so dropping them would
+ * open an existing employee's Edit form with a blank dropdown and refuse
+ * to save until someone picked a new value, quietly rewriting data that
+ * was never wrong.
+ *
+ * So a stored value that is not one of the nine is appended as its own
+ * option and shown as-is. The record opens correctly, saving changes
+ * nothing, and the admin can move it onto one of the nine whenever they
+ * choose to.
+ */
+const holidayOptionsFor = (current: string): string[] =>
+  (current && !HOLIDAYS_OPTIONS.includes(current))
+    ? [...HOLIDAYS_OPTIONS, current]
+    : HOLIDAYS_OPTIONS;
 const ACCOUNT_TYPE_OPTIONS = ['Savings', 'Current'];
 // Sticky crud-footer height, matching every other Master CRUD page's
 // convention — page wrapper reserves this much bottom padding so the
@@ -1421,7 +1460,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Holidays" required error={errorFor('holidays')} fieldRef={setFieldRef('holidays') as React.Ref<HTMLDivElement>}>
             <select value={form.holidays} disabled={isView} onChange={(e) => set('holidays', e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
               <option value="">Select holidays</option>
-              {HOLIDAYS_OPTIONS.map((h) => <option key={h} value={h}>{h}</option>)}
+              {holidayOptionsFor(form.holidays).map((h) => <option key={h} value={h}>{h}</option>)}
             </select>
           </Field>
           <Field t={t} label="Salary" required error={errorFor('salary')} fieldRef={setFieldRef('salary') as React.Ref<HTMLDivElement>}>
