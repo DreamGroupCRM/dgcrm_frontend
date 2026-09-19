@@ -20,6 +20,7 @@ import {
   createCustomerWithDetails,
   updateCustomerWithDetails,
   checkDuplicateCustomerContacts,
+  fetchTakenParkingNumbers,
 } from '../../../../services/customerDetailsService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { companyService } from '../../../../services/companyService';
@@ -949,6 +950,44 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     return () => { cancelled = true; };
   }, [selectedBuilding?.id]);
 
+  // ── Parking No dropdown — which numbers in this building are already
+  // taken by another customer, so they can be greyed out before a rep even
+  // tries one. Re-fetched whenever the selected building changes; on Edit,
+  // `id` is passed as exclude_id so the customer's own current slot never
+  // shows up as "taken" against themselves. Purely a UI convenience — the
+  // real guarantee is server-side (assertParkingAssignmentValid), so a
+  // stale/failed fetch here can only ever be over-cautious, never let a
+  // duplicate through.
+  const [takenParkingNumbers, setTakenParkingNumbers] = useState<string[]>([]);
+  useEffect(() => {
+    if (!selectedBuilding) { setTakenParkingNumbers([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const taken = await fetchTakenParkingNumbers(selectedBuilding.id, id);
+        if (!cancelled) setTakenParkingNumbers(taken);
+      } catch { /* dropdown just shows every slot as available if this fails */ }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedBuilding?.id, id]);
+
+  // Parking No dropdown options — 1..parking_count for the selected
+  // building, PLUS the customer's own currently-saved value if it doesn't
+  // fall in that range. That second part matters on Edit: this field used
+  // to be free text, so an existing customer may hold a value like "12A"
+  // or a number outside the building's current parking_count (which can
+  // itself change later in Building Master). Without this, their Edit
+  // form would open with the dropdown showing no selection at all even
+  // though they do have a parking slot on file — same "don't silently
+  // blank out a value that was never wrong" reasoning as the Employee
+  // Holidays dropdown elsewhere in this app.
+  const parkingNoOptions = useMemo(() => {
+    const base = buildingDetail?.parking_count
+      ? Array.from({ length: buildingDetail.parking_count }, (_, i) => String(i + 1))
+      : [];
+    return parkingNo && !base.includes(parkingNo) ? [...base, parkingNo] : base;
+  }, [buildingDetail?.parking_count, parkingNo]);
+
   const wingNameOptions = useMemo(() => (buildingDetail ? buildingDetail.wings.map((w) => w.name) : []), [buildingDetail]);
   const selectedWing = useMemo(() => buildingDetail?.wings.find((w) => w.name === wingName), [buildingDetail, wingName]);
   const floorLabelOptions = useMemo(() => (selectedWing ? selectedWing.floors.map((f) => f.label) : []), [selectedWing]);
@@ -1719,8 +1758,41 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           {wantsParking === 'yes' && (
             <Field t={t} label="Parking No?" required error={errorFor('parkingNo')} fieldRef={setFieldRef('parkingNo') as React.Ref<HTMLDivElement>}>
-              <input type="text" placeholder="Enter parking number" value={parkingNo} readOnly={isView} disabled={isView}
-                onChange={(e) => setParkingNo(e.target.value)} className={fieldClass} />
+              {/* A free-text box let two customers end up with the same
+                  parking number in the same building. This is now a
+                  dropdown bounded by the BUILDING's own parking_count
+                  (set once, in Building Master's "Do you have parking?"
+                  step) — 1..N, never a number that was never configured —
+                  with every slot already taken by another customer greyed
+                  out. The frontend list is a convenience only; the actual
+                  "can't sell one slot twice" guarantee is re-checked
+                  server-side at save time regardless (assertParkingAssignmentValid). */}
+              {!selectedBuilding ? (
+                <select disabled className={fieldClass} style={{ cursor: 'not-allowed' }}>
+                  <option>Select a Building first</option>
+                </select>
+              ) : loadingBuildingDetail ? (
+                <select disabled className={fieldClass} style={{ cursor: 'wait' }}>
+                  <option>Loading parking availability...</option>
+                </select>
+              ) : !buildingDetail?.has_parking || !buildingDetail?.parking_count ? (
+                <select disabled className={fieldClass} style={{ cursor: 'not-allowed' }}>
+                  <option>This building has no parking configured</option>
+                </select>
+              ) : (
+                <select value={parkingNo} disabled={isView} onChange={(e) => setParkingNo(e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
+                  <option value="">Select parking number</option>
+                  {parkingNoOptions.map((n) => (
+                    // The customer's OWN saved number is never in
+                    // takenParkingNumbers (the fetch excludes this
+                    // customer's id), so this only ever greys out a slot
+                    // someone ELSE holds.
+                    <option key={n} value={n} disabled={takenParkingNumbers.includes(n)}>
+                      {n}{takenParkingNumbers.includes(n) ? ' — Already Sold' : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
             </Field>
           )}
         </div>

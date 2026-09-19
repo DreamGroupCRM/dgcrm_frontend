@@ -450,6 +450,22 @@ export const checkDuplicateCustomerContacts = async (mobile: string, email: stri
   return (res.data.rows ?? []) as DuplicateContactMatch[];
 };
 
+// ── Parking availability — powers the Parking No dropdown ────────────────
+// Which numbers in this building are already assigned to another active
+// customer, so the dropdown can grey them out before a rep even tries one.
+// The actual "can't buy the same slot twice" guarantee is enforced
+// server-side at save time regardless (see customer.service.ts's
+// assertParkingAssignmentValid) — this is purely for a helpful UI; a stale
+// list here can never let a duplicate through.
+/** GET /api/customers/parking-availability?building_id=...&exclude_id=... */
+export const fetchTakenParkingNumbers = async (buildingId: string, excludeId?: string): Promise<string[]> => {
+  if (!buildingId) return [];
+  const params: Record<string, string> = { building_id: buildingId };
+  if (excludeId) params.exclude_id = excludeId;
+  const res = await axiosInstance.get('/customers/parking-availability', { params });
+  return (res.data.data?.taken ?? []) as string[];
+};
+
 // ── Create new customer ──────────────────────────────────────────────────────
 // NOTE: kept as originally written. CreateCustomerPayload has no
 // aadhar_card_no field, which CreateCustomerSchema requires (the one
