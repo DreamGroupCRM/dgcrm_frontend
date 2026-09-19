@@ -30,6 +30,7 @@ import type { SelectedUnitForCustomer } from '../../Building2D/Building2DViewPag
 import { showAlert, resolveFileUrl } from '../../../../utils';
 import DocumentViewerModal from '../../../../components/common/DocumentViewerModal';
 import { previewKindFor, downloadDocument } from '../../../../services/documentService';
+import EmiSchemePreviewModal from '../../../../components/common/EmiSchemePreviewModal';
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
 import { DobPicker } from '../../../../components/common/DobPicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
@@ -747,6 +748,38 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
   const [isActive, setIsActive] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // ── EMI Scheme & Schedule preview (Payment Details section) ─────────
+  // A second, separate "Preview" — not to be confused with the footer's
+  // whole-form Preview above. This one sits at the end of Payment Details
+  // and, on click, shows the EMI Scheme + EMI Schedule those fields would
+  // produce (same calculation as the Customize Scheme sidebar page),
+  // entirely client-side and without saving anything.
+  //
+  // Every field in the Payment Details section — including the ones the
+  // form itself treats as optional (Remaining Booking Amount/Date, all 4
+  // Booster fields) — must be filled before this button enables, per an
+  // explicit requirement that this preview never run on a half-filled
+  // payment plan. This is intentionally a SEPARATE check from
+  // validationChecks above (which still only hard-requires the subset the
+  // backend requires) — it does not make any of these fields mandatory to
+  // actually save the customer, only to preview the EMI numbers.
+  const [emiPreviewOpen, setEmiPreviewOpen] = useState(false);
+  const paymentFieldsComplete =
+    totalCost.trim() !== '' &&
+    bookingDate !== '' &&
+    bookingAmount.trim() !== '' &&
+    remainingBookingAmount.trim() !== '' &&
+    remainingBookingDate !== '' &&
+    possessionAmount.trim() !== '' &&
+    installmentDate !== '' &&
+    monthlyEmiBeforePossession.trim() !== '' &&
+    monthlyEmiAfterPossession.trim() !== '' &&
+    totalEmiTenure.trim() !== '' &&
+    boosterAmountBeforePossession.trim() !== '' &&
+    boosterIntervalBeforePossession.trim() !== '' &&
+    boosterAmountAfterPossession.trim() !== '' &&
+    boosterIntervalAfterPossession.trim() !== '';
 
   // ── Item 2.1/2.2 — collapsible sections + auto-open-and-scroll-to the
   // first invalid field on a failed submit, same pattern as Employee CRUD. ─
@@ -1751,8 +1784,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         </div>
 
         {/* Row 3 of 3 — all 4 Booster fields (Amount Before, Interval
-            Before, Amount After, Interval After). */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            Before, Amount After, Interval After), then the EMI Scheme &
+            Schedule Preview button right after Booster After Possession —
+            the last field group in this section. 5 columns (was 4) to fit
+            it in without pushing this to a 4th row. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <Field t={t} label="Booster Amount Before Possession (₹)">
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} />
           </Field>
@@ -1765,6 +1801,28 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Booster Interval After Possession (Months)">
             <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} />
           </Field>
+          {!isView && (
+            // Non-breaking-space label keeps this at the same top offset
+            // as every input beside it, without an odd "Preview" caption
+            // sitting above a button that already says "Preview".
+            <Field t={t} label=" ">
+              <button
+                type="button"
+                onClick={() => setEmiPreviewOpen(true)}
+                disabled={!paymentFieldsComplete}
+                title={paymentFieldsComplete ? 'Preview the EMI Scheme & Schedule for these Payment Details' : 'Fill in every Payment Details field to preview the EMI Scheme & Schedule'}
+                className={fieldClass}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  fontWeight: 700, color: paymentFieldsComplete ? 'var(--brand-ink)' : t.textMuted,
+                  cursor: paymentFieldsComplete ? 'pointer' : 'not-allowed',
+                  opacity: paymentFieldsComplete ? 1 : 0.6,
+                }}
+              >
+                <MdVisibility size={15} /> Preview
+              </button>
+            </Field>
+          )}
         </div>
       </AccordionSection>
 
@@ -1853,6 +1911,26 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               { label: 'Declaration Form', value: declarationForm },
               { label: 'Allotment Letter', value: allotmentLetter },
             ],
+          }}
+        />
+      )}
+
+      {emiPreviewOpen && (
+        <EmiSchemePreviewModal
+          t={t}
+          onClose={() => setEmiPreviewOpen(false)}
+          inputs={{
+            totalCost: Number(totalCost) || 0,
+            bookingDate, bookingAmount: Number(bookingAmount) || 0,
+            remainingBookingAmount: Number(remainingBookingAmount) || 0, remainingBookingDate,
+            possessionAmount: Number(possessionAmount) || 0,
+            installmentDate, totalEmiTenure: Number(totalEmiTenure) || 0,
+            monthlyEmiBeforePossession: Number(monthlyEmiBeforePossession) || 0,
+            monthlyEmiAfterPossession: Number(monthlyEmiAfterPossession) || 0,
+            boosterAmountBeforePossession: Number(boosterAmountBeforePossession) || 0,
+            boosterIntervalBeforePossession: Number(boosterIntervalBeforePossession) || 0,
+            boosterAmountAfterPossession: Number(boosterAmountAfterPossession) || 0,
+            boosterIntervalAfterPossession: Number(boosterIntervalAfterPossession) || 0,
           }}
         />
       )}
