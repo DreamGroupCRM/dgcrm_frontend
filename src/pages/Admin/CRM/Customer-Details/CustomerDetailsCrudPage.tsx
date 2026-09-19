@@ -43,6 +43,7 @@ import {
 } from '../../../../constants/uploads';
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './CustomerDetails.css';
+import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 
 type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
@@ -655,6 +656,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // from the selected Building) that a same-named binding would shadow.
   const routerLocation = useLocation();
   const { isDark, t, cssVars: appearanceCssVars } = useAppearanceTokens();
+  // This page is mounted under /admin AND /employee, so its own "Back to
+  // list" links must follow whichever tree the user is in.
+  const paths = useRoleBasePath();
   const isView = mode === 'view';
 
   // Quick View — which document the shared viewer is showing, if any. Kept
@@ -1189,7 +1193,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         const res = await createCustomerWithDetails(formData);
         toast.success(res.pending ? 'Customer submitted for admin approval.' : 'Customer Created Successfully');
       }
-      navigate('/admin/crm/customer-details');
+      navigate(paths.customerDetails);
     } catch (e: any) {
       const backendErrors = e?.response?.data?.errors as { field: string; message: string }[] | undefined;
       const detail = backendErrors?.length
@@ -1258,7 +1262,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Page header ───────────────────────────────────────────────── */}
         <div className="cust-crud-header flex items-center justify-between flex-wrap gap-3 mb-6">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={() => navigate('/admin/crm/customer-details')}
+            <button type="button" onClick={() => navigate(paths.customerDetails)}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, padding: 6 }}>
               <MdArrowBack size={20} />
             </button>
@@ -1375,7 +1379,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Sticky footer — Go Back only, same shared class every other
             CRUD page's footer uses. ────────────────────────────────────── */}
         <div className="master-crud-footer flex items-center justify-center gap-3 z-10" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
-          <button type="button" onClick={() => navigate('/admin/crm/customer-details')}
+          <button type="button" onClick={() => navigate(paths.customerDetails)}
             className="px-6 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
             Go Back
           </button>
@@ -1390,7 +1394,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="cust-crud-header flex items-center justify-between flex-wrap gap-3 mb-6">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={() => navigate('/admin/crm/customer-details')}
+          <button type="button" onClick={() => navigate(paths.customerDetails)}
             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, padding: 6 }}>
             <MdArrowBack size={20} />
           </button>
@@ -1791,7 +1795,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           Building/Employee CRUD's footer layout. ─────────────────────── */}
       <div className="master-crud-footer flex items-center justify-center gap-3 z-10"
         style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
-        <button type="button" onClick={() => navigate('/admin/crm/customer-details')} disabled={saving}
+        <button type="button" onClick={() => navigate(paths.customerDetails)} disabled={saving}
           className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
           <MdClose size={16} /> Cancel
         </button>

@@ -23,6 +23,7 @@ import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { fetchCustomerScheme } from '../../../../services/customerDetailsService';
 import { fetchCustomerDueGrid, DueGridRow } from '../../../../services/paymentService';
 import { CustomerSchemeData, CustomerSchemeSummaryRow, CustomerScheduleRow } from '../../../../types/index';
+import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 
 type Theme = AppTheme;
 
@@ -178,6 +179,7 @@ const CustomerSchemeViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isDark, t, accent } = useAppearanceTokens();
+  const paths = useRoleBasePath();
 
   const [data, setData] = useState<CustomerSchemeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -225,7 +227,7 @@ const CustomerSchemeViewPage: React.FC = () => {
     return () => { cancelled = true; };
   }, [id]);
 
-  const goBack = () => navigate('/admin/crm/customer-details');
+  const goBack = () => navigate(paths.customerDetails);
 
   if (loading) {
     return (

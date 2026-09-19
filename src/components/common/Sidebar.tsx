@@ -140,12 +140,38 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
   }] : []),
 ];
 
+// Employee sidebar — same shape as the admin tree above (a CRM group
+// holding the customer/payment pages, then the standalone tools), so the
+// two roles navigate the app the same way instead of an employee getting
+// a flat list of unrelated links.
+//
+// Every page here is the SAME component the admin routes use. What differs
+// is server-side and not negotiable from the client: Customer Details,
+// Payment Dues and Payment Received return only the customers an admin has
+// assigned to this employee (customer_assignments), and Audit History
+// returns only this user's own entries. See the backend's
+// customerAssignment.repository.ts (resolveCustomerScope) and
+// audit.service.ts.
+//
+// Attendance and Leave stay below the CRM group — they are the employee's
+// own HR pages, not customer work, and both were already self-scoped.
 const employeeNavItems: NavItem[] = [
   { label: 'Dashboard', path: ROUTES.EMPLOYEE.DASHBOARD, icon: <MdDashboard /> },
-  { label: 'Customer Details', path: ROUTES.EMPLOYEE.CUSTOMER_DETAILS, icon: <MdContactPage /> },
-  { label: 'Leads', path: ROUTES.EMPLOYEE.LEADS, icon: <MdLeaderboard /> },
-  { label: 'Payment Received', path: ROUTES.EMPLOYEE.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
-  { label: 'Payment Dues', path: ROUTES.EMPLOYEE.PAYMENT_DUES, icon: <MdPayment /> },
+
+  {
+    label: 'CRM', icon: <MdLeaderboard />,
+    children: [
+      { label: 'Customer Details', path: ROUTES.EMPLOYEE.CUSTOMER_DETAILS, icon: <MdContactPage /> },
+      { label: 'Payment Dues', path: ROUTES.EMPLOYEE.PAYMENT_DUES, icon: <MdPayment /> },
+      { label: 'Payment Received', path: ROUTES.EMPLOYEE.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
+      { label: 'Leads', path: ROUTES.EMPLOYEE.LEADS, icon: <MdLeaderboard /> },
+    ],
+  },
+
+  { label: 'Customize Scheme', path: ROUTES.EMPLOYEE.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
+  { label: 'Building View', path: ROUTES.EMPLOYEE.BUILDING_2D_VIEW, icon: <MdGridView /> },
+  { label: 'Audit History', path: ROUTES.EMPLOYEE.AUDIT_HISTORY, icon: <MdHistory /> },
+
   { label: 'Attendance', path: ROUTES.EMPLOYEE.ATTENDANCE, icon: <MdEventAvailable /> },
   { label: 'Leave', path: ROUTES.EMPLOYEE.LEAVES, icon: <MdBeachAccess /> },
 ];

@@ -36,6 +36,7 @@ import { Building, BuildingFlat, BuildingShop, BuildingWing } from '../../../typ
 import { ROUTES } from '../../../constants';
 import { UnitVM, UnitStatus } from './types';
 import './Building2D.css';
+import { useRoleBasePath } from '../../../hooks/useRoleBasePath';
 
 // Exported — Building2DViewModal (the popup opened from Building Master's
 // row icon) reuses these instead of duplicating the status/color logic.
@@ -187,6 +188,7 @@ const Building2DViewPage: React.FC = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { t } = useAppearanceTokens();
+  const paths = useRoleBasePath();
 
   const navState = (location.state as PickerNavState) || {};
   const pickerMode = !!navState.pickerMode;
@@ -270,7 +272,14 @@ const Building2DViewPage: React.FC = () => {
     navigate(returnPath, { state: { selectedUnit: payload } });
   };
 
-  const handleBack = () => navigate(pickerMode && returnPath ? returnPath : ROUTES.ADMIN.BUILDING);
+  // Building Master is admin-only, and this page is now also reachable
+  // from the employee sidebar — sending an employee to ROUTES.ADMIN.BUILDING
+  // would bounce them off ProtectedRoute. Admins keep the old destination;
+  // everyone else goes back the way they came.
+  const handleBack = () => {
+    if (pickerMode && returnPath) { navigate(returnPath); return; }
+    navigate(paths.isAdmin ? ROUTES.ADMIN.BUILDING : `${paths.root}/dashboard`);
+  };
 
   return (
     <div style={{ fontFamily: t.fontFamily }}>

@@ -81,6 +81,15 @@ export const ROUTES = {
     PAYMENT_DUES: '/employee/payment-dues',
     ATTENDANCE: '/employee/attendance',
     LEAVES: '/employee/leaves',
+    // The employee sidebar now mirrors the admin one for the pages an
+    // employee legitimately works in. These reuse the SAME page
+    // components as the admin routes — the difference is server-side:
+    // every list is scoped to the customers assigned to this employee
+    // (customer_assignments), and Audit History returns only their own
+    // entries. See the backend's customerAssignment.repository.ts.
+    CUSTOMIZE_SCHEME: '/employee/customize-scheme',
+    BUILDING_2D_VIEW: '/employee/building-2d-view',
+    AUDIT_HISTORY: '/employee/audit-history',
   },
 
   // Customer First Login — dedicated portal, separate from the staff LOGIN

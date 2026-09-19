@@ -36,6 +36,7 @@ import {
 } from '../../../../types/index';
 import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
 import './CustomerDetails.css';
+import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 
 type Theme = AppTheme;
 
@@ -260,7 +261,7 @@ const unitLabel = (c: Customer): string => {
 
 const RowActionMenu: React.FC<{
   t: Theme; pos: { top: number; left: number };
-  onView: () => void; onEdit: () => void; onDelete: () => void;
+  onView: () => void; onEdit?: () => void; onDelete?: () => void;
   onDownloadHistory: () => void; onDownloadSchedule: () => void;
 }> = ({ t, pos, onView, onEdit, onDelete, onDownloadHistory, onDownloadSchedule }) => createPortal(
   <div
@@ -276,16 +277,23 @@ const RowActionMenu: React.FC<{
       style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
       <MdVisibility size={14} color="var(--brand-gradient)" /> View
     </button>
-    <button type="button" onClick={onEdit}
-      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
-      style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
-      <MdEdit size={13} color="#7c3aed" /> Edit
-    </button>
-    <button type="button" onClick={onDelete}
-      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
-      style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
-      <MdDelete size={14} /> Delete
-    </button>
+    {/* Edit/Delete are only rendered when a handler was supplied — an
+        employee is not given them, so the menu shows View + the two
+        downloads instead of entries that lead nowhere. */}
+    {onEdit && (
+      <button type="button" onClick={onEdit}
+        className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+        style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
+        <MdEdit size={13} color="var(--brand-ink)" /> Edit
+      </button>
+    )}
+    {onDelete && (
+      <button type="button" onClick={onDelete}
+        className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+        style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
+        <MdDelete size={14} /> Delete
+      </button>
+    )}
     <button type="button" onClick={onDownloadHistory}
       className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap"
       style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
@@ -307,7 +315,7 @@ const CustomerCard: React.FC<{
   c: Customer; t: Theme; isDark: boolean;
   onOpenMenu: (e: React.MouseEvent<HTMLButtonElement>) => void;
   menuOpen: boolean; menuPos: { top: number; left: number } | null;
-  onView: () => void; onEdit: () => void; onDelete: () => void;
+  onView: () => void; onEdit?: () => void; onDelete?: () => void;
   onDownloadHistory: () => void; onDownloadSchedule: () => void;
   onOpenPaymentHistory: () => void; onOpenScheme: () => void;
 }> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onDelete, onDownloadHistory, onDownloadSchedule, onOpenPaymentHistory, onOpenScheme }) => {
@@ -397,6 +405,12 @@ const CustomerDetailsListPage: React.FC = () => {
   const navigate = useNavigate();
   const { isDark, t, cssVars: appearanceCssVars } = useAppearanceTokens();
   const role = useAppSelector((s) => s.auth.role);
+  // This page is mounted under /admin AND /employee (an employee sees the
+  // same list, scoped server-side to their assigned customers), so its own
+  // links must follow whichever tree the user is actually in — a
+  // hardcoded '/admin/...' here would bounce an employee off
+  // ProtectedRoute. See hooks/useRoleBasePath.
+  const paths = useRoleBasePath();
   const isAdmin = isAdminRole(role);
 
   // allCustomers now holds ONLY the current server page (see fetchCustomers
@@ -1132,11 +1146,18 @@ const CustomerDetailsListPage: React.FC = () => {
             style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: '1px solid var(--brand-gradient)', color: '#fff', cursor: 'pointer' }}>
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
           </button>
-          <button type="button" onClick={() => navigate('/admin/crm/customer-details/add')}
-            className="cust-add-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
-            style={{ background: 'var(--brand-gradient)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            <MdAdd size={18} /> <span className="cust-add-btn-text">Add Customer</span>
-          </button>
+          {/* Admin only. An employee's list shows only the customers
+              ASSIGNED to them, so one they created here would disappear
+              from their own list the moment it saved — and assigning is
+              itself an admin action. Nothing is taken away from anyone:
+              this page was a placeholder on the employee side until now. */}
+          {paths.isAdmin && (
+            <button type="button" onClick={() => navigate(`${paths.customerDetails}/add`)}
+              className="cust-add-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
+              style={{ background: 'var(--brand-gradient)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <MdAdd size={18} /> <span className="cust-add-btn-text">Add Customer</span>
+            </button>
+          )}
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
             className="cust-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
             style={{ background: 'var(--brand-gradient)', border: 'none', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1 }}>
@@ -1168,13 +1189,13 @@ const CustomerDetailsListPage: React.FC = () => {
                       setOpenMenuId(c.id);
                     }}
                     menuOpen={openMenuId === c.id} menuPos={menuPos}
-                    onView={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/view/${c.id}`); }}
-                    onEdit={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/edit/${c.id}`); }}
-                    onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
+                    onView={() => { setOpenMenuId(null); navigate(`${paths.customerDetails}/view/${c.id}`); }}
+                    onEdit={paths.isAdmin ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
+                    onDelete={paths.isAdmin ? () => { setOpenMenuId(null); handleDelete(c); } : undefined}
                     onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                     onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                     onOpenPaymentHistory={() => openPaymentHistory(c)}
-                    onOpenScheme={() => navigate(`/admin/crm/customer-details/scheme/${c.id}`)}
+                    onOpenScheme={() => navigate(`${paths.customerDetails}/scheme/${c.id}`)}
                   />
                 ))}
               </div>
@@ -1225,8 +1246,8 @@ const CustomerDetailsListPage: React.FC = () => {
                           {openMenuId === c.id && menuPos && (
                             <RowActionMenu
                               t={t} pos={menuPos}
-                              onView={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/view/${c.id}`); }}
-                              onEdit={() => { setOpenMenuId(null); navigate(`/admin/crm/customer-details/edit/${c.id}`); }}
+                              onView={() => { setOpenMenuId(null); navigate(`${paths.customerDetails}/view/${c.id}`); }}
+                              onEdit={paths.isAdmin ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
                               onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
                               onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                               onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
@@ -1236,14 +1257,14 @@ const CustomerDetailsListPage: React.FC = () => {
                         <button type="button" title="Show Payment History" className="master-icon-btn" onClick={() => openPaymentHistory(c)}>
                           <MdReceiptLong size={15} />
                         </button>
-                        <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => navigate(`/admin/crm/customer-details/scheme/${c.id}`)}>
+                        <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => navigate(`${paths.customerDetails}/scheme/${c.id}`)}>
                           <MdLoyalty size={15} />
                         </button>
                       </div>
                     </td>
                     <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                       {c.customer_code ? (
-                        <button type="button" onClick={() => navigate(`/admin/crm/customer-details/view/${c.id}`)}
+                        <button type="button" onClick={() => navigate(`${paths.customerDetails}/view/${c.id}`)}
                           style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, color: 'var(--brand-ink)' }}>
                           {c.customer_code}
                         </button>

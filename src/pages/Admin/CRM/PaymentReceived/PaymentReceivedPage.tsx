@@ -45,6 +45,7 @@ import { exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport';
 import { Building, PaymentReceipt } from '../../../../types/index';
 import { showAlert } from '../../../../utils';
 import './PaymentReceived.css';
+import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 
 type Theme = AppTheme;
 
@@ -102,6 +103,7 @@ const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isDark, t, cssVars } = useAppearanceTokens();
+  const paths = useRoleBasePath();
 
   const [rows, setRows] = useState<PaymentListRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -411,8 +413,12 @@ const PaymentReceivedPage: React.FC = () => {
         <StatCard label="Total Amount Received" value={rupee(summary?.total_amount_received ?? 0)} icon={MdPayments} color="#16a34a" bg="" loading={!summary}
           onClick={handleShowAllReceived}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        {/* Payment Approvals is an admin-only page, and this page is now
+            reachable from the employee sidebar too — so for an employee
+            this tile stays a plain figure rather than a link that would
+            bounce them off ProtectedRoute. */}
         <StatCard label="Total Pending Amount" value={rupee(summary?.total_pending_amount ?? 0)} icon={MdHourglassEmpty} color="#ea580c" bg="" loading={!summary}
-          onClick={() => navigate(ROUTES.ADMIN.PAYMENT_APPROVALS)}
+          onClick={paths.isAdmin ? () => navigate(ROUTES.ADMIN.PAYMENT_APPROVALS) : undefined}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
