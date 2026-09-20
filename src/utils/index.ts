@@ -220,15 +220,34 @@ export const showAlert = {
 };
 
 /**
- * Format date string
+ * Format a date for display as DD/MM/YYYY (V_23.0 item 16 — one date
+ * format everywhere; this previously produced "20 Jun 2026").
+ *
+ * Built from the local-time parts rather than toLocaleDateString: the
+ * en-IN locale already yields DD/MM/YYYY, but the output is only as
+ * reliable as the runtime's ICU data, and a plain 'yyyy-mm-dd' string
+ * (what every date input and most API fields carry here) is parsed as UTC
+ * by `new Date`, which then reports the previous day for anyone behind
+ * UTC. Splitting a date-only string by hand avoids that shift entirely;
+ * a full timestamp still goes through Date and is shown in local time,
+ * which is what a timestamp should do.
  */
+const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 export const formatDate = (dateString: string): string => {
   if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+
+  const dateOnly = DATE_ONLY.exec(dateString.trim());
+  if (dateOnly) {
+    const [, year, month, day] = dateOnly;
+    return `${day}/${month}/${year}`;
+  }
+
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return 'N/A';
+  const day = String(parsed.getDate()).padStart(2, '0');
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month}/${parsed.getFullYear()}`;
 };
 
 // Formats last_login_at from ISO string → "20th June 2026, 08:30:54 AM"
