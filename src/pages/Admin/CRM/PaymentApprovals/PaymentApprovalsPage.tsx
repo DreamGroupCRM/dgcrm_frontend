@@ -340,7 +340,7 @@ const PaymentApprovalsPage: React.FC = () => {
         toast.error('No pending payments to export.');
         return;
       }
-      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Instalment Date', 'Received Date', 'Maintenance', 'Amount', 'Total Amount', 'Mode', 'Payment For', 'Received By', 'Company'];
+      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Date', 'Receipt Date', 'Maintenance', 'Amount', 'Total Amount', 'Mode', 'Payment For', 'Received By', 'Company'];
       const csvRows = exportRows.map((r) => [
         r.receipt_number, r.customer_name || '', r.building_name || '', r.wing_name || '', r.flat_no || '',
         formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.maintenance || 0, r.amount, r.amount + (r.maintenance || 0),
@@ -441,11 +441,11 @@ const PaymentApprovalsPage: React.FC = () => {
         <div className="pa-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
-            <label style={labelStyle}>Payment Date From</label>
+            <label style={labelStyle}>Receipt Date From</label>
             <input type="date" value={draftFromDate} onChange={(e) => { setDraftFromDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>Payment Date To</label>
+            <label style={labelStyle}>Receipt Date To</label>
             <input type="date" value={draftToDate} onChange={(e) => { setDraftToDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           {/* Compact, content-width buttons in fresh light tints — was a
@@ -513,7 +513,7 @@ const PaymentApprovalsPage: React.FC = () => {
                   <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={rows.length === 0}
                     style={{ cursor: rows.length === 0 ? 'not-allowed' : 'pointer' }} />
                 </th>
-                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Instalment Date', 'Received Date', 'Maintenance', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
+                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Date', 'Receipt Date', 'Maintenance', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -617,9 +617,9 @@ const PaymentApprovalsPage: React.FC = () => {
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Wing</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{viewModal.data.customer.wing_name || '—'}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Flat No.</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{viewModal.data.customer.flat_no || '—'}</div></div>
                     {viewModal.data.transaction.payment_tag !== 'Extra Pay' && (
-                      <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Instalment Date</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.inst_date)}</div></div>
+                      <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Payment Date</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.inst_date)}</div></div>
                     )}
-                    <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Payment Date</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.payment_date || viewModal.data.transaction.created_at)}</div></div>
+                    <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Receipt Date</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.payment_date || viewModal.data.transaction.created_at)}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Created At</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.created_at)}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Payment Method</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{viewModal.data.transaction.mode_of_payment || '—'}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Payment Type</div>

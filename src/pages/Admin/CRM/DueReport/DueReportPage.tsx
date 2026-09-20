@@ -29,6 +29,7 @@ import { ValidationErrorSummary } from '../../../../components/common/Validation
 import StatCard from '../../../../components/masters/StatCard';
 import {
   fetchDueListDetailed, collectPayment, fetchDefaultAmount, DueListDetailRow,
+  fetchCustomerDueGrid,
 } from '../../../../services/paymentService';
 import { fetchUpcomingListDetailed } from '../../../../services/paymentUpcomingService';
 import { UpcomingListDetailRow } from '../../../../types/paymentUpcoming';
@@ -37,6 +38,7 @@ import { FetchBuildingList } from '../../../../services/buildingService';
 import { FetchEmployeeDetails, Employee } from '../../../../services/employeeDetailsService';
 import { tasksService, Task } from '../../../../services/tasksService';
 import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../../types/index';
+import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import './DueReport.css';
 
 type Theme = AppTheme;
@@ -496,6 +498,8 @@ const DueReportPage: React.FC = () => {
   // ── Add Payment Details ──────────────────────────────────────────────
   const [apCustomerSearch, setApCustomerSearch] = useState('');
   const [apCustomerId, setApCustomerId] = useState<string | null>(null);
+  // Receipt Date (payment_date) is admin-only — item 9.
+  const { isAdmin } = useRoleBasePath();
   const [apInstDate, setApInstDate] = useState('');
   const [apPaymentDate, setApPaymentDate] = useState('');
   const [apPaymentForKey, setApPaymentForKey] = useState('');
@@ -520,6 +524,61 @@ const DueReportPage: React.FC = () => {
     const exact = customers.find((c) => `${c.customer_name}${c.customer_code ? ` (${c.customer_code})` : ''}` === v);
     setApCustomerId(exact ? exact.id : null);
   };
+
+  // ── Item 12 — a payment type that is already fully paid for the selected
+  // customer is shown DISABLED with an "Already Paid" note rather than
+  // dropped from the list, so it stays visible that the type exists and has
+  // been completed. Derived from the customer's own due grid (one call, the
+  // same GET /payments/customer/:id/due-grid the Scheme page already uses)
+  // instead of six per-option fetchDefaultAmount round trips.
+  //
+  // A type counts as complete ONLY when the grid actually contains rows for
+  // it and none of them still owes anything. Zero matching rows means the
+  // grid cannot answer the question (booster rows carry payment_for: null —
+  // they are not individually collectible), so the option is left enabled:
+  // never disable a control on the strength of missing data.
+  const [apPaidPaymentFors, setApPaidPaymentFors] = useState<Set<PaymentFor>>(new Set());
+  useEffect(() => {
+    if (!apCustomerId) { setApPaidPaymentFors(new Set()); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const grid = await fetchCustomerDueGrid(apCustomerId);
+        if (cancelled) return;
+        const owedBy = new Map<PaymentFor, { total: number; owed: number }>();
+        for (const row of grid.rows) {
+          if (!row.payment_for) continue;
+          const acc = owedBy.get(row.payment_for) ?? { total: 0, owed: 0 };
+          acc.total += 1;
+          if (row.due_amount > 0) acc.owed += 1;
+          owedBy.set(row.payment_for, acc);
+        }
+        const complete = new Set<PaymentFor>();
+        owedBy.forEach((acc, key) => { if (acc.total > 0 && acc.owed === 0) complete.add(key); });
+        setApPaidPaymentFors(complete);
+        // Switching to a different customer can make an ALREADY-selected
+        // type complete for that customer. Clear it rather than leaving a
+        // disabled option sitting selected (which submits fine in HTML and
+        // would only be caught by the server's own over-payment check).
+        setApPaymentForKey((current) => {
+          const opt = PAYMENT_FOR_UI_OPTIONS.find((o) => o.key === current);
+          if (opt && !opt.isAdvance && complete.has(opt.value)) { setApAmount(''); return ''; }
+          return current;
+        });
+      } catch {
+        // A convenience only — on failure every option stays selectable,
+        // exactly as before this existed. The server still rejects a
+        // genuinely over-paid collection.
+        if (!cancelled) setApPaidPaymentFors(new Set());
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [apCustomerId]);
+
+  // Extra Pay is an advance against FUTURE EMIs — it is never "completed",
+  // so it is never disabled even when every scheduled EMI is settled.
+  const isPaymentForCompleted = (opt: PaymentForUiOption): boolean =>
+    !opt.isAdvance && apPaidPaymentFors.has(opt.value);
 
   const handlePaymentForChange = async (key: string) => {
     setApPaymentForKey(key);
@@ -585,7 +644,9 @@ const DueReportPage: React.FC = () => {
         amount: Number(apAmount),
         payment_for: apSelectedPaymentFor.value,
         inst_date: apInstDate || undefined,
-        payment_date: apPaymentDate || undefined,
+        // Non-admins never see the Receipt Date control, so nothing is
+        // sent for them; the server stamps "now" either way.
+        payment_date: (isAdmin && apPaymentDate) ? apPaymentDate : undefined,
         mode_of_payment: apModeOfPayment,
         is_advance_pay: apSelectedPaymentFor.isAdvance || undefined,
       };
@@ -679,24 +740,41 @@ const DueReportPage: React.FC = () => {
                 one installment — it has no Installment Date at all (takes
                 today's date via Payment Date instead), so the field is
                 hidden rather than shown blank/disabled. */}
+            {/* V_23.0 item 9 — terminology only, the underlying fields are
+                unchanged: the scheduled installment this payment settles
+                (inst_date) is now called "Payment Date", and the date the
+                money was actually received (payment_date) is "Receipt
+                Date". */}
             {!apSelectedPaymentFor?.isAdvance && (
               <div>
-                <label style={fieldLabelStyle}>Installment Date</label>
+                <label style={fieldLabelStyle}>Payment Date</label>
                 {/* Read-only — auto-filled from the suggested default date
                     for the selected Payment For, same as Building/Wing/Flat
                     above. Not employee-editable. */}
                 <input type="date" readOnly value={apInstDate} style={readOnlyInputStyle} />
               </div>
             )}
-            <div>
-              <label style={fieldLabelStyle}>Payment Date</label>
-              <input type="date" value={apPaymentDate} onChange={(e) => setApPaymentDate(e.target.value)} style={fieldInputStyle()} />
-            </div>
+            {/* Receipt Date is admin-only (item 9). It was previously shown
+                and editable to everyone, but the server has always ignored
+                a non-admin's value and stamped "now" instead (see
+                payment.service.ts's finalPaymentDate) — so an employee was
+                being shown a control whose value was silently discarded.
+                Hiding it makes the UI tell the truth; the same server rule
+                remains the actual boundary. */}
+            {isAdmin && (
+              <div>
+                <label style={fieldLabelStyle}>Receipt Date</label>
+                <input type="date" value={apPaymentDate} onChange={(e) => setApPaymentDate(e.target.value)} style={fieldInputStyle()} />
+              </div>
+            )}
             <div ref={setFieldRef('payment_for')}>
               <label style={fieldLabelStyle}>Payment For</label>
               <select value={apPaymentForKey} onChange={(e) => handlePaymentForChange(e.target.value)} style={fieldInputStyle(!!errorFor('payment_for'))}>
                 <option value="">-- Select --</option>
-                {PAYMENT_FOR_UI_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                {PAYMENT_FOR_UI_OPTIONS.map((o) => {
+                  const done = isPaymentForCompleted(o);
+                  return <option key={o.key} value={o.key} disabled={done}>{o.label}{done ? ' — Already Paid' : ''}</option>;
+                })}
               </select>
               {errorFor('payment_for') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('payment_for')}</p>}
             </div>

@@ -301,7 +301,7 @@ const PaymentReceivedPage: React.FC = () => {
         toast.error('No payments to export.');
         return;
       }
-      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Instalment Date', 'Received Date', 'Maintenance', 'Amount', 'Total Amount', 'Mode', 'Payment For', 'Received By', 'Company'];
+      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Date', 'Receipt Date', 'Maintenance', 'Amount', 'Total Amount', 'Mode', 'Payment For', 'Received By', 'Company'];
       const csvRows = exportRows.map((r) => [
         r.receipt_number, r.customer_name || '', r.building_name || '', r.wing_name || '', r.flat_no || '',
         formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.maintenance || 0, r.amount, r.amount + (r.maintenance || 0),
@@ -443,11 +443,11 @@ const PaymentReceivedPage: React.FC = () => {
         <div className="pr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
-            <label style={labelStyle}>Payment Date From</label>
+            <label style={labelStyle}>Receipt Date From</label>
             <input type="date" value={draftFromDate} onChange={(e) => { setDraftFromDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>Payment Date To</label>
+            <label style={labelStyle}>Receipt Date To</label>
             <input type="date" value={draftToDate} onChange={(e) => { setDraftToDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           <div className="pr-filter-actions flex items-center gap-2 flex-wrap" style={{ gridColumn: 'span 3 / span 3' }}>
@@ -501,7 +501,7 @@ const PaymentReceivedPage: React.FC = () => {
                   <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={rows.length === 0}
                     style={{ cursor: rows.length === 0 ? 'not-allowed' : 'pointer' }} />
                 </th>
-                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Instalment Date', 'Received Date', 'Maintenance', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
+                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Date', 'Receipt Date', 'Maintenance', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
