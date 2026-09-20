@@ -584,9 +584,14 @@ const DueReportPage: React.FC = () => {
     setApPaymentForKey(key);
     setApAmount('');
     const opt = PAYMENT_FOR_UI_OPTIONS.find((o) => o.key === key);
-    // Extra Pay has no Installment Date at all (see the field's own comment
-    // below) — clear any stale value left over from a prior selection.
-    if (opt?.isAdvance) setApInstDate('');
+    // V_23.0 item 8.8 — clear the date for EVERY change of Payment For, not
+    // only when switching to Extra Pay (which has no installment date at
+    // all; see the field's own comment below). The date belongs to the
+    // previously-selected type, and the re-fetch below only overwrites it
+    // when the new type actually has a suggested date — so if that lookup
+    // returns nothing (or fails), the old type's date was being left in the
+    // field and submitted as this payment's inst_date.
+    setApInstDate('');
     if (!opt || !apCustomerId) return;
     setApSuggestLoading(true);
     try {

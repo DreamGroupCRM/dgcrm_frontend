@@ -64,6 +64,18 @@ const FOOTER_HEIGHT = 76;
 // come in via the --cust-* CSS vars set on the page's outer wrapper below.
 const fieldClassName = (isView: boolean) => (isView ? 'cust-field cust-field-view' : 'cust-field');
 
+// V_23.0 items 8.3/8.7. Kept in step with the backend's own
+// MAX_EMI_TENURE_MONTHS / MAX_INSTALLMENT_DAY_OF_MONTH in
+// customer.service.ts, which is the authority — this is instant feedback,
+// not the control.
+const MAX_EMI_TENURE_MONTHS = 60;
+const MAX_INSTALLMENT_DAY_OF_MONTH = 15;
+// Reads the day straight out of a 'yyyy-mm-dd' input value. Deliberately
+// NOT `new Date(v).getDate()`: that parses a bare date string as UTC and
+// then reports it in local time, which shifts the day by one for anyone
+// behind UTC and would make the 15th fail the check for them.
+const dayOfMonth = (value: string): number => Number(value.slice(8, 10)) || 0;
+
 // Fires showPicker() on both click AND focus — a plain onClick alone opens
 // the calendar when the browser-drawn icon is clicked, but clicking into
 // the day/month/year text segments only moves focus between them without
@@ -735,6 +747,17 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [monthlyEmiBeforePossession, setMonthlyEmiBeforePossession] = useState('');
   const [monthlyEmiAfterPossession, setMonthlyEmiAfterPossession] = useState('');
   const [totalEmiTenure, setTotalEmiTenure] = useState('');
+  // V_23.0 items 8.3/8.7 — the EMI tenure cap (60 months) and the
+  // "installment date on or before the 15th" rule are BOTH new, and both
+  // fields were previously unconstrained (tenure accepted up to 99, the date
+  // picker any day). Live records therefore already sit outside them. These
+  // hold what the record was loaded with so an untouched legacy value can be
+  // resubmitted by an unrelated edit without being blocked — the same
+  // change-aware rule the backend applies in assertEmiLimitsValid. A new
+  // booking has empty refs, so everything counts as changed and is fully
+  // constrained.
+  const loadedEmiTenureRef = useRef('');
+  const loadedInstallmentDateRef = useRef('');
   const [boosterAmountBeforePossession, setBoosterAmountBeforePossession] = useState('');
   const [boosterAmountAfterPossession, setBoosterAmountAfterPossession] = useState('');
   const [boosterIntervalBeforePossession, setBoosterIntervalBeforePossession] = useState('');
@@ -881,9 +904,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           setRemainingBookingDate(c.remaining_booking_date || '');
           setPossessionAmount(c.possession_amount != null ? String(c.possession_amount) : '');
           setInstallmentDate(c.installment_date || '');
+          loadedInstallmentDateRef.current = c.installment_date || '';
           setMonthlyEmiBeforePossession(c.monthly_emi_before_possession != null ? String(c.monthly_emi_before_possession) : '');
           setMonthlyEmiAfterPossession(c.monthly_emi_after_possession != null ? String(c.monthly_emi_after_possession) : '');
           setTotalEmiTenure(c.total_emi_tenure_months != null ? String(c.total_emi_tenure_months) : '');
+          loadedEmiTenureRef.current = c.total_emi_tenure_months != null ? String(c.total_emi_tenure_months) : '';
           setBoosterAmountBeforePossession(c.booster_amount_before_possession != null ? String(c.booster_amount_before_possession) : '');
           setBoosterAmountAfterPossession(c.booster_amount_after_possession != null ? String(c.booster_amount_after_possession) : '');
           setBoosterIntervalBeforePossession(c.booster_interval_before_possession_months != null ? String(c.booster_interval_before_possession_months) : '');
@@ -1103,9 +1128,21 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     { field: 'bookingAmount', section: 'payment', message: 'Please enter the Booking Amount.', failed: () => bookingAmount.trim() === '' },
     { field: 'possessionAmount', section: 'payment', message: 'Please enter the Possession Amount.', failed: () => possessionAmount.trim() === '' },
     { field: 'installmentDate', section: 'payment', message: 'Please select the Installment Date.', failed: () => installmentDate === '' },
+    {
+      field: 'installmentDate', section: 'payment',
+      message: `The Installment Date must be on or before the ${MAX_INSTALLMENT_DAY_OF_MONTH}th of the month.`,
+      failed: () => installmentDate !== '' && dayOfMonth(installmentDate) > MAX_INSTALLMENT_DAY_OF_MONTH
+        && installmentDate !== loadedInstallmentDateRef.current,
+    },
     { field: 'monthlyEmiBeforePossession', section: 'payment', message: 'Please enter the Monthly EMI Before Possession.', failed: () => monthlyEmiBeforePossession.trim() === '' },
     { field: 'monthlyEmiAfterPossession', section: 'payment', message: 'Please enter the Monthly EMI After Possession.', failed: () => monthlyEmiAfterPossession.trim() === '' },
     { field: 'totalEmiTenure', section: 'payment', message: 'Please enter the Total EMI Tenure.', failed: () => totalEmiTenure.trim() === '' },
+    {
+      field: 'totalEmiTenure', section: 'payment',
+      message: `Total EMI Tenure cannot be more than ${MAX_EMI_TENURE_MONTHS} months.`,
+      failed: () => totalEmiTenure.trim() !== '' && Number(totalEmiTenure) > MAX_EMI_TENURE_MONTHS
+        && totalEmiTenure.trim() !== loadedEmiTenureRef.current.trim(),
+    },
     { field: 'applicationForm', section: 'documents', message: 'Please upload the Application Form.', failed: () => !applicationForm },
     { field: 'declarationForm', section: 'documents', message: 'Please upload the Declaration Form.', failed: () => !declarationForm },
     { field: 'allotmentLetter', section: 'documents', message: 'Please upload the Allotment Letter.', failed: () => !allotmentLetter },
@@ -1856,10 +1893,13 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} />
           </Field>
           <Field t={t} label="Total EMI Tenure (Months)" required error={errorFor('totalEmiTenure')} fieldRef={setFieldRef('totalEmiTenure') as React.Ref<HTMLDivElement>}>
-            {/* Max 99 / 2-digit cap (Task 6) — maxLength blocks typing a 3rd
-                digit, and the max clamp inside NumberField covers paste
-                edge cases so the stored value can never exceed 99. */}
-            <NumberField t={t} isView={isView} placeholder="e.g. 60" value={totalEmiTenure} onChange={setTotalEmiTenure} max={99} maxLength={2} />
+            {/* 2-digit cap — maxLength blocks typing a 3rd digit, and the
+                max clamp inside NumberField covers paste edge cases, so a
+                newly-typed value can never exceed the 60-month limit
+                (V_23.0 item 8.3; was 99). A legacy record already above it
+                still loads and displays its stored value — see
+                loadedEmiTenureRef. */}
+            <NumberField t={t} isView={isView} placeholder="e.g. 60" value={totalEmiTenure} onChange={setTotalEmiTenure} max={MAX_EMI_TENURE_MONTHS} maxLength={2} />
           </Field>
         </div>
 
