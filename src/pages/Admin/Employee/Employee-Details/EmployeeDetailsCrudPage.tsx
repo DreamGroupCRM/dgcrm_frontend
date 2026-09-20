@@ -8,6 +8,7 @@ import {
   MdArrowBack, MdCloudUpload, MdPerson, MdBusinessCenter, MdAccountBalance,
   MdGroups, MdDescription, MdCheckCircle, MdOpenInNew, MdVisibility, MdDownload,
 } from 'react-icons/md';
+import { FaWhatsapp } from 'react-icons/fa';
 
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
@@ -119,7 +120,7 @@ interface DesignationOption extends IdOption { departmentId: number | null; }
 
 const emptyForm: EmployeeFormValues = {
   first_name: '', middle_name: '', last_name: '', date_of_birth: '', email: '',
-  mobile_country_code: '+91', mobile_number: '',
+  mobile_country_code: '+91', mobile_number: '', mobile_is_whatsapp: false,
   alternate_country_code: '+91', alternate_number: '',
   whatsapp_country_code: '+91', whatsapp_number: '',
   address: '', aadhar_number: '', pan_number: '',
@@ -840,6 +841,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             first_name: e.first_name || '', middle_name: e.middle_name || '', last_name: e.last_name || '',
             date_of_birth: e.date_of_birth || '', email: e.email || '',
             mobile_country_code: e.mobile_country_code || '+91', mobile_number: e.mobile_number || '',
+            mobile_is_whatsapp: e.mobile_is_whatsapp ?? false,
             alternate_country_code: e.alternate_country_code || '+91', alternate_number: e.alternate_number || '',
             whatsapp_country_code: e.whatsapp_country_code || '+91', whatsapp_number: e.whatsapp_number || '',
             address: e.address || '', aadhar_number: e.aadhar_number || '', pan_number: e.pan_number || '',
@@ -982,7 +984,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     { field: 'mobile_number', section: 'personal', message: 'Please enter the Mobile Number.', failed: () => !form.mobile_number.trim() },
     { field: 'mobile_number', section: 'personal', message: phoneNumberError(form.mobile_country_code, form.mobile_number), failed: () => !!phoneNumberError(form.mobile_country_code, form.mobile_number) },
     { field: 'alternate_number', section: 'personal', message: phoneNumberError(form.alternate_country_code, form.alternate_number), failed: () => !!phoneNumberError(form.alternate_country_code, form.alternate_number) },
-    { field: 'whatsapp_number', section: 'personal', message: phoneNumberError(form.whatsapp_country_code, form.whatsapp_number), failed: () => !!phoneNumberError(form.whatsapp_country_code, form.whatsapp_number) },
     { field: 'address', section: 'personal', message: 'Please enter the Address.', failed: () => !form.address.trim() },
     { field: 'aadhar_number', section: 'personal', message: aadhaarError(form.aadhar_number, true), failed: () => !!aadhaarError(form.aadhar_number, true) },
     { field: 'aadhar_card', section: 'personal', message: 'Please upload the Aadhar Card.', failed: () => !files.aadhar_card && !existingUrls.aadhar_card },
@@ -1186,9 +1187,8 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <ViewValue label="Middle Name" value={form.middle_name} />
               <ViewValue label="Last Name" value={form.last_name} />
               <ViewValue label="Date of Birth" value={form.date_of_birth ? formatDate(form.date_of_birth) : ''} />
-              <ViewValue label="Mobile Number" value={form.mobile_number ? `${form.mobile_country_code} ${form.mobile_number}` : ''} />
+              <ViewValue label="Mobile Number" value={form.mobile_number ? `${form.mobile_country_code} ${form.mobile_number}${form.mobile_is_whatsapp ? ' (WhatsApp)' : ''}` : ''} />
               <ViewValue label="Alternate Number" value={form.alternate_number ? `${form.alternate_country_code} ${form.alternate_number}` : ''} />
-              <ViewValue label="WhatsApp Number" value={form.whatsapp_number ? `${form.whatsapp_country_code} ${form.whatsapp_number}` : ''} />
               <ViewValue label="Aadhar Number" value={form.aadhar_number} />
               <ViewValue label="PAN Number" value={form.pan_number} />
               <ViewValue label="Address" value={form.address} className="emp-view-field-wide" />
@@ -1382,17 +1382,24 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 4 }}>{EMAIL_ADMIN_ONLY_MESSAGE}</div>
             )}
           </Field>
+          {/* V_23.0 item 2.2 — the separate WhatsApp Number field is replaced
+              by an "Also on WhatsApp" flag on the Mobile Number, the same
+              redesign the Customer form already uses. The stored
+              whatsapp_number/whatsapp_country_code columns are untouched —
+              existing employees keep their saved number in the database,
+              the form just no longer collects it. */}
           <Field t={t} label="Mobile Number" required error={errorFor('mobile_number')} fieldRef={setFieldRef('mobile_number') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView} code={form.mobile_country_code} onCodeChange={(v) => set('mobile_country_code', v)}
               number={form.mobile_number} onNumberChange={(v) => set('mobile_number', v)} placeholder="Enter mobile number" />
+            <label className="flex items-center gap-1.5 mt-1.5" style={{ fontSize: 10.5, color: t.textSecondary, cursor: isView ? 'default' : 'pointer' }}>
+              <input type="checkbox" checked={form.mobile_is_whatsapp} disabled={isView}
+                onChange={(e) => set('mobile_is_whatsapp', e.target.checked)} style={{ width: 13, height: 13, cursor: isView ? 'default' : 'pointer' }} />
+              <FaWhatsapp size={12} style={{ color: '#25D366', flexShrink: 0 }} /> Also on WhatsApp
+            </label>
           </Field>
           <Field t={t} label="Alternate Number" error={errorFor('alternate_number')} fieldRef={setFieldRef('alternate_number') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView} code={form.alternate_country_code} onCodeChange={(v) => set('alternate_country_code', v)}
               number={form.alternate_number} onNumberChange={(v) => set('alternate_number', v)} placeholder="Enter mobile number" />
-          </Field>
-          <Field t={t} label="WhatsApp Number" error={errorFor('whatsapp_number')} fieldRef={setFieldRef('whatsapp_number') as React.Ref<HTMLDivElement>}>
-            <PhoneInput theme={t} disabled={isView} code={form.whatsapp_country_code} onCodeChange={(v) => set('whatsapp_country_code', v)}
-              number={form.whatsapp_number} onNumberChange={(v) => set('whatsapp_number', v)} placeholder="Enter mobile number" />
           </Field>
         </div>
 

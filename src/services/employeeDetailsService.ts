@@ -48,6 +48,7 @@ export interface Employee {
   email                     : string;
   mobile_country_code       : string;
   mobile_number              : string;
+  mobile_is_whatsapp?        : boolean;
   alternate_country_code?    : string;
   alternate_number?           : string;
   whatsapp_country_code?       : string;
@@ -185,6 +186,7 @@ export interface EmployeeFormValues {
   email                          : string;
   mobile_country_code             : string;
   mobile_number                    : string;
+  mobile_is_whatsapp                : boolean;
   alternate_country_code             : string;
   alternate_number                     : string;
   whatsapp_country_code                  : string;
