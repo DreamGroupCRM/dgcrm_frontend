@@ -24,7 +24,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { IconType } from 'react-icons';
 import {
-  MdUpcoming, MdRefresh, MdSearch, MdEvent, MdAccountBalanceWallet,
+  MdUpcoming, MdRefresh, MdSearch, MdEvent, MdAccountBalanceWallet, MdClose,
   MdReceiptLong, MdSchedule, MdVpnKey, MdPayments, MdStars, MdWorkspacePremium,
 } from 'react-icons/md';
 
@@ -149,6 +149,12 @@ const PaymentUpcomingPage: React.FC = () => {
   const [searchCustomer, setSearchCustomer] = useState('');
   const [searchEmployee, setSearchEmployee] = useState('');
   const [searchBuilding, setSearchBuilding] = useState('');
+
+  // Item 8 (V_23.0) — this search card had no Clear Filters control.
+  const anyFilterApplied = !!categoryFilter || !!searchCustomer || !!searchEmployee || !!searchBuilding;
+  const clearAllFilters = () => {
+    setCategoryFilter(null); setSearchCustomer(''); setSearchEmployee(''); setSearchBuilding('');
+  };
 
   const filteredRows = useMemo(() => {
     const c = searchCustomer.trim().toLowerCase();
@@ -283,6 +289,17 @@ const PaymentUpcomingPage: React.FC = () => {
             <input type="text" placeholder="Search by Building Name" value={searchBuilding} onChange={(e) => setSearchBuilding(e.target.value)}
               style={{ ...fieldInputStyle, paddingLeft: 30 }} disabled={!applied} />
           </div>
+          {anyFilterApplied && (
+            <div className="flex items-center">
+              <button
+                type="button" onClick={clearAllFilters} title="Reset Filters" aria-label="Reset Filters"
+                className="flex items-center justify-center rounded-full"
+                style={{ width: 36, height: 36, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}
+              >
+                <MdClose size={17} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

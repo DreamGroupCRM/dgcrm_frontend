@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  MdAdd, MdDownload, MdUpload, MdRefresh, MdSearch, MdPerson, MdContentCopy,
+  MdAdd, MdDownload, MdUpload, MdRefresh, MdSearch, MdPerson, MdContentCopy, MdClose,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../hooks';
@@ -59,6 +59,14 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('');
   const [employeeOptions, setEmployeeOptions] = useState<{ id: string; name: string }[]>([]);
+
+  // Item 8 (V_23.0) — statusFilter already has its own "All" pill to reset
+  // it; search/categoryFilter/employeeFilter had no equivalent, so there was
+  // no single control to clear all of them together.
+  const anyFilterApplied = !!search || !!categoryFilter || !!employeeFilter || statusFilter !== 'all';
+  const clearAllFilters = () => {
+    setSearch(''); setCategoryFilter(''); setEmployeeFilter(''); setStatusFilter('all');
+  };
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -241,6 +249,12 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
             style={{ background: 'var(--brand-gradient)', border: '1px solid var(--brand-gradient)', color: '#fff' }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />
           </button>
+          {anyFilterApplied && (
+            <button type="button" onClick={clearAllFilters} title="Reset Filters" aria-label="Reset Filters" className="master-btn-icon"
+              style={{ background: 'var(--brand-gradient)', border: '1px solid var(--brand-gradient)', color: '#fff' }}>
+              <MdClose size={18} />
+            </button>
+          )}
         </div>
       </div>
 

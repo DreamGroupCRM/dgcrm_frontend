@@ -336,6 +336,18 @@ const DueReportPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<PaymentFor | null>(null);
   const toggleCategoryFilter = (key: PaymentFor) => setCategoryFilter((prev) => (prev === key ? null : key));
 
+  // Item 8 (V_23.0) — this toolbar had no Clear/Reset Filters control at
+  // all; every filter here is plain client-side state narrowing the same
+  // already-fetched list (see filteredDueRows below), so resetting them is
+  // just resetting this state, same pattern as CustomerDetailsListPage's
+  // clearAllFilters/anyFilterApplied.
+  const anyFilterApplied =
+    !!filterPaymentFor || !!filterBuilding || !!filterEmployee || !!globalSearch || statusFilter !== 'all' || !!categoryFilter;
+  const clearAllFilters = () => {
+    setFilterPaymentFor(''); setFilterBuilding(''); setFilterEmployee('');
+    setGlobalSearch(''); setStatusFilter('all'); setCategoryFilter(null);
+  };
+
   // ── Upcoming (Status = Upcoming) — lazily fetched once, reusing the
   // already-built Payment Upcoming endpoint for a rolling next-30-days
   // window rather than duplicating that logic here. ───────────────────────
@@ -748,6 +760,15 @@ const DueReportPage: React.FC = () => {
                 <option value="upcoming">Upcoming</option>
               </select>
             </div>
+            {anyFilterApplied && (
+              <button
+                type="button" onClick={clearAllFilters} title="Reset Filters" aria-label="Reset Filters"
+                className="flex items-center justify-center rounded-full"
+                style={{ width: 36, height: 36, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}
+              >
+                <MdClose size={17} />
+              </button>
+            )}
           </div>
           <div className="due-report-toolbar-actions flex items-center gap-2" style={{ marginLeft: 'auto', flexShrink: 0 }}>
             {/* In-app-only badge — open follow-ups due today/tomorrow across
