@@ -23,8 +23,7 @@ import {
   fetchTakenParkingNumbers,
 } from '../../../../services/customerDetailsService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
-import { companyService } from '../../../../services/companyService';
-import { Building, Company, ParkingChoice } from '../../../../types/index';
+import { Building, ParkingChoice } from '../../../../types/index';
 // Type-only import — never pulls Building2DViewPage's actual module into
 // this page's bundle; only the shape of the payload it navigates back with.
 import type { SelectedUnitForCustomer } from '../../Building2D/Building2DViewPage';
@@ -679,7 +678,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [fetching, setFetching] = useState(mode !== 'add');
   const [saving, setSaving] = useState(false);
   const [buildings, setBuildings] = useState<Building[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [customerCode, setCustomerCode] = useState('');
 
   // ── Personal Details ──────────────────────────────────────────────────
@@ -801,12 +799,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         if (res.success) setBuildings(res.rows ?? []);
       } catch { /* dropdowns just stay empty if this fails */ }
     })();
-    (async () => {
-      try {
-        const res = await companyService.FetchCompanyList(1, 1000);
-        if (res.success) setCompanies(res.rows ?? []);
-      } catch { /* dropdown just stays empty if this fails */ }
-    })();
   }, []);
 
   // Building View "Select Flat" integration — when returning from the
@@ -924,7 +916,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // specific building is selected, its real detail is fetched (ViewBuilding)
   // and THAT backs the Wing/Floor/Flat option lists and the ids actually
   // submitted below — not the list row's placeholders.
-  const companyNameOptions = useMemo(() => Array.from(new Set(companies.map((c) => c.name))), [companies]);
   const projectNameOptions = useMemo(() => Array.from(new Set(buildings.map((b) => b.project_name))), [buildings]);
   const buildingsForProject = useMemo(
     () => (projectName ? buildings.filter((b) => b.project_name === projectName) : buildings)
@@ -933,6 +924,17 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   );
   const buildingNameOptions = useMemo(() => Array.from(new Set(buildingsForProject.map((b) => b.building_name))), [buildingsForProject]);
   const selectedBuilding = useMemo(() => buildingsForProject.find((b) => b.building_name === buildingName), [buildingsForProject, buildingName]);
+
+  // Item 1 (V_23.0) — Company Name is no longer a manually-picked field on
+  // this form; it always follows the selected Building's own linked
+  // company (Building Master already requires one on create — see
+  // BuildingCrudPage's businessCompanyId check — and buildingService.ts's
+  // list mapper already carries business_company_name on every row, so
+  // this needs no extra fetch). `companyName` state itself is kept only as
+  // the fallback for an existing record whose booked building can no
+  // longer be resolved from the (active-only) buildings list, so a stored
+  // value is never blanked out from under an old customer.
+  const effectiveCompanyName = selectedBuilding?.business_company_name || companyName;
 
   const [buildingDetail, setBuildingDetail] = useState<Building | null>(null);
   const [loadingBuildingDetail, setLoadingBuildingDetail] = useState(false);
@@ -1010,6 +1012,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     if (buildingDetail && !buildingHasShops) { setUnitType('flat'); setShopNo(''); }
   }, [buildingDetail, buildingHasShops]);
 
+  // Item 4 (V_23.0) — Payment Details labels say "Flat" or "Shop" to match
+  // what was actually selected, instead of always saying "Flat" even for a
+  // shop booking. Purely a display string — the underlying field/column
+  // (total_cost) is unchanged.
+  const unitLabel = unitType === 'shop' ? 'Shop' : 'Flat';
+
   // A flat/shop already booked by ANOTHER active customer is unselectable —
   // but not by the customer this Edit screen is currently editing (their
   // own existing booking must stay selectable). `id` (route param) is only
@@ -1077,7 +1085,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     { field: 'pancardNumber', section: 'personal', message: panError(pancardNumber), failed: () => !!panError(pancardNumber) },
     { field: 'address', section: 'personal', message: 'Please enter the Address.', failed: () => address.trim() === '' },
     { field: 'dateOfBirth', section: 'personal', message: 'Please select the Date of Birth.', failed: () => dateOfBirth === '' },
-    { field: 'companyName', section: 'property', message: 'Please select the Company Name.', failed: () => companyName.trim() === '' },
     { field: 'projectName', section: 'property', message: 'Please select the Project Name.', failed: () => projectName.trim() === '' },
     // The booked unit itself was never validated on this form — Building,
     // Wing, Floor, Flat No and Shop No could all be left blank and the
@@ -1198,7 +1205,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       formData.append('alternate_person_mobile', alternatePersonMobile.trim());
 
       // Property Booking Details
-      formData.append('company_name', companyName.trim());
+      formData.append('company_name', effectiveCompanyName.trim());
       formData.append('project_name', projectName.trim());
       formData.append('location', location.trim());
       // building_id/wing_id/flat_id are genuinely optional (Building/Wing/
@@ -1397,7 +1404,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
             <SectionHeader t={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="var(--grad-green)" />
             <div className="cust-view-grid">
-              <ViewValue label="Company Name" value={companyName} />
+              <ViewValue label="Company Name" value={effectiveCompanyName} />
               <ViewValue label="Project Name" value={projectName} />
               <ViewValue label="Building" value={buildingName} />
               <ViewValue label="Wing / Floor" value={[wingName, floorLabel].filter(Boolean).join(' / ')} />
@@ -1632,24 +1639,25 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         )}
 
         {/* ONE 6-column grid, not two stacked grids. Split across two grids
-            (6 + 6) this section actually rendered THREE rows: row 1 held 7
+            (6 + 6) this section actually rendered THREE rows: row 1 held
             fields for a flat booking in a building that also has shops
-            (Company, Project, Building, Location, Unit Type, Wing, Floor),
-            so the 7th wrapped onto a line of its own before row 2 even
+            (Project, Building, Location, Unit Type, Wing, Floor), so an
+            extra field would wrap onto a line of its own before row 2 even
             began. Flowing every field through a single grid instead means
             the browser packs them 6-per-row, and every combination fits in
             exactly two rows:
-              flat  + shops in building : 12 fields -> 6 + 6
-              flat  + no shops          : 11 fields -> 6 + 5
-              shop                      :  9 fields -> 6 + 3
+              flat  + shops in building : 11 fields -> 6 + 5
+              flat  + no shops          : 10 fields -> 6 + 4
+              shop                      :  8 fields -> 6 + 2
             (one less each when Purchase Parking is "No" and Parking No is
             hidden). Nothing here is position-dependent, so the fields keep
-            their existing order and behaviour. */}
+            their existing order and behaviour.
+            Company Name is no longer a manual field here — it is derived
+            from the selected Building's own linked company (see
+            effectiveCompanyName below) and submitted the same as before, so
+            every page/report that already filters or displays by
+            company_name keeps working unchanged. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-          <Field t={t} label="Company Name" required error={errorFor('companyName')} fieldRef={setFieldRef('companyName') as React.Ref<HTMLDivElement>}>
-            <SearchableSelect t={t} placeholder="Select company" options={companyNameOptions} value={companyName} disabled={isView}
-              onChange={setCompanyName} />
-          </Field>
           <Field t={t} label="Project Name" required error={errorFor('projectName')} fieldRef={setFieldRef('projectName') as React.Ref<HTMLDivElement>}>
             <SearchableSelect t={t} placeholder="Select project" options={projectNameOptions} value={projectName} disabled={isView}
               onChange={(v) => { setProjectName(v); setBuildingName(''); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
@@ -1807,7 +1815,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             own amount+date pair was squeezing into the same 1/5-width slot
             as every other single field here, cramming both inputs). */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
-          <Field t={t} label="Total Cost of Flat (₹)" required error={errorFor('totalCost')} fieldRef={setFieldRef('totalCost') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label={`Total Cost of ${unitLabel} (₹)`} required error={errorFor('totalCost')} fieldRef={setFieldRef('totalCost') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter total cost" value={totalCost} onChange={setTotalCost} />
           </Field>
           <Field t={t} label="Booking Date" required error={errorFor('bookingDate')} fieldRef={setFieldRef('bookingDate') as React.Ref<HTMLDivElement>}>
@@ -1962,7 +1970,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             aadhar: aadharNumber, pan: pancardNumber, address, dob: dateOfBirth,
             age: age ? `${age.years}y ${age.months}m` : '',
             altName: alternatePersonName, altMobile: alternatePersonMobile ? `${alternatePersonCountryCode} ${alternatePersonMobile}` : '',
-            companyName, projectName, buildingName, wingName, floorLabel,
+            companyName: effectiveCompanyName, projectName, buildingName, wingName, floorLabel,
             // V_22.0 item 9 — these 3 preview rows describe whichever unit
             // type is actually selected, so a shop booking's preview shows
             // its shop no/area instead of blank Flat No/Type/Area rows.
