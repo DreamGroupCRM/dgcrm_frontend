@@ -43,21 +43,16 @@ import DueReportPage from '../pages/Admin/CRM/DueReport/DueReportPage';
 // Customize Scheme — replaces the former "Interest Free Calculator"
 // placeholder with a real EMI Scheme & Schedule builder.
 import CustomizeSchemePage from '../pages/Admin/CustomizeScheme/CustomizeSchemePage';
-// Building View (2D) — lazy-loaded same as PaymentApprovalsPage etc. below.
+// Building View (2D) — lazy-loaded same as AttendancePage etc. below.
 const Building2DViewPage = lazy(() => import('../pages/Admin/Building2D/Building2DViewPage'));
 // Audit History — replaces its former PlaceholderPage now that
 // GET /api/audit-logs exists (item 11).
 import AuditHistoryPage from '../pages/Admin/AuditHistory/AuditHistoryPage';
-// Payment Received — replaces its former PlaceholderPage (item 16).
+// Payment Received — replaces its former PlaceholderPage (item 16). Now
+// also hosts Payment Approvals and Payment Upcoming as tabs internally
+// (V_23.0), so those two are no longer separate routes/lazy imports here —
+// see the redirects below and that page's own header comment.
 import PaymentReceivedPage from '../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage';
-// Payment Approvals — dedicated review queue split out of Payment Received
-// (V_21.0, see that page's own header comment).
-const PaymentApprovalsPage = lazy(() => import('../pages/Admin/CRM/PaymentApprovals/PaymentApprovalsPage'));
-// Payment Upcoming — dedicated page split out of Payment Dues' old "Show
-// Upcoming Payment" checkbox (V_22.0, see PaymentUpcomingPage's own header
-// comment): a date-range total plus a detailed, per-installment follow-up
-// table, instead of a total-only number.
-const PaymentUpcomingPage = lazy(() => import('../pages/Admin/CRM/PaymentUpcoming/PaymentUpcomingPage'));
 // Attendance — replaces its former PlaceholderPage, backed by the existing
 // working attendance API (V_21.0). Leave Requests (previously its own
 // LeaveApprovalsPage/route) now lives inside this same page as a tab.
@@ -140,8 +135,11 @@ const AdminRoutes: React.FC = () => (
       <Route path="crm/customer-details/scheme/:id" element={<CustomerSchemeViewPage />} />
       <Route path="crm/payment-dues" element={<DueReportPage />} />
       <Route path="crm/payment-received" element={<PaymentReceivedPage />} />
-      <Route path="crm/payment-approvals" element={<PaymentApprovalsPage />} />
-      <Route path="crm/payment-upcoming" element={<PaymentUpcomingPage />} />
+      {/* Old standalone Payment Approvals/Upcoming routes — now tabs
+          inside Payment Received (V_23.0), same merge pattern as
+          Leave -> Attendance below. */}
+      <Route path="crm/payment-approvals" element={<Navigate to={ROUTES.ADMIN.PAYMENT_RECEIVED} replace />} />
+      <Route path="crm/payment-upcoming" element={<Navigate to={ROUTES.ADMIN.PAYMENT_RECEIVED} replace />} />
       <Route path="crm/leads" element={<LeadListPage />} />
       <Route path="crm/leads/add" element={<LeadCrudPage mode="add" />} />
       <Route path="crm/leads/view/:id" element={<LeadCrudPage mode="view" />} />

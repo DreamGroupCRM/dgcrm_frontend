@@ -94,9 +94,23 @@ const FilterSelect: React.FC<{
   </div>
 );
 
-const PaymentApprovalsPage: React.FC = () => {
+// V_23.0 — Payment Received/Approval/Upcoming merged into one page with a
+// tab switcher (mirroring the earlier Attendance+Leave merge), reachable
+// only from the "Payment Received" sidebar entry now. This page is no
+// longer mounted at its own route (the old /payment-approvals URL just
+// redirects to Payment Received — see AdminRoutes.tsx); it is rendered as
+// a child of PaymentReceivedPage's tab switcher instead. Its own two
+// "jump to Payment Received" stat-card clicks used to `navigate()` to that
+// separate route; since both tabs now live at the SAME url, that navigate
+// would be a no-op (the router sees no path change) and would leave the
+// visible tab exactly where it was. `onNavigateToReceived` lets the parent
+// switch its tab state instead; the navigate() fallback is kept only as a
+// defensive no-op-safe default in case this is ever rendered standalone
+// again.
+const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({ onNavigateToReceived }) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const goToReceived = onNavigateToReceived ?? (() => navigate(ROUTES.ADMIN.PAYMENT_RECEIVED));
   const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [rows, setRows] = useState<PaymentListRow[]>([]);
@@ -415,10 +429,10 @@ const PaymentApprovalsPage: React.FC = () => {
         <StatCard label="Awaiting Approval" value={total} icon={MdHourglassEmpty} color="#ea580c" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Approved This Month" value={stats?.approved_this_month ?? 0} icon={MdEventAvailable} color="#16a34a" bg="" loading={!stats}
-          onClick={() => navigate(ROUTES.ADMIN.PAYMENT_RECEIVED)}
+          onClick={goToReceived}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Approved Today" value={stats?.approved_today ?? 0} icon={MdToday} color="#0000FF" bg="" loading={!stats}
-          onClick={() => navigate(ROUTES.ADMIN.PAYMENT_RECEIVED)}
+          onClick={goToReceived}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 

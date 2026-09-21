@@ -23,6 +23,7 @@ import { toast } from 'react-toastify';
 import {
   MdPayments, MdRefresh, MdSearch, MdDownload, MdClose, MdKeyboardArrowDown,
   MdFilterAlt, MdVisibility, MdDelete, MdHome, MdHourglassEmpty,
+  MdCheckCircle, MdUpcoming,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -46,6 +47,8 @@ import { Building, PaymentReceipt } from '../../../../types/index';
 import { showAlert } from '../../../../utils';
 import './PaymentReceived.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
+import PaymentApprovalsPage from '../PaymentApprovals/PaymentApprovalsPage';
+import PaymentUpcomingPage from '../PaymentUpcoming/PaymentUpcomingPage';
 
 type Theme = AppTheme;
 
@@ -99,11 +102,27 @@ const FilterSelect: React.FC<{
   </div>
 );
 
+// V_23.0 — Payment Received/Approval/Upcoming, previously 3 sidebar
+// entries/routes, are now one page with a tab switcher (mirroring the
+// earlier Attendance+Leave merge — see that page's own header comment).
+// "Payment Received" is the only survivor in the sidebar and the only
+// route (/admin/crm/payment-received); the old /payment-approvals and
+// /payment-upcoming routes now just redirect here (AdminRoutes.tsx).
+//
+// Approval and Upcoming were always admin-only (no employee route/sidebar
+// entry ever existed for either, though their GET endpoints happen to be
+// merely `authenticate`-gated server-side, not requireAdmin — see
+// payment.routes.ts). The tab switcher itself is therefore only rendered
+// for an admin caller; an employee sees exactly what they always saw on
+// this page — no tabs, Received content only — via paths.isAdmin below.
+type PaymentTab = 'received' | 'approval' | 'upcoming';
+
 const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isDark, t, cssVars } = useAppearanceTokens();
   const paths = useRoleBasePath();
+  const [activeTab, setActiveTab] = useState<PaymentTab>('received');
 
   const [rows, setRows] = useState<PaymentListRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -132,8 +151,19 @@ const PaymentReceivedPage: React.FC = () => {
   const [employeeNameOptions, setEmployeeNameOptions] = useState<string[]>([]);
   const [companyNameOptions, setCompanyNameOptions] = useState<string[]>([]);
 
+  // Kept separate from the data-fetch effect below (which only ever runs
+  // once, on mount) so the title updates correctly every time the tab
+  // changes — matching Attendance's own dedicated title effect. The
+  // Approval/Upcoming child components also set this same title
+  // themselves on their own mount; harmless redundancy, not worth
+  // stripping out of files that are otherwise unrelated to this page.
   useEffect(() => {
-    dispatch(setPageTitle('Payment Received'));
+    dispatch(setPageTitle(
+      activeTab === 'received' ? 'Payment Received' : activeTab === 'approval' ? 'Payment Approvals' : 'Payment Upcoming'
+    ));
+  }, [dispatch, activeTab]);
+
+  useEffect(() => {
     (async () => {
       try {
         const res = await FetchBuildingList(1, 1000);
@@ -388,13 +418,57 @@ const PaymentReceivedPage: React.FC = () => {
 
   return (
     <div className="pr-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
+      {/* ── Tab switcher — Approval and Upcoming both live here now, admin
+          only (see this file's own header comment for why: neither ever
+          had an employee-facing route/sidebar entry, so an employee sees
+          no tabs at all — exactly the single Payment Received page they
+          always had). Styled identically to the Attendance+Leave tab
+          switcher this mirrors. */}
+      {paths.isAdmin && (
+        <div className="pr-tabs flex items-center gap-1.5 mb-5" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 5, width: 'fit-content' }}>
+          <button type="button" onClick={() => setActiveTab('received')}
+            className="pr-tab flex items-center gap-2 rounded-xl"
+            style={{
+              padding: '9px 18px', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+              background: activeTab === 'received' ? 'var(--brand-gradient)' : 'transparent',
+              color: activeTab === 'received' ? '#fff' : t.textSecondary,
+            }}>
+            <MdPayments size={16} /> Payment Received
+          </button>
+          <button type="button" onClick={() => setActiveTab('approval')}
+            className="pr-tab flex items-center gap-2 rounded-xl"
+            style={{
+              padding: '9px 18px', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+              background: activeTab === 'approval' ? 'var(--brand-gradient)' : 'transparent',
+              color: activeTab === 'approval' ? '#fff' : t.textSecondary,
+            }}>
+            <MdCheckCircle size={16} /> Payment Approval
+          </button>
+          <button type="button" onClick={() => setActiveTab('upcoming')}
+            className="pr-tab flex items-center gap-2 rounded-xl"
+            style={{
+              padding: '9px 18px', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+              background: activeTab === 'upcoming' ? 'var(--brand-gradient)' : 'transparent',
+              color: activeTab === 'upcoming' ? '#fff' : t.textSecondary,
+            }}>
+            <MdUpcoming size={16} /> Payment Upcoming
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'approval' ? (
+        <PaymentApprovalsPage onNavigateToReceived={() => setActiveTab('received')} />
+      ) : activeTab === 'upcoming' ? (
+        <PaymentUpcomingPage />
+      ) : (
+      <>
       <div className="pr-header flex items-center gap-3 mb-6">
         <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
           <MdPayments size={22} style={{ color: '#4f46e5' }} />
         </div>
         <div>
           <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Payment Received</h1>
-          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Every approved payment — pending payments are reviewed on the Payment Approvals page</p>
+          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Every approved payment — pending payments are reviewed on the Payment Approval tab</p>
         </div>
       </div>
 
@@ -403,22 +477,22 @@ const PaymentReceivedPage: React.FC = () => {
           a sale-value total, not a payment) so it stays non-clickable.
           Total Amount Received represents every approved payment with
           nothing filtered — clicking it clears the filter panel + search.
-          Total Pending Amount lives on a different page entirely (pending
-          payments are reviewed on Payment Approvals, never here) — clicking
-          it navigates there instead of trying to "filter" a page that, by
-          definition, never shows pending rows. ─────────────────────────── */}
+          Total Pending Amount is reviewed on the Payment Approval tab,
+          never here — clicking it switches tabs instead of trying to
+          "filter" a page that, by definition, never shows pending
+          rows. ─────────────────────────────────────────────────────── */}
       <div className="pr-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         <StatCard label="Total Flat Sold" value={rupee(summary?.total_flat_sold ?? 0)} icon={MdHome} color="#7c3aed" bg="" loading={!summary}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Total Amount Received" value={rupee(summary?.total_amount_received ?? 0)} icon={MdPayments} color="#16a34a" bg="" loading={!summary}
           onClick={handleShowAllReceived}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-        {/* Payment Approvals is an admin-only page, and this page is now
-            reachable from the employee sidebar too — so for an employee
-            this tile stays a plain figure rather than a link that would
-            bounce them off ProtectedRoute. */}
+        {/* Payment Approval is an admin-only tab, and this page is also
+            reachable from the employee sidebar (no tabs shown there) — so
+            for an employee this tile stays a plain figure rather than a
+            control that would do nothing for them. */}
         <StatCard label="Total Pending Amount" value={rupee(summary?.total_pending_amount ?? 0)} icon={MdHourglassEmpty} color="#ea580c" bg="" loading={!summary}
-          onClick={paths.isAdmin ? () => navigate(ROUTES.ADMIN.PAYMENT_APPROVALS) : undefined}
+          onClick={paths.isAdmin ? () => setActiveTab('approval') : undefined}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
@@ -592,7 +666,8 @@ const PaymentReceivedPage: React.FC = () => {
           onDownload={() => exportPaymentReceiptPdf(receiptPreview)}
         />
       )}
-
+      </>
+      )}
     </div>
   );
 };

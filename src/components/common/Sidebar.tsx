@@ -22,7 +22,7 @@ import {
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
   MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
   MdAdminPanelSettings, MdManageAccounts, MdPendingActions, MdBeachAccess,
-  MdUpcoming, MdGridView,
+  MdGridView,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -104,9 +104,11 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
     children: [
       { label: 'Customer Details', path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage /> },
       { label: 'Payment Dues', path: ROUTES.ADMIN.PAYMENT_DUES, icon: <MdPayment /> },
-      { label: 'Payment Approvals', path: ROUTES.ADMIN.PAYMENT_APPROVALS, icon: <MdPendingActions /> },
+      // Payment Approvals and Payment Upcoming now live inside the Payment
+      // Received page itself (one merged Payment Received + Approval +
+      // Upcoming experience, tab switcher at the top) instead of their own
+      // sidebar entries/routes — same pattern as Attendance/Leave above.
       { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
-      { label: 'Payment Upcoming', path: ROUTES.ADMIN.PAYMENT_UPCOMING, icon: <MdUpcoming /> },
       { label: 'Leads', path: ROUTES.ADMIN.LEADS, icon: <MdLeaderboard /> },
     ],
   },
