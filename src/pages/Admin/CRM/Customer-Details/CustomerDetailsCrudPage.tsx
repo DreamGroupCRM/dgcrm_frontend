@@ -388,10 +388,26 @@ const SearchableSelect: React.FC<{
 // not be opened by any means. `onView` gives it the same quick-view the
 // document cards below already have; it is optional so nothing breaks for
 // a caller that has no viewer to open.
+//
+// `accept`'s default was 'image/*,.pdf' — a native <input accept> filter
+// string, NOT the '.jpg,.jpeg,...' extension list validateFileSelection()
+// below actually parses (it does a plain accept.split(',') then an exact
+// match against the file's own extension). Every Aadhar/Pancard Photo
+// upload silently fell through to this default (only Customer Photo above
+// ever passed an explicit accept), so validateFileSelection compared e.g.
+// ".jpg" against ['image/*', '.pdf'], found no match, and rejected every
+// JPG/JPEG/PNG/GIF/WEBP client-side with "This file type is not
+// supported" — even though the backend (documentUploader) accepts them
+// fine. Only a literal .pdf pick happened to match and went through. This
+// is the root cause of the reported Customer Aadhaar JPG/JPEG failure.
+// DOCUMENT_ACCEPT is a real extension list, so it now works correctly as
+// BOTH the native picker filter and the validator's input — the same
+// constant Employee's own Aadhar/PAN upload (FileUploadBox) already uses,
+// which is why Employee never hit this.
 const CompactFileUpload: React.FC<{
   t: Theme; isView?: boolean; accept?: string; value: FileValue;
   onChange: (f: File | null) => void; onView?: (url: string) => void;
-}> = ({ t, isView, accept = 'image/*,.pdf', value, onChange, onView }) => {
+}> = ({ t, isView, accept = DOCUMENT_ACCEPT, value, onChange, onView }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const displayName = fileDisplayName(value);
 
