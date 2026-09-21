@@ -8,7 +8,7 @@
 // checks), so no customer/user id is ever passed from here; axiosInstance
 // already attaches the bearer token.
 import axiosInstance from './axiosConfig';
-import { PaymentFor, PaymentReceipt } from '../types/index';
+import { PaymentFor, PaymentReceipt, CustomerSchemeData } from '../types/index';
 import { DueGridRow } from './paymentService';
 
 export interface PortalBookingSummary {
@@ -124,6 +124,12 @@ export const fetchMyBookingPayments = async (id: string | number): Promise<Porta
  */
 export const fetchMyPaymentReceipt = async (transactionId: string | number): Promise<PaymentReceipt> => {
   const res = await axiosInstance.get(`/customer-portal/payments/${transactionId}/receipt`);
+  return res.data.data;
+};
+
+/** GET /api/customer-portal/bookings/:id/scheme */
+export const fetchMyBookingScheme = async (id: string | number): Promise<CustomerSchemeData> => {
+  const res = await axiosInstance.get(`/customer-portal/bookings/${id}/scheme`);
   return res.data.data;
 };
 

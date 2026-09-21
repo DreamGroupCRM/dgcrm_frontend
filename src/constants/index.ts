@@ -94,11 +94,18 @@ export const ROUTES = {
   },
 
   // Customer First Login — dedicated portal, separate from the staff LOGIN
-  // above. Temporary landing page only for now (see CustomerDashboard).
+  // above. The portal's own shell and five sections live under these.
   CUSTOMER: {
     ROOT: '/customer',
     LOGIN: '/customer/login',
+    // Kept so older links and bookmarks still land somewhere — it now
+    // redirects to HOME, which replaced the single scrolling dashboard.
     DASHBOARD: '/customer/dashboard',
+    HOME: '/customer/home',
+    PAYMENT_HISTORY: '/customer/payment-history',
+    PAYMENT_RECEIPT: '/customer/payment-receipt',
+    SCHEME: '/customer/emi-schedule',
+    DOCUMENTS: '/customer/documents',
   },
 } as const;
 

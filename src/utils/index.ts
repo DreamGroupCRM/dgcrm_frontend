@@ -13,7 +13,7 @@ import { getFileToken } from '../services/fileAccessService';
 // across those files.
 export const homeRouteForRole = (role: BaseRole | null): string => {
   if (isAdminRole(role)) return ROUTES.ADMIN.DASHBOARD;
-  if (isCustomerRole(role)) return ROUTES.CUSTOMER.DASHBOARD;
+  if (isCustomerRole(role)) return ROUTES.CUSTOMER.HOME;
   return ROUTES.EMPLOYEE.DASHBOARD;
 };
 

@@ -1,0 +1,489 @@
+/* ==========================================
+   DGCRM — CUSTOMER PORTAL
+   ==========================================
+   Layout and shared page furniture for the customer-facing portal.
+
+   Colours come from the appearance tokens the rest of the app already uses
+   (--cp-surface-bg, --cp-text-primary, --brand-gradient, ...), spread
+   onto the shell as inline CSS variables by useAppearanceTokens — so light
+   and dark mode both work here without a single hard-coded hex, and a
+   theme change elsewhere carries over.
+
+   Breakpoints follow Bootstrap's, which is what "xs/sm/md/lg/xl/xxl" in
+   the brief refers to:
+     xs  < 576    sm  >= 576    md  >= 768
+     lg  >= 992   xl  >= 1200   xxl >= 1400
+   The shell is mobile-first: the sidebar is an overlay drawer by default
+   and only becomes a fixed rail from lg up, where there is width for it. */
+
+.cp-shell {
+  --cp-sidebar-w: 248px;
+  --cp-sidebar-collapsed-w: 68px;
+  --cp-header-h: 58px;
+  --cp-gutter: 12px;
+
+  min-height: 100vh;
+  min-height: 100dvh; /* keeps the mobile browser chrome from cropping it */
+  background: var(--cp-page-bg, #f6f7fb);
+  color: var(--cp-text-primary, #111827);
+  font-family: var(--cp-font-family, inherit);
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────── */
+.cp-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 60;
+  width: min(84vw, var(--cp-sidebar-w));
+  display: flex;
+  flex-direction: column;
+  background: var(--cp-surface-bg, #fff);
+  border-right: 1px solid var(--cp-surface-border, #e5e7eb);
+  transform: translateX(-100%);
+  transition: transform 0.24s ease, width 0.2s ease;
+}
+.cp-sidebar-open { transform: translateX(0); }
+
+.cp-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.cp-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: var(--cp-header-h);
+  padding: 0 12px;
+  border-bottom: 1px solid var(--cp-divider, #eef0f4);
+  flex-shrink: 0;
+}
+.cp-brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.cp-brand-text {
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--cp-text-primary, #111827);
+}
+.cp-drawer-close {
+  display: inline-flex;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--cp-text-secondary, #6b7280);
+  padding: 4px;
+}
+
+.cp-nav { flex: 1; overflow-y: auto; padding: 10px 8px; display: flex; flex-direction: column; gap: 4px; }
+
+.cp-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--cp-text-secondary, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.cp-nav-item:hover { background: var(--cp-inset-bg, #f3f4f6); color: var(--cp-text-primary, #111827); }
+.cp-nav-item-active {
+  background: var(--brand-gradient, linear-gradient(135deg, #7c3aed, #db2777));
+  color: #fff;
+}
+.cp-nav-item-active:hover { color: #fff; }
+.cp-nav-icon { flex-shrink: 0; }
+
+.cp-collapse-btn {
+  display: none; /* desktop affordance only — a drawer has its own close */
+  align-items: center;
+  gap: 11px;
+  margin: 8px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  border: 1px solid var(--cp-surface-border, #e5e7eb);
+  background: var(--cp-inset-bg, #f3f4f6);
+  color: var(--cp-text-secondary, #6b7280);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* ── Main column ─────────────────────────────────────────────────────── */
+.cp-main { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+
+.cp-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--cp-header-h);
+  padding: 0 var(--cp-gutter);
+  background: var(--cp-surface-bg, #fff);
+  border-bottom: 1px solid var(--cp-surface-border, #e5e7eb);
+}
+.cp-menu-btn {
+  display: inline-flex;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--cp-text-primary, #111827);
+  padding: 4px;
+  flex-shrink: 0;
+}
+.cp-header-title {
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--cp-text-primary, #111827);
+}
+.cp-header-actions { margin-left: auto; display: flex; align-items: center; gap: 7px; min-width: 0; }
+
+.cp-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--cp-surface-border, #e5e7eb);
+  background: var(--cp-inset-bg, #f3f4f6);
+  color: var(--cp-text-primary, #111827);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cp-header-btn-danger { color: #dc2626; border-color: rgba(220, 38, 38, 0.32); }
+.cp-header-btn-text { display: none; } /* label appears from sm up */
+
+/* ── Booking switcher ────────────────────────────────────────────────── */
+.cp-booking-single,
+.cp-booking-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--brand-gradient, linear-gradient(135deg, #7c3aed, #db2777));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.cp-booking-trigger { cursor: pointer; }
+.cp-booking-code { letter-spacing: 0.2px; }
+.cp-rotate { transform: rotate(180deg); }
+
+.cp-booking-switcher { position: relative; }
+.cp-booking-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  min-width: 240px;
+  max-width: min(88vw, 340px);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--cp-surface-bg, #fff);
+  border: 1px solid var(--cp-surface-border, #e5e7eb);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+}
+.cp-booking-menu-head {
+  padding: 6px 10px 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--cp-text-secondary, #6b7280);
+}
+.cp-booking-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--cp-text-primary, #111827);
+}
+.cp-booking-option:hover { background: var(--cp-inset-bg, #f3f4f6); }
+.cp-booking-option-active { background: var(--cp-inset-bg, #f3f4f6); box-shadow: inset 3px 0 0 var(--brand-ink, #7c3aed); }
+.cp-booking-option-code { font-size: 12.5px; font-weight: 800; color: var(--brand-ink, #7c3aed); }
+.cp-booking-option-label { font-size: 11px; color: var(--cp-text-secondary, #6b7280); }
+
+/* ── Content ─────────────────────────────────────────────────────────── */
+/* Full available width, per the brief — no centring max-width, just a
+   small gutter so text never touches the screen edge. */
+.cp-content { flex: 1; padding: var(--cp-gutter); min-width: 0; }
+.cp-center { display: flex; justify-content: center; align-items: center; padding: 56px 0; }
+.cp-empty {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 13px;
+  border-radius: 14px;
+  color: var(--cp-text-secondary, #6b7280);
+  background: var(--cp-surface-bg, #fff);
+  border: 1px solid var(--cp-surface-border, #e5e7eb);
+}
+.cp-empty-error { color: #dc2626; }
+
+/* ── Page furniture shared by all five pages ─────────────────────────── */
+.cp-page-head { margin-bottom: 12px; }
+.cp-page-title { font-size: 17px; font-weight: 800; margin: 0; color: var(--cp-text-primary, #111827); }
+.cp-page-sub { font-size: 12px; margin: 3px 0 0; color: var(--cp-text-secondary, #6b7280); }
+
+.cp-card {
+  background: var(--cp-surface-bg, #fff);
+  border: 1px solid var(--cp-surface-border, #e5e7eb);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.cp-card-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--brand-gradient, linear-gradient(135deg, #7c3aed, #db2777));
+}
+.cp-card-body { padding: 14px; }
+
+/* Definition grid — one column on a phone, widening with the viewport. */
+.cp-grid { display: grid; grid-template-columns: 1fr; gap: 12px 18px; }
+.cp-field-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.45px;
+  color: var(--cp-text-secondary, #6b7280);
+  margin-bottom: 2px;
+}
+.cp-field-value { font-size: 13px; font-weight: 600; color: var(--cp-text-primary, #111827); word-break: break-word; }
+
+/* Summary stat tiles. */
+.cp-stats { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px; }
+.cp-stat {
+  padding: 14px;
+  border-radius: 14px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cp-stat-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.22);
+  flex-shrink: 0;
+}
+.cp-stat-label { font-size: 11px; font-weight: 700; opacity: 0.92; }
+.cp-stat-value { font-size: 17px; font-weight: 800; line-height: 1.25; word-break: break-word; }
+
+/* Tables. A table cannot reflow below a certain width, so rather than
+   squeezing columns until they are unreadable it scrolls inside its own
+   card — the PAGE never scrolls sideways. */
+.cp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cp-table { width: 100%; border-collapse: collapse; min-width: 560px; }
+.cp-table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #fff;
+  background: var(--brand-gradient, linear-gradient(135deg, #7c3aed, #db2777));
+  white-space: nowrap;
+}
+.cp-table tbody td {
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--cp-text-primary, #111827);
+  border-top: 1px solid var(--cp-divider, #eef0f4);
+}
+.cp-table tbody tr:nth-child(even) { background: var(--cp-inset-bg, #fafafa); }
+.cp-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cp-nowrap { white-space: nowrap; }
+
+.cp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.cp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--cp-surface-border, #e5e7eb);
+  background: var(--cp-inset-bg, #f3f4f6);
+  color: var(--brand-ink, #7c3aed);
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cp-btn:hover { filter: brightness(0.97); }
+.cp-btn-primary {
+  background: var(--brand-gradient, linear-gradient(135deg, #7c3aed, #db2777));
+  border-color: transparent;
+  color: #fff;
+}
+.cp-btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Documents. */
+.cp-docs { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.cp-doc {
+  border: 1px solid var(--cp-surface-border, #e5e7eb);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--cp-surface-bg, #fff);
+  display: flex;
+  flex-direction: column;
+}
+.cp-doc-preview {
+  height: 132px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cp-inset-bg, #f3f4f6);
+  overflow: hidden;
+}
+.cp-doc-preview img { width: 100%; height: 100%; object-fit: cover; }
+.cp-doc-body { padding: 11px 12px; display: flex; flex-direction: column; gap: 8px; }
+.cp-doc-name { font-size: 12.5px; font-weight: 800; color: var(--cp-text-primary, #111827); }
+.cp-doc-status { font-size: 11px; color: var(--cp-text-secondary, #6b7280); }
+
+/* Modal (change password, receipt preview). */
+.cp-modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+.cp-modal {
+  width: 100%;
+  max-width: 460px;
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: 16px;
+  background: var(--cp-surface-bg, #fff);
+  border: 1px solid var(--cp-surface-border, #e5e7eb);
+}
+.cp-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--cp-divider, #eef0f4);
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--cp-text-primary, #111827);
+}
+.cp-modal-head span { display: inline-flex; align-items: center; gap: 8px; }
+.cp-modal-head button { background: none; border: none; cursor: pointer; color: var(--cp-text-secondary, #6b7280); display: inline-flex; }
+.cp-modal-body { padding: 15px; }
+
+/* ── sm ≥ 576 ────────────────────────────────────────────────────────── */
+@media (min-width: 576px) {
+  .cp-shell { --cp-gutter: 16px; }
+  .cp-header-btn-text { display: inline; }
+  .cp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cp-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cp-docs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── md ≥ 768 ────────────────────────────────────────────────────────── */
+@media (min-width: 768px) {
+  .cp-page-title { font-size: 19px; }
+  .cp-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cp-docs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ── lg ≥ 992 — the sidebar becomes a permanent rail ─────────────────── */
+@media (min-width: 992px) {
+  .cp-shell { --cp-gutter: 20px; }
+  .cp-sidebar {
+    transform: none;
+    width: var(--cp-sidebar-w);
+  }
+  .cp-shell-collapsed .cp-sidebar { width: var(--cp-sidebar-collapsed-w); }
+  /* Collapsed: icons only, and each row centres so they line up. */
+  .cp-shell-collapsed .cp-nav-label,
+  .cp-shell-collapsed .cp-brand-text { display: none; }
+  .cp-shell-collapsed .cp-nav-item,
+  .cp-shell-collapsed .cp-collapse-btn,
+  .cp-shell-collapsed .cp-sidebar-head { justify-content: center; }
+
+  .cp-main { margin-left: var(--cp-sidebar-w); }
+  .cp-shell-collapsed .cp-main { margin-left: var(--cp-sidebar-collapsed-w); }
+
+  .cp-menu-btn,
+  .cp-drawer-close,
+  .cp-scrim { display: none; }
+  .cp-collapse-btn { display: flex; }
+
+  .cp-docs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ── xl ≥ 1200 ───────────────────────────────────────────────────────── */
+@media (min-width: 1200px) {
+  .cp-shell { --cp-gutter: 24px; }
+  .cp-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ── xxl ≥ 1400 ──────────────────────────────────────────────────────── */
+@media (min-width: 1400px) {
+  .cp-docs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .cp-stat-value { font-size: 19px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-sidebar { transition: none; }
+}
