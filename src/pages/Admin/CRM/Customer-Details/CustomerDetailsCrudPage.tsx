@@ -32,6 +32,7 @@ import DocumentViewerModal from '../../../../components/common/DocumentViewerMod
 import { previewKindFor, downloadDocument } from '../../../../services/documentService';
 import EmiSchemePreviewModal from '../../../../components/common/EmiSchemePreviewModal';
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
+import { compressImageFile } from '../../../../utils/imageCompression';
 import { DobPicker } from '../../../../components/common/DobPicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
 import { phoneNumberError } from '../../../../utils/phoneValidation';
@@ -1215,13 +1216,32 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
     setSaving(true);
     try {
+      // V_23.0 item 6.2 — shrink the images BEFORE building the request.
+      // Saving posts up to six files at once and nothing used to reduce
+      // them, so a phone camera's own 3-5 MB JPEGs went up byte for byte;
+      // that upload, not any query, is what left Save spinning for up to a
+      // minute. compressImageFile returns the ORIGINAL file for a PDF, for
+      // an already-small image, or on any failure, so this can only ever
+      // make the request smaller — never block a save.
+      const [
+        customerPhotoToSend, aadharPhotoToSend, pancardPhotoToSend,
+        applicationFormToSend, declarationFormToSend, allotmentLetterToSend,
+      ] = await Promise.all([
+        customerPhoto instanceof File ? compressImageFile(customerPhoto) : Promise.resolve(customerPhoto),
+        aadharPhoto instanceof File ? compressImageFile(aadharPhoto) : Promise.resolve(aadharPhoto),
+        pancardPhoto instanceof File ? compressImageFile(pancardPhoto) : Promise.resolve(pancardPhoto),
+        applicationForm instanceof File ? compressImageFile(applicationForm) : Promise.resolve(applicationForm),
+        declarationForm instanceof File ? compressImageFile(declarationForm) : Promise.resolve(declarationForm),
+        allotmentLetter instanceof File ? compressImageFile(allotmentLetter) : Promise.resolve(allotmentLetter),
+      ]);
+
       const formData = new FormData();
 
       // Personal Details
       formData.append('first_name', firstName.trim());
       formData.append('middle_name', middleName.trim());
       formData.append('last_name', lastName.trim());
-      if (customerPhoto instanceof File) formData.append('customer_photo', customerPhoto);
+      if (customerPhotoToSend instanceof File) formData.append('customer_photo', customerPhotoToSend);
       formData.append('email', email.trim());
       formData.append('mobile_country_code', mobileCountryCode);
       formData.append('mobile_number', mobileNumber.trim());
@@ -1232,9 +1252,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           : []
       ));
       formData.append('aadhar_number', aadharNumber.trim());
-      if (aadharPhoto instanceof File) formData.append('aadhar_photo', aadharPhoto);
+      if (aadharPhotoToSend instanceof File) formData.append('aadhar_photo', aadharPhotoToSend);
       formData.append('pancard_number', pancardNumber.trim());
-      if (pancardPhoto instanceof File) formData.append('pancard_photo', pancardPhoto);
+      if (pancardPhotoToSend instanceof File) formData.append('pancard_photo', pancardPhotoToSend);
       formData.append('address', address.trim());
       formData.append('date_of_birth', dateOfBirth);
       formData.append('alternate_person_name', alternatePersonName.trim());
@@ -1296,9 +1316,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       formData.append('booster_interval_after_possession_months', boosterIntervalAfterPossession);
 
       // Document Upload
-      if (applicationForm instanceof File) formData.append('application_form', applicationForm);
-      if (declarationForm instanceof File) formData.append('declaration_form', declarationForm);
-      if (allotmentLetter instanceof File) formData.append('allotment_letter', allotmentLetter);
+      if (applicationFormToSend instanceof File) formData.append('application_form', applicationFormToSend);
+      if (declarationFormToSend instanceof File) formData.append('declaration_form', declarationFormToSend);
+      if (allotmentLetterToSend instanceof File) formData.append('allotment_letter', allotmentLetterToSend);
 
       formData.append('is_active', String(isActive));
 

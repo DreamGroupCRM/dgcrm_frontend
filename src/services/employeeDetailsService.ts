@@ -28,6 +28,7 @@
 // backend's non-strict Zod schemas.
 
 import axiosInstance from './axiosConfig';
+import { compressImageFile } from '../utils/imageCompression';
 
 // Sent as a custom request header on every call below, and echoed back by
 // the backend as a response header (see employees.controller.ts) — same
@@ -244,7 +245,13 @@ export interface EmployeeFileValues {
   passbook_photo?     : File | null;
 }
 
-const buildEmployeeFormData = (values: EmployeeFormValues, files: EmployeeFileValues): FormData => {
+// V_23.0 item 6.2 — same upload cost as the Customer form: an employee
+// save posts up to seven files (photo, Aadhaar, PAN, offer letter, resume,
+// salary slip, passbook) and nothing reduced them, so phone-camera
+// originals went up at full size. compressImageFile leaves PDFs,
+// already-small images and any failure completely untouched, so this can
+// only shrink the request.
+const buildEmployeeFormData = async (values: EmployeeFormValues, files: EmployeeFileValues): Promise<FormData> => {
   const fd = new FormData();
   (Object.keys(values) as (keyof EmployeeFormValues)[]).forEach((key) => {
     const value = values[key];
@@ -262,10 +269,9 @@ const buildEmployeeFormData = (values: EmployeeFormValues, files: EmployeeFileVa
       fd.append(key, String(value));
     }
   });
-  (Object.keys(files) as (keyof EmployeeFileValues)[]).forEach((key) => {
-    const file = files[key];
-    if (file) fd.append(key, file);
-  });
+  const fileKeys = (Object.keys(files) as (keyof EmployeeFileValues)[]).filter((key) => files[key]);
+  const compressed = await Promise.all(fileKeys.map((key) => compressImageFile(files[key] as File)));
+  fileKeys.forEach((key, i) => fd.append(key, compressed[i]));
   return fd;
 };
 
@@ -399,7 +405,7 @@ export const createEmployee = async (
   values: EmployeeFormValues,
   files: EmployeeFileValues
 ): Promise<EmployeeSingleResponse> => {
-  const res = await axiosInstance.post('/employees', toBackendEmployeeFormData(buildEmployeeFormData(values, files)), {
+  const res = await axiosInstance.post('/employees', toBackendEmployeeFormData(await buildEmployeeFormData(values, files)), {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
@@ -412,7 +418,7 @@ export const EditEmployee = async (
   values: EmployeeFormValues,
   files: EmployeeFileValues
 ): Promise<EmployeeSingleResponse> => {
-  const res = await axiosInstance.put(`/employees/${id}`, toBackendEmployeeFormData(buildEmployeeFormData(values, files)), {
+  const res = await axiosInstance.put(`/employees/${id}`, toBackendEmployeeFormData(await buildEmployeeFormData(values, files)), {
     headers: { 'Content-Type': 'multipart/form-data', [API_NAME_HEADER]: 'EditEmployee' },
   });
   return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
