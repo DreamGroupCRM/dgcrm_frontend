@@ -759,6 +759,21 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // constrained.
   const loadedEmiTenureRef = useRef('');
   const loadedInstallmentDateRef = useRef('');
+  // V_23.0 item 7 — "old records show a Unit Type error when updating".
+  // unit_type is NOT a stored column; the backend derives it as
+  // `shop_id != null ? 'shop' : 'flat'`. A legacy booking recorded against
+  // a building only — no wing, floor, flat or shop — therefore loads as
+  // unit_type 'flat', and the (newer) "the booked unit is required" checks
+  // below then demand a Wing, Floor and Flat No that this record never had.
+  // The record becomes impossible to save, so an unrelated correction to
+  // the customer's own phone number is blocked by a rule that did not
+  // exist when the booking was made.
+  //
+  // This records whether the record arrived WITHOUT any unit at all. When
+  // it did, the unit fields stop being mandatory — but only while they are
+  // ALL still empty: the moment the user starts choosing one, the normal
+  // checks come back, so a half-selected unit can never be saved.
+  const loadedWithoutUnitRef = useRef(false);
   const [boosterAmountBeforePossession, setBoosterAmountBeforePossession] = useState('');
   const [boosterAmountAfterPossession, setBoosterAmountAfterPossession] = useState('');
   const [boosterIntervalBeforePossession, setBoosterIntervalBeforePossession] = useState('');
@@ -895,6 +910,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           setFlatNo(c.flat_no || '');
           setUnitType(c.unit_type || 'flat');
           setShopNo(c.shop_no || '');
+          loadedWithoutUnitRef.current = !c.wing_name && !c.floor_label && !c.flat_no && !c.shop_no;
           setWantsParking(c.wants_parking || 'yes');
           setParkingNo(c.parking_no || '');
 
@@ -1095,6 +1111,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // carries .default(0), so omitting them just defaults to 0 server-side).
   // That mismatch unconditionally blocked Customer Creation client-side on
   // a form the backend would have happily accepted.
+  // Item 7 — the booked unit is required for every NEW booking and for any
+  // record that already has one, but NOT for a legacy record that arrived
+  // with no unit at all and still has none. See loadedWithoutUnitRef. As
+  // soon as any one of the four is filled in, the unit is being chosen and
+  // every check applies again, so a half-selected unit still cannot save.
+  const unitRequired = (): boolean =>
+    !loadedWithoutUnitRef.current
+    || wingName.trim() !== '' || floorLabel.trim() !== '' || flatNo.trim() !== '' || shopNo.trim() !== '';
+
   const validationChecks: { field: string; section: SectionKey; message: string; failed: () => boolean }[] = [
     { field: 'firstName', section: 'personal', message: 'Please enter the First Name.', failed: () => firstName.trim() === '' },
     { field: 'middleName', section: 'personal', message: 'Please enter the Middle Name.', failed: () => middleName.trim() === '' },
@@ -1119,10 +1144,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     // required, with the flat-side and shop-side checks gated on unitType
     // so only the fields actually on screen can block the save.
     { field: 'buildingName', section: 'property', message: 'Please select the Building Name.', failed: () => buildingName.trim() === '' },
-    { field: 'wingName', section: 'property', message: 'Please select the Wing.', failed: () => unitType === 'flat' && wingName.trim() === '' },
-    { field: 'floorLabel', section: 'property', message: 'Please select the Floor.', failed: () => unitType === 'flat' && floorLabel.trim() === '' },
-    { field: 'flatNo', section: 'property', message: 'Please select the Flat No.', failed: () => unitType === 'flat' && flatNo.trim() === '' },
-    { field: 'shopNo', section: 'property', message: 'Please select the Shop No.', failed: () => unitType === 'shop' && shopNo.trim() === '' },
+    { field: 'wingName', section: 'property', message: 'Please select the Wing.', failed: () => unitRequired() && unitType === 'flat' && wingName.trim() === '' },
+    { field: 'floorLabel', section: 'property', message: 'Please select the Floor.', failed: () => unitRequired() && unitType === 'flat' && floorLabel.trim() === '' },
+    { field: 'flatNo', section: 'property', message: 'Please select the Flat No.', failed: () => unitRequired() && unitType === 'flat' && flatNo.trim() === '' },
+    { field: 'shopNo', section: 'property', message: 'Please select the Shop No.', failed: () => unitRequired() && unitType === 'shop' && shopNo.trim() === '' },
     { field: 'parkingNo', section: 'property', message: 'Please enter the Parking No.', failed: () => wantsParking === 'yes' && parkingNo.trim() === '' },
     { field: 'totalCost', section: 'payment', message: 'Please enter the Total Cost.', failed: () => totalCost.trim() === '' },
     { field: 'bookingDate', section: 'payment', message: 'Please select the Booking Date.', failed: () => bookingDate === '' },
