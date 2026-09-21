@@ -381,7 +381,17 @@ const SearchableSelect: React.FC<{
 
 // Compact "chosen file" chip with a trash icon (Aadhar / PAN photo), or an
 // upload prompt when nothing is chosen yet — matches "AadharCard.jpg [🗑]".
-const CompactFileUpload: React.FC<{ t: Theme; isView?: boolean; accept?: string; value: FileValue; onChange: (f: File | null) => void }> = ({ t, isView, accept = 'image/*,.pdf', value, onChange }) => {
+// V_23.0 item 13.1 — every uploaded document needs a View option. This
+// control (Customer Photo, Aadhar Photo, Pancard Photo) previously offered
+// only a 28px thumbnail and a delete button, so an uploaded scan could not
+// be opened at full size at all — and a PDF, which has no thumbnail, could
+// not be opened by any means. `onView` gives it the same quick-view the
+// document cards below already have; it is optional so nothing breaks for
+// a caller that has no viewer to open.
+const CompactFileUpload: React.FC<{
+  t: Theme; isView?: boolean; accept?: string; value: FileValue;
+  onChange: (f: File | null) => void; onView?: (url: string) => void;
+}> = ({ t, isView, accept = 'image/*,.pdf', value, onChange, onView }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const displayName = fileDisplayName(value);
 
@@ -431,6 +441,17 @@ const CompactFileUpload: React.FC<{ t: Theme; isView?: boolean; accept?: string;
             <MdInsertDriveFile size={16} style={{ color: 'var(--brand-ink)', flexShrink: 0 }} />
           )}
           <span className="truncate" style={{ fontSize: 11.5, color: t.textPrimary, flex: 1 }}>{displayName}</span>
+          {/* Only an already-SAVED file (a string url) can be opened in the
+              viewer — a freshly-picked File has not been uploaded yet, and
+              its object URL is already what the thumbnail beside this is
+              showing. */}
+          {onView && typeof value === 'string' && value && (
+            <button type="button" onClick={() => onView(value)}
+              title="View" aria-label="View file"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.accentText, padding: 0, display: 'flex', flexShrink: 0 }}>
+              <MdVisibility size={16} />
+            </button>
+          )}
           {!isView && (
             <button type="button" onClick={() => onChange(null)}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0, display: 'flex', flexShrink: 0 }}>
@@ -1621,7 +1642,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             )}
           </Field>
           <Field t={t} label="Customer Photo" required error={errorFor('customerPhoto')} fieldRef={setFieldRef('customerPhoto') as React.Ref<HTMLDivElement>}>
-            <CompactFileUpload t={t} isView={isView} accept={IMAGE_ACCEPT} value={customerPhoto} onChange={setCustomerPhoto} />
+            <CompactFileUpload t={t} isView={isView} accept={IMAGE_ACCEPT} value={customerPhoto} onChange={setCustomerPhoto}
+              onView={(url) => openPreview('Customer Photo', url)} />
           </Field>
         </div>
 
@@ -1657,7 +1679,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => setAddress(e.target.value)} className={fieldClass} style={{ resize: 'vertical' }} />
           </Field>
           <Field t={t} label="Upload Aadhar Card Photo" required error={errorFor('aadharPhoto')} fieldRef={setFieldRef('aadharPhoto') as React.Ref<HTMLDivElement>}>
-            <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange} />
+            <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange}
+              onView={(url) => openPreview('Aadhar Card', url)} />
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
           <Field t={t} label="Aadhar Number" required error={errorFor('aadharNumber')} fieldRef={setFieldRef('aadharNumber') as React.Ref<HTMLDivElement>}>
@@ -1672,7 +1695,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             Alternate Number in row 2 above. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="Upload Pancard Photo" required error={errorFor('pancardPhoto')} fieldRef={setFieldRef('pancardPhoto') as React.Ref<HTMLDivElement>}>
-            <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange} />
+            <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange}
+              onView={(url) => openPreview('Pancard', url)} />
             {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
           <Field t={t} label="Pancard Number" error={errorFor('pancardNumber')} fieldRef={setFieldRef('pancardNumber') as React.Ref<HTMLDivElement>}>
