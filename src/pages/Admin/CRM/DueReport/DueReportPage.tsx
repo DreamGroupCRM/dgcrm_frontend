@@ -39,6 +39,7 @@ import { FetchEmployeeDetails, Employee } from '../../../../services/employeeDet
 import { tasksService, Task } from '../../../../services/tasksService';
 import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../../types/index';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
+import { formatDate } from '../../../../utils';
 import './DueReport.css';
 
 type Theme = AppTheme;
@@ -227,14 +228,22 @@ const DueReportPage: React.FC = () => {
 
   const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
+  // Item 10.5 — the table needs each row's OWN scheduled follow-up, not
+  // just the today/tomorrow badge count, so this fetches every pending
+  // follow-up once and derives both from it. That is one request where
+  // there used to be two, and it also covers follow-ups scheduled further
+  // out, which the two date-filtered calls could never see.
+  const [pendingFollowUps, setPendingFollowUps] = useState<Task[]>([]);
+
   const fetchFollowUpCounts = useCallback(async () => {
     try {
-      const today = new Date();
-      const tomorrow = new Date(today.getTime() + 86400000);
-      const [todayTasks, tomorrowTasks] = await Promise.all([
-        tasksService.fetchTasks({ status: 'pending', due_date: ymd(today) }),
-        tasksService.fetchTasks({ status: 'pending', due_date: ymd(tomorrow) }),
-      ]);
+      const today = ymd(new Date());
+      const tomorrow = ymd(new Date(Date.now() + 86400000));
+      const tasks = await tasksService.fetchTasks({ status: 'pending' });
+      setPendingFollowUps(tasks);
+
+      const todayTasks = tasks.filter((task) => (task.due_date ?? '').slice(0, 10) === today);
+      const tomorrowTasks = tasks.filter((task) => (task.due_date ?? '').slice(0, 10) === tomorrow);
       setFollowUpCounts({ today: todayTasks.length, tomorrow: tomorrowTasks.length });
       setFollowUpListTasks([
         ...todayTasks.map((task) => ({ ...task, dueBucket: 'today' as const })),
@@ -242,6 +251,20 @@ const DueReportPage: React.FC = () => {
       ]);
     } catch { /* badge just stays at its last known count if this fails */ }
   }, []);
+
+  // Soonest still-open follow-up per customer — what each row displays.
+  const followUpByCustomer = useMemo(() => {
+    const map = new Map<string, Task>();
+    for (const task of pendingFollowUps) {
+      if (task.customer_id == null) continue;
+      const key = String(task.customer_id);
+      const existing = map.get(key);
+      // No due date sorts last: a dated follow-up is the more useful one
+      // to surface when a customer has several open.
+      if (!existing || (task.due_date ?? '9999') < (existing.due_date ?? '9999')) map.set(key, task);
+    }
+    return map;
+  }, [pendingFollowUps]);
 
   useEffect(() => { fetchFollowUpCounts(); }, [fetchFollowUpCounts]);
 
@@ -886,16 +909,16 @@ const DueReportPage: React.FC = () => {
           <table className="due-report-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Customer Name', 'Company / Project / Location', 'Building Details', 'Assigned Employee', 'Contact (Email / Mobile)', 'Payment For', 'Months Pending', 'Amount', 'Status', 'Detail', 'Follow Up'].map((h) => (
+                {['Customer Name', 'Company / Project / Location', 'Building Details', 'Assigned Employee', 'Contact (Email / Mobile)', 'Payment For / Amount', 'Monthly Pending', 'Total Amount', 'Follow Up'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {(loadingDueList || (statusFilter === 'upcoming' && loadingUpcoming)) ? (
-                <tr><td colSpan={11} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
+                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
               ) : filteredDueRows.length === 0 ? (
-                <tr><td colSpan={11} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
+                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
                   {baseDisplayRows.length === 0 ? 'No customers currently have a payment due.' : 'No dues match the selected filters.'}
                 </td></tr>
               ) : (
@@ -939,6 +962,13 @@ const DueReportPage: React.FC = () => {
                         {PAYMENT_FOR_KEY_META[r.payment_for_key].label}
                       </span>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>{r.payment_for}</div>
+                      {/* Item 10.1/10.2 — the actual per-instalment amount,
+                          on the same line as what it is for. Falls back to
+                          the row total for a one-time amount, which has no
+                          separate per-month figure. */}
+                      <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginTop: 3 }}>
+                        {rupee(r.per_month_amount ?? r.amount)}
+                      </div>
                     </td>
                     <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                       {r.months_pending ? (
@@ -952,29 +982,51 @@ const DueReportPage: React.FC = () => {
                       ) : (
                         <span style={{ color: t.textSecondary, fontSize: 11.5 }}>—</span>
                       )}
+                      {/* Item 10.3/10.7 — the overdue period and dates move
+                          under the month count, replacing the separate
+                          Detail column. */}
+                      {r.detailText && (
+                        <div style={{ fontSize: 10.5, fontWeight: 600, color: r.statusColor, marginTop: 3, whiteSpace: 'normal', maxWidth: 260 }}>
+                          {r.detailText}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                      {r.months_pending && r.months_pending > 1 && r.per_month_amount != null
-                        ? `${rupee(r.per_month_amount)} × ${r.months_pending} = ${rupee(r.amount)}`
-                        : rupee(r.amount)}
+                      {/* Item 10.2/10.4 — the amount genuinely owed, never
+                          a "₹10,000 × 12" expression. The per-instalment
+                          figure and the month count are each shown in their
+                          own column already, so nothing is lost. */}
+                      {rupee(r.amount)}
                     </td>
-                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                      <span style={{
-                        display: 'inline-block', padding: '3px 10px', borderRadius: 999,
-                        fontSize: 10.5, fontWeight: 700, color: '#fff', background: r.statusColor,
-                      }}>
-                        {r.statusLabel}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: r.statusColor, minWidth: 220 }}>{r.detailText}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      {r.dueRow && (
-                        <button type="button" onClick={() => openFollowUp(r.dueRow as DueListDetailRow)} title="Schedule a follow-up"
-                          className="flex items-center justify-center rounded-lg"
-                          style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' }}>
-                          <MdNoteAdd size={16} />
-                        </button>
-                      )}
+                      {(() => {
+                        const scheduled = followUpByCustomer.get(String(r.customer_id));
+                        return (
+                          <div className="flex items-center gap-2">
+                            {r.dueRow && (
+                              <button type="button" onClick={() => openFollowUp(r.dueRow as DueListDetailRow)}
+                                title={scheduled ? 'Schedule another follow-up' : 'Schedule a follow-up'}
+                                className="flex items-center justify-center rounded-lg flex-shrink-0"
+                                style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' }}>
+                                <MdNoteAdd size={16} />
+                              </button>
+                            )}
+                            {/* Item 10.5 — an already-scheduled follow-up is
+                                shown on the row itself; previously the only
+                                clue was the page-level today/tomorrow badge. */}
+                            {scheduled && (
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand-ink)', whiteSpace: 'nowrap' }}>
+                                  {scheduled.due_date ? formatDate(scheduled.due_date) : 'No date'}
+                                </div>
+                                {scheduled.assigned_to_name && (
+                                  <div style={{ fontSize: 10, color: t.textSecondary, whiteSpace: 'nowrap' }}>{scheduled.assigned_to_name}</div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))
