@@ -629,7 +629,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       });
     });
     markDirty();
-    toast.success('Floors Generated Successfully', { autoClose: 1000 });
+    toast.success('Floors Generated Successfully');
   };
 
   // ── Step 4: Generate Flats (for the active wing's every floor) ─────────
@@ -665,7 +665,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       });
     });
     markDirty();
-    toast.success('Flats Generated Successfully', { autoClose: 1000 });
+    toast.success('Flats Generated Successfully');
   };
 
   const updateFlat = (wingId: string, floorId: string, flatId: string, patch: Partial<FlatRow>) => {
@@ -764,7 +764,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       };
     }));
     markDirty();
-    toast.success(`Series-${String(seriesNumber).padStart(2, '0')} applied to all floors`, { autoClose: 1200 });
+    toast.success(`Series-${String(seriesNumber).padStart(2, '0')} applied to all floors`);
     cancelSeriesDraft(seriesNumber);
   };
 
@@ -780,7 +780,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
       return Array.from({ length: n }, (_, i) => existingByIndex[i] ?? makeShop(simpleId('shop', i + 1), i + 1));
     });
     markDirty();
-    toast.success('Shop Details Generated Successfully', { autoClose: 1000 });
+    toast.success('Shop Details Generated Successfully');
   };
 
   const updateShop = (shopId: string, patch: Partial<ShopRow>) => {
@@ -885,7 +885,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         : await CreateBuilding(payload);
 
       if (res.success) {
-        toast.success(isEdit ? 'Building Updated Successfully' : 'Building Created Successfully', { autoClose: 1000 });
+        toast.success(isEdit ? 'Building Updated Successfully' : 'Building Created Successfully');
         setDirty(false);
         navigate('/admin/masters/building');
       } else {

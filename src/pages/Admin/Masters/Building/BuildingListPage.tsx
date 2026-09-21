@@ -139,7 +139,7 @@ const BuildingListPage: React.FC = () => {
     try {
       const res = disabling ? await DisableBuilding(building.id, force) : await EnableBuilding(building.id);
       if (res.success) {
-        toast.success(disabling ? 'Building Disabled Successfully' : 'Building Enabled Successfully', { autoClose: 1000 });
+        toast.success(disabling ? 'Building Disabled Successfully' : 'Building Enabled Successfully');
         fetchBuildings();
       } else {
         toast.error(res.message || 'Failed to update building status');
@@ -200,7 +200,7 @@ const BuildingListPage: React.FC = () => {
       const a   = Object.assign(document.createElement('a'), { href: url, download: 'buildings.csv' });
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Building List CSV Exported Successfully', { autoClose: 1000 });
+      toast.success('Building List CSV Exported Successfully');
     } catch {
       toast.error('Failed to export buildings. Please try again.');
     } finally {

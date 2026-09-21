@@ -89,7 +89,7 @@ const ActionModuleListPage: React.FC = () => {
     if (!result.isConfirmed) return;
     try {
       await deleteActionMaster(String(action.id));
-      toast.success('Action Deleted Successfully', { autoClose: 1000 });
+      toast.success('Action Deleted Successfully');
       fetchActions();
     } catch (e: any) {
       const msg = e?.response?.data?.message || 'Failed to delete action. Please try again.';
@@ -105,7 +105,7 @@ const ActionModuleListPage: React.FC = () => {
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     Object.assign(document.createElement('a'), { href: url, download: 'actions.csv' }).click();
     URL.revokeObjectURL(url);
-    toast.success('Action CSV Exported Successfully', { autoClose: 1000 });
+    toast.success('Action CSV Exported Successfully');
   };
 
   const actionTotal = actionSorted.length;
@@ -168,7 +168,7 @@ const ActionModuleListPage: React.FC = () => {
     if (!result.isConfirmed) return;
     try {
       await deleteModuleMaster(String(m.m_id));
-      toast.success('Module Deleted Successfully', { autoClose: 1000 });
+      toast.success('Module Deleted Successfully');
       fetchModules();
     } catch (e: any) {
       const msg = e?.response?.data?.message || 'Failed to delete module. Please try again.';
@@ -184,7 +184,7 @@ const ActionModuleListPage: React.FC = () => {
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     Object.assign(document.createElement('a'), { href: url, download: 'modules.csv' }).click();
     URL.revokeObjectURL(url);
-    toast.success('Module CSV Exported Successfully', { autoClose: 1000 });
+    toast.success('Module CSV Exported Successfully');
   };
 
   const moduleTotal = moduleSorted.length;

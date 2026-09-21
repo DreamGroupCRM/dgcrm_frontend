@@ -96,7 +96,7 @@ const CompanyListPage: React.FC = () => {
     try {
       const res = await companyService.DeleteCompany(company.id);
       if (res.success) {
-        toast.success('Company Deleted Successfully', { autoClose: 1000 });
+        toast.success('Company Deleted Successfully');
         fetchCompanies();
       } else {
         toast.error(res.message || 'Failed to delete');
@@ -121,7 +121,7 @@ const CompanyListPage: React.FC = () => {
     const a   = Object.assign(document.createElement('a'), { href: url, download: 'companies.csv' });
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Company List CSV Exported Successfully', { autoClose: 1000 });
+    toast.success('Company List CSV Exported Successfully');
   };
 
   // ── pagination (client-side) ─────────────────────────────────────────────

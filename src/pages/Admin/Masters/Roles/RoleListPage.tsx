@@ -103,7 +103,7 @@ const RoleListPage: React.FC = () => {
     try {
       const res = await deleteRole(role.id);
       if (res.success) {
-        toast.success('Role Deleted Successfully', { autoClose: 1000 });
+        toast.success('Role Deleted Successfully');
         fetchRoles();
       } else {
         toast.error(res.message || 'Failed to Delete');
@@ -134,7 +134,7 @@ const RoleListPage: React.FC = () => {
     const a   = Object.assign(document.createElement('a'), { href: url, download: 'roles.csv' });
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Role List CSV Exported Successfully', { autoClose: 1000 });
+    toast.success('Role List CSV Exported Successfully');
   };
 
   // ── pagination (client-side) ─────────────────────────────────────────────

@@ -132,7 +132,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
     }
     setDesignations((prev) => [...prev, { id: localId(), name, is_active: true }]);
     setNewDesignationName('');
-    toast.success('Designation added', { autoClose: 900 });
+    toast.success('Designation added');
   };
 
   const toggleDesignation = (designationId: string | undefined, v: boolean) => {

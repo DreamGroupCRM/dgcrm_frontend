@@ -81,7 +81,7 @@ const ModuleMappingPage: React.FC = () => {
     setPendingRow(moduleId);
     try {
       const res = await mapAllActionsForModule(moduleId);
-      toast.success(`${res.created} action(s) attached`, { autoClose: 1000 });
+      toast.success(`${res.created} action(s) attached`);
       await fetchMatrix();
     } catch (e: any) {
       const msg = e?.response?.data?.message || 'Failed to attach all actions. Please try again.';

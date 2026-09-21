@@ -263,10 +263,7 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
         : await companyService.CreateCompany(payload);
 
       if (res.success) {
-        toast.success(
-          isEdit ? 'Company Updated Successfully' : 'Company Created Successfully',
-          { autoClose: 1000 }
-        );
+        toast.success(isEdit ? 'Company Updated Successfully' : 'Company Created Successfully');
         navigate(ROUTES.ADMIN.COMPANY);
       } else {
         toast.error(res.message || 'Operation failed');

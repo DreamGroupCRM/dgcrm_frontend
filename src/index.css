@@ -37,6 +37,33 @@
 
   /* SweetAlert2 z-index fix */
   .swal2-container { z-index: 99999 !important; }
+
+  /* Toast (react-toastify) visibility fixes.
+     1. z-index: react-toastify's own default is only 9999 (its bundled
+        --toastify-z-index variable), which sits BELOW SweetAlert2's
+        99999 above — a toast fired while any confirm/alert dialog (or a
+        mobile drawer/backdrop, none of which in this app exceed z-index
+        200) is open was rendered but hidden behind it. Set deliberately
+        to just above SweetAlert2's value, not an arbitrary huge number.
+     2. Close button: .Toastify__close-button is hardcoded `color: #fff`
+        by the library regardless of theme. In the 'light' toast theme
+        (this app's default — see App.tsx's `theme={mode === 'dark' ?
+        'dark' : 'light'}`) the toast background is also white
+        (--toastify-color-light: #fff), so the close X was white-on-white
+        and effectively invisible — not merely low-contrast. Repainted to
+        match the same gray react-toastify already uses for the toast's
+        own body text in light theme (--toastify-text-color-light), so it
+        reads the same way the library's own text does. Dark theme is
+        left alone: its background is dark, so the white icon already has
+        contrast there. */
+  /* !important, matching the .swal2-container rule above: this variable
+     is also declared on :root inside react-toastify's own bundled CSS, so
+     without it the winner would depend on Vite's chunk/import ordering
+     rather than being guaranteed. */
+  :root { --toastify-z-index: 100000 !important; }
+  .Toastify__toast-theme--light .Toastify__close-button {
+    color: var(--toastify-text-color-light, #757575);
+  }
 }
 
 @layer utilities {

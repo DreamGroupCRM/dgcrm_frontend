@@ -226,10 +226,7 @@ const BankAccountCrudPage: React.FC<Props> = ({ mode }) => {
         : await CreateBankAccount(payload);
 
       if (res.success) {
-        toast.success(
-          isEdit ? 'Bank Account Updated Successfully' : 'Bank Account Created Successfully',
-          { autoClose: 1000 }
-        );
+        toast.success(isEdit ? 'Bank Account Updated Successfully' : 'Bank Account Created Successfully');
         navigate('/admin/masters/bank-account');
       } else {
         toast.error(res.message || 'Operation failed');

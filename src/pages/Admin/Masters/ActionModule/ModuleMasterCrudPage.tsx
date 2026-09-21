@@ -127,7 +127,7 @@ const ModuleMasterCrudPage: React.FC<Props> = ({ mode }) => {
         : await createModuleMaster(payload);
 
       if (res.success) {
-        toast.success(isEdit ? 'Module Updated Successfully' : 'Module Created Successfully', { autoClose: 1000 });
+        toast.success(isEdit ? 'Module Updated Successfully' : 'Module Created Successfully');
         navigate('/admin/masters/action-module');
       } else {
         toast.error(res.message || 'Operation failed');

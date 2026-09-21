@@ -100,7 +100,7 @@ const BankAccountListPage: React.FC = () => {
     if (!result.isConfirmed) return;
     try {
       await DeleteBankAccount(String(bank.id));
-      toast.success('Bank Account Deleted Successfully', { autoClose: 1000 });
+      toast.success('Bank Account Deleted Successfully');
       fetchBanks();
     } catch (e: any) {
       console.error('[BankAccountListPage] delete error:', e);
@@ -127,7 +127,7 @@ const BankAccountListPage: React.FC = () => {
     const a   = Object.assign(document.createElement('a'), { href: url, download: 'bank_accounts.csv' });
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Bank Account List CSV Exported Successfully', { autoClose: 1000 });
+    toast.success('Bank Account List CSV Exported Successfully');
   };
 
   // ── pagination ─────────────────────────────────────────────────────────

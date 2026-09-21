@@ -224,7 +224,7 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
           description: description.trim() || null,
           is_active: true,
         });
-        toast.success('Role Created Successfully', { autoClose: 1000 });
+        toast.success('Role Created Successfully');
       } else if (mode === 'edit') {
         await updateRole(id!, {
           name: name.trim(),
@@ -232,7 +232,7 @@ const RoleCrudPage: React.FC<Props> = ({ mode }) => {
           description: description.trim() || null,
           is_active: isActive,
         });
-        toast.success('Role Updated Successfully', { autoClose: 1000 });
+        toast.success('Role Updated Successfully');
       }
       navigate('/admin/masters/roles');
     } catch (err: any) {
