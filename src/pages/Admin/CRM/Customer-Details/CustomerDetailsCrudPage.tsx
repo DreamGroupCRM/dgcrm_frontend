@@ -612,11 +612,11 @@ const CustomerPreviewModal: React.FC<{ data: PreviewData; onClose: () => void }>
           <PreviewRow label="Email ID" value={data.email} />
           <PreviewRow label="Mobile Number" value={data.mobile} />
           <PreviewRow label="Secondary Mobile Number" value={data.secondaryMobile} />
+          <PreviewRow label="Address" value={data.address} />
           <PreviewRow label="Aadhar Number" value={data.aadhar} />
           <PreviewRow label="PAN Number" value={data.pan} />
           <PreviewRow label="Date of Birth" value={data.dob ? `${data.dob}${data.age ? ` (${data.age})` : ''}` : ''} />
           <PreviewRow label="Alternate Contact" value={data.altName ? `${data.altName}${data.altMobile ? ` · ${data.altMobile}` : ''}` : ''} />
-          <PreviewRow label="Address" value={data.address} />
         </PreviewSection>
 
         <PreviewSection icon={<MdApartment size={13} />} title="Property Booking Details" gradient="var(--grad-green)">
@@ -1430,11 +1430,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 label="Secondary Mobile Number"
                 value={secondaryNumber ? `${secondaryCountryCode} ${secondaryNumber}${secondaryIsWhatsapp ? ' (WhatsApp)' : ''}` : ''}
               />
+              <ViewValue label="Address" value={address} className="cust-view-field-wide" />
               <ViewValue label="Date of Birth" value={dateOfBirth ? `${dateOfBirth}${age ? ` (${age.years}y ${age.months}m)` : ''}` : ''} />
               <ViewValue label="Aadhar Number" value={aadharNumber} />
               <ViewValue label="PAN Number" value={pancardNumber} />
               <ViewValue label="Alternate Contact" value={alternatePersonName ? `${alternatePersonName}${alternatePersonMobile ? ` · ${alternatePersonCountryCode} ${alternatePersonMobile}` : ''}` : ''} />
-              <ViewValue label="Address" value={address} className="cust-view-field-wide" />
             </div>
           </div>
 
@@ -1580,11 +1580,24 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
         </div>
 
-        {/* Row 2 of 3 — Secondary Mobile Number + ID proofs (each number
-            immediately followed by its own upload field, no field between
-            them). V_22.0 — the old separate WhatsApp Number field is gone;
-            "also on WhatsApp" is now a checkbox on each number instead. */}
+        {/* Row 2 of 3 — the three contact fields, in the order V_23.0 item
+            2.1 asks for: Primary Number, Alternate Number, Address, kept
+            adjacent so they read as one block. This supersedes the earlier
+            "Move Mobile Number Field at the last of Customer detail
+            section" request, which had left the primary number sitting
+            after Address at the very end of the section. The ID proofs
+            follow, each number still immediately after its own upload
+            field. "Also on WhatsApp" is a checkbox on each number (V_22.0);
+            there is no separate WhatsApp Number field. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+          <Field t={t} label="Mobile Number" required error={errorFor('mobileNumber')} fieldRef={setFieldRef('mobileNumber') as React.Ref<HTMLDivElement>}>
+            <PhoneInput theme={t} disabled={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber} />
+            <label className="flex items-center gap-1.5 mt-1.5" style={{ fontSize: 10.5, color: t.textSecondary, cursor: isView ? 'default' : 'pointer' }}>
+              <input type="checkbox" checked={mobileIsWhatsapp} disabled={isView}
+                onChange={(e) => setMobileIsWhatsapp(e.target.checked)} style={{ width: 13, height: 13, cursor: isView ? 'default' : 'pointer' }} />
+              <FaWhatsapp size={12} style={{ color: '#25D366', flexShrink: 0 }} /> Also on WhatsApp
+            </label>
+          </Field>
           <Field t={t} label="Secondary Mobile Number" error={errorFor('secondaryNumber')} fieldRef={setFieldRef('secondaryNumber') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView}
               code={secondaryCountryCode} onCodeChange={setSecondaryCountryCode} number={secondaryNumber} onNumberChange={setSecondaryNumber} />
@@ -1594,6 +1607,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <FaWhatsapp size={12} style={{ color: '#25D366', flexShrink: 0 }} /> Also on WhatsApp
             </label>
           </Field>
+          <Field t={t} label="Address" required error={errorFor('address')} fieldRef={setFieldRef('address') as React.Ref<HTMLDivElement>}>
+            <textarea placeholder="Enter address" value={address} readOnly={isView} disabled={isView} rows={2}
+              onChange={(e) => setAddress(e.target.value)} className={fieldClass} style={{ resize: 'vertical' }} />
+          </Field>
           <Field t={t} label="Upload Aadhar Card Photo" required error={errorFor('aadharPhoto')} fieldRef={setFieldRef('aadharPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange} />
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
@@ -1602,6 +1619,13 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView} maxLength={12}
               onChange={(e) => setAadharNumber(sanitizeDigits(e.target.value, 12))} className={fieldClass} />
           </Field>
+        </div>
+
+        {/* Row 3 of 3 — the remaining ID proof, then date of birth and the
+            alternate CONTACT (a different person: their own name plus
+            number), which is deliberately separate from the customer's own
+            Alternate Number in row 2 above. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="Upload Pancard Photo" required error={errorFor('pancardPhoto')} fieldRef={setFieldRef('pancardPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange} />
             {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
@@ -1610,13 +1634,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView} maxLength={10}
               onChange={(e) => setPancardNumber(sanitizeAlphanumericUpper(e.target.value, 10))} className={fieldClass} />
           </Field>
-        </div>
-
-        {/* Row 3 of 3 — DOB, alternate contact, address, then Mobile Number
-            last (item: "Move Mobile Number Field at the last of Customer
-            detail section") — placed right before Secondary Mobile Numbers
-            below, since its own "+" button feeds that list. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="Date of Birth" required error={errorFor('dateOfBirth')} fieldRef={setFieldRef('dateOfBirth') as React.Ref<HTMLDivElement>}>
             <div className="flex items-center gap-2">
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -1638,18 +1655,6 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <PhoneInput theme={t} disabled={isView}
               code={alternatePersonCountryCode} onCodeChange={setAlternatePersonCountryCode}
               number={alternatePersonMobile} onNumberChange={setAlternatePersonMobile} />
-          </Field>
-          <Field t={t} label="Address" required error={errorFor('address')} fieldRef={setFieldRef('address') as React.Ref<HTMLDivElement>}>
-            <textarea placeholder="Enter address" value={address} readOnly={isView} disabled={isView} rows={2}
-              onChange={(e) => setAddress(e.target.value)} className={fieldClass} style={{ resize: 'vertical' }} />
-          </Field>
-          <Field t={t} label="Mobile Number" required error={errorFor('mobileNumber')} fieldRef={setFieldRef('mobileNumber') as React.Ref<HTMLDivElement>}>
-            <PhoneInput theme={t} disabled={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber} />
-            <label className="flex items-center gap-1.5 mt-1.5" style={{ fontSize: 10.5, color: t.textSecondary, cursor: isView ? 'default' : 'pointer' }}>
-              <input type="checkbox" checked={mobileIsWhatsapp} disabled={isView}
-                onChange={(e) => setMobileIsWhatsapp(e.target.checked)} style={{ width: 13, height: 13, cursor: isView ? 'default' : 'pointer' }} />
-              <FaWhatsapp size={12} style={{ color: '#25D366', flexShrink: 0 }} /> Also on WhatsApp
-            </label>
           </Field>
         </div>
       </AccordionSection>
