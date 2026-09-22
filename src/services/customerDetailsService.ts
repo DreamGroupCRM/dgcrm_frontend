@@ -169,6 +169,45 @@ interface BackendAmountTransaction {
   payment_tag: string | null;
 }
 
+// V_24.0 — installment_date is the ONE anchor date picked at booking time
+// (e.g. 10th) and never changes in the database; the List page's "Monthly
+// Installment Date" column was showing that raw, frozen value forever
+// instead of rolling forward with the calendar (booked with a 10th Sept
+// payment date still showed "10 Sept" the following December, instead of
+// "10 Dec"). This projects the next upcoming occurrence of that same
+// day-of-month from today — a plain calendar projection, deliberately NOT
+// paid/unpaid-aware (Payment Due/Payment Upcoming already own that more
+// involved, ledger-based "is this actually paid" calculation; duplicating
+// it here for a general overview column isn't worth the extra per-row
+// query cost on a plain list page).
+// `.slice(0, 10)`/`.slice(8, 10)` read the date directly out of the string
+// rather than through `new Date(...).getDate()`, matching
+// CustomerDetailsCrudPage's own dayOfMonth() — parsing a bare date string
+// with `Date` reads it as UTC and reports it back in local time, which
+// shifts the day by one for anyone behind UTC. Works the same whether the
+// backend sends a bare 'YYYY-MM-DD' or a full ISO timestamp, since both
+// start with the date in that exact position.
+export const nextMonthlyInstallmentDate = (raw: string | null | undefined): string | null => {
+  if (!raw) return null;
+  const day = Number(raw.slice(8, 10));
+  if (!day) return raw;
+  const anchorDatePart = raw.slice(0, 10);
+
+  const now = new Date();
+  const daysInThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const rolledForward = Math.min(day, daysInThisMonth) < now.getDate();
+  const targetMonthFirst = new Date(now.getFullYear(), now.getMonth() + (rolledForward ? 1 : 0), 1);
+  const daysInTargetMonth = new Date(targetMonthFirst.getFullYear(), targetMonthFirst.getMonth() + 1, 0).getDate();
+  const targetDay = Math.min(day, daysInTargetMonth);
+  const candidate = `${targetMonthFirst.getFullYear()}-${String(targetMonthFirst.getMonth() + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+
+  // The customer's very first installment can itself still be in the
+  // future (Payment Date is always required to be after Booking Date, and
+  // could be next month or even next year for a phased project) — never
+  // project something EARLIER than that real anchor date.
+  return candidate < anchorDatePart ? raw : candidate;
+};
+
 // Backend Customer (+ building/wing/flat relations) -> the flat `Customer`
 // shape the List page already renders. assigned_employee_* now comes from
 // a real backend join (customer.repository.ts's findCustomerList) — the
@@ -198,7 +237,7 @@ const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   shop_area: bc.shop?.area_sqft != null ? Number(bc.shop.area_sqft) : null,
   booking_date: bc.booking_date ?? '',
   monthly_emi: bc.installment_amount,
-  monthly_installment_date: bc.installment_date ?? null,
+  monthly_installment_date: nextMonthlyInstallmentDate(bc.installment_date),
   assigned_employee_id: bc.assigned_employee_id != null ? String(bc.assigned_employee_id) : undefined,
   assigned_employee_code: bc.assigned_employee_code ?? undefined,
   assigned_employee_name: bc.assigned_employee_name ?? undefined,

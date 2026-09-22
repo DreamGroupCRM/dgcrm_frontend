@@ -35,6 +35,7 @@ import EmiSchemePreviewModal from '../../../../components/common/EmiSchemePrevie
 import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
 import { compressImageFile } from '../../../../utils/imageCompression';
 import { DobPicker } from '../../../../components/common/DobPicker';
+import { RestrictedDayPicker } from '../../../../components/common/RestrictedDayPicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
 import { phoneNumberError } from '../../../../utils/phoneValidation';
 import { aadhaarError, panError, sanitizeDigits, sanitizeAlphanumericUpper } from '../../../../utils/fieldValidation';
@@ -2103,16 +2104,17 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* Row 2 of 3 — Payment Date, EMI Before/After, Total Tenure. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <Field t={t} label="Payment Date" required error={errorFor('installmentDate')} fieldRef={setFieldRef('installmentDate') as React.Ref<HTMLDivElement>}>
-            <input type="date" value={installmentDate} readOnly={isView} disabled={isView}
-              min={bookingDate ? dayAfter(bookingDate) : undefined}
-              onClick={openPicker} onFocus={openPicker}
-              onChange={(e) => {
-                const clamped = clampInstallmentDate(e.target.value);
-                if (clamped !== e.target.value) {
-                  toast.error(`Payment Date can only fall between the 1st and ${MAX_INSTALLMENT_DAY_OF_MONTH}th of a month — moved to the ${MAX_INSTALLMENT_DAY_OF_MONTH}th.`);
-                }
-                setInstallmentDate(clamped);
-              }} className={fieldClass} />
+            {/* V_24.0 — was a native <input type="date">, which has no way
+                to grey out/disable individual days in the browser's own
+                calendar popup (see clampInstallmentDate's old comment,
+                still kept below as a defensive fallback). RestrictedDayPicker
+                renders the 16th-31st as actually disabled/greyed <option>s
+                instead of silently snapping an out-of-range pick back to
+                the 15th after the fact. */}
+            <RestrictedDayPicker theme={t} value={installmentDate} disabled={isView}
+              minDate={bookingDate ? dayAfter(bookingDate) : undefined}
+              maxDayOfMonth={MAX_INSTALLMENT_DAY_OF_MONTH}
+              onChange={(v) => setInstallmentDate(clampInstallmentDate(v))} />
           </Field>
           <Field t={t} label="Monthly EMI Before Possession (₹)" required error={errorFor('monthlyEmiBeforePossession')} fieldRef={setFieldRef('monthlyEmiBeforePossession') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} />
