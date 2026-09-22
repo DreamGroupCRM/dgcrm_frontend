@@ -1,11 +1,13 @@
 // ==========================================
 // DREAM GROUP CRM - GENERIC ROW ACTION MENU
 // ==========================================
-// V_23.0 — a shared three-dot ("⋮") action menu for any table row, so
-// Payment Received/Approval (and any future table) don't each hand-roll
-// their own icon-button row. Rendered via a document.body portal at
-// `position: fixed`, mirroring CustomerDetailsListPage.tsx's own
-// RowActionMenu pattern: this is what keeps the dropdown drawing ABOVE
+// V_23.0/V_24.0 — a shared three-dot ("⋮") action menu for any table row,
+// so no page hand-rolls its own icon-button row or its own copy of this
+// positioning logic. Originally modeled on (and, as of V_24.0, the single
+// implementation behind) CustomerDetailsListPage.tsx and
+// EmployeeDetailsListPage.tsx's own once-separate RowActionMenu copies —
+// both now import this one instead. Rendered via a document.body portal
+// at `position: fixed`, which is what keeps the dropdown drawing ABOVE
 // the table and never clipped by a scrolling ancestor (most of these
 // tables sit inside a `.master-table-scroll` div with overflow:auto — an
 // absolutely-positioned dropdown nested inside that would get cut off at
@@ -35,13 +37,26 @@ export const ROW_MENU_WIDTH = 200;
 // exact since it only decides whether the menu opens above or below.
 const ROW_HEIGHT_PX = 34;
 
+// V_24.0 — opens immediately to the RIGHT of the 3-dot button (not
+// downward-left below the row), matching Employee/Customer List's own
+// long-standing positioning exactly — this is now the ONE place that
+// logic lives; those two pages' previously-separate local copies were
+// migrated onto this shared implementation rather than kept as
+// duplicates. Stays visually attached to the icon that opened it; flips
+// to the left when there isn't enough room on the right, and clamps
+// vertically so it never runs off the top/bottom of the screen. Rendered
+// via a document.body portal (see RowActionMenu below), which is what
+// keeps it drawing ABOVE the table and never clipped by a scrolling
+// ancestor — most of these tables sit inside a `.master-table-scroll` div
+// with overflow:auto, which would otherwise clip an absolutely-positioned
+// dropdown at its edge.
 export const computeRowMenuPos = (rect: DOMRect, actionCount: number): { top: number; left: number } => {
   const menuHeight = actionCount * ROW_HEIGHT_PX + 8;
   const spaceRight = window.innerWidth - rect.right;
   const left = spaceRight >= ROW_MENU_WIDTH + 8
-    ? rect.right - ROW_MENU_WIDTH
+    ? rect.right + 4
     : Math.max(8, rect.left - ROW_MENU_WIDTH - 4);
-  const top = Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - menuHeight - 8));
+  const top = Math.max(8, Math.min(rect.top, window.innerHeight - menuHeight - 8));
   return { top, left };
 };
 

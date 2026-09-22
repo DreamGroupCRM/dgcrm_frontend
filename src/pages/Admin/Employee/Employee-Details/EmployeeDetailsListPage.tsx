@@ -2,7 +2,6 @@
 // DREAM GROUP CRM - EMPLOYEE LIST PAGE
 // ==========================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate, NavigateFunction } from 'react-router-dom';
 import { toast } from '@/utils/toast';
 import {
@@ -20,6 +19,7 @@ import { AppTheme } from '../../../../styles/theme';
 import { FetchEmployeeDetails, DeleteEmployee, SetEmployeeActiveStatus, Employee, EmployeeStatus, EmployeeListSummary } from '../../../../services/employeeDetailsService';
 import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
+import { RowActionMenu, useRowActionMenu, RowMenuAction } from '../../../../components/common/RowActionMenu';
 import './EmployeeDetails.css';
 
 type Theme = AppTheme;
@@ -195,56 +195,12 @@ const EmployeeCard: React.FC<{
   );
 };
 
-// ── Row-action dropdown, rendered into a document.body portal — same fix
-// Customer List's RowActionMenu uses. The old version was `position:
-// absolute` inside the table's own `overflow-x: auto` wrapper, which
-// clips both axes per the CSS spec, cutting the dropdown off whenever it
-// opened near the table's bottom or right edge. A portal positioned with
-// `fixed` from the trigger button's own bounding rect escapes that
-// clipped container entirely.
-//
-// Opens immediately to the RIGHT of the 3-dot button (not downward below
-// the row) so it stays visually attached to the icon that opened it —
-// flips to the left when there isn't enough room on the right, and clamps
-// vertically so it never runs off the bottom of the screen.
-const MENU_WIDTH = 130;
-const MENU_HEIGHT = 150; // 4 rows incl. borders/padding
-const computeMenuPos = (rect: DOMRect): { top: number; left: number } => {
-  const spaceRight = window.innerWidth - rect.right;
-  const left = spaceRight >= MENU_WIDTH + 8
-    ? rect.right + 4
-    : Math.max(8, rect.left - MENU_WIDTH - 4);
-  const top = Math.max(8, Math.min(rect.top, window.innerHeight - MENU_HEIGHT - 8));
-  return { top, left };
-};
-
-const RowActionMenu: React.FC<{
-  t: Theme; pos: { top: number; left: number };
-  emp: Employee; onView: () => void; onEdit: () => void; onDelete: () => void; onToggleActive: () => void;
-}> = ({ t, pos, emp, onView, onEdit, onDelete, onToggleActive }) => createPortal(
-  <div
-    data-employee-row-menu
-    style={{
-      position: 'fixed', top: pos.top, left: pos.left, zIndex: 100, width: MENU_WIDTH,
-      background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 8,
-      boxShadow: '0 6px 16px rgba(0,0,0,0.16)', overflow: 'hidden',
-    }}
-  >
-    <button type="button" title="View" onClick={onView} className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
-      <MdVisibility size={14} color="var(--brand-gradient)" /> View
-    </button>
-    <button type="button" title="Edit" onClick={onEdit} className="emp-row-menu-btn" style={{ borderBottom: `1px solid ${t.divider}` }}>
-      <MdEdit size={13} color="#7c3aed" /> Edit
-    </button>
-    <button type="button" title="Delete" onClick={onDelete} className="emp-row-menu-btn emp-menu-btn-danger" style={{ borderBottom: `1px solid ${t.divider}` }}>
-      <MdDelete size={14} /> Delete
-    </button>
-    <button type="button" title={emp.is_active ? 'Deactivate' : 'Activate'} onClick={onToggleActive} className="emp-row-menu-btn">
-      {emp.is_active ? <><MdToggleOff size={14} color="#ea580c" /> Deactivate</> : <><MdToggleOn size={14} color="#16a34a" /> Activate</>}
-    </button>
-  </div>,
-  document.body
-);
+// V_24.0 — the row-action dropdown itself (portal, positioning, outside-
+// click) now lives in components/common/RowActionMenu.tsx (shared with
+// every other table's 3-dot menu — Payment Received/Approval, Building,
+// Customer List, etc.) rather than a copy of the same logic kept here.
+// Only this page's own action list (View/Edit/Delete/Activate-Deactivate)
+// stays local — see renderActionMenu below.
 
 const EmployeeDetailsListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -284,9 +240,9 @@ const EmployeeDetailsListPage: React.FC = () => {
   // one to apply it to the table below (same click-to-filter convention as
   // Customer List's All/Assigned/Un Assigned boxes).
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  // Shared row-action-menu state (positioning, portal, outside-click) —
+  // see components/common/RowActionMenu.tsx.
+  const rowMenu = useRowActionMenu<string>();
 
   useEffect(() => { dispatch(setPageTitle('Employees')); }, [dispatch]);
 
@@ -320,21 +276,6 @@ const EmployeeDetailsListPage: React.FC = () => {
   // out-of-range page.
   useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter]);
 
-  // close the row action menu on outside click — the menu itself now lives
-  // in a document.body portal (see RowActionMenu), so it's tagged with
-  // data-employee-row-menu rather than being inside menuRef.
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (menuRef.current?.contains(target)) return;
-      if (target.closest?.('[data-employee-row-menu]')) return;
-      setOpenMenuId(null);
-      setMenuPos(null);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
   const pageRows = allEmployees;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
@@ -354,7 +295,7 @@ const EmployeeDetailsListPage: React.FC = () => {
   // say which of the two is about to happen, rather than promising a
   // permanent delete the caller may not be able to perform.
   const handleDelete = async (emp: Employee) => {
-    setOpenMenuId(null);
+    rowMenu.close();
     const result = await showAlert.confirm(
       canDeleteImmediately
         ? `This will permanently delete ${emp.first_name} ${emp.last_name}'s record.`
@@ -376,7 +317,7 @@ const EmployeeDetailsListPage: React.FC = () => {
   };
 
   const handleToggleActive = async (emp: Employee) => {
-    setOpenMenuId(null);
+    rowMenu.close();
     const activating = !emp.is_active;
     const result = await showAlert.confirm(
       activating
@@ -444,33 +385,34 @@ const EmployeeDetailsListPage: React.FC = () => {
   // ── row action dropdown — shared between Grid cards and List rows so the
   // "same View/Edit/Delete as Grid View" requirement (item 6) is trivially
   // true: both views render this exact same block. Renders into a portal
-  // (see RowActionMenu above), positioned from the trigger button's own
-  // bounding rect — never clipped by the table's scroll container, and
-  // opens toward whichever side actually has room. ───────────────────────
-  const renderActionMenu = (emp: Employee) => (
-    <div style={{ position: 'relative' }} ref={openMenuId === emp.id ? menuRef : undefined}>
-      <button
-        type="button"
-        onClick={(e) => {
-          if (openMenuId === emp.id) { setOpenMenuId(null); setMenuPos(null); return; }
-          setMenuPos(computeMenuPos(e.currentTarget.getBoundingClientRect()));
-          setOpenMenuId(emp.id);
-        }}
-        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}
-      >
-        <MdMoreVert size={18} />
-      </button>
-      {openMenuId === emp.id && menuPos && (
-        <RowActionMenu
-          t={t} pos={menuPos} emp={emp}
-          onView={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/view/${emp.id}`); }}
-          onEdit={() => { setOpenMenuId(null); navigate(`/admin/employee/employee-details/edit/${emp.id}`); }}
-          onDelete={() => handleDelete(emp)}
-          onToggleActive={() => handleToggleActive(emp)}
-        />
-      )}
-    </div>
-  );
+  // (see components/common/RowActionMenu.tsx), positioned from the trigger
+  // button's own bounding rect — never clipped by the table's scroll
+  // container, and opens toward whichever side actually has room. ────────
+  const renderActionMenu = (emp: Employee) => {
+    const actions: RowMenuAction[] = [
+      { key: 'view', label: 'View', icon: <MdVisibility size={14} color="var(--brand-gradient)" />, onClick: () => { rowMenu.close(); navigate(`/admin/employee/employee-details/view/${emp.id}`); } },
+      { key: 'edit', label: 'Edit', icon: <MdEdit size={13} color="#7c3aed" />, onClick: () => { rowMenu.close(); navigate(`/admin/employee/employee-details/edit/${emp.id}`); } },
+      { key: 'delete', label: 'Delete', icon: <MdDelete size={14} />, danger: true, onClick: () => handleDelete(emp) },
+      emp.is_active
+        ? { key: 'deactivate', label: 'Deactivate', icon: <MdToggleOff size={14} color="#ea580c" />, onClick: () => handleToggleActive(emp) }
+        : { key: 'activate', label: 'Activate', icon: <MdToggleOn size={14} color="#16a34a" />, onClick: () => handleToggleActive(emp) },
+    ];
+    return (
+      <div style={{ position: 'relative' }}>
+        <button
+          type="button"
+          ref={rowMenu.openId === emp.id ? rowMenu.buttonRef : undefined}
+          onClick={rowMenu.toggle(emp.id, actions.length)}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}
+        >
+          <MdMoreVert size={18} />
+        </button>
+        {rowMenu.openId === emp.id && rowMenu.pos && (
+          <RowActionMenu t={t} pos={rowMenu.pos} actions={actions} />
+        )}
+      </div>
+    );
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -586,7 +528,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                         }}>
                         <td className="master-table-actions-td" style={{
                           width: 64, minWidth: 64, maxWidth: 64,
-                          zIndex: openMenuId === emp.id ? 30 : 1, background: isInactive ? 'transparent' : (isDark ? t.surfaceBg : '#ffffff'),
+                          zIndex: rowMenu.openId === emp.id ? 30 : 1, background: isInactive ? 'transparent' : (isDark ? t.surfaceBg : '#ffffff'),
                           borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                         }}>
                           <div className="flex items-center justify-center">{renderActionMenu(emp)}</div>

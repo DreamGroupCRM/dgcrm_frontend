@@ -15,6 +15,7 @@ import {
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
+import { usePermission } from '../../../../hooks/usePermission';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
@@ -736,6 +737,12 @@ const CustomerDetailsListPage: React.FC = () => {
   };
 
   const assignmentEnabled = selectedIds.size > 0;
+  // V_24.0 — the "Search Employee / Assign to Employee" toolbar is only
+  // shown to a caller who actually has the new Customers.assign
+  // permission (admin/superadmin always do, per usePermission's own
+  // bypass) — previously any authenticated role could reassign, matching
+  // the backend's own now-tightened /customers/assign-employees route.
+  const canAssignCustomers = usePermission('customers', 'assign');
 
   // Self-healing retry: if the mount-time fetch above ever failed (or is
   // still in flight when the user checks a customer), pick it back up the
@@ -1149,36 +1156,38 @@ const CustomerDetailsListPage: React.FC = () => {
           horizontally instead of wrapping if the viewport is too narrow
           to fit everything (e.g. on mobile). ───────────────────────────── */}
       <div className="cust-toolbar-row flex items-end justify-between gap-3 mb-2" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
-        <div className="cust-toolbar-left flex items-end gap-3" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
-          <div className="cust-assign-select" style={{ width: 240 }}>
-            <label className="cust-filter-label">Search Employee</label>
-            <SearchableSelect
-              t={t}
-              placeholder={loadingEmployees ? 'Loading employees...' : 'Select employee'}
-              options={employeeOptions}
-              value={employeeSearch}
-              onChange={setEmployeeSearch}
-              disabled={!assignmentEnabled}
-              loading={loadingEmployees}
-              emptyMessage={employees.length === 0 ? 'No employees found.' : 'No matching employees.'}
-              onRetry={employees.length === 0 && !loadingEmployees ? fetchEmployeesForAssignment : undefined}
-            />
+        {canAssignCustomers && (
+          <div className="cust-toolbar-left flex items-end gap-3" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
+            <div className="cust-assign-select" style={{ width: 240 }}>
+              <label className="cust-filter-label">Search Employee</label>
+              <SearchableSelect
+                t={t}
+                placeholder={loadingEmployees ? 'Loading employees...' : 'Select employee'}
+                options={employeeOptions}
+                value={employeeSearch}
+                onChange={setEmployeeSearch}
+                disabled={!assignmentEnabled}
+                loading={loadingEmployees}
+                emptyMessage={employees.length === 0 ? 'No employees found.' : 'No matching employees.'}
+                onRetry={employees.length === 0 && !loadingEmployees ? fetchEmployeesForAssignment : undefined}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleAssign}
+              disabled={!assignmentEnabled || !employeeSearch || assigning}
+              className="cust-assign-btn px-5 py-2.5 rounded-xl text-sm font-semibold"
+              style={{
+                background: !assignmentEnabled || !employeeSearch || assigning ? t.insetBg : 'var(--grad-purple)',
+                color: !assignmentEnabled || !employeeSearch || assigning ? t.textSecondary : '#fff',
+                border: `1px solid ${!assignmentEnabled || !employeeSearch || assigning ? t.surfaceBorder : 'transparent'}`,
+                cursor: !assignmentEnabled || !employeeSearch || assigning ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              {assigning ? 'Assigning...' : 'Assign to Employee'}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleAssign}
-            disabled={!assignmentEnabled || !employeeSearch || assigning}
-            className="cust-assign-btn px-5 py-2.5 rounded-xl text-sm font-semibold"
-            style={{
-              background: !assignmentEnabled || !employeeSearch || assigning ? t.insetBg : 'var(--grad-purple)',
-              color: !assignmentEnabled || !employeeSearch || assigning ? t.textSecondary : '#fff',
-              border: `1px solid ${!assignmentEnabled || !employeeSearch || assigning ? t.surfaceBorder : 'transparent'}`,
-              cursor: !assignmentEnabled || !employeeSearch || assigning ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
-            }}
-          >
-            {assigning ? 'Assigning...' : 'Assign to Employee'}
-          </button>
-        </div>
+        )}
 
         <div className="cust-toolbar-right flex items-center gap-2.5" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
@@ -1245,7 +1254,7 @@ const CustomerDetailsListPage: React.FC = () => {
           </div>
         ) : (
         <div className="master-table-scroll cust-list-table-scroll">
-          <table className="cust-list-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1150 }}>
+          <table className="cust-list-table master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1150 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <th style={{ padding: '10px 12px', width: 40 }}>
@@ -1253,7 +1262,10 @@ const CustomerDetailsListPage: React.FC = () => {
                     checked={activePageRows.length > 0 && activePageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
                 {['Action', 'Customer ID', 'Customer Name', 'Employee Name', 'Contact Details', 'Company / Project', 'Building Details', 'Unit Type / Area', 'Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
-                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  <th key={h}
+                    style={h === 'Action'
+                      ? { padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', width: 64, minWidth: 64, maxWidth: 64 }
+                      : { padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
                 ))}
@@ -1271,7 +1283,7 @@ const CustomerDetailsListPage: React.FC = () => {
                       <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)}
                         disabled={c.status !== 'active'} title={c.status !== 'active' ? "Inactive customers can't be assigned" : undefined} />
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
+                    <td style={{ padding: '10px 12px', width: 64, minWidth: 64, maxWidth: 64 }}>
                       <div className="flex items-center gap-1.5" ref={openMenuId === c.id ? menuRef : undefined}>
                         <div style={{ position: 'relative' }}>
                           <button
@@ -1427,7 +1439,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     <p style={{ color: t.textSecondary, fontSize: 12 }}>No payment history found.</p>
                   ) : (
                     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+                      <table className="master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
                         <thead>
                           <tr className="master-table-header-gradient">
                             {['Actions', 'Rec Number', 'Payment Date', 'Receipt Date', 'Mode Of Payment', 'Payment For', 'Maintenance', 'Amount', 'Company'].map((h) => (

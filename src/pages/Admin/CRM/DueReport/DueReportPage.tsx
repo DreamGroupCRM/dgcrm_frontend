@@ -1055,7 +1055,7 @@ const DueReportPage: React.FC = () => {
           Follow Up. ────────────────────────────────────────────────────── */}
       <div className="due-report-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="due-report-table-scroll" style={{ overflowX: 'auto' }}>
-          <table className="due-report-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1150 }}>
+          <table className="due-report-table master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1150 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {/* V_23.0 — Payment For/Amount and Monthly Pending merged

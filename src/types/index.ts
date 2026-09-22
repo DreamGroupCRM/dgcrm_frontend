@@ -1074,6 +1074,11 @@ export interface PaymentReceiptTransaction {
   payment_tag    : string | null; // "Extra Pay" for advance-pay EMI transactions
   is_approved    : boolean;
   created_at     : string;
+  // V_24.0 — already present on the raw entity this response is built
+  // from (getPaymentReceipt returns the AmountTransaction row as-is); now
+  // typed so the Payment Type display can split "EMI Before"/"EMI After"
+  // the same way Payment Due and the Payment Received/Approval tables do.
+  is_after_possession_emi: boolean;
 }
 
 export interface PaymentReceiptCustomer {

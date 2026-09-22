@@ -10,6 +10,7 @@ import { toast } from '@/utils/toast';
 import { MdSave, MdArrowBack, MdReply, MdSend, MdPersonAdd } from 'react-icons/md';
 
 import { useAppearanceTokens } from '../../styles/appearanceTokens';
+import { usePermission } from '../../hooks/usePermission';
 import { getAccordionCardStyle, getAccordionHeaderStyle, getFormInputStyle, FormField } from '../../components/common/MasterListUI';
 import { PhoneInput } from '../../components/common/PhoneInput';
 import { ValidationErrorSummary } from '../../components/common/ValidationErrorSummary';
@@ -57,6 +58,11 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
   const { isDark, t, accent, duplicateIcon, systemBorder, cssVars } = useAppearanceTokens();
   const isView = mode === 'view';
   const isAdd = mode === 'add';
+  // V_24.0 — the "Assigned Employees" card is only shown to a caller who
+  // actually has the new Leads.assign permission (admin/superadmin
+  // always do, per usePermission's own bypass) — matches the backend's
+  // now-permission-gated POST /leads/:id/assign route.
+  const canAssignLeads = usePermission('leads', 'assign');
 
   const [form, setForm] = useState<CreateLeadPayload>(EMPTY_FORM);
   const [lead, setLead] = useState<Lead | null>(null);
@@ -368,32 +374,36 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
 
       {!isAdd && (
         <>
-          {/* ── Assign Employees ────────────────────────────────────────── */}
-          <div style={cardStyle}>
-            <div style={headerStyle}><span style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary }}>Assigned Employees</span></div>
-            <div style={{ padding: 16 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                {employeeOptions.map((e) => {
-                  const checked = selectedEmployeeIds.includes(e.id);
-                  return (
-                    <label key={e.id} className="flex items-center gap-1.5" style={{
-                      padding: '5px 10px', borderRadius: 16, fontSize: 12, cursor: 'pointer',
-                      background: checked ? accent : t.insetBg, color: checked ? '#fff' : t.textPrimary,
-                      border: `1px solid ${checked ? accent : t.surfaceBorder}`,
-                    }}>
-                      <input type="checkbox" checked={checked} style={{ display: 'none' }}
-                        onChange={() => setSelectedEmployeeIds((prev) => checked ? prev.filter((id2) => id2 !== e.id) : [...prev, e.id])} />
-                      {e.name}
-                    </label>
-                  );
-                })}
-                {employeeOptions.length === 0 && <span style={{ fontSize: 12, color: t.textSecondary }}>No employees found.</span>}
+          {/* ── Assign Employees — hidden entirely (not just disabled) for a
+              caller without the Leads.assign permission, same reasoning as
+              Customer List's own "Assign to Employee" toolbar. ──────────── */}
+          {canAssignLeads && (
+            <div style={cardStyle}>
+              <div style={headerStyle}><span style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary }}>Assigned Employees</span></div>
+              <div style={{ padding: 16 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                  {employeeOptions.map((e) => {
+                    const checked = selectedEmployeeIds.includes(e.id);
+                    return (
+                      <label key={e.id} className="flex items-center gap-1.5" style={{
+                        padding: '5px 10px', borderRadius: 16, fontSize: 12, cursor: 'pointer',
+                        background: checked ? accent : t.insetBg, color: checked ? '#fff' : t.textPrimary,
+                        border: `1px solid ${checked ? accent : t.surfaceBorder}`,
+                      }}>
+                        <input type="checkbox" checked={checked} style={{ display: 'none' }}
+                          onChange={() => setSelectedEmployeeIds((prev) => checked ? prev.filter((id2) => id2 !== e.id) : [...prev, e.id])} />
+                        {e.name}
+                      </label>
+                    );
+                  })}
+                  {employeeOptions.length === 0 && <span style={{ fontSize: 12, color: t.textSecondary }}>No employees found.</span>}
+                </div>
+                <button type="button" onClick={handleAssign} disabled={assigning} className="master-btn-primary">
+                  <MdPersonAdd size={16} /> {assigning ? 'Assigning...' : 'Save Assignment'}
+                </button>
               </div>
-              <button type="button" onClick={handleAssign} disabled={assigning} className="master-btn-primary">
-                <MdPersonAdd size={16} /> {assigning ? 'Assigning...' : 'Save Assignment'}
-              </button>
             </div>
-          </div>
+          )}
 
           {/* ── Activity / Comment timeline (threaded) ───────────────────── */}
           <div style={cardStyle}>

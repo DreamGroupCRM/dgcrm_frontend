@@ -32,7 +32,7 @@ import PaginationFooter from '../../../../components/common/PaginationFooter';
 import { RowActionMenu, useRowActionMenu } from '../../../../components/common/RowActionMenu';
 import {
   fetchPaymentList, approvePayment, bulkApprovePayments, deletePayment, fetchPaymentReceipt,
-  fetchApprovalStats, paymentForLabel, PaymentListRow, PaymentApprovalStats,
+  fetchApprovalStats, PaymentListRow, PaymentApprovalStats,
 } from '../../../../services/paymentService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
@@ -52,9 +52,19 @@ const formatDMY = (iso: string | null | undefined): string => {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 };
 
-const SHORT_PAYMENT_TYPE_LABEL: Record<string, string> = {
-  EMIAmount: 'EMI', BookingAmount: 'Booking', PayAfterbooking: 'Remaining Booking Amount',
-  PossessionAmount: 'Possession', AnnualAmount: 'Booster Before', AnnualAmount1: 'Booster After',
+// V_24.0 — full Payment Type labels, matching Payment Due's own
+// PAYMENT_FOR_KEY_META exactly (kept as a local duplicate rather than a
+// shared import — same per-page convention as FilterSelect above). EMI is
+// split into "EMI Before"/"EMI After" using is_after_possession_emi
+// (V_24.0 — now returned by GET /payments), the same flag Payment Due's
+// virtual due-item rows use for their own identical split.
+const PAYMENT_TYPE_LABEL: Record<string, string> = {
+  BookingAmount: 'Booking Amount', PayAfterbooking: 'Remaining Booking Amount',
+  PossessionAmount: 'Possession Amount', AnnualAmount: 'Booster Before Possession', AnnualAmount1: 'Booster After Possession',
+};
+const paymentTypeLabel = (r: { payment_type: string; is_after_possession_emi: boolean }): string => {
+  if (r.payment_type === 'EMIAmount') return r.is_after_possession_emi ? 'EMI After' : 'EMI Before';
+  return PAYMENT_TYPE_LABEL[r.payment_type] || r.payment_type;
 };
 
 const MODE_OF_PAYMENT_OPTIONS = ['Cash', 'Cheque', 'Online', 'Other'];
@@ -386,7 +396,7 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
       const csvRows = exportRows.map((r) => [
         // V_23.0 item 2 — always blank here: every exported row is pending.
         r.receipt_number || '', r.customer_name || '', r.building_name || '', r.wing_name || '', r.flat_no || '',
-        paymentForLabel(r.payment_type), r.mode_of_payment || '', r.amount,
+        paymentTypeLabel(r), r.mode_of_payment || '', r.amount,
         formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.company || '', r.received_by || '',
       ]);
       const csv = [header, ...csvRows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -553,7 +563,7 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
 
       <div className="pa-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="master-table-scroll">
-          <table className="pa-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
+          <table className="pa-table master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 <th style={{ padding: '10px 12px', width: 36 }}>
@@ -565,7 +575,10 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                     also drops Total Amount (Amount alone is kept) and
                     reorders the rest. */}
                 {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'].map((h) => (
-                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h}
+                    style={h === 'Actions'
+                      ? { padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', width: 64, minWidth: 64, maxWidth: 64 }
+                      : { padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -580,7 +593,7 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                     <td style={{ padding: '10px 12px' }}>
                       <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelectRow(r.id)} style={{ cursor: 'pointer' }} />
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
+                    <td style={{ padding: '10px 12px', width: 64, minWidth: 64, maxWidth: 64 }}>
                       {/* V_23.0 — the old inline View/Approve/Delete icon
                           row is now one three-dot trigger; the menu itself
                           is a document.body portal (see RowActionMenu) so
@@ -625,7 +638,7 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                           </span>
                         ) : (
                           <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(234,88,12,0.15)' : '#ffedd5', color: '#ea580c', fontSize: 10.5, whiteSpace: 'nowrap' }}>
-                            {SHORT_PAYMENT_TYPE_LABEL[r.payment_type] || paymentForLabel(r.payment_type)}
+                            {paymentTypeLabel(r)}
                           </span>
                         )}
                       </div>
@@ -685,7 +698,7 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md font-semibold" style={{ background: isDark ? 'rgba(234,88,12,0.15)' : '#ffedd5', color: '#ea580c', fontSize: 10.5 }}>
-                          {SHORT_PAYMENT_TYPE_LABEL[viewModal.data.transaction.payment_type] || paymentForLabel(viewModal.data.transaction.payment_type)}
+                          {paymentTypeLabel(viewModal.data.transaction)}
                         </span>
                       )}
                     </div>

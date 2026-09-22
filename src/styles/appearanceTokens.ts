@@ -408,6 +408,13 @@ export interface AppearanceCssVars {
   // light mode it is byte-identical to --brand-gradient, so light theme
   // does not change at all.
   '--brand-ink': string;
+  // V_24.0 — the vertical/horizontal divider color .master-table's th/td
+  // borders read (master.css). Driven from the theme system (light/dark)
+  // rather than a bare CSS `html.dark` selector, so it stays correct for
+  // ANY page that spreads cssVars regardless of what other class names it
+  // uses — this is what makes the same subtle grid line show up
+  // identically on Masters/Employee/Customer/Payment tables alike.
+  '--master-table-border': string;
 }
 
 export function useAppearanceTokens() {
@@ -431,6 +438,14 @@ export function useAppearanceTokens() {
     '--brand-ink': isDark
       ? mixHex(palette.btnPrimaryGradientDark, '#ffffff', ACCENT_INK_LIFT)
       : palette.btnPrimaryGradient,
+    // Same literal values every .master-table th/td border already used
+    // (via the old html.dark selector) — kept identical on purpose, just
+    // routed through the dynamic token system instead of a static CSS
+    // rule, so every table (including the ones that previously had no
+    // border rule at all — Payment Due/Received/Approval/Upcoming,
+    // Customer List) picks up the exact same, already-proven color the
+    // moment it opts into .master-table.
+    '--master-table-border': isDark ? '#2f2f2f' : '#e2e8f0',
   };
 
   // Status/badge colors are NO LONGER resolved from the appearance palette

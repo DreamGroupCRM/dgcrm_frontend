@@ -169,7 +169,7 @@ html.dark .master-search-box-accent svg {
   font-weight: 700;
   white-space: nowrap;
   color: #000000;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--master-table-border, #e2e8f0);
 }
 
 .master-table td {
@@ -178,7 +178,7 @@ html.dark .master-search-box-accent svg {
   font-weight: 600;
   white-space: nowrap;
   color: #000000;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--master-table-border, #e2e8f0);
 }
 
 /* ── Long-value truncation (Global GridView item) ─────────────────────────

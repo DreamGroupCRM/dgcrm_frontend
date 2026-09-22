@@ -87,8 +87,10 @@ const MAX_BOOSTER_AMOUNT_DIGITS = 7;
 // behind UTC and would make the 15th fail the check for them.
 const dayOfMonth = (value: string): number => Number(value.slice(8, 10)) || 0;
 
-// V_23.0 — Installment Date is only ever allowed on the 1st-15th of a
-// month (matches the backend's own MAX_INSTALLMENT_DAY_OF_MONTH check in
+// V_24.0 — displayed as "Payment Date" (was "Installment Date"); the
+// underlying field/column name (installment_date) is unchanged, only the
+// label shown to users. Only ever allowed on the 1st-15th of a month
+// (matches the backend's own MAX_INSTALLMENT_DAY_OF_MONTH check in
 // customer.service.ts, the real authority). A native <input type="date">
 // can't disable individual calendar days, so instead of letting an
 // out-of-range pick sit there until submit-time validation catches it,
@@ -98,6 +100,16 @@ const dayOfMonth = (value: string): number => Number(value.slice(8, 10)) || 0;
 const clampInstallmentDate = (value: string): string => {
   if (!value || dayOfMonth(value) <= MAX_INSTALLMENT_DAY_OF_MONTH) return value;
   return `${value.slice(0, 8)}${String(MAX_INSTALLMENT_DAY_OF_MONTH).padStart(2, '0')}`;
+};
+
+// V_24.0 — the day after a 'yyyy-mm-dd' value, used as the Payment Date
+// input's `min` so the browser's own calendar refuses to open on/before
+// Booking Date at all, in addition to the submit-time check below (which
+// stays as the actual source of truth — this is just earlier feedback).
+const dayAfter = (value: string): string => {
+  const d = new Date(`${value}T00:00:00`);
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
 };
 
 // Fires showPicker() on both click AND focus — a plain onClick alone opens
@@ -734,7 +746,7 @@ const CustomerPreviewModal: React.FC<{ data: PreviewData; onClose: () => void }>
           <PreviewRow label="Booking Amount" value={data.bookingAmount && `₹ ${data.bookingAmount}`} />
           <PreviewRow label="Remaining Booking Amount" value={data.remainingAmount && `₹ ${data.remainingAmount}${data.remainingDate ? ` (${data.remainingDate})` : ''}`} />
           <PreviewRow label="Possession Amount" value={data.possessionAmount && `₹ ${data.possessionAmount}`} />
-          <PreviewRow label="Installment Date" value={data.installmentDate} />
+          <PreviewRow label="Payment Date" value={data.installmentDate} />
           <PreviewRow label="Monthly EMI Before Possession" value={data.emiBefore && `₹ ${data.emiBefore}`} />
           <PreviewRow label="Monthly EMI After Possession" value={data.emiAfter && `₹ ${data.emiAfter}`} />
           <PreviewRow label="Total EMI Tenure" value={data.tenure && `${data.tenure} months`} />
@@ -1270,10 +1282,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     { field: 'bookingDate', section: 'payment', message: 'Please select the Booking Date.', failed: () => bookingDate === '' },
     { field: 'bookingAmount', section: 'payment', message: 'Please enter the Booking Amount.', failed: () => bookingAmount.trim() === '' },
     { field: 'possessionAmount', section: 'payment', message: 'Please enter the Possession Amount.', failed: () => possessionAmount.trim() === '' },
-    { field: 'installmentDate', section: 'payment', message: 'Please select the Installment Date.', failed: () => installmentDate === '' },
+    { field: 'installmentDate', section: 'payment', message: 'Please select the Payment Date.', failed: () => installmentDate === '' },
     {
       field: 'installmentDate', section: 'payment',
-      message: `The Installment Date must be on or before the ${MAX_INSTALLMENT_DAY_OF_MONTH}th of the month.`,
+      message: `The Payment Date must be on or before the ${MAX_INSTALLMENT_DAY_OF_MONTH}th of the month.`,
       failed: () => installmentDate !== '' && dayOfMonth(installmentDate) > MAX_INSTALLMENT_DAY_OF_MONTH
         && installmentDate !== loadedInstallmentDateRef.current,
     },
@@ -1325,14 +1337,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       revealInvalidField(invalid.field, invalid.section);
       return;
     }
-    // Item 1 (V_23.0): Installment Date must be strictly AFTER Booking
+    // Item 1 (V_23.0): Payment Date must be strictly AFTER Booking
     // Date (not merely "not before" — same-day is now also rejected).
     // Plus the same "paid after booking" reasoning applied to Remaining
     // Booking Date. Backend re-checks both as the source of truth (see
     // customer.service.ts's assertDatesValid); this is just instant
     // feedback without a round trip.
     if (installmentDate && bookingDate && installmentDate <= bookingDate) {
-      toast.error('Installment Date must be after the Booking Date.');
+      toast.error('Payment Date must be after the Booking Date.');
       return;
     }
     if (remainingBookingDate && bookingDate && remainingBookingDate < bookingDate) {
@@ -1631,7 +1643,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               <ViewValue label="Remaining Booking Amount" value={remainingBookingAmount && `₹ ${remainingBookingAmount}`} />
               <ViewValue label="Remaining Booking Date" value={remainingBookingDate} />
               <ViewValue label="Possession Amount" value={possessionAmount && `₹ ${possessionAmount}`} />
-              <ViewValue label="Installment Date" value={installmentDate} />
+              <ViewValue label="Payment Date" value={installmentDate} />
               <ViewValue label="Monthly EMI Before Possession" value={monthlyEmiBeforePossession && `₹ ${monthlyEmiBeforePossession}`} />
               <ViewValue label="Monthly EMI After Possession" value={monthlyEmiAfterPossession && `₹ ${monthlyEmiAfterPossession}`} />
               <ViewValue label="Total EMI Tenure" value={totalEmiTenure && `${totalEmiTenure} months`} />
@@ -2039,15 +2051,16 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
         </div>
 
-        {/* Row 2 of 3 — Installment Date, EMI Before/After, Total Tenure. */}
+        {/* Row 2 of 3 — Payment Date, EMI Before/After, Total Tenure. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <Field t={t} label="Installment Date" required error={errorFor('installmentDate')} fieldRef={setFieldRef('installmentDate') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Payment Date" required error={errorFor('installmentDate')} fieldRef={setFieldRef('installmentDate') as React.Ref<HTMLDivElement>}>
             <input type="date" value={installmentDate} readOnly={isView} disabled={isView}
+              min={bookingDate ? dayAfter(bookingDate) : undefined}
               onClick={openPicker} onFocus={openPicker}
               onChange={(e) => {
                 const clamped = clampInstallmentDate(e.target.value);
                 if (clamped !== e.target.value) {
-                  toast.error(`Installment Date can only fall between the 1st and ${MAX_INSTALLMENT_DAY_OF_MONTH}th of a month — moved to the ${MAX_INSTALLMENT_DAY_OF_MONTH}th.`);
+                  toast.error(`Payment Date can only fall between the 1st and ${MAX_INSTALLMENT_DAY_OF_MONTH}th of a month — moved to the ${MAX_INSTALLMENT_DAY_OF_MONTH}th.`);
                 }
                 setInstallmentDate(clamped);
               }} className={fieldClass} />

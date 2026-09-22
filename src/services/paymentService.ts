@@ -65,6 +65,7 @@ interface BackendAmountTransaction {
   payment_tag: string | null;
   is_approved: boolean;
   created_at: string;
+  is_after_possession_emi: boolean;
 }
 
 interface BackendReceiptCustomer {
@@ -104,6 +105,7 @@ const mapReceiptTransaction = (t: BackendAmountTransaction): PaymentReceiptTrans
   payment_tag: t.payment_tag,
   is_approved: t.is_approved,
   created_at: t.created_at,
+  is_after_possession_emi: t.is_after_possession_emi,
 });
 
 // Backend Customer (building/wing/flat relations now loaded — see file
@@ -330,6 +332,10 @@ export interface PaymentListRow {
   payment_date: string | null;
   maintenance: number | null;
   payment_tag: string | null; // "Extra Pay" — see PAYMENT_FOR_UI_OPTIONS' own use of this tag
+  // V_24.0 — lets the Payment Type column show the same "EMI Before"/"EMI
+  // After" split DueReportPage's own boxes use. Only meaningful when
+  // payment_type === 'EMIAmount'.
+  is_after_possession_emi: boolean;
 }
 export interface PaymentListFilters {
   approval?: 'approved' | 'pending';

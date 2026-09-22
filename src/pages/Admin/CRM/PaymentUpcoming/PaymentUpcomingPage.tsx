@@ -306,7 +306,7 @@ const PaymentUpcomingPage: React.FC = () => {
           after the date filter (OK) has been applied. ──────────────────── */}
       <div className="payment-upcoming-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="payment-upcoming-table-scroll" style={{ overflowX: 'auto' }}>
-          <table className="payment-upcoming-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1250 }}>
+          <table className="payment-upcoming-table master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1250 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['Customer Name', 'Assigned Employee', 'Company / Project / Location', 'Building Details', 'Contact (Email / Mobile)', 'Payment For', 'Due Date', 'Amount', 'Status'].map((h) => (
