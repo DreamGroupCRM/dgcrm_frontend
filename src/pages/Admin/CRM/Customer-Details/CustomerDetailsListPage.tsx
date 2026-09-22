@@ -1264,7 +1264,17 @@ const CustomerDetailsListPage: React.FC = () => {
                 {['Action', 'Customer ID', 'Customer Name', 'Employee Name', 'Contact Details', 'Company / Project', 'Building Details', 'Unit Type / Area', 'Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
                   <th key={h}
                     style={h === 'Action'
-                      ? { padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', width: 64, minWidth: 64, maxWidth: 64 }
+                      // V_24.0 fix — this column holds 3 separate controls
+                      // (the 3-dot menu trigger + Show Payment History +
+                      // Show Scheme icon buttons), unlike Employee List's
+                      // single 3-dot trigger. A tight 64px (right for
+                      // Employee/Payment Received/Approval) squeezed all
+                      // three together and made them overlap. minWidth
+                      // only (no maxWidth) keeps it from ever being
+                      // squeezed below what 3 icons need, while still
+                      // never forcing it wider than its content on a
+                      // large screen.
+                      ? { padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', minWidth: 120 }
                       : { padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
@@ -1283,7 +1293,7 @@ const CustomerDetailsListPage: React.FC = () => {
                       <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)}
                         disabled={c.status !== 'active'} title={c.status !== 'active' ? "Inactive customers can't be assigned" : undefined} />
                     </td>
-                    <td style={{ padding: '10px 12px', width: 64, minWidth: 64, maxWidth: 64 }}>
+                    <td style={{ padding: '10px 12px', minWidth: 120, whiteSpace: 'nowrap' }}>
                       <div className="flex items-center gap-1.5" ref={openMenuId === c.id ? menuRef : undefined}>
                         <div style={{ position: 'relative' }}>
                           <button
