@@ -716,18 +716,31 @@ const CustomizeSchemePage: React.FC = () => {
               </div>
               <div className="grid gap-x-3 gap-y-3 mb-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))' }}>
                 <SliderField t={t} accent={accent} label="Monthly EMI Before Possession (₹)" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} max={300000} step={10000} prefix="₹" noSlider />
-                {/* Max 99 / 2-digit cap (Task 6) — maxLength blocks typing a 3rd
-                    digit, and the onChange clamp covers paste/backspace-then-
-                    retype edge cases so the stored value can never exceed 99. */}
+                {/* Max 60 / 2-digit cap (V_23.0 item 2; was 99) — maxLength
+                    blocks typing a 3rd digit, and the onChange clamp covers
+                    paste/backspace-then-retype edge cases so the stored
+                    value can never exceed 60, matching the real Customer
+                    Add form's own MAX_EMI_TENURE_MONTHS. */}
                 <SliderField t={t} accent={accent} label="Total EMI Tenure Before Possession" value={totalEmiTenure}
-                  onChange={(v) => setTotalEmiTenure(Math.min(99, v))} max={99} step={1} suffix="months" noSlider maxLength={2} />
+                  onChange={(v) => setTotalEmiTenure(Math.min(60, v))} max={60} step={1} suffix="months" noSlider maxLength={2} />
                 <SliderField t={t} accent={accent} label="Monthly EMI After Possession (₹)" value={monthlyEmiAfterPossession} onChange={setMonthlyEmiAfterPossession} max={300000} step={10000} prefix="₹" noSlider />
-                <SliderField t={t} accent={accent} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} max={1000000} step={10000} prefix="₹" noSlider />
+                {/* 7-digit cap (V_23.0 item 2) — the onChange clamp caps the
+                    stored VALUE at 9,999,999; maxLength on the text input
+                    isn't used here because this field is ₹-comma-formatted
+                    (e.g. "10,00,000"), where a character-count cap would
+                    stop short of 7 actual digits. */}
+                <SliderField t={t} accent={accent} label="Booster Amount Before Possession (₹)" value={boosterAmountBeforePossession}
+                  onChange={(v) => setBoosterAmountBeforePossession(Math.min(9999999, v))} max={9999999} step={10000} prefix="₹" noSlider />
               </div>
               <div className="grid gap-x-3 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))' }}>
-                <SliderField t={t} accent={accent} label="Booster Interval Before Possession" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={24} step={1} suffix="months" noSlider />
-                <SliderField t={t} accent={accent} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} max={1000000} step={10000} prefix="₹" noSlider />
-                <SliderField t={t} accent={accent} label="Booster Interval After Possession" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={24} step={1} suffix="months" noSlider />
+                {/* Under 60 / 2-digit cap (V_23.0 item 2; was 24) — same
+                    reasoning as Total EMI Tenure above. */}
+                <SliderField t={t} accent={accent} label="Booster Interval Before Possession" value={boosterIntervalBeforePossession}
+                  onChange={(v) => setBoosterIntervalBeforePossession(Math.min(59, v))} max={59} step={1} suffix="months" noSlider maxLength={2} />
+                <SliderField t={t} accent={accent} label="Booster Amount After Possession (₹)" value={boosterAmountAfterPossession}
+                  onChange={(v) => setBoosterAmountAfterPossession(Math.min(9999999, v))} max={9999999} step={10000} prefix="₹" noSlider />
+                <SliderField t={t} accent={accent} label="Booster Interval After Possession" value={boosterIntervalAfterPossession}
+                  onChange={(v) => setBoosterIntervalAfterPossession(Math.min(59, v))} max={59} step={1} suffix="months" noSlider maxLength={2} />
               </div>
 
               {costMismatch && (

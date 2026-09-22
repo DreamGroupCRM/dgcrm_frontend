@@ -7,7 +7,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { toast } from '@/utils/toast';
 import {
   MdArrowBack, MdSave, MdPerson, MdApartment, MdClose, MdKeyboardArrowDown, MdAdd,
-  MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew, MdGridView,
+  MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew,
   MdPayments, MdDescription, MdVisibility, MdDownload, MdRadioButtonChecked, MdRadioButtonUnchecked,
 } from 'react-icons/md';
 import { FaWhatsapp } from 'react-icons/fa';
@@ -71,6 +71,15 @@ const fieldClassName = (isView: boolean) => (isView ? 'cust-field cust-field-vie
 // not the control.
 const MAX_EMI_TENURE_MONTHS = 60;
 const MAX_INSTALLMENT_DAY_OF_MONTH = 15;
+// V_23.0 item 2 — Booster Interval (Before/After Possession) must be under
+// 60 months, same 2-digit shape as EMI Tenure above; Booster Amount
+// (Before/After Possession) is capped at 7 digits, the general limit this
+// item asks for on amount/count fields. Kept in step with the backend's
+// own MAX_BOOSTER_INTERVAL_MONTHS / MAX_BOOSTER_AMOUNT_DIGITS in
+// customer.service.ts, which is the authority — this is instant feedback,
+// not the control.
+const MAX_BOOSTER_INTERVAL_MONTHS = 59;
+const MAX_BOOSTER_AMOUNT_DIGITS = 7;
 // Reads the day straight out of a 'yyyy-mm-dd' input value. Deliberately
 // NOT `new Date(v).getDate()`: that parses a bare date string as UTC and
 // then reports it in local time, which shifts the day by one for anyone
@@ -582,13 +591,23 @@ const RadioOption: React.FC<{ t: Theme; label: string; selected: boolean; onSele
 // Displays the value comma-grouped ("4,00,000") while the underlying state
 // stays a plain digit string, and shows the K/L/Cr shorthand at the end of
 // the box — same as every ₹ field on the Customize Scheme page.
-const AmountField: React.FC<{ t: Theme; isView?: boolean; disabled?: boolean; placeholder: string; value: string; onChange: (v: string) => void }> = ({ t, isView, disabled, placeholder, value, onChange }) => {
+// `maxDigits` is opt-in (undefined everywhere except the Booster Amount
+// fields, which need a 7-digit cap — V_23.0 item 2) — every other caller's
+// behavior is unchanged. Caps only the integer part's digit count (a
+// decimal point/fraction isn't a "digit" for this rule's purposes).
+const AmountField: React.FC<{ t: Theme; isView?: boolean; disabled?: boolean; placeholder: string; value: string; onChange: (v: string) => void; maxDigits?: number }> = ({ t, isView, disabled, placeholder, value, onChange, maxDigits }) => {
   const compact = compactINR(value);
   return (
     <div className={`flex items-center gap-1.5 ${fieldClassName(!!isView || !!disabled)}`} style={{ padding: '0 10px' }}>
       <span style={{ color: t.textSecondary, flexShrink: 0 }}>₹</span>
       <input type="text" inputMode="decimal" placeholder={placeholder} value={formatAmountDisplay(value)} readOnly={isView || disabled} disabled={isView || disabled}
-        onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ''))}
+        onChange={(e) => {
+          const cleaned = e.target.value.replace(/[^\d.]/g, '');
+          if (maxDigits === undefined) { onChange(cleaned); return; }
+          const [intPart, ...rest] = cleaned.split('.');
+          const trimmedInt = intPart.slice(0, maxDigits);
+          onChange(rest.length ? `${trimmedInt}.${rest.join('.')}` : trimmedInt);
+        }}
         style={{ border: 'none', outline: 'none', background: 'transparent', padding: '9px 0', width: '100%', minWidth: 0, color: t.inputText, fontSize: 12, fontFamily: t.fontFamily }} />
       {compact && <span style={{ color: 'var(--brand-ink)', fontWeight: 700, fontSize: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>{compact}</span>}
     </div>
@@ -596,9 +615,10 @@ const AmountField: React.FC<{ t: Theme; isView?: boolean; disabled?: boolean; pl
 };
 
 // A plain-number input — months / tenure fields.
-// `max`/`maxLength` are both opt-in (undefined everywhere except Total EMI
-// Tenure, which needs a max-99/2-digit restriction) — Booster Interval's two
-// callers pass neither, so their behavior is unchanged.
+// `max`/`maxLength` are both opt-in: Total EMI Tenure uses a 60-month/
+// 2-digit restriction, and Booster Interval Before/After use a 59-month
+// (i.e. under 60)/2-digit restriction (V_23.0 item 2) — every other caller
+// passes neither, so its behavior is unchanged.
 const NumberField: React.FC<{
   t: Theme; isView?: boolean; placeholder: string; value: string; onChange: (v: string) => void;
   max?: number; maxLength?: number;
@@ -1022,8 +1042,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // and THAT backs the Wing/Floor/Flat option lists and the ids actually
   // submitted below — not the list row's placeholders.
   const projectNameOptions = useMemo(() => Array.from(new Set(buildings.map((b) => b.project_name))), [buildings]);
+  // V_23.0 item 4 — Building Name must only populate AFTER a Project is
+  // selected. This previously fell back to every building across every
+  // project when projectName was empty, so the Building dropdown showed
+  // (and let you pick from) the whole company's buildings regardless of
+  // Project — an empty list is the correct "nothing selected yet" state,
+  // matching the Wing/Floor fields right below, which are already gated
+  // the same way on their own parent selection.
   const buildingsForProject = useMemo(
-    () => (projectName ? buildings.filter((b) => b.project_name === projectName) : buildings)
+    () => (projectName ? buildings.filter((b) => b.project_name === projectName) : [])
       .filter((b) => b.is_active || b.building_name === buildingName),
     [buildings, projectName, buildingName]
   );
@@ -1271,12 +1298,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       revealInvalidField(invalid.field, invalid.section);
       return;
     }
-    // Item 8: Installment Date can't predate Booking Date — plus the same
-    // "paid after booking" reasoning applied to Remaining Booking Date.
-    // Backend re-checks both as the source of truth (see customer.service.ts's
-    // assertDatesValid); this is just instant feedback without a round trip.
-    if (installmentDate && bookingDate && installmentDate < bookingDate) {
-      toast.error('Installment Date cannot be before the Booking Date.');
+    // Item 1 (V_23.0): Installment Date must be strictly AFTER Booking
+    // Date (not merely "not before" — same-day is now also rejected).
+    // Plus the same "paid after booking" reasoning applied to Remaining
+    // Booking Date. Backend re-checks both as the source of truth (see
+    // customer.service.ts's assertDatesValid); this is just instant
+    // feedback without a round trip.
+    if (installmentDate && bookingDate && installmentDate <= bookingDate) {
+      toast.error('Installment Date must be after the Booking Date.');
       return;
     }
     if (remainingBookingDate && bookingDate && remainingBookingDate < bookingDate) {
@@ -1689,15 +1718,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
         </div>
 
-        {/* Row 2 of 3 — the three contact fields, in the order V_23.0 item
-            2.1 asks for: Primary Number, Alternate Number, Address, kept
-            adjacent so they read as one block. This supersedes the earlier
-            "Move Mobile Number Field at the last of Customer detail
-            section" request, which had left the primary number sitting
-            after Address at the very end of the section. The ID proofs
-            follow, each number still immediately after its own upload
-            field. "Also on WhatsApp" is a checkbox on each number (V_22.0);
-            there is no separate WhatsApp Number field. */}
+        {/* Row 2 of 3 — contact fields + BOTH upload fields together
+            (V_23.0 item 3): Mobile Number, Secondary Mobile Number,
+            Address, Upload Aadhaar Card Photo, Upload PAN Card Photo.
+            "Also on WhatsApp" is a checkbox on each number (V_22.0); there
+            is no separate WhatsApp Number field. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="Mobile Number" required error={errorFor('mobileNumber')} fieldRef={setFieldRef('mobileNumber') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber} />
@@ -1725,26 +1750,18 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onView={(url) => openPreview('Aadhar Card', url)} />
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
-          <Field t={t} label="Aadhar Number" required error={errorFor('aadharNumber')} fieldRef={setFieldRef('aadharNumber') as React.Ref<HTMLDivElement>}>
-            <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView} maxLength={12}
-              onChange={(e) => setAadharNumber(sanitizeDigits(e.target.value, 12))} className={fieldClass} />
-          </Field>
-        </div>
-
-        {/* Row 3 of 3 — the remaining ID proof, then date of birth and the
-            alternate CONTACT (a different person: their own name plus
-            number), which is deliberately separate from the customer's own
-            Alternate Number in row 2 above. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="Upload Pancard Photo" required error={errorFor('pancardPhoto')} fieldRef={setFieldRef('pancardPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange}
               onView={(url) => openPreview('Pancard', url)} />
             {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
-          <Field t={t} label="Pancard Number" error={errorFor('pancardNumber')} fieldRef={setFieldRef('pancardNumber') as React.Ref<HTMLDivElement>}>
-            <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView} maxLength={10}
-              onChange={(e) => setPancardNumber(sanitizeAlphanumericUpper(e.target.value, 10))} className={fieldClass} />
-          </Field>
+        </div>
+
+        {/* Row 3 of 3 — Date of Birth, the alternate CONTACT (a different
+            person: their own name plus number, deliberately separate from
+            the customer's own Secondary Mobile Number in row 2 above),
+            then BOTH ID numbers together (V_23.0 item 3). */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="Date of Birth" required error={errorFor('dateOfBirth')} fieldRef={setFieldRef('dateOfBirth') as React.Ref<HTMLDivElement>}>
             <div className="flex items-center gap-2">
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -1767,6 +1784,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               code={alternatePersonCountryCode} onCodeChange={setAlternatePersonCountryCode}
               number={alternatePersonMobile} onNumberChange={setAlternatePersonMobile} />
           </Field>
+          <Field t={t} label="Aadhar Number" required error={errorFor('aadharNumber')} fieldRef={setFieldRef('aadharNumber') as React.Ref<HTMLDivElement>}>
+            <input type="text" placeholder="Enter Aadhar number" value={aadharNumber} readOnly={isView} disabled={isView} maxLength={12}
+              onChange={(e) => setAadharNumber(sanitizeDigits(e.target.value, 12))} className={fieldClass} />
+          </Field>
+          <Field t={t} label="Pancard Number" error={errorFor('pancardNumber')} fieldRef={setFieldRef('pancardNumber') as React.Ref<HTMLDivElement>}>
+            <input type="text" placeholder="Enter PAN number" value={pancardNumber} readOnly={isView} disabled={isView} maxLength={10}
+              onChange={(e) => setPancardNumber(sanitizeAlphanumericUpper(e.target.value, 10))} className={fieldClass} />
+          </Field>
         </div>
       </AccordionSection>
 
@@ -1775,21 +1800,16 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         open={openSections.property} onToggle={() => setOpenSections((p) => ({ ...p, property: !p.property }))}
         sectionRef={(el) => (sectionRefs.current.property = el)}>
 
-        {/* Select Flat (Building View) — opens the 2D Building View in
-            picker mode; on confirming an available flat/shop there, it
-            navigates back here (see the routerLocation.state.selectedUnit
-            effect above) with every field below already filled in. Hidden
-            in View mode — nothing here is editable there anyway. */}
-        {!isView && (
-          <div className="flex justify-end mb-4">
-            <button type="button"
-              onClick={() => navigate(ROUTES.ADMIN.BUILDING_2D_VIEW, { state: { pickerMode: true, returnPath: routerLocation.pathname } })}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold"
-              style={{ background: t.insetBg, color: 'var(--brand-ink)', border: `1px solid ${t.inputBorder}`, cursor: 'pointer' }}>
-              <MdGridView size={16} /> Select Flat (Building View)
-            </button>
-          </div>
-        )}
+        {/* V_23.0 item 4 — the "Select Flat (Building View)" button that
+            used to sit here (opening the 2D Building View in picker mode)
+            was removed per explicit request; ordinary flat selection below
+            (Project -> Building -> Wing -> Floor -> Flat No, all plain
+            dropdowns) is untouched and remains the only way to pick a
+            unit here. The routerLocation.state.selectedUnit effect above
+            is now unreachable dead code (this button was its only caller)
+            but is left in place rather than removed, since it's harmless
+            and Building2DViewPage's own pickerMode support is a generic,
+            independently-useful capability this change doesn't touch. */}
 
         {/* ONE 6-column grid, not two stacked grids. Split across two grids
             (6 + 6) this section actually rendered THREE rows: row 1 held
@@ -1816,7 +1836,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(v) => { setProjectName(v); setBuildingName(''); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
           </Field>
           <Field t={t} label="Building Name" required error={errorFor('buildingName')} fieldRef={setFieldRef('buildingName') as React.Ref<HTMLDivElement>}>
-            <SearchableSelect t={t} placeholder="Select building" options={buildingNameOptions} value={buildingName} disabled={isView}
+            <SearchableSelect t={t} placeholder={projectName ? 'Select building' : 'Select a Project first'} options={buildingNameOptions} value={buildingName} disabled={isView || !projectName}
               onChange={(v) => { setBuildingName(v); setWingName(''); setFloorLabel(''); setFlatNo(''); setShopNo(''); }} />
           </Field>
           <Field t={t} label="Location">
@@ -2026,16 +2046,16 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             it in without pushing this to a 4th row. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <Field t={t} label="Booster Amount Before Possession (₹)">
-            <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} />
+            <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} maxDigits={MAX_BOOSTER_AMOUNT_DIGITS} />
           </Field>
           <Field t={t} label="Booster Interval Before (Months)">
-            <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} />
+            <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalBeforePossession} onChange={setBoosterIntervalBeforePossession} max={MAX_BOOSTER_INTERVAL_MONTHS} maxLength={2} />
           </Field>
           <Field t={t} label="Booster Amount After Possession (₹)">
-            <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} />
+            <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountAfterPossession} onChange={setBoosterAmountAfterPossession} maxDigits={MAX_BOOSTER_AMOUNT_DIGITS} />
           </Field>
           <Field t={t} label="Booster Interval After (Months)">
-            <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} />
+            <NumberField t={t} isView={isView} placeholder="e.g. 12" value={boosterIntervalAfterPossession} onChange={setBoosterIntervalAfterPossession} max={MAX_BOOSTER_INTERVAL_MONTHS} maxLength={2} />
           </Field>
           {!isView && (
             // Non-breaking-space label keeps this at the same top offset

@@ -1390,8 +1390,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         open={openSections.personal} onToggle={() => setOpenSections((p) => ({ ...p, personal: !p.personal }))}
         sectionRef={(el) => (sectionRefs.current.personal = el)}>
 
-        {/* Row 1 of 4 — Name */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        {/* Row 1 of 3 (V_23.0 item 5) — Name + Date of Birth + Photo,
+            Employee Photo placed right next to Date of Birth as asked. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="First Name" required error={errorFor('first_name')} fieldRef={setFieldRef('first_name') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter first name" value={form.first_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('first_name', e.target.value)} className={fieldClass} />
@@ -1407,9 +1408,13 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Date of Birth" required error={errorFor('date_of_birth')} fieldRef={setFieldRef('date_of_birth') as React.Ref<HTMLDivElement>}>
             <DobPicker theme={t} value={form.date_of_birth} disabled={isView} onChange={(v) => set('date_of_birth', v)} />
           </Field>
+          <FileUploadBox t={t} isView={isView} label="Upload Profile Photo" hint="JPG, PNG (Max 2MB)" accept={IMAGE_ACCEPT} required
+            file={files.profile_photo} existingUrl={existingUrls.profile_photo} onChange={setFile('profile_photo')} onView={openPreview}
+            fieldRef={setFieldRef('profile_photo') as React.Ref<HTMLDivElement>} />
         </div>
 
-        {/* Row 2 of 4 — Contact */}
+        {/* Row 2 of 3 (V_23.0 item 5) — Contact + Address, Address placed
+            right next to Alternate Number as asked. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <Field t={t} label="Email" required error={errorFor('email')} fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
             <input type="email" placeholder="Enter email address" value={form.email}
@@ -1441,10 +1446,17 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <PhoneInput theme={t} disabled={isView} code={form.alternate_country_code} onCodeChange={(v) => set('alternate_country_code', v)}
               number={form.alternate_number} onNumberChange={(v) => set('alternate_number', v)} placeholder="Enter mobile number" />
           </Field>
+          <Field t={t} label="Address" required fieldRef={setFieldRef('address') as React.Ref<HTMLDivElement>}>
+            <textarea
+              placeholder="Enter full address" value={form.address} readOnly={isView} disabled={isView} rows={2}
+              onChange={(e) => set('address', e.target.value)} className={fieldClass} style={{ resize: 'vertical' }}
+            />
+          </Field>
         </div>
 
-        {/* Row 3 of 4 — ID proofs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        {/* Row 3 of 3 (V_23.0 item 5) — ID proofs, unchanged content-wise,
+            just now the last row instead of the 3rd of 4. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept={DOCUMENT_ACCEPT} required
             file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={handleAadharCardChange} onView={openPreview}
             fieldRef={setFieldRef('aadhar_card') as React.Ref<HTMLDivElement>} />
@@ -1461,22 +1473,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => set('pan_number', sanitizeAlphanumericUpper(e.target.value, 10))} className={fieldClass} />
             {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
-        </div>
-
-        {/* Row 4 of 4 — Address + Profile Photo. Profile Photo now uses the
-            same compact FileUploadBox as Aadhar/PAN just above (was a tall
-            square dropzone that left a lot of dead space below the much
-            shorter Address textarea next to it). */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start">
-          <Field t={t} label="Address" required className="lg:col-span-3" fieldRef={setFieldRef('address') as React.Ref<HTMLDivElement>}>
-            <textarea
-              placeholder="Enter full address" value={form.address} readOnly={isView} disabled={isView} rows={2}
-              onChange={(e) => set('address', e.target.value)} className={fieldClass} style={{ resize: 'vertical' }}
-            />
-          </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload Profile Photo" hint="JPG, PNG (Max 2MB)" accept={IMAGE_ACCEPT} required
-            file={files.profile_photo} existingUrl={existingUrls.profile_photo} onChange={setFile('profile_photo')} onView={openPreview}
-            fieldRef={setFieldRef('profile_photo') as React.Ref<HTMLDivElement>} />
         </div>
       </AccordionSection>
 
