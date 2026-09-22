@@ -189,7 +189,7 @@ const PAYMENT_FOR_KEY_META: Record<PaymentFor, { label: string; color: string; i
 const PAYMENT_FOR_KEY_ORDER: Exclude<PaymentFor, 'EMIAmount'>[] = ['BookingAmount', 'PayAfterbooking', 'PossessionAmount', 'AnnualAmount', 'AnnualAmount1'];
 
 // A row's displayed Payment-For label/color — EMI rows show "EMI Before"/
-// "EMI After" (from the backend's own due_status text) instead of the
+// "EMI After" (from the backend's own payment_for label) instead of the
 // generic EMIAmount fallback, while keeping the SAME color for both so the
 // pair reads as one grouped/background treatment.
 const getPaymentForDisplay = (r: { payment_for_key: PaymentFor; payment_for: string }): { label: string; color: string } => {
@@ -458,7 +458,11 @@ const DueReportPage: React.FC = () => {
     // V_23.0 — color-coded status: Overdue = Red, Due Today = Green,
     // Upcoming = Yellow (below). Was Overdue = Red, Due Today = Amber.
     statusColor: r.due_category === 'due_today' ? '#16a34a' : '#dc2626',
-    detailText: r.due_status.replace(/^Overdue\s+/, '').replace(/^Due Today\s*\|\s*/, ''),
+    // V_23.0 — bare date range only, no "N months and N days" prose and no
+    // "amount x months" math (that now lives in its own line above this
+    // one — see the Payment Details cell's JSX). due_date_from/to come
+    // pre-formatted (DD/MM/YYYY) from the backend.
+    detailText: `(from: ${r.due_date_from}, to: ${r.due_date_to})`,
     dueRow: r,
   })), [dueRows]);
 
@@ -1074,30 +1078,21 @@ const DueReportPage: React.FC = () => {
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.mobile_number || '—'}</div>
                     </td>
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                      {/* V_23.0 — Payment Details column: payment type,
-                          pending months × EMI/due amount, and a compact
-                          Overdue/Due Today/Upcoming colour indicator, all
-                          in one column (the old separate Monthly Pending
-                          column's content now lives here). The status pill
-                          and detail text below it are the only things
-                          colour-coded — never the whole row/cell. */}
-                      {(() => {
-                        const disp = getPaymentForDisplay(r);
-                        return (
-                          <>
-                            <span style={{
-                              display: 'inline-block', padding: '3px 9px', borderRadius: 999,
-                              fontSize: 10.5, fontWeight: 700, color: '#fff', background: disp.color,
-                            }}>
-                              {disp.label}
-                            </span>
-                            {r.payment_for !== disp.label && (
-                              <span style={{ fontSize: 10.5, color: t.textSecondary, marginLeft: 6 }}>{r.payment_for}</span>
-                            )}
-                          </>
-                        );
-                      })()}
-                      <div style={{ marginTop: 5 }}>
+                      {/* V_23.0 — Payment Details column, deliberately
+                          trimmed to exactly 3 lines, nothing else:
+                          1) payment type badge + status badge, side by side
+                          2) "N month(s) x amount" (months_pending is null
+                             for a one-time due, which has no such line)
+                          3) the bare date range in red, and ONLY that —
+                             no "N months and N days" prose, no repeated
+                             amount math. */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span style={{
+                          display: 'inline-block', padding: '3px 9px', borderRadius: 999,
+                          fontSize: 10.5, fontWeight: 700, color: '#fff', background: getPaymentForDisplay(r).color,
+                        }}>
+                          {getPaymentForDisplay(r).label}
+                        </span>
                         <span style={{
                           display: 'inline-block', padding: '3px 9px', borderRadius: 999,
                           fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em',
@@ -1106,27 +1101,17 @@ const DueReportPage: React.FC = () => {
                           {r.statusLabel}
                         </span>
                       </div>
-                      <div style={{ marginTop: 4 }}>
-                        {r.months_pending ? (
+                      <div style={{ marginTop: 5 }}>
+                        {r.months_pending && r.per_month_amount != null ? (
                           <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>
-                            {r.months_pending} month{r.months_pending === 1 ? '' : 's'} pending
+                            {r.months_pending} month{r.months_pending === 1 ? '' : 's'} x {rupee(r.per_month_amount)}
                           </span>
                         ) : (
                           <span style={{ color: t.textSecondary, fontSize: 11.5 }}>—</span>
                         )}
-                        {/* Item 13 — the corresponding EMI/per-instalment
-                            amount, under the pending-months count. */}
-                        {r.per_month_amount != null && (
-                          <div style={{ fontSize: 11, fontWeight: 600, color: t.textSecondary, marginTop: 1 }}>
-                            {rupee(r.per_month_amount)} / month
-                          </div>
-                        )}
                       </div>
-                      {/* Item 10.3/10.7 — the overdue period and dates move
-                          under the month count, replacing the separate
-                          Detail column. */}
                       {r.detailText && (
-                        <div style={{ fontSize: 10.5, fontWeight: 600, color: r.statusColor, marginTop: 3, whiteSpace: 'normal', maxWidth: 260 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 600, color: '#dc2626', marginTop: 3, whiteSpace: 'normal', maxWidth: 260 }}>
                           {r.detailText}
                         </div>
                       )}

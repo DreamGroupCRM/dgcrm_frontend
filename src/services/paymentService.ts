@@ -184,7 +184,12 @@ export interface DueListDetailRow {
   payment_for: string;
   payment_for_key: PaymentFor;
   amount: number;
-  due_status: string;
+  // V_23.0 — replaces the old free-text due_status. Already formatted
+  // (DD/MM/YYYY, same as every other date on this page); equal to each
+  // other for anything without a true multi-installment range (Due Today,
+  // or a one-time due like Booking/Possession/Remaining Booking).
+  due_date_from: string;
+  due_date_to: string;
   due_category: 'overdue' | 'due_today';
   // Number of stacked-up monthly EMI installments this row represents;
   // null for one-time dues (Booking/Remaining Booking/Possession/Annual).
