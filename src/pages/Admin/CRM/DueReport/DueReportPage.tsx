@@ -411,17 +411,24 @@ const DueReportPage: React.FC = () => {
   // all; every filter here is plain client-side state narrowing the same
   // already-fetched list (see filteredDueRows below), so resetting them is
   // just resetting this state, same pattern as CustomerDetailsListPage's
-  // clearAllFilters/anyFilterApplied. V_23.0 item 6 — apCustomerId (the Add
-  // Payment form's own customer picker) now ALSO narrows the table (see
-  // filteredDueRows below), so it counts as a filter here too: the toolbar's
-  // Reset Filters (X) button clears it, and it makes that button appear
-  // when only a customer has been picked in the form below.
+  // clearAllFilters/anyFilterApplied.
+  //
+  // Deliberately does NOT include apCustomerId/apCustomerSearch (the Add
+  // Payment form's own customer picker) — an earlier version folded that
+  // in here, which meant the lower toolbar's X button and the upper form's
+  // own Reset button each cleared BOTH halves of the page, so picking a
+  // customer to log a payment for could silently reset an unrelated table
+  // filter the admin had set, or vice versa. The two are independent state
+  // now: this X only ever touches the four visible toolbar filters (Search
+  // Across All Data / Employee / Building / Status) plus the stat-box
+  // category filter (not a form field, not one of "those four", but not
+  // part of the Add Payment form either); handleResetAddPaymentForm below
+  // only ever touches the form.
   const anyFilterApplied =
-    !!filterBuilding || !!filterEmployee || !!globalSearch || statusFilter !== 'all' || !!categoryFilter || !!apCustomerId;
+    !!filterBuilding || !!filterEmployee || !!globalSearch || statusFilter !== 'all' || !!categoryFilter;
   const clearAllFilters = () => {
     setFilterBuilding(''); setFilterEmployee('');
     setGlobalSearch(''); setStatusFilter('all'); setCategoryFilter(null);
-    setApCustomerId(null); setApCustomerSearch('');
   };
 
   // ── Upcoming (Status = Upcoming) — lazily fetched once, reusing the
@@ -642,6 +649,25 @@ const DueReportPage: React.FC = () => {
   const apSelectedCustomer = useMemo(() => customers.find((c) => c.id === apCustomerId) ?? null, [customers, apCustomerId]);
   const apSelectedPaymentFor = useMemo(() => PAYMENT_FOR_UI_OPTIONS.find((o) => o.key === apPaymentForKey) ?? null, [apPaymentForKey]);
 
+  // V_23.0 — the disabled Payment Date field now pre-fills from the
+  // customer's own saved installment date (customers.installment_date,
+  // mapped to monthly_installment_date on the frontend Customer type — see
+  // customerDetailsService.ts's mapCustomerRow) the moment a customer is
+  // picked, before Payment For is even chosen. No extra fetch: `customers`
+  // already carries this field from the same list the picker's own options
+  // came from. Only runs while no Payment For is selected yet — once one
+  // is, handlePaymentForChange's own fetchDefaultAmount lookup takes over
+  // (a type-specific suggested date, not just the customer's default).
+  useEffect(() => {
+    if (apPaymentForKey) return;
+    // .slice(0, 10): the backend column is a DATETIME, so this can arrive
+    // as a full ISO timestamp (e.g. "2026-09-15T00:00:00.000Z") — an
+    // <input type="date"> only accepts the bare YYYY-MM-DD portion, which
+    // this also happens to already be a no-op on if the value came back
+    // pre-trimmed.
+    setApInstDate(apSelectedCustomer?.monthly_installment_date?.slice(0, 10) || '');
+  }, [apSelectedCustomer, apPaymentForKey]);
+
   const handleCustomerSearchChange = (v: string) => {
     setApCustomerSearch(v);
     const exact = customers.find((c) => `${c.customer_name}${c.customer_code ? ` (${c.customer_code})` : ''}` === v);
@@ -739,14 +765,13 @@ const DueReportPage: React.FC = () => {
     setSubmitAttempted(false);
   };
 
-  // V_23.0 item 6 — the form's own Reset button: clears every field in
-  // this form (resetAddPaymentForm, also used after a successful submit)
-  // AND every toolbar filter (clearAllFilters, including the customer
-  // filter this form drives), so the table goes back to showing every due.
-  const handleResetAddPaymentForm = () => {
-    resetAddPaymentForm();
-    clearAllFilters();
-  };
+  // V_23.0 — the form's own Reset button clears ONLY this form's fields
+  // (resetAddPaymentForm, also reused after a successful submit) — it no
+  // longer also clears the lower toolbar's filters. Selecting a customer
+  // here does narrow the table (see filteredDueRows below), and Reset
+  // clearing apCustomerId undoes that same narrowing, but nothing else on
+  // the toolbar (Search/Employee/Building/Status/category) is touched.
+  const handleResetAddPaymentForm = resetAddPaymentForm;
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const setFieldRef = (key: string) => (el: HTMLDivElement | null) => { fieldRefs.current[key] = el; };
@@ -1037,7 +1062,7 @@ const DueReportPage: React.FC = () => {
                     into one "Payment Details" column (payment type, pending
                     months × EMI/due amount, compact status indicator); the
                     standalone Monthly Pending column is gone. */}
-                {['Customer Name', 'Company / Project / Location', 'Building Details', 'Assigned Employee', 'Contact (Email / Mobile)', 'Payment Details', 'Total Amount', 'Follow Up'].map((h) => (
+                {['Customer Name', 'Company / Project / Location', 'Building Details', 'Contact Details', 'Assigned Employee', 'Payment Details', 'Total Amount', 'Follow Up'].map((h) => (
                   <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -1073,15 +1098,15 @@ const DueReportPage: React.FC = () => {
                         </div>
                       )}
                     </td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary }}>
+                      <div>{r.email || '—'}</div>
+                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.mobile_number || '—'}</div>
+                    </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.assigned_employee_name || '—'}</div>
                       {r.assigned_employee_code && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.assigned_employee_code}</div>
                       )}
-                    </td>
-                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary }}>
-                      <div>{r.email || '—'}</div>
-                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.mobile_number || '—'}</div>
                     </td>
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                       {/* V_23.0 — Payment Details column, deliberately

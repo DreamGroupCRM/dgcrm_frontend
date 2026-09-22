@@ -597,6 +597,7 @@ export interface RefundEntry {
   id: string;
   refunded_amount: number;
   refund_date: string;
+  mode_of_payment: string | null;
   notes: string | null;
   created_at: string;
   created_by_name: string | null;
@@ -617,7 +618,7 @@ export const fetchRefundSummary = async (customerId: string): Promise<RefundSumm
 /** POST /api/customers/:id/refunds */
 export const createRefund = async (
   customerId: string,
-  payload: { refunded_amount: number; refund_date?: string; notes?: string }
+  payload: { refunded_amount: number; refund_date?: string; notes?: string; mode_of_payment?: string }
 ): Promise<RefundSummary> => {
   const res = await axiosInstance.post(`/customers/${customerId}/refunds`, payload);
   return res.data.data;

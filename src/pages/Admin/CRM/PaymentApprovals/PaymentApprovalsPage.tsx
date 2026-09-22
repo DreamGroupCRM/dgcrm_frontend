@@ -116,7 +116,7 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(50);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -163,6 +163,27 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
   const [draftDateRange, setDraftDateRange] = useState('');
   const [draftFromDate, setDraftFromDate] = useState('');
   const [draftToDate, setDraftToDate] = useState('');
+
+  // V_23.0 — Building stays disabled until a Project is picked, and only
+  // ever lists buildings belonging to that project. "Project" isn't its
+  // own master here — buildings.project_name is a plain free-text field on
+  // Building (see Building Master), so this is a client-side cascade over
+  // the same `buildings` list already fetched for the Building dropdown,
+  // not a new endpoint.
+  const [draftProjectName, setDraftProjectName] = useState('');
+  const projectNameOptions = useMemo(
+    () => Array.from(new Set(buildings.filter((b) => b.is_active && b.project_name).map((b) => b.project_name))),
+    [buildings]
+  );
+  const buildingOptionsForProject = useMemo(
+    () => buildings.filter((b) => b.is_active && b.project_name === draftProjectName),
+    [buildings, draftProjectName]
+  );
+  // Changing Project clears Building (and everything below it) — a stale
+  // Building from a different project would otherwise silently stay
+  // selected and keep filtering by it even though it's no longer visible
+  // in the (now project-scoped) dropdown.
+  const handleProjectChange = (v: string) => { setDraftProjectName(v); setDraftBuildingName(''); setDraftWingName(''); setDraftFlatNo(''); };
 
   const selectedBuilding = useMemo(() => buildings.find((b) => b.building_name === draftBuildingName), [buildings, draftBuildingName]);
   const [buildingDetail, setBuildingDetail] = useState<Building | null>(null);
@@ -278,7 +299,7 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
   };
 
   const handleResetFilters = () => {
-    setDraftReceivedBy(''); setDraftBuildingName(''); setDraftWingName(''); setDraftFlatNo('');
+    setDraftReceivedBy(''); setDraftProjectName(''); setDraftBuildingName(''); setDraftWingName(''); setDraftFlatNo('');
     setDraftMode(''); setDraftCompany(''); setDraftDateRange(''); setDraftFromDate(''); setDraftToDate('');
     setAppliedFilters((prev) => ({ search: prev.search }));
   };
@@ -450,8 +471,11 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
             placeholder="--All--" options={employeeNameOptions.map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Company" value={draftCompany} onChange={setDraftCompany}
             placeholder="--Select--" options={companyNameOptions.map((n) => ({ value: n, label: n }))} />
+          <FilterSelect t={t} label="Project" value={draftProjectName} onChange={handleProjectChange}
+            placeholder="--Select--" options={projectNameOptions.map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Building Name" value={draftBuildingName} onChange={handleBuildingChange}
-            placeholder="--Select--" options={buildings.filter((b) => b.is_active).map((b) => b.building_name).filter((v, i, arr) => arr.indexOf(v) === i).map((n) => ({ value: n, label: n }))} />
+            placeholder={draftProjectName ? '--Select--' : 'Select a Project first'} disabled={!draftProjectName}
+            options={buildingOptionsForProject.map((b) => b.building_name).filter((v, i, arr) => arr.indexOf(v) === i).map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Wing" value={draftWingName} onChange={handleWingChange}
             placeholder="--Select--" options={wingOptions.map((n) => ({ value: n, label: n }))} disabled={!selectedBuilding} />
           <FilterSelect t={t} label="Flat Number" value={draftFlatNo} onChange={setDraftFlatNo}

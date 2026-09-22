@@ -144,6 +144,7 @@ const CancelledBookingPage: React.FC = () => {
   // ── Refund entry form ────────────────────────────────────────────────────
   const [refundAmount, setRefundAmount] = useState('');
   const [refundDateTime, setRefundDateTime] = useState('');
+  const [refundMode, setRefundMode] = useState('');
   const [refundNotes, setRefundNotes] = useState('');
   const [submittingRefund, setSubmittingRefund] = useState(false);
 
@@ -156,10 +157,11 @@ const CancelledBookingPage: React.FC = () => {
       const summary = await createRefund(selected.id, {
         refunded_amount: amount,
         refund_date: refundDateTime ? new Date(refundDateTime).toISOString() : undefined,
+        mode_of_payment: refundMode || undefined,
         notes: refundNotes.trim() || undefined,
       });
       setRefundSummary(summary);
-      setRefundAmount(''); setRefundDateTime(''); setRefundNotes('');
+      setRefundAmount(''); setRefundDateTime(''); setRefundMode(''); setRefundNotes('');
       toast.success('Refund recorded.');
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to record refund.');
@@ -242,14 +244,21 @@ const CancelledBookingPage: React.FC = () => {
         <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={total} pageBtns={pageBtns} />
       </div>
 
-      {/* ── Selected customer's two accordions ─────────────────────────────── */}
+      {/* ── Two accordions — ALWAYS rendered, even before any customer is
+          selected (empty state inside each), per explicit request. Once a
+          customer is searched/selected from the table above, both populate
+          for that customer. ─────────────────────────────────────────────── */}
       {selected && (
-        <>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textSecondary, marginBottom: 10 }}>
-            Showing details for <span style={{ color: t.textPrimary }}>{selected.customer_name} ({selected.customer_code})</span>
-          </div>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textSecondary, marginBottom: 10 }}>
+          Showing details for <span style={{ color: t.textPrimary }}>{selected.customer_name} ({selected.customer_code})</span>
+        </div>
+      )}
 
-          <Accordion t={t} icon={<MdReceiptLong size={17} color="#fff" />} title="Booking & Payment Details" defaultOpen>
+      <Accordion t={t} icon={<MdReceiptLong size={17} color="#fff" />} title="Payment History" defaultOpen>
+        {!selected ? (
+          <p style={{ color: t.textSecondary, fontSize: 12, padding: '16px 0' }}>Select a cancelled customer above to view their booking and payment history.</p>
+        ) : (
+          <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-4">
               <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Customer</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{selected.customer_name}</div><div style={{ fontSize: 10.5, color: t.textSecondary }}>{selected.customer_code}</div></div>
               <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Building</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{selected.building_name || '—'}</div></div>
@@ -290,86 +299,113 @@ const CancelledBookingPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-          </Accordion>
+          </>
+        )}
+      </Accordion>
 
-          <Accordion t={t} icon={<MdCurrencyRupee size={17} color="#fff" />} title="Payment Refund">
-            {loadingRefunds || !refundSummary ? (
-              <p style={{ color: t.textSecondary, fontSize: 12, padding: '16px 0' }}>Loading refund details...</p>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4">
-                  <div className="rounded-xl p-3" style={{ background: t.insetBg }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Total Paid</div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: t.textPrimary }}>{rupee(refundSummary.total_paid)}</div>
-                  </div>
-                  <div className="rounded-xl p-3" style={{ background: t.insetBg }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Total Refunded</div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: '#dc2626' }}>{rupee(refundSummary.total_refunded)}</div>
-                  </div>
-                  <div className="rounded-xl p-3" style={{ background: t.insetBg }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Remaining Refundable</div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>{rupee(refundSummary.remaining_refundable)}</div>
-                  </div>
-                </div>
+      <Accordion t={t} icon={<MdCurrencyRupee size={17} color="#fff" />} title="Payment Refund">
+        {!selected ? (
+          <p style={{ color: t.textSecondary, fontSize: 12, padding: '16px 0' }}>Select a cancelled customer above to record or review a refund.</p>
+        ) : loadingRefunds || !refundSummary ? (
+          <p style={{ color: t.textSecondary, fontSize: 12, padding: '16px 0' }}>Loading refund details...</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4">
+              <div className="rounded-xl p-3" style={{ background: t.insetBg }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Total Paid</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: t.textPrimary }}>{rupee(refundSummary.total_paid)}</div>
+              </div>
+              <div className="rounded-xl p-3" style={{ background: t.insetBg }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Total Refunded</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#dc2626' }}>{rupee(refundSummary.total_refunded)}</div>
+              </div>
+              <div className="rounded-xl p-3" style={{ background: t.insetBg }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Remaining Refundable</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>{rupee(refundSummary.remaining_refundable)}</div>
+              </div>
+            </div>
 
-                {/* ── Refund entry form ────────────────────────────────────── */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end mb-4">
-                  <div>
-                    <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase' }}>Refund Amount (₹)</label>
-                    <input type="number" min={0} value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)}
-                      placeholder="Enter amount"
-                      style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase' }}>Refund Date/Time</label>
-                    <input type="datetime-local" value={refundDateTime} onChange={(e) => setRefundDateTime(e.target.value)}
-                      style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }} />
-                  </div>
-                  <div style={{ gridColumn: 'span 2 / span 2' }}>
-                    <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase' }}>Notes (optional)</label>
-                    <input type="text" value={refundNotes} onChange={(e) => setRefundNotes(e.target.value)}
-                      placeholder="e.g. Refunded via bank transfer"
-                      style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }} />
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <button type="button" onClick={handleSubmitRefund} disabled={submittingRefund}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 18px', height: 38, borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: submittingRefund ? 'not-allowed' : 'pointer', background: 'var(--brand-gradient)', color: '#fff', border: 'none', opacity: submittingRefund ? 0.6 : 1 }}>
-                      {submittingRefund ? 'Submitting...' : 'Add Refund Entry'}
-                    </button>
-                  </div>
-                </div>
+            {/* ── Refund entry form — Customer Name + Building Details are
+                read-only, auto-populated from the selected row; nothing to
+                pick since the whole page is already scoped to one
+                customer at a time. ──────────────────────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end mb-4">
+              <div>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase' }}>Customer Name</label>
+                <input type="text" value={`${selected.customer_name} (${selected.customer_code})`} readOnly disabled
+                  style={{ width: '100%', background: t.insetBg, border: `1px solid ${t.inputBorder}`, color: t.textSecondary, borderRadius: 10, padding: '9px 10px', fontSize: 12 }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase' }}>Building Details</label>
+                <input type="text" value={[selected.building_name, selected.wing_name, selected.flat_no].filter(Boolean).join(' • ') || '—'} readOnly disabled
+                  style={{ width: '100%', background: t.insetBg, border: `1px solid ${t.inputBorder}`, color: t.textSecondary, borderRadius: 10, padding: '9px 10px', fontSize: 12 }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase' }}>Refund Amount (₹)</label>
+                <input type="number" min={0} value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)}
+                  placeholder="Enter amount"
+                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase' }}>Refund Date/Time</label>
+                <input type="datetime-local" value={refundDateTime} onChange={(e) => setRefundDateTime(e.target.value)}
+                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase' }}>Payment Mode</label>
+                <select value={refundMode} onChange={(e) => setRefundMode(e.target.value)}
+                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }}>
+                  <option value="">--Select--</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="Online">Online</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div style={{ gridColumn: 'span 2 / span 2' }}>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase' }}>Notes (optional)</label>
+                <input type="text" value={refundNotes} onChange={(e) => setRefundNotes(e.target.value)}
+                  placeholder="e.g. Refunded via bank transfer"
+                  style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <button type="button" onClick={handleSubmitRefund} disabled={submittingRefund}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 18px', height: 38, borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: submittingRefund ? 'not-allowed' : 'pointer', background: 'var(--brand-gradient)', color: '#fff', border: 'none', opacity: submittingRefund ? 0.6 : 1 }}>
+                  {submittingRefund ? 'Submitting...' : 'Submit'}
+                </button>
+              </div>
+            </div>
 
-                <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, margin: '4px 0 8px' }}>Refund History</div>
-                <div className="master-table-scroll rounded-xl" style={{ border: `1px solid ${t.surfaceBorder}` }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
-                    <thead>
-                      <tr style={{ background: t.tableHeaderBg }}>
-                        {['Date/Time', 'Refunded Amount', 'Processed By', 'Notes'].map((h) => (
-                          <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
-                        ))}
+            <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, margin: '4px 0 8px' }}>Refund History</div>
+            <div className="master-table-scroll rounded-xl" style={{ border: `1px solid ${t.surfaceBorder}` }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+                <thead>
+                  <tr style={{ background: t.tableHeaderBg }}>
+                    {['Date/Time', 'Mode', 'Refunded Amount', 'Processed By', 'Notes'].map((h) => (
+                      <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {refundSummary.refunds.length === 0 ? (
+                    <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No refunds recorded yet.</td></tr>
+                  ) : (
+                    refundSummary.refunds.map((r) => (
+                      <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                        <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMYHM(r.refund_date)}</td>
+                        <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.mode_of_payment || '—'}</td>
+                        <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>{rupee(r.refunded_amount)}</td>
+                        <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.created_by_name || '—'}</td>
+                        <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary }}>{r.notes || '—'}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {refundSummary.refunds.length === 0 ? (
-                        <tr><td colSpan={4} style={{ padding: 20, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No refunds recorded yet.</td></tr>
-                      ) : (
-                        refundSummary.refunds.map((r) => (
-                          <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
-                            <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMYHM(r.refund_date)}</td>
-                            <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>{rupee(r.refunded_amount)}</td>
-                            <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.created_by_name || '—'}</td>
-                            <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary }}>{r.notes || '—'}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </Accordion>
-        </>
-      )}
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </Accordion>
     </div>
   );
 };

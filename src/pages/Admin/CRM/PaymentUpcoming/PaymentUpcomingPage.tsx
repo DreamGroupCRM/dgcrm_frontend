@@ -179,7 +179,7 @@ const PaymentUpcomingPage: React.FC = () => {
 
   // ── Client-side pagination over the filtered list. ───────────────────────
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(50);
   useEffect(() => { setPage(1); }, [categoryFilter, searchCustomer, searchEmployee, searchBuilding, listRows]);
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / limit));
   const safePage = Math.min(page, totalPages);
