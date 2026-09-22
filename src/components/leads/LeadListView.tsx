@@ -300,7 +300,7 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
                 <tr><td colSpan={10} style={{ padding: 28, textAlign: 'center' }}>No leads found.</td></tr>
               ) : (
                 pageRows.map((l) => (
-                  <tr key={l.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                  <tr key={l.id} className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
                     <td className="master-table-actions-td" style={{
                       width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH,
                       background: t.surfaceBg, borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',

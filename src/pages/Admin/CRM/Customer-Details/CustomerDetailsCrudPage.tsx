@@ -830,6 +830,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
   // ── Property Booking Details ──────────────────────────────────────────
   const [companyName, setCompanyName] = useState('');
+  // V_24.0 — Company -> Project -> Building strict cascade. This is a pure
+  // NARROWING filter over `buildings` (same technique as PaymentReceived/
+  // Approvals' Company filter) so a company reusing another company's
+  // free-text project name can never leak that other company's buildings
+  // into this picker. It is NOT the saved `company_name` (effectiveCompanyName
+  // below still derives that from the selected Building, unchanged) — it
+  // only exists to scope the Project/Building dropdowns while picking a unit.
+  const [companyFilter, setCompanyFilter] = useState('');
   const [projectName, setProjectName] = useState('');
   const [location, setLocation] = useState('');
   const [buildingName, setBuildingName] = useState('');
@@ -1080,7 +1088,38 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // specific building is selected, its real detail is fetched (ViewBuilding)
   // and THAT backs the Wing/Floor/Flat option lists and the ids actually
   // submitted below — not the list row's placeholders.
-  const projectNameOptions = useMemo(() => Array.from(new Set(buildings.map((b) => b.project_name))), [buildings]);
+  // V_24.0 — Company Name (business_company_name) is the top of the
+  // cascade. Company Name options are the distinct real Companies among
+  // fetched buildings; Project options are scoped to whichever company is
+  // picked (same narrowing technique used on Payment Received/Approvals).
+  const companyFilterOptions = useMemo(
+    () => Array.from(new Set(buildings.map((b) => b.business_company_name).filter((n): n is string => !!n))),
+    [buildings]
+  );
+  const projectNameOptions = useMemo(
+    () => Array.from(new Set(
+      buildings.filter((b) => !companyFilter || b.business_company_name === companyFilter).map((b) => b.project_name)
+    )),
+    [buildings, companyFilter]
+  );
+  // An existing customer's saved building/project was picked before this
+  // Company-level filter existed (or the company filter simply hasn't been
+  // touched yet on Edit) — auto-fill it from the already-selected building
+  // the moment it can be resolved, purely so Project/Building don't end up
+  // stuck disabled under a saved record. Never overwrites a value the user
+  // already picked.
+  useEffect(() => {
+    if (companyFilter || !buildingName) return;
+    const match = buildings.find((b) => b.building_name === buildingName && b.project_name === projectName);
+    if (match?.business_company_name) setCompanyFilter(match.business_company_name);
+  }, [buildings, buildingName, projectName, companyFilter]);
+  // Changing Company clears Project/Building (and everything under it) —
+  // a stale Project from a different company would otherwise silently stay
+  // selected and keep scoping Building even though it's no longer visible
+  // in the (now company-scoped) dropdown.
+  const handleCompanyFilterChange = (v: string) => {
+    setCompanyFilter(v); setProjectName(''); setBuildingName(''); setWingName(''); setFloorLabel(''); setFlatNo('');
+  };
   // V_23.0 item 4 — Building Name must only populate AFTER a Project is
   // selected. This previously fell back to every building across every
   // project when projectName was empty, so the Building dropdown showed
@@ -1089,9 +1128,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // matching the Wing/Floor fields right below, which are already gated
   // the same way on their own parent selection.
   const buildingsForProject = useMemo(
-    () => (projectName ? buildings.filter((b) => b.project_name === projectName) : [])
+    () => (projectName ? buildings.filter((b) => b.project_name === projectName
+      && (!companyFilter || b.business_company_name === companyFilter)) : [])
       .filter((b) => b.is_active || b.building_name === buildingName),
-    [buildings, projectName, buildingName]
+    [buildings, projectName, buildingName, companyFilter]
   );
   const buildingNameOptions = useMemo(() => Array.from(new Set(buildingsForProject.map((b) => b.building_name))), [buildingsForProject]);
   const selectedBuilding = useMemo(() => buildingsForProject.find((b) => b.building_name === buildingName), [buildingsForProject, buildingName]);
@@ -1859,15 +1899,24 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               shop                      :  8 fields -> 6 + 2
             (one less each when Purchase Parking is "No" and Parking No is
             hidden). Nothing here is position-dependent, so the fields keep
-            their existing order and behaviour.
-            Company Name is no longer a manual field here — it is derived
-            from the selected Building's own linked company (see
+            their existing order and behaviour (now 7/6/9-field combos with
+            the V_24.0 Company filter below, still packed 6-per-row).
+            The SAVED Company Name is still not a manual field — it is
+            derived from the selected Building's own linked company (see
             effectiveCompanyName below) and submitted the same as before, so
             every page/report that already filters or displays by
-            company_name keeps working unchanged. */}
+            company_name keeps working unchanged. The "Company" select
+            below is a separate, V_24.0 NARROWING filter only — it scopes
+            which Projects/Buildings show up, matching the strict
+            Company -> Project -> Building -> Unit hierarchy required
+            app-wide; it never overrides effectiveCompanyName. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          <Field t={t} label="Company" required error={errorFor('companyFilter')} fieldRef={setFieldRef('companyFilter') as React.Ref<HTMLDivElement>}>
+            <SearchableSelect t={t} placeholder="Select company" options={companyFilterOptions} value={companyFilter} disabled={isView}
+              onChange={handleCompanyFilterChange} />
+          </Field>
           <Field t={t} label="Project Name" required error={errorFor('projectName')} fieldRef={setFieldRef('projectName') as React.Ref<HTMLDivElement>}>
-            <SearchableSelect t={t} placeholder="Select project" options={projectNameOptions} value={projectName} disabled={isView}
+            <SearchableSelect t={t} placeholder={companyFilter ? 'Select project' : 'Select a Company first'} options={projectNameOptions} value={projectName} disabled={isView || !companyFilter}
               onChange={(v) => { setProjectName(v); setBuildingName(''); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
           </Field>
           <Field t={t} label="Building Name" required error={errorFor('buildingName')} fieldRef={setFieldRef('buildingName') as React.Ref<HTMLDivElement>}>

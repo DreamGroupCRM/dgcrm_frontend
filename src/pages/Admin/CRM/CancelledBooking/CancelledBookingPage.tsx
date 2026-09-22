@@ -198,9 +198,9 @@ const CancelledBookingPage: React.FC = () => {
       {/* ── Cancelled customers list ────────────────────────────────────── */}
       <div className="rounded-2xl mb-5" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, overflow: 'hidden' }}>
         <div className="master-table-scroll">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
+          <table className="master-table" style={{ minWidth: 800 }}>
             <thead>
-              <tr style={{ background: t.tableHeaderBg }}>
+              <tr className="master-table-header-gradient">
                 {['Customer', 'Building Details', 'Property Cost', 'Cancelled On', 'Reason'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
@@ -214,8 +214,9 @@ const CancelledBookingPage: React.FC = () => {
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} onClick={() => selectCustomer(r)}
+                    className="master-table-row-hover"
                     style={{
-                      borderTop: `1px solid ${t.divider}`, cursor: 'pointer',
+                      cursor: 'pointer',
                       background: selected?.id === r.id ? t.insetBg : 'transparent',
                     }}>
                     <td style={{ padding: '12px 14px', fontSize: 12, whiteSpace: 'nowrap' }}>
@@ -272,9 +273,9 @@ const CancelledBookingPage: React.FC = () => {
 
             <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, margin: '4px 0 8px' }}>Month-wise Payment History</div>
             <div className="master-table-scroll rounded-xl" style={{ border: `1px solid ${t.surfaceBorder}` }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+              <table className="master-table" style={{ minWidth: 640 }}>
                 <thead>
-                  <tr style={{ background: t.tableHeaderBg }}>
+                  <tr className="master-table-header-gradient">
                     {['Paid On', 'Installment Date', 'Payment Type', 'Mode', 'Amount'].map((h) => (
                       <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
@@ -287,7 +288,7 @@ const CancelledBookingPage: React.FC = () => {
                     <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No payments recorded.</td></tr>
                   ) : (
                     paymentHistory.map((p) => (
-                      <tr key={p.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                      <tr key={p.id} className="master-table-row-hover">
                         <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMY(p.paid_on)}</td>
                         <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? '—' : formatDMY(p.inst_date)}</td>
                         <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(p.payment_type)}</td>
@@ -378,9 +379,9 @@ const CancelledBookingPage: React.FC = () => {
 
             <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, margin: '4px 0 8px' }}>Refund History</div>
             <div className="master-table-scroll rounded-xl" style={{ border: `1px solid ${t.surfaceBorder}` }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+              <table className="master-table" style={{ minWidth: 720 }}>
                 <thead>
-                  <tr style={{ background: t.tableHeaderBg }}>
+                  <tr className="master-table-header-gradient">
                     {['Date/Time', 'Mode', 'Refunded Amount', 'Processed By', 'Notes'].map((h) => (
                       <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
@@ -391,7 +392,7 @@ const CancelledBookingPage: React.FC = () => {
                     <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No refunds recorded yet.</td></tr>
                   ) : (
                     refundSummary.refunds.map((r) => (
-                      <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                      <tr key={r.id} className="master-table-row-hover">
                         <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMYHM(r.refund_date)}</td>
                         <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.mode_of_payment || '—'}</td>
                         <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>{rupee(r.refunded_amount)}</td>

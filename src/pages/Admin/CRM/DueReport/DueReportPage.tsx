@@ -1076,7 +1076,7 @@ const DueReportPage: React.FC = () => {
                 </td></tr>
               ) : (
                 pagedDueRows.map((r) => (
-                  <tr key={r.key} style={{ borderTop: `1px solid ${t.divider}` }}>
+                  <tr key={r.key} className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
                     <td style={{ padding: '10px 12px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.customer_name}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code}</div>

@@ -181,14 +181,26 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
   // the same `buildings` list already fetched for the Building dropdown,
   // not a new endpoint.
   const [draftProjectName, setDraftProjectName] = useState('');
+  // V_24.0 — Company -> Project -> Building strict cascade, same technique
+  // as PaymentReceivedPage: Company is Building.business_company_name
+  // (real Company Master link), Project stays disabled until a Company is
+  // picked and only lists that company's projects, Building stays disabled
+  // until a Project is picked and is scoped to both.
   const projectNameOptions = useMemo(
-    () => Array.from(new Set(buildings.filter((b) => b.is_active && b.project_name).map((b) => b.project_name))),
-    [buildings]
+    () => Array.from(new Set(
+      buildings
+        .filter((b) => b.is_active && b.project_name && (!draftCompany || b.business_company_name === draftCompany))
+        .map((b) => b.project_name)
+    )),
+    [buildings, draftCompany]
   );
   const buildingOptionsForProject = useMemo(
-    () => buildings.filter((b) => b.is_active && b.project_name === draftProjectName),
-    [buildings, draftProjectName]
+    () => buildings.filter((b) => b.is_active && b.project_name === draftProjectName
+      && (!draftCompany || b.business_company_name === draftCompany)),
+    [buildings, draftProjectName, draftCompany]
   );
+  // Changing Company clears Project/Building/Wing/Flat.
+  const handleCompanyChange = (v: string) => { setDraftCompany(v); setDraftProjectName(''); setDraftBuildingName(''); setDraftWingName(''); setDraftFlatNo(''); };
   // Changing Project clears Building (and everything below it) — a stale
   // Building from a different project would otherwise silently stay
   // selected and keep filtering by it even though it's no longer visible
@@ -481,10 +493,11 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
         <div className="pa-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-3.5">
           <FilterSelect t={t} label="Received By" value={draftReceivedBy} onChange={setDraftReceivedBy}
             placeholder="--All--" options={employeeNameOptions.map((n) => ({ value: n, label: n }))} />
-          <FilterSelect t={t} label="Company" value={draftCompany} onChange={setDraftCompany}
+          <FilterSelect t={t} label="Company" value={draftCompany} onChange={handleCompanyChange}
             placeholder="--Select--" options={companyNameOptions.map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Project" value={draftProjectName} onChange={handleProjectChange}
-            placeholder="--Select--" options={projectNameOptions.map((n) => ({ value: n, label: n }))} />
+            placeholder={draftCompany ? '--Select--' : 'Select a Company first'} disabled={!draftCompany}
+            options={projectNameOptions.map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Building Name" value={draftBuildingName} onChange={handleBuildingChange}
             placeholder={draftProjectName ? '--Select--' : 'Select a Project first'} disabled={!draftProjectName}
             options={buildingOptionsForProject.map((b) => b.building_name).filter((v, i, arr) => arr.indexOf(v) === i).map((n) => ({ value: n, label: n }))} />
@@ -589,7 +602,7 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                 <tr><td colSpan={12} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments are waiting for approval.</td></tr>
               ) : (
                 rows.map((r) => (
-                  <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                  <tr key={r.id} className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
                     <td style={{ padding: '10px 12px' }}>
                       <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelectRow(r.id)} style={{ cursor: 'pointer' }} />
                     </td>

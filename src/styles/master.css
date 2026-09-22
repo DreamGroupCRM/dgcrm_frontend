@@ -207,6 +207,25 @@ html.dark .master-table td {
   border-color: #2f2f2f;
 }
 
+/* ── Shared data-row hover — V_24.0 ───────────────────────────────────────
+   Building List's own row hover (theme.ts's tableRowHover: light #efebe9 /
+   dark #0d0d0d, applied there via per-row onMouseEnter/onMouseLeave since
+   its zebra-striped rows carry an inline `background` that a plain CSS
+   :hover can never win against) — centralized here as one reusable class so
+   Employee/Customer/Payment Due/Received/Approval/Upcoming/Leads/Cancelled
+   Booking can all opt in with a single className instead of copy-pasting
+   the JS handlers. `!important` is required for the same reason Building
+   List needed JS: it must beat any inline `background` a row already sets
+   (zebra stripe, selected-row highlight, status tint). Header rows never
+   get this class — only tbody data rows. */
+.master-table-row-hover:hover {
+  background: #efebe9 !important;
+}
+
+html.dark .master-table-row-hover:hover {
+  background: #0d0d0d !important;
+}
+
 /* ── Shared flat color palette — a small named set of solid colors
    (--grad-sky/-purple/-green/-teal/-grey) some KPI-style call sites still
    opt into directly, alongside --grad-table-header below. */

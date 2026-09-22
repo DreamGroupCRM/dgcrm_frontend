@@ -520,6 +520,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                     const rowBg = idx % 2 === 0 ? t.surfaceBg : t.tableHeaderBg;
                     return (
                       <tr key={emp.id || emp.employee_code || idx}
+                        className="master-table-row-hover"
                         style={{
                           background: isInactive ? (isDark ? '#1a1a1e' : '#f1f5f9') : rowBg,
                           borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#d1d5db'}`,

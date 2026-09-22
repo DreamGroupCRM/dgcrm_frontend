@@ -1288,7 +1288,7 @@ const CustomerDetailsListPage: React.FC = () => {
                 <tr><td colSpan={12} className="cust-empty-state">No customers found.</td></tr>
               ) : (
                 pageRows.map((c) => (
-                  <tr key={c.id} className="cust-divider-top">
+                  <tr key={c.id} className="cust-divider-top master-table-row-hover">
                     <td style={{ padding: '10px 12px' }}>
                       <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)}
                         disabled={c.status !== 'active'} title={c.status !== 'active' ? "Inactive customers can't be assigned" : undefined} />

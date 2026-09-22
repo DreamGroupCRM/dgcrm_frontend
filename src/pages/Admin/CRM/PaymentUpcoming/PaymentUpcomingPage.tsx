@@ -327,7 +327,7 @@ const PaymentUpcomingPage: React.FC = () => {
                 </td></tr>
               ) : (
                 pagedRows.map((r, i) => (
-                  <tr key={`${r.customer_id}-${r.due_date}-${r.payment_for}-${i}`} style={{ borderTop: `1px solid ${t.divider}` }}>
+                  <tr key={`${r.customer_id}-${r.due_date}-${r.payment_for}-${i}`} className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
                     <td style={{ padding: '10px 12px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.customer_name}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code}</div>
