@@ -63,12 +63,28 @@
 }
 .cp-brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .cp-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.cp-brand-line1 {
   font-size: 14px;
   font-weight: 800;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--cp-text-primary, #111827);
+  color: var(--brand-ink, #7c3aed);
+}
+.cp-brand-line2 {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--cp-text-secondary, #6b7280);
 }
 .cp-drawer-close {
   display: inline-flex;
@@ -144,15 +160,78 @@
   padding: 4px;
   flex-shrink: 0;
 }
-.cp-header-title {
-  font-size: 14px;
+/* ── Header greeting — "Welcome, <name>" + the property switcher right
+   under it. min-width:0 lets the name ellipsis instead of pushing the
+   avatar/theme-toggle/logout off the right edge on a narrow phone. */
+.cp-header-greet {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.cp-header-greet-name {
+  font-size: 13px;
   font-weight: 800;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--cp-text-primary, #111827);
 }
-.cp-header-actions { margin-left: auto; display: flex; align-items: center; gap: 7px; min-width: 0; }
+
+.cp-header-actions { margin-left: auto; display: flex; align-items: center; gap: 7px; min-width: 0; flex-shrink: 0; }
+
+/* ── Avatar — initials circle next to the greeting, same brand gradient
+   every primary action in the portal already uses. */
+.cp-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-gradient, linear-gradient(135deg, #7c3aed, #db2777));
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+/* ── Theme toggle — a sun/moon switch, same on/off idea as the staff
+   header's icon toggle but drawn as a slider to match the portal's own
+   reference screens. `aria-checked` (true = dark) drives every state, so
+   there's no separate JS-computed class to keep in sync. */
+.cp-theme-toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--cp-surface-border, #e5e7eb);
+  background: var(--cp-inset-bg, #f3f4f6);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cp-theme-toggle-sun { color: #d97706; flex-shrink: 0; }
+.cp-theme-toggle-moon { color: var(--cp-text-secondary, #6b7280); flex-shrink: 0; }
+.cp-theme-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.18s ease;
+}
+.cp-theme-toggle[aria-checked="true"] { background: var(--brand-gradient, linear-gradient(135deg, #7c3aed, #db2777)); border-color: transparent; }
+.cp-theme-toggle[aria-checked="true"] .cp-theme-toggle-knob { transform: translateX(18px); }
+.cp-theme-toggle[aria-checked="true"] .cp-theme-toggle-moon { color: #fff; }
 
 .cp-header-btn {
   display: inline-flex;
@@ -172,23 +251,25 @@
 .cp-header-btn-danger { color: #dc2626; border-color: rgba(220, 38, 38, 0.32); }
 .cp-header-btn-text { display: none; } /* label appears from sm up */
 
-/* ── Booking switcher ────────────────────────────────────────────────── */
+/* ── Booking / property switcher — sits right under the header greeting
+   name as plain subtext (single property) or a small inline dropdown
+   trigger (several properties), rather than a standalone colored pill. */
 .cp-booking-single,
 .cp-booking-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  background: var(--brand-gradient, linear-gradient(135deg, #7c3aed, #db2777));
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--cp-text-secondary, #6b7280);
+  font-size: 11px;
+  font-weight: 600;
   font-family: inherit;
   white-space: nowrap;
 }
 .cp-booking-trigger { cursor: pointer; }
+.cp-booking-trigger:hover { color: var(--brand-ink, #7c3aed); }
 .cp-booking-code { letter-spacing: 0.2px; }
 .cp-rotate { transform: rotate(180deg); }
 
@@ -252,7 +333,7 @@
 }
 .cp-empty-error { color: #dc2626; }
 
-/* ── Page furniture shared by all five pages ─────────────────────────── */
+/* ── Page furniture shared by all three pages ────────────────────────── */
 .cp-page-head { margin-bottom: 12px; }
 .cp-page-title { font-size: 17px; font-weight: 800; margin: 0; color: var(--cp-text-primary, #111827); }
 .cp-page-sub { font-size: 12px; margin: 3px 0 0; color: var(--cp-text-secondary, #6b7280); }
@@ -287,6 +368,81 @@
   margin-bottom: 2px;
 }
 .cp-field-value { font-size: 13px; font-weight: 600; color: var(--cp-text-primary, #111827); word-break: break-word; }
+
+/* ── Two-card row — Personal Details next to Relationship Manager on
+   Home. One column on a phone (each card still full-width and readable),
+   two from lg up where there's room for both side by side; the sidebar
+   itself only goes from a drawer to a permanent rail at the same
+   breakpoint, so this keeps the same "enough width now" threshold as the
+   rest of the shell rather than inventing a new one. */
+.cp-row-2 { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.cp-row-2 > .cp-card { margin-bottom: 0; }
+
+/* Photo + name/subtitle header inside Personal Details / Relationship
+   Manager — shared by both so a customer's own card and their manager's
+   read as the same kind of thing. */
+.cp-person-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.cp-avatar-photo { width: 60px; height: 60px; border-radius: 14px; object-fit: cover; flex-shrink: 0; }
+.cp-person-name { font-size: 14.5px; font-weight: 800; color: var(--cp-text-primary, #111827); }
+.cp-person-sub { font-size: 11px; color: var(--cp-text-secondary, #6b7280); line-height: 1.6; margin-top: 2px; }
+
+.cp-rm-contact { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.cp-rm-contact-item { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--cp-text-primary, #111827); }
+
+/* ── Document tiles — Home's "My Documents", a compact icon+label row
+   instead of the old standalone Documents page's big preview thumbnails
+   (there is far less room for them now that they share the page with
+   three other cards). */
+.cp-doc-tiles { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.cp-doc-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--cp-surface-border, #e5e7eb);
+  background: var(--cp-inset-bg, #f9fafb);
+}
+.cp-doc-tile-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cp-surface-bg, #fff);
+  border: 1px solid var(--cp-surface-border, #e5e7eb);
+}
+.cp-doc-tile-icon img { width: 100%; height: 100%; object-fit: cover; }
+.cp-doc-tile-name { font-size: 12px; font-weight: 700; color: var(--cp-text-primary, #111827); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cp-doc-tile-action {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  color: var(--brand-ink, #7c3aed);
+  cursor: pointer;
+}
+.cp-doc-tile-action:hover { text-decoration: underline; }
+.cp-doc-tile-missing { display: block; margin-top: 2px; font-size: 11px; color: var(--cp-text-secondary, #6b7280); }
+.cp-doc-tile-dl {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid var(--cp-surface-border, #e5e7eb);
+  background: var(--cp-surface-bg, #fff);
+  color: var(--brand-ink, #7c3aed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
 
 /* Summary stat tiles. */
 .cp-stats { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px; }
@@ -372,29 +528,6 @@
 }
 .cp-btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
 
-/* Documents. */
-.cp-docs { display: grid; grid-template-columns: 1fr; gap: 12px; }
-.cp-doc {
-  border: 1px solid var(--cp-surface-border, #e5e7eb);
-  border-radius: 14px;
-  overflow: hidden;
-  background: var(--cp-surface-bg, #fff);
-  display: flex;
-  flex-direction: column;
-}
-.cp-doc-preview {
-  height: 132px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--cp-inset-bg, #f3f4f6);
-  overflow: hidden;
-}
-.cp-doc-preview img { width: 100%; height: 100%; object-fit: cover; }
-.cp-doc-body { padding: 11px 12px; display: flex; flex-direction: column; gap: 8px; }
-.cp-doc-name { font-size: 12.5px; font-weight: 800; color: var(--cp-text-primary, #111827); }
-.cp-doc-status { font-size: 11px; color: var(--cp-text-secondary, #6b7280); }
-
 /* Modal (change password, receipt preview). */
 .cp-modal-scrim {
   position: fixed;
@@ -435,7 +568,7 @@
   .cp-header-btn-text { display: inline; }
   .cp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cp-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .cp-docs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cp-doc-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ── md ≥ 768 ────────────────────────────────────────────────────────── */
@@ -443,7 +576,7 @@
   .cp-page-title { font-size: 19px; }
   .cp-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .cp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .cp-docs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cp-doc-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* ── lg ≥ 992 — the sidebar becomes a permanent rail ─────────────────── */
@@ -469,7 +602,10 @@
   .cp-scrim { display: none; }
   .cp-collapse-btn { display: flex; }
 
-  .cp-docs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .cp-doc-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  /* Personal Details next to Relationship Manager — see .cp-row-2's own
+     comment for why this matches the sidebar's own drawer->rail point. */
+  .cp-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ── xl ≥ 1200 ───────────────────────────────────────────────────────── */
@@ -480,7 +616,7 @@
 
 /* ── xxl ≥ 1400 ──────────────────────────────────────────────────────── */
 @media (min-width: 1400px) {
-  .cp-docs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .cp-doc-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .cp-stat-value { font-size: 19px; }
 }
 

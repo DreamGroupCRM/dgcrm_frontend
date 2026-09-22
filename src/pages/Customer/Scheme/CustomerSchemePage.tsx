@@ -64,67 +64,92 @@ const SummaryTable: React.FC<{ heading: string; rows: CustomerSchemeSummaryRow[]
   </div>
 );
 
+// One continuous numbered table across BOTH phases (rather than two
+// separate A/B tables) — matches the reference screenshot, and reads more
+// like a real payment calendar than two disconnected lists. Collapsed to
+// a short preview by default (a customer with a 71-installment schedule
+// does not need every row rendered on page load) with a "View all N
+// installments" toggle beneath it.
+const SCHEDULE_PREVIEW_ROWS = 8;
+
 const ScheduleTable: React.FC<{
-  section: 'A' | 'B'; rows: CustomerScheduleRow[]; total: number; totalLabel: string; gridRows?: DueGridRow[];
-}> = ({ section, rows, total, totalLabel, gridRows }) => (
-  <div style={{ marginBottom: 16 }}>
-    <div className="cp-table-wrap">
-      <table className="cp-table">
-        <thead>
-          <tr>
-            <th style={{ width: 56 }}>Sr No</th>
-            <th>Date</th>
-            <th>({section}) Mode Of Payment</th>
-            <th className="cp-num">Amount</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
-            <tr><td colSpan={5} style={{ textAlign: 'center', padding: 18 }}>No installments in this phase.</td></tr>
-          ) : rows.map((r, i) => {
-            const grid = gridRows?.[i];
-            const settled = !!grid?.settled_via_extra_pay;
-            const status = STATUS_META[(grid?.status ?? 'upcoming') as keyof typeof STATUS_META] ?? STATUS_META.upcoming;
-            const Icon = status.icon;
-            // Part-paid: some of this installment is covered by leftover
-            // advance credit, so the full scheduled amount is no longer
-            // what is owed.
-            const partial = !settled && typeof grid?.due_amount === 'number'
-              && grid.due_amount > 0 && grid.due_amount < r.amount;
-            return (
-              <tr key={r.sr}>
-                <td style={{ textDecoration: settled ? 'line-through' : undefined }}>{r.sr}</td>
-                <td className="cp-nowrap" style={{ textDecoration: settled ? 'line-through' : undefined }}>
-                  {r.date ? formatDate(r.date) : '—'}
-                </td>
-                <td style={{ textDecoration: settled ? 'line-through' : undefined }}>{r.label}</td>
-                <td className="cp-num" style={{ fontWeight: 600 }}>
-                  {rupee(r.amount)}
-                  {partial && (
-                    <div style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626' }}>
-                      {rupee(grid!.due_amount)} due
-                    </div>
-                  )}
-                </td>
-                <td>
-                  <span className="cp-chip" style={{ background: status.bg, color: status.color }}>
-                    <Icon size={12} />{settled ? 'Paid (Advance)' : status.label}
-                  </span>
-                </td>
+  rows: CustomerScheduleRow[]; gridRows: DueGridRow[]; grandTotal: number;
+}> = ({ rows, gridRows, grandTotal }) => {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? rows : rows.slice(0, SCHEDULE_PREVIEW_ROWS);
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div className="cp-table-wrap">
+        <table className="cp-table">
+          <thead>
+            <tr>
+              <th style={{ width: 56 }}>Sr No</th>
+              <th>Installment Date</th>
+              <th>Payment Description</th>
+              <th className="cp-num">Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 18 }}>No installments scheduled.</td></tr>
+            ) : visible.map((r, i) => {
+              const grid = gridRows[i];
+              const settled = !!grid?.settled_via_extra_pay;
+              const status = STATUS_META[(grid?.status ?? 'upcoming') as keyof typeof STATUS_META] ?? STATUS_META.upcoming;
+              const Icon = status.icon;
+              // Part-paid: some of this installment is covered by leftover
+              // advance credit, so the full scheduled amount is no longer
+              // what is owed.
+              const partial = !settled && typeof grid?.due_amount === 'number'
+                && grid.due_amount > 0 && grid.due_amount < r.amount;
+              return (
+                <tr key={r.sr}>
+                  <td style={{ textDecoration: settled ? 'line-through' : undefined }}>{r.sr}</td>
+                  <td className="cp-nowrap" style={{ textDecoration: settled ? 'line-through' : undefined }}>
+                    {r.date ? formatDate(r.date) : '—'}
+                  </td>
+                  <td style={{ textDecoration: settled ? 'line-through' : undefined }}>{r.label}</td>
+                  <td className="cp-num" style={{ fontWeight: 600 }}>
+                    {rupee(r.amount)}
+                    {partial && (
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626' }}>
+                        {rupee(grid!.due_amount)} due
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    <span className="cp-chip" style={{ background: status.bg, color: status.color }}>
+                      <Icon size={12} />{settled ? 'Paid (Advance)' : status.label}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+            {rows.length > 0 && (
+              <tr>
+                <td colSpan={3} style={{ fontWeight: 800 }}>Grand Total (A + B)</td>
+                <td className="cp-num" style={{ fontWeight: 800 }}>{rupee(grandTotal)}</td>
+                <td />
               </tr>
-            );
-          })}
-          <tr>
-            <td colSpan={3} style={{ fontWeight: 800 }}>{totalLabel}</td>
-            <td className="cp-num" style={{ fontWeight: 800 }}>{rupee(total)}</td>
-            <td />
-          </tr>
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {rows.length > SCHEDULE_PREVIEW_ROWS && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, flexWrap: 'wrap', gap: 8 }}>
+          <span style={{ fontSize: 11.5, color: 'var(--cp-text-secondary, #6b7280)' }}>
+            Showing {visible.length} of {rows.length} installments
+          </span>
+          <button type="button" className="cp-btn" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Show less' : `View all ${rows.length} installments`}
+          </button>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 const CustomerSchemePage: React.FC = () => {
   const { selectedId } = useCustomerPortal();
@@ -161,12 +186,16 @@ const CustomerSchemePage: React.FC = () => {
     return () => { cancelled = true; };
   }, [selectedId]);
 
-  // The due grid is one flat list covering both phases in order, while the
-  // schedule is split into A and B — so B's rows start where A's end.
-  const gridForB = useMemo(
-    () => gridRows.slice(scheme?.scheduleA.length ?? 0),
-    [gridRows, scheme]
-  );
+  // One continuous numbered list across both phases — B's Sr No continues
+  // where A's ends, matching gridRows, which is already one flat list
+  // covering both phases in the same order.
+  const allScheduleRows = useMemo(() => {
+    if (!scheme) return [];
+    return [
+      ...scheme.scheduleA,
+      ...scheme.scheduleB.map((r) => ({ ...r, sr: scheme.scheduleA.length + r.sr })),
+    ];
+  }, [scheme]);
 
   if (loading) return <div className="cp-center"><CircularProgress size={28} /></div>;
   if (error || !scheme) return <div className="cp-empty cp-empty-error">We could not load your EMI scheme. Please try again.</div>;
@@ -200,15 +229,10 @@ const CustomerSchemePage: React.FC = () => {
       </AccordionSection>
 
       <AccordionSection
-        theme={t} icon={<MdEventNote size={16} />} title="EMI Schedule" gradient="var(--brand-gradient)"
+        theme={t} icon={<MdEventNote size={16} />} title={`EMI Schedule (${allScheduleRows.length})`} gradient="var(--brand-gradient)"
         open={openSchedule} onToggle={() => setOpenSchedule((v) => !v)}
       >
-        <ScheduleTable section="A" rows={scheme.scheduleA} total={scheme.totalA} totalLabel="(A) Total Before Possession" gridRows={gridRows} />
-        <ScheduleTable section="B" rows={scheme.scheduleB} total={scheme.totalB} totalLabel="(B) Total After Possession" gridRows={gridForB} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 800 }}>
-          <span>Grand Total (A + B)</span>
-          <span>{rupee(scheme.grandTotal)}</span>
-        </div>
+        <ScheduleTable rows={allScheduleRows} gridRows={gridRows} grandTotal={scheme.grandTotal} />
       </AccordionSection>
     </>
   );

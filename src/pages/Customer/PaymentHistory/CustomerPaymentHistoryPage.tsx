@@ -1,18 +1,29 @@
-// Payment History — the money summary (cost / paid / pending) followed by
-// every payment recorded against this booking, newest first.
+// Payment History & Receipt — every payment recorded against this booking,
+// newest first, in one combined table (V_24.0 merged this with what used
+// to be a separate Payment Receipt page/section).
 //
-// Unapproved payments ARE listed: the customer has handed the money over
-// and needs to see that it was recorded. They are chipped "Pending
-// Approval" so it is clear the office has not confirmed it yet — which is
-// also why no receipt is offered for them (see the Payment Receipt page).
+// Every payment is listed regardless of approval: the customer handed the
+// money over and needs to see that it was recorded. Only an APPROVED
+// payment gets a real receipt — the backend only builds one for an
+// approved transaction (getPaymentReceipt with isAdmin=false — see
+// customerPortal.service.ts's getMyPaymentReceipt), so a pending row shows
+// "Pending Approval" in place of the receipt number and the View/Download
+// actions rather than a control that can only fail.
 import React, { useEffect, useMemo, useState } from 'react';
 import { CircularProgress } from '@mui/material';
-import { MdAccountBalanceWallet, MdCheckCircle, MdHourglassEmpty, MdHistory, MdPayments, MdTrendingUp } from 'react-icons/md';
+import { toast } from '@/utils/toast';
+import {
+  MdAccountBalanceWallet, MdCheckCircle, MdHourglassEmpty, MdHistory, MdPayments,
+  MdTrendingUp, MdPictureAsPdf, MdVisibility, MdDownload,
+} from 'react-icons/md';
 import { formatDate } from '../../../utils';
 import { paymentForLabel } from '../../../services/paymentService';
 import {
-  fetchMyBookingPayments, fetchMyBookingDueGrid, PortalPaymentRow,
+  fetchMyBookingPayments, fetchMyBookingDueGrid, fetchMyPaymentReceipt, PortalPaymentRow,
 } from '../../../services/customerPortalService';
+import { PaymentReceiptViewModal } from '../../../components/common/PaymentReceiptViewModal';
+import { exportPaymentReceiptPdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport';
+import { PaymentReceipt } from '../../../types/index';
 import { useCustomerPortal } from '../CustomerPortalContext';
 import { PageHead, Card, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
 
@@ -22,6 +33,8 @@ const CustomerPaymentHistoryPage: React.FC = () => {
   const [totals, setTotals] = useState<BookingTotals | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
 
   useEffect(() => {
     if (selectedId == null) return;
@@ -54,20 +67,34 @@ const CustomerPaymentHistoryPage: React.FC = () => {
     [rows]
   );
 
+  // Both View and Download need the same fetch — the list row does not
+  // carry enough to render or print a receipt, only the receipt endpoint
+  // does.
+  const withReceipt = async (id: number, use: (data: PaymentReceipt) => void) => {
+    setBusyId(id);
+    try {
+      use(await fetchMyPaymentReceipt(id));
+    } catch {
+      toast.error('We could not open this receipt. Please try again.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (loading) return <div className="cp-center"><CircularProgress size={28} /></div>;
   if (error) return <div className="cp-empty cp-empty-error">We could not load your payment history. Please try again.</div>;
 
   return (
     <>
-      <PageHead title="Payment History" subtitle="Everything you have paid towards this property" />
+      <PageHead title="Payment History & Receipt" subtitle="View your payment transactions and approved receipts" />
 
       <div className="cp-stats">
-        <Stat icon={<MdTrendingUp size={19} />} label="Total Cost" value={rupee(totals?.totalCost)} gradient={STAT_GRADIENTS.total} />
-        <Stat icon={<MdAccountBalanceWallet size={19} />} label="Amount Paid" value={rupee(totals?.paid)} gradient={STAT_GRADIENTS.paid} />
-        <Stat icon={<MdHourglassEmpty size={19} />} label="Pending Amount" value={rupee(totals?.pending)} gradient={STAT_GRADIENTS.pending} />
+        <Stat icon={<MdTrendingUp size={19} />} label="Total Flat Amount" value={rupee(totals?.totalCost)} gradient={STAT_GRADIENTS.total} />
+        <Stat icon={<MdAccountBalanceWallet size={19} />} label="Total Amount Paid" value={rupee(totals?.paid)} gradient={STAT_GRADIENTS.paid} />
+        <Stat icon={<MdHourglassEmpty size={19} />} label="Total Amount Pending" value={rupee(totals?.pending)} gradient={STAT_GRADIENTS.pending} />
       </div>
 
-      <Card icon={<MdHistory size={16} />} title={`Payment History (${sorted.length})`}>
+      <Card icon={<MdHistory size={16} />} title={`Payment History & Receipts (${sorted.length})`}>
         {sorted.length === 0 ? (
           <div className="cp-empty">No payments have been recorded yet.</div>
         ) : (
@@ -75,20 +102,22 @@ const CustomerPaymentHistoryPage: React.FC = () => {
             <table className="cp-table">
               <thead>
                 <tr>
-                  <th>Receipt #</th>
+                  <th>Receipt No</th>
                   <th>Payment For</th>
                   <th className="cp-num">Amount</th>
-                  <th>Mode</th>
+                  <th>Payment Mode</th>
                   <th>Payment Date</th>
-                  <th>Status</th>
+                  <th>Approval Status</th>
+                  <th>Receipt Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {sorted.map((r) => (
                   <tr key={r.id}>
                     {/* V_23.0 item 2 — blank until an admin approves the
-                        payment; the Status column already shows that. */}
-                    <td className="cp-nowrap" style={{ fontWeight: 700 }}>{r.receipt_number || 'Pending'}</td>
+                        payment; the Approval Status column already shows
+                        why. */}
+                    <td className="cp-nowrap" style={{ fontWeight: 700 }}>{r.receipt_number || '—'}</td>
                     <td>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <MdPayments size={13} /> {paymentForLabel(r.payment_type)}
@@ -106,6 +135,29 @@ const CustomerPaymentHistoryPage: React.FC = () => {
                         {r.is_approved ? 'Approved' : 'Pending Approval'}
                       </span>
                     </td>
+                    <td>
+                      {r.is_approved ? (
+                        <div className="cp-btn-row">
+                          <MdPictureAsPdf size={18} style={{ color: '#dc2626', flexShrink: 0 }} />
+                          <button
+                            type="button" className="cp-btn" disabled={busyId === r.id}
+                            onClick={() => withReceipt(r.id, setReceipt)}
+                          >
+                            <MdVisibility size={14} /> View
+                          </button>
+                          <button
+                            type="button" className="cp-btn cp-btn-primary" disabled={busyId === r.id}
+                            onClick={() => withReceipt(r.id, exportPaymentReceiptPdf)}
+                          >
+                            <MdDownload size={14} /> Download
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="cp-chip" style={{ background: 'rgba(107,114,128,0.14)', color: 'var(--cp-text-secondary, #6b7280)' }}>
+                          <MdHourglassEmpty size={12} /> Pending Approval
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -113,6 +165,18 @@ const CustomerPaymentHistoryPage: React.FC = () => {
           </div>
         )}
       </Card>
+
+      <div className="cp-empty" style={{ marginTop: 12, textAlign: 'left', padding: '12px 16px' }}>
+        Receipts are generated only after payment approval.
+      </div>
+
+      {receipt && (
+        <PaymentReceiptViewModal
+          data={receipt}
+          onClose={() => setReceipt(null)}
+          onDownload={() => exportPaymentReceiptPdf(receipt)}
+        />
+      )}
     </>
   );
 };

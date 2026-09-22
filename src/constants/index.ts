@@ -97,7 +97,14 @@ export const ROUTES = {
   },
 
   // Customer First Login — dedicated portal, separate from the staff LOGIN
-  // above. The portal's own shell and five sections live under these.
+  // above. The portal's own shell and three sections live under these.
+  // V_24.0 — reworked from five sections down to three: Payment Receipt
+  // merged into Payment History (one combined table, matching the office's
+  // own Payment Received page), and My Documents moved onto Home instead of
+  // its own page. PAYMENT_RECEIPT/DOCUMENTS are kept as route STRINGS
+  // (rather than deleted) purely so CustomerRoutes.tsx can still redirect
+  // anyone with an old link/bookmark to where that content actually lives
+  // now — nothing renders at those paths as their own page any more.
   CUSTOMER: {
     ROOT: '/customer',
     LOGIN: '/customer/login',

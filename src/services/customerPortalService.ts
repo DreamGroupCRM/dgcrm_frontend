@@ -41,7 +41,7 @@ export interface PortalBookingDetail {
   email: string | null;
   address: string | null;
   date_of_birth: string | null;
-  building: { id: number; name: string } | null;
+  building: { id: number; name: string; project_name: string | null } | null;
   wing: { id: number; name: string } | null;
   // flat_type/area_sqft ride along on the relation — they are what the
   // portal's "Flat Type" and "Area" fields read, and they live on the Flat
@@ -74,7 +74,22 @@ export interface PortalBookingDetail {
   installment_amount1: number;
   possession_granted: boolean;
   company_name: string | null;
+  booking_date: string | null;
   secondary_numbers: { id: number; country_code: string; number: string }[];
+  // V_24.0 — Home's "Relationship Manager" card. null when this booking has
+  // no assigned employee yet (never an error — see the backend's
+  // findAssignedEmployeeForBooking comment).
+  assigned_employee: {
+    id: number;
+    employee_code: string | null;
+    name: string;
+    photo_url: string | null;
+    mobile_country_code: string | null;
+    mobile_number: string | null;
+    email: string | null;
+    designation: string | null;
+    department: string | null;
+  } | null;
 }
 
 export interface PortalPaymentRow {

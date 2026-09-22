@@ -1,9 +1,10 @@
 // ==========================================
 // DGCRM — CUSTOMER PORTAL SHELL
 // ==========================================
-// The customer's own shell: a collapsible sidebar with the five sections,
-// a header carrying the booking switcher, Change Password and Logout, and
-// the page itself in an Outlet.
+// The customer's own shell: a collapsible sidebar with the three sections,
+// a header carrying the "Welcome, <name>" greeting + property switcher, a
+// theme toggle, Change Password and Logout, and the page itself in an
+// Outlet.
 //
 // Deliberately NOT the staff DashboardLayout — that sidebar carries every
 // Admin/Employee module, none of which a customer may open.
@@ -19,10 +20,11 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { CircularProgress } from '@mui/material';
 import {
   MdMenu, MdClose, MdLogout, MdLockOutline, MdHome, MdHistory,
-  MdReceiptLong, MdEventNote, MdFolderOpen, MdKeyboardArrowDown, MdApartment,
+  MdEventNote, MdKeyboardArrowDown, MdApartment, MdLightMode, MdDarkMode,
 } from 'react-icons/md';
-import { useAppDispatch } from '../../hooks';
+import { useAppDispatch, useAppSelector } from '../../hooks';
 import { logoutThunk } from '../../redux/thunks/authThunks';
+import { toggleTheme } from '../../redux/slices/themeSlice';
 import { ROUTES } from '../../constants';
 import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import Logo from '../../components/ui/Logo';
@@ -31,13 +33,44 @@ import { ensureFileToken } from '../../services/fileAccessService';
 import { CustomerPortalProvider, useCustomerPortal, bookingLabel } from './CustomerPortalContext';
 import './CustomerPortal.css';
 
+// V_24.0 — five sections reduced to three: Payment Receipt merged into
+// Payment History (see CustomerPaymentHistoryPage's own header comment),
+// My Documents moved onto Home. Old links to either still resolve (see
+// CustomerRoutes.tsx's redirects) — they just no longer have their own
+// nav entry.
 const NAV_ITEMS = [
   { to: ROUTES.CUSTOMER.HOME, label: 'Home', icon: MdHome },
-  { to: ROUTES.CUSTOMER.PAYMENT_HISTORY, label: 'Payment History', icon: MdHistory },
-  { to: ROUTES.CUSTOMER.PAYMENT_RECEIPT, label: 'Payment Receipt', icon: MdReceiptLong },
-  { to: ROUTES.CUSTOMER.SCHEME, label: 'EMI Schedule & Scheme', icon: MdEventNote },
-  { to: ROUTES.CUSTOMER.DOCUMENTS, label: 'My Documents', icon: MdFolderOpen },
+  { to: ROUTES.CUSTOMER.PAYMENT_HISTORY, label: 'Payment History & Receipt', icon: MdHistory },
+  { to: ROUTES.CUSTOMER.SCHEME, label: 'EMI Scheme & Schedule', icon: MdEventNote },
 ] as const;
+
+// First initial + (middle initial, else last initial) — "Muzammil F Khan"
+// -> "MF", a plain "Rohit" (no middle/last on file) -> "R". Read off the
+// structured name fields rather than parsed from the joined display
+// string, so it never depends on how many words that string happens to
+// split into.
+const initialsOf = (first?: string | null, middle?: string | null, last?: string | null): string => {
+  const a = (first || '').trim().charAt(0);
+  const b = (middle || last || '').trim().charAt(0);
+  return (a + b).toUpperCase() || '?';
+};
+
+const ThemeToggle: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const isDark = useAppSelector((s) => s.theme.mode === 'dark');
+  return (
+    <button
+      type="button" className="cp-theme-toggle" role="switch" aria-checked={isDark}
+      onClick={() => dispatch(toggleTheme())}
+      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+    >
+      <MdLightMode size={12} className="cp-theme-toggle-sun" />
+      <MdDarkMode size={12} className="cp-theme-toggle-moon" />
+      <span className="cp-theme-toggle-knob" />
+    </button>
+  );
+};
 
 // ── Booking switcher ──────────────────────────────────────────────────────
 // Only rendered when the login actually has more than one booking — a
@@ -61,8 +94,7 @@ const BookingSwitcher: React.FC = () => {
   if (bookings.length === 1) {
     return (
       <div className="cp-booking-single" title={bookingLabel(bookings[0])}>
-        <MdApartment size={15} />
-        <span className="cp-booking-code">{bookings[0].customer_code}</span>
+        Customer ID: {bookings[0].customer_code}
       </div>
     );
   }
@@ -74,9 +106,9 @@ const BookingSwitcher: React.FC = () => {
         aria-haspopup="listbox" aria-expanded={open}
         title={selected ? bookingLabel(selected) : 'Select a property'}
       >
-        <MdApartment size={15} />
-        <span className="cp-booking-code">{selected?.customer_code ?? 'Select'}</span>
-        <MdKeyboardArrowDown size={16} className={open ? 'cp-rotate' : undefined} />
+        <MdApartment size={13} />
+        <span>Customer ID: {selected?.customer_code ?? 'Select a property'}</span>
+        <MdKeyboardArrowDown size={15} className={open ? 'cp-rotate' : undefined} />
       </button>
       {open && (
         <div className="cp-booking-menu" role="listbox">
@@ -102,7 +134,7 @@ const CustomerPortalShell: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, cssVars } = useAppearanceTokens();
-  const { loading, error, bookings } = useCustomerPortal();
+  const { loading, error, bookings, detail } = useCustomerPortal();
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -156,7 +188,10 @@ const CustomerPortalShell: React.FC = () => {
         <div className="cp-sidebar-head">
           <div className="cp-brand">
             <Logo size={28} />
-            <span className="cp-brand-text">Dream Group</span>
+            <span className="cp-brand-text">
+              <span className="cp-brand-line1">DGCRM</span>
+              <span className="cp-brand-line2">Customer Portal</span>
+            </span>
           </div>
           <button
             type="button" className="cp-drawer-close" onClick={() => setMobileOpen(false)}
@@ -198,10 +233,16 @@ const CustomerPortalShell: React.FC = () => {
           >
             <MdMenu size={21} />
           </button>
-          <div className="cp-header-title">Dream Group CRM</div>
+          <div className="cp-header-greet">
+            <span className="cp-header-greet-name">Welcome, {detail?.name || 'Customer'}</span>
+            <BookingSwitcher />
+          </div>
 
           <div className="cp-header-actions">
-            <BookingSwitcher />
+            <ThemeToggle />
+            <div className="cp-avatar" title={[detail?.name, detail?.middle_name, detail?.last_name].filter(Boolean).join(' ') || 'Customer'}>
+              {initialsOf(detail?.name, detail?.middle_name, detail?.last_name)}
+            </div>
             <button
               type="button" className="cp-header-btn" onClick={() => setChangePwOpen(true)}
               title="Change Password"
