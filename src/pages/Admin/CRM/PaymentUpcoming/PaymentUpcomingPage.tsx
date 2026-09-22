@@ -306,11 +306,11 @@ const PaymentUpcomingPage: React.FC = () => {
           after the date filter (OK) has been applied. ──────────────────── */}
       <div className="payment-upcoming-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="payment-upcoming-table-scroll" style={{ overflowX: 'auto' }}>
-          <table className="payment-upcoming-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
+          <table className="payment-upcoming-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1250 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['Customer Name', 'Assigned Employee', 'Company / Project / Location', 'Building Details', 'Contact (Email / Mobile)', 'Payment For', 'Due Date', 'Amount', 'Status'].map((h) => (
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -328,17 +328,17 @@ const PaymentUpcomingPage: React.FC = () => {
               ) : (
                 pagedRows.map((r, i) => (
                   <tr key={`${r.customer_id}-${r.due_date}-${r.payment_for}-${i}`} style={{ borderTop: `1px solid ${t.divider}` }}>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.customer_name}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.assigned_employee_name || '—'}</div>
                       {r.assigned_employee_code && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.assigned_employee_code}</div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.company_name || '—'}</div>
                       {(r.project_name || r.location) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
@@ -346,7 +346,7 @@ const PaymentUpcomingPage: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
                       {(r.wing_name || r.flat_no) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
@@ -354,11 +354,11 @@ const PaymentUpcomingPage: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary }}>
                       <div>{r.email || '—'}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.mobile_number || '—'}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                       <span style={{
                         display: 'inline-block', padding: '3px 9px', borderRadius: 999,
                         fontSize: 10.5, fontWeight: 700, color: '#fff', background: PAYMENT_FOR_KEY_META[r.payment_for_key].color,
@@ -367,14 +367,14 @@ const PaymentUpcomingPage: React.FC = () => {
                       </span>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>{r.payment_for}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div className="flex items-center gap-1.5">
                         <MdEvent size={13} style={{ color: t.textSecondary }} />
                         {new Date(r.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
-                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                       <span style={{
                         display: 'inline-block', padding: '3px 10px', borderRadius: 999,
                         fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#4f46e5',

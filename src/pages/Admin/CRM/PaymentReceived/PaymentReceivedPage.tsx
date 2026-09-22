@@ -23,7 +23,7 @@ import { toast } from '@/utils/toast';
 import {
   MdPayments, MdRefresh, MdSearch, MdDownload, MdClose, MdKeyboardArrowDown,
   MdFilterAlt, MdVisibility, MdDelete, MdHome, MdHourglassEmpty,
-  MdCheckCircle, MdUpcoming,
+  MdCheckCircle, MdUpcoming, MdMoreVert,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -34,6 +34,7 @@ import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
+import { RowActionMenu, useRowActionMenu } from '../../../../components/common/RowActionMenu';
 import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
 import {
   fetchPaymentList, paymentForLabel, PaymentListRow,
@@ -59,6 +60,23 @@ const formatDMY = (iso: string | null | undefined): string => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+};
+
+// V_23.0 — a "backdated" entry is one whose Received Date (payment_date)
+// was manually set to a calendar day before the day it was actually
+// recorded (created_at) — only an Admin's collect-payment form even offers
+// a past date at all (an Employee's Received Date is locked to today, see
+// DueReportPage.tsx), so any such gap is by construction an admin
+// backdating a receipt. No new column/flag needed — this is derived from
+// fields the list endpoint already returns, so it keeps working correctly
+// under every existing filter (date-range, building, etc.): the flag is
+// just recomputed per row from whatever set of rows comes back.
+const isBackdatedPayment = (r: { payment_date: string | null; created_at: string }): boolean => {
+  if (!r.payment_date) return false;
+  const paid = new Date(r.payment_date);
+  const created = new Date(r.created_at);
+  if (Number.isNaN(paid.getTime()) || Number.isNaN(created.getTime())) return false;
+  return paid.toDateString() !== created.toDateString() && paid < created;
 };
 
 const SHORT_PAYMENT_TYPE_LABEL: Record<string, string> = {
@@ -133,6 +151,9 @@ const PaymentReceivedPage: React.FC = () => {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [exportingCsv, setExportingCsv] = useState(false);
+
+  // ── Row actions three-dot menu — see components/common/RowActionMenu. ──
+  const rowMenu = useRowActionMenu<string>();
 
   // ── Top stat boxes — Total Flat Sold (total sale value of every sold
   // flat), Total Amount Received (every approved payment), Total Pending
@@ -331,11 +352,11 @@ const PaymentReceivedPage: React.FC = () => {
         toast.error('No payments to export.');
         return;
       }
-      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Date', 'Receipt Date', 'Amount', 'Total Amount', 'Mode', 'Payment For', 'Received By', 'Company'];
+      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'];
       const csvRows = exportRows.map((r) => [
         r.receipt_number, r.customer_name || '', r.building_name || '', r.wing_name || '', r.flat_no || '',
-        formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.amount, r.amount + (r.maintenance || 0),
-        r.mode_of_payment || '', paymentForLabel(r.payment_type), r.received_by || '', r.company || '',
+        paymentForLabel(r.payment_type), r.mode_of_payment || '', r.amount,
+        formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.company || '', r.received_by || '',
       ]);
       const csv = [header, ...csvRows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -516,11 +537,11 @@ const PaymentReceivedPage: React.FC = () => {
         <div className="pr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
-            <label style={labelStyle}>Receipt Date From</label>
+            <label style={labelStyle}>Received Date From</label>
             <input type="date" value={draftFromDate} onChange={(e) => { setDraftFromDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>Receipt Date To</label>
+            <label style={labelStyle}>Received Date To</label>
             <input type="date" value={draftToDate} onChange={(e) => { setDraftToDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           <div className="pr-filter-actions flex items-center gap-2 flex-wrap" style={{ gridColumn: 'span 3 / span 3' }}>
@@ -567,61 +588,60 @@ const PaymentReceivedPage: React.FC = () => {
 
       <div className="pr-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="master-table-scroll">
-          <table className="pr-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
+          <table className="pr-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                <th style={{ padding: '12px 14px', width: 36 }}>
+                <th style={{ padding: '10px 12px', width: 36 }}>
                   <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={rows.length === 0}
                     style={{ cursor: rows.length === 0 ? 'not-allowed' : 'pointer' }} />
                 </th>
-                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Date', 'Receipt Date', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
+                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'].map((h) => (
+                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
+                <tr><td colSpan={12} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
+                <tr><td colSpan={12} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
-                    <td style={{ padding: '12px 14px' }}>
+                    <td style={{ padding: '10px 12px' }}>
                       <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelectRow(r.id)} style={{ cursor: 'pointer' }} />
                     </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div className="pr-row-actions flex items-center gap-1.5">
-                        <button type="button" title="View Receipt" onClick={() => handleViewReceipt(r)}
-                          className="flex items-center justify-center rounded-lg"
-                          style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-ink)', cursor: 'pointer' }}>
-                          <MdVisibility size={13} />
-                        </button>
-                        <button type="button" title="Download Receipt" disabled={downloadingId === r.id} onClick={() => handleDownloadReceipt(r)}
-                          className="flex items-center justify-center rounded-lg"
-                          style={{ width: 26, height: 26, background: isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', border: 'none', color: '#16a34a', cursor: downloadingId === r.id ? 'not-allowed' : 'pointer' }}>
-                          <MdDownload size={13} />
-                        </button>
-                        {/* V_23.0 item 7 — delete is admin-only; the backend
-                            route (DELETE /payments/:id) already enforces
-                            this via requireAdmin, so this is UI-side only —
-                            an employee must not even see the button, not
-                            just have it fail silently on click. */}
-                        {paths.isAdmin && (
-                          <button type="button" title="Delete" disabled={deletingId === r.id} onClick={() => handleDelete(r)}
-                            className="flex items-center justify-center rounded-lg"
-                            style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: deletingId === r.id ? 'not-allowed' : 'pointer' }}>
-                            <MdDelete size={13} />
-                          </button>
-                        )}
-                      </div>
+                    <td style={{ padding: '10px 12px' }}>
+                      {/* V_23.0 — the old inline View/Download/Delete icon
+                          row is now one three-dot trigger; the menu itself
+                          is a document.body portal (see RowActionMenu) so
+                          it always draws above the table, never clipped by
+                          .master-table-scroll's overflow:auto. */}
+                      <button type="button" title="Actions"
+                        ref={rowMenu.openId === r.id ? rowMenu.buttonRef : undefined}
+                        onClick={rowMenu.toggle(r.id, paths.isAdmin ? 3 : 2)}
+                        className="flex items-center justify-center rounded-lg"
+                        style={{ width: 28, height: 28, background: 'transparent', border: 'none', color: t.textSecondary, cursor: 'pointer' }}>
+                        <MdMoreVert size={18} />
+                      </button>
+                      {rowMenu.openId === r.id && rowMenu.pos && (
+                        <RowActionMenu t={t} pos={rowMenu.pos} actions={[
+                          { key: 'view', label: 'View Receipt', icon: <MdVisibility size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); handleViewReceipt(r); } },
+                          { key: 'download', label: 'Download Receipt', icon: <MdDownload size={14} color="#16a34a" />, disabled: downloadingId === r.id, onClick: () => { rowMenu.close(); handleDownloadReceipt(r); } },
+                          // V_23.0 item 7 — delete is admin-only; the backend
+                          // route (DELETE /payments/:id) already enforces
+                          // this via requireAdmin, so this is UI-side only —
+                          // an employee must not even see the option.
+                          ...(paths.isAdmin ? [{ key: 'delete', label: 'Delete', icon: <MdDelete size={14} />, danger: true, disabled: deletingId === r.id, onClick: () => { rowMenu.close(); handleDelete(r); } }] : []),
+                        ]} />
+                      )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.customer_name || '—'}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code || '—'}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
                       {(r.wing_name || r.flat_no) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
@@ -629,20 +649,7 @@ const PaymentReceivedPage: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.payment_tag === 'Extra Pay' ? '—' : formatDMY(r.inst_date)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMY(r.payment_date || r.created_at)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
-                    {/* V_23.0 item 7 — the Maintenance column itself is
-                        removed, but Total Amount still folds r.maintenance
-                        in silently, same math as before; only the standalone
-                        column display is gone. */}
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount + (r.maintenance || 0))}</td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', color: 'var(--brand-ink)', fontSize: 10.5, whiteSpace: 'nowrap' }}>
-                        {r.mode_of_payment || '—'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
+                    <td style={{ padding: '10px 12px' }}>
                       <div className="flex items-center gap-1 flex-wrap">
                         {r.payment_tag === 'Extra Pay' ? (
                           <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: '#b45309', fontSize: 10.5, whiteSpace: 'nowrap' }}>
@@ -655,8 +662,29 @@ const PaymentReceivedPage: React.FC = () => {
                         )}
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.received_by || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.company || '—'}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', color: 'var(--brand-ink)', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                        {r.mode_of_payment || '—'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.payment_tag === 'Extra Pay' ? '—' : formatDMY(r.inst_date)}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                      <div className="flex items-center gap-1.5">
+                        {formatDMY(r.payment_date || r.created_at)}
+                        {/* V_23.0 — compact purple dot for an admin-backdated
+                            entry (see isBackdatedPayment's comment). Marks
+                            only this cell, never the whole row, and keeps
+                            showing correctly under any date-range/building/
+                            etc. filter since it's recomputed per row. */}
+                        {isBackdatedPayment(r) && (
+                          <span title="Backdated entry — Received Date was set to an earlier date by an admin"
+                            style={{ width: 7, height: 7, borderRadius: '50%', background: '#9333ea', flexShrink: 0, display: 'inline-block' }} />
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.company || '—'}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.received_by || '—'}</td>
                   </tr>
                 ))
               )}

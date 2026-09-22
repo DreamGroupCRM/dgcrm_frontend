@@ -18,7 +18,7 @@ import { toast } from '@/utils/toast';
 import {
   MdPayments, MdRefresh, MdCheckCircle, MdHourglassEmpty, MdDownload,
   MdVisibility, MdDelete, MdClose, MdKeyboardArrowDown, MdFilterAlt, MdSearch,
-  MdEventAvailable, MdToday,
+  MdEventAvailable, MdToday, MdMoreVert,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -29,6 +29,7 @@ import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
+import { RowActionMenu, useRowActionMenu } from '../../../../components/common/RowActionMenu';
 import {
   fetchPaymentList, approvePayment, bulkApprovePayments, deletePayment, fetchPaymentReceipt,
   fetchApprovalStats, paymentForLabel, PaymentListRow, PaymentApprovalStats,
@@ -120,6 +121,8 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkApproving, setBulkApproving] = useState(false);
+  // ── Row actions three-dot menu — see components/common/RowActionMenu. ──
+  const rowMenu = useRowActionMenu<string>();
 
   // ── Filter panel data sources ────────────────────────────────────────
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -358,12 +361,12 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
         toast.error('No pending payments to export.');
         return;
       }
-      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Date', 'Receipt Date', 'Amount', 'Total Amount', 'Mode', 'Payment For', 'Received By', 'Company'];
+      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'];
       const csvRows = exportRows.map((r) => [
         // V_23.0 item 2 — always blank here: every exported row is pending.
         r.receipt_number || '', r.customer_name || '', r.building_name || '', r.wing_name || '', r.flat_no || '',
-        formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.amount, r.amount + (r.maintenance || 0),
-        r.mode_of_payment || '', paymentForLabel(r.payment_type), r.received_by || '', r.company || '',
+        paymentForLabel(r.payment_type), r.mode_of_payment || '', r.amount,
+        formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.company || '', r.received_by || '',
       ]);
       const csv = [header, ...csvRows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -459,11 +462,11 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
         <div className="pa-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
-            <label style={labelStyle}>Receipt Date From</label>
+            <label style={labelStyle}>Received Date From</label>
             <input type="date" value={draftFromDate} onChange={(e) => { setDraftFromDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>Receipt Date To</label>
+            <label style={labelStyle}>Received Date To</label>
             <input type="date" value={draftToDate} onChange={(e) => { setDraftToDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           {/* Compact, content-width buttons in fresh light tints — was a
@@ -524,59 +527,63 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
 
       <div className="pa-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="master-table-scroll">
-          <table className="pa-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
+          <table className="pa-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                <th style={{ padding: '12px 14px', width: 36 }}>
+                <th style={{ padding: '10px 12px', width: 36 }}>
                   <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={rows.length === 0}
                     style={{ cursor: rows.length === 0 ? 'not-allowed' : 'pointer' }} />
                 </th>
                 {/* V_23.0 item 7 — Maintenance column removed, matching
-                    Payment Received's own table (same merged page). */}
-                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Date', 'Receipt Date', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
+                    Payment Received's own table (same merged page); item 3
+                    also drops Total Amount (Amount alone is kept) and
+                    reorders the rest. */}
+                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'].map((h) => (
+                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading pending payments...</td></tr>
+                <tr><td colSpan={12} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading pending payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments are waiting for approval.</td></tr>
+                <tr><td colSpan={12} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments are waiting for approval.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
-                    <td style={{ padding: '12px 14px' }}>
+                    <td style={{ padding: '10px 12px' }}>
                       <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelectRow(r.id)} style={{ cursor: 'pointer' }} />
                     </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div className="pa-row-actions flex items-center gap-1.5">
-                        <button type="button" title="View" onClick={() => openViewModal(r)}
-                          className="flex items-center justify-center rounded-lg"
-                          style={{ width: 26, height: 26, background: isDark ? 'rgba(234,88,12,0.15)' : '#ffedd5', border: 'none', color: '#ea580c', cursor: 'pointer' }}>
-                          <MdVisibility size={13} />
-                        </button>
-                        <button type="button" title="Approve" disabled={approvingId === r.id} onClick={() => handleApprove(r)}
-                          className="flex items-center justify-center rounded-lg"
-                          style={{ width: 26, height: 26, background: isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', border: 'none', color: '#16a34a', cursor: approvingId === r.id ? 'not-allowed' : 'pointer' }}>
-                          <MdCheckCircle size={13} />
-                        </button>
-                        <button type="button" title="Delete" disabled={deletingId === r.id} onClick={() => handleDelete(r)}
-                          className="flex items-center justify-center rounded-lg"
-                          style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: deletingId === r.id ? 'not-allowed' : 'pointer' }}>
-                          <MdDelete size={13} />
-                        </button>
-                      </div>
+                    <td style={{ padding: '10px 12px' }}>
+                      {/* V_23.0 — the old inline View/Approve/Delete icon
+                          row is now one three-dot trigger; the menu itself
+                          is a document.body portal (see RowActionMenu) so
+                          it always draws above the table, never clipped by
+                          .master-table-scroll's overflow:auto. */}
+                      <button type="button" title="Actions"
+                        ref={rowMenu.openId === r.id ? rowMenu.buttonRef : undefined}
+                        onClick={rowMenu.toggle(r.id, 3)}
+                        className="flex items-center justify-center rounded-lg"
+                        style={{ width: 28, height: 28, background: 'transparent', border: 'none', color: t.textSecondary, cursor: 'pointer' }}>
+                        <MdMoreVert size={18} />
+                      </button>
+                      {rowMenu.openId === r.id && rowMenu.pos && (
+                        <RowActionMenu t={t} pos={rowMenu.pos} actions={[
+                          { key: 'view', label: 'View', icon: <MdVisibility size={14} color="#ea580c" />, onClick: () => { rowMenu.close(); openViewModal(r); } },
+                          { key: 'approve', label: 'Approve', icon: <MdCheckCircle size={14} color="#16a34a" />, disabled: approvingId === r.id, onClick: () => { rowMenu.close(); handleApprove(r); } },
+                          { key: 'delete', label: 'Delete', icon: <MdDelete size={14} />, danger: true, disabled: deletingId === r.id, onClick: () => { rowMenu.close(); handleDelete(r); } },
+                        ]} />
+                      )}
                     </td>
                     {/* V_23.0 item 2 — blank until approved; every row here
                         is unapproved by definition, so this always reads
                         "Pending". */}
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.receipt_number || 'Pending'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, fontWeight: 600, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.receipt_number || 'Pending'}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.customer_name || '—'}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code || '—'}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
                       {(r.wing_name || r.flat_no) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
@@ -584,16 +591,7 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.payment_tag === 'Extra Pay' ? '—' : formatDMY(r.inst_date)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMY(r.payment_date || r.created_at)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount + (r.maintenance || 0))}</td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', color: 'var(--brand-ink)', fontSize: 10.5, whiteSpace: 'nowrap' }}>
-                        {r.mode_of_payment || '—'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
+                    <td style={{ padding: '10px 12px' }}>
                       <div className="flex items-center gap-1 flex-wrap">
                         {r.payment_tag === 'Extra Pay' ? (
                           <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: '#b45309', fontSize: 10.5, whiteSpace: 'nowrap' }}>
@@ -606,8 +604,16 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                         )}
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.received_by || '—'}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.company || '—'}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', color: 'var(--brand-ink)', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                        {r.mode_of_payment || '—'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.payment_tag === 'Extra Pay' ? '—' : formatDMY(r.inst_date)}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMY(r.payment_date || r.created_at)}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.company || '—'}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.received_by || '—'}</td>
                   </tr>
                 ))
               )}
@@ -643,7 +649,7 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                     {viewModal.data.transaction.payment_tag !== 'Extra Pay' && (
                       <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Payment Date</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.inst_date)}</div></div>
                     )}
-                    <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Receipt Date</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.payment_date || viewModal.data.transaction.created_at)}</div></div>
+                    <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Received Date</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.payment_date || viewModal.data.transaction.created_at)}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Created At</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{formatDMY(viewModal.data.transaction.created_at)}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Payment Method</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{viewModal.data.transaction.mode_of_payment || '—'}</div></div>
                     <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Payment Type</div>

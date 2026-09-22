@@ -22,7 +22,7 @@ import {
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
   MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
   MdAdminPanelSettings, MdManageAccounts, MdPendingActions, MdBeachAccess,
-  MdGridView,
+  MdGridView, MdEventBusy,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -115,6 +115,12 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
 
   { label: 'Customize Scheme', path: ROUTES.ADMIN.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
   { label: 'Building View', path: ROUTES.ADMIN.BUILDING_2D_VIEW, icon: <MdGridView /> },
+  // V_23.0 — Cancelled Booking module. Admin-only by construction: this
+  // entry only ever appears in buildAdminNavItems, never employeeNavItems
+  // below, so an Employee/Customer never sees it at all (matches the
+  // backend's own requireAdmin gate on every /customers/cancelled,
+  // /customers/:id/cancel-booking, /customers/:id/refunds route).
+  { label: 'Cancelled Booking', path: ROUTES.ADMIN.CANCELLED_BOOKING, icon: <MdEventBusy /> },
   { label: 'Audit History', path: ROUTES.ADMIN.AUDIT_HISTORY, icon: <MdHistory /> },
   // Admin/superadmin (requireAdmin server-side, not requireSuperAdmin) —
   // the whole point is a regular Admin reviews delete requests an

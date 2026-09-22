@@ -189,6 +189,30 @@ export const showAlert = {
       cancelButtonText: 'Cancel',
     });
   },
+  /**
+   * Confirm + require a free-text reason in the same dialog — used by the
+   * Cancelled Booking flow (cancelling a customer's booking must never
+   * submit without a reason). Returns the typed reason on confirm, or
+   * isConfirmed:false if the admin backs out; SweetAlert2's own
+   * inputValidator blocks the Confirm button until non-blank text is
+   * entered, so a caller never has to re-check for an empty reason itself.
+   */
+  confirmWithReason: async (message: string, title: string, confirmButtonText = 'Confirm'): Promise<{ isConfirmed: boolean; reason: string }> => {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title,
+      text: message,
+      input: 'textarea',
+      inputPlaceholder: 'Enter a reason...',
+      inputValidator: (value) => (!value || !value.trim() ? 'A reason is required.' : undefined),
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText,
+      cancelButtonText: 'Back',
+    });
+    return { isConfirmed: !!result.isConfirmed, reason: (result.value as string | undefined)?.trim() || '' };
+  },
   /** Shows "Super Admin/Admin/Employee Logged in Successfully" based on base_role */
   loginSuccess: (baseRole: BaseRole) => {
     const roleLabel = roleLabelFor(baseRole);

@@ -48,6 +48,9 @@ const Building2DViewPage = lazy(() => import('../pages/Admin/Building2D/Building
 // Audit History — replaces its former PlaceholderPage now that
 // GET /api/audit-logs exists (item 11).
 import AuditHistoryPage from '../pages/Admin/AuditHistory/AuditHistoryPage';
+// Cancelled Booking (V_23.0) — admin-only, see Sidebar.tsx and
+// customer.routes.ts's own requireAdmin gate on the backing endpoints.
+const CancelledBookingPage = lazy(() => import('../pages/Admin/CRM/CancelledBooking/CancelledBookingPage'));
 // Payment Received — replaces its former PlaceholderPage (item 16). Now
 // also hosts Payment Approvals and Payment Upcoming as tabs internally
 // (V_23.0), so those two are no longer separate routes/lazy imports here —
@@ -146,6 +149,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="crm/leads/edit/:id" element={<LeadCrudPage mode="edit" />} />
 
       <Route path="reports/executive-dashboard" element={<ExecutiveDashboardPage />} />
+      <Route path="cancelled-booking" element={<CancelledBookingPage />} />
       <Route path="audit-history" element={<AuditHistoryPage />} />
       <Route path="pending-approvals" element={<PendingApprovalsPage />} />
       <Route path="change-requests" element={<ChangeRequestsPage />} />

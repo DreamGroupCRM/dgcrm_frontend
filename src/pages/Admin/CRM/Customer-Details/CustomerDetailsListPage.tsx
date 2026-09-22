@@ -10,7 +10,7 @@ import {
   MdGroups, MdPersonAddAlt1, MdPersonOff, MdClose,
   MdKeyboardArrowDown, MdMoreVert, MdReceiptLong, MdLoyalty, MdPhone, MdEmail,
   MdPayments, MdPrint, MdDescription,
-  MdGridView, MdViewList, MdLocationOn, MdBadge,
+  MdGridView, MdViewList, MdLocationOn, MdBadge, MdEventBusy,
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
@@ -22,7 +22,7 @@ import StatCard from '../../../../components/masters/StatCard';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
 import {
   fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory,
-  fetchCustomerFullDetails, fetchCustomerScheme,
+  fetchCustomerFullDetails, fetchCustomerScheme, cancelCustomerBooking,
 } from '../../../../services/customerDetailsService';
 import {
   collectPayment, fetchCustomerDue, fetchPaymentReceipt, deletePayment, paymentForLabel,
@@ -235,7 +235,7 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 // flips to the left when there isn't enough room on the right, and clamps
 // vertically so it never runs off the bottom of the screen.
 const CUSTOMER_MENU_WIDTH = 186;
-const CUSTOMER_MENU_HEIGHT = 178; // 5 rows incl. borders/padding
+const CUSTOMER_MENU_HEIGHT = 212; // up to 6 rows incl. borders/padding (V_23.0 added Cancel Booking)
 const computeCustomerMenuPos = (rect: DOMRect): { top: number; left: number } => {
   const spaceRight = window.innerWidth - rect.right;
   const left = spaceRight >= CUSTOMER_MENU_WIDTH + 8
@@ -261,9 +261,9 @@ const unitLabel = (c: Customer): string => {
 
 const RowActionMenu: React.FC<{
   t: Theme; pos: { top: number; left: number };
-  onView: () => void; onEdit?: () => void; onDelete?: () => void;
+  onView: () => void; onEdit?: () => void; onDelete?: () => void; onCancelBooking?: () => void;
   onDownloadHistory: () => void; onDownloadSchedule: () => void;
-}> = ({ t, pos, onView, onEdit, onDelete, onDownloadHistory, onDownloadSchedule }) => createPortal(
+}> = ({ t, pos, onView, onEdit, onDelete, onCancelBooking, onDownloadHistory, onDownloadSchedule }) => createPortal(
   <div
     data-customer-row-menu
     style={{
@@ -294,6 +294,14 @@ const RowActionMenu: React.FC<{
         <MdDelete size={14} /> Delete
       </button>
     )}
+    {/* V_23.0 — admin-only, same gating as onDelete/onEdit above. */}
+    {onCancelBooking && (
+      <button type="button" onClick={onCancelBooking}
+        className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap"
+        style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
+        <MdEventBusy size={14} /> Cancel Booking
+      </button>
+    )}
     <button type="button" onClick={onDownloadHistory}
       className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap"
       style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
@@ -315,10 +323,10 @@ const CustomerCard: React.FC<{
   c: Customer; t: Theme; isDark: boolean;
   onOpenMenu: (e: React.MouseEvent<HTMLButtonElement>) => void;
   menuOpen: boolean; menuPos: { top: number; left: number } | null;
-  onView: () => void; onEdit?: () => void; onDelete?: () => void;
+  onView: () => void; onEdit?: () => void; onDelete?: () => void; onCancelBooking?: () => void;
   onDownloadHistory: () => void; onDownloadSchedule: () => void;
   onOpenPaymentHistory: () => void; onOpenScheme: () => void;
-}> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onDelete, onDownloadHistory, onDownloadSchedule, onOpenPaymentHistory, onOpenScheme }) => {
+}> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onDelete, onCancelBooking, onDownloadHistory, onDownloadSchedule, onOpenPaymentHistory, onOpenScheme }) => {
   const statusBg = c.status === 'active' ? '#dcfce7' : '#fee2e2';
   const statusColor = c.status === 'active' ? '#16a34a' : '#dc2626';
   return (
@@ -367,7 +375,7 @@ const CustomerCard: React.FC<{
               <MdMoreVert size={18} />
             </button>
             {menuOpen && menuPos && (
-              <RowActionMenu t={t} pos={menuPos} onView={onView} onEdit={onEdit} onDelete={onDelete}
+              <RowActionMenu t={t} pos={menuPos} onView={onView} onEdit={onEdit} onDelete={onDelete} onCancelBooking={onCancelBooking}
                 onDownloadHistory={onDownloadHistory} onDownloadSchedule={onDownloadSchedule} />
             )}
           </div>
@@ -778,6 +786,30 @@ const CustomerDetailsListPage: React.FC = () => {
       fetchCustomers();
     } catch {
       toast.error('Failed to delete customer.');
+    }
+  };
+
+  // V_23.0 — Cancelled Booking module: admin-only, requires a reason (the
+  // dialog's own inputValidator blocks Confirm on a blank one — see
+  // showAlert.confirmWithReason). Never deletes anything — soft-marks the
+  // customer is_customer_deleted (backend also sets is_active=false, which
+  // is what removes them from this very list) and moves them to the new
+  // Cancelled Booking page, where their full booking/payment history and
+  // this reason stay visible.
+  const handleCancelBooking = async (c: Customer) => {
+    setOpenMenuId(null);
+    const { isConfirmed, reason } = await showAlert.confirmWithReason(
+      `This will cancel ${c.customer_name}'s booking and move them to Cancelled Booking. Their payment history is kept, not deleted.`,
+      'Cancel Booking?',
+      'Cancel Booking'
+    );
+    if (!isConfirmed) return;
+    try {
+      await cancelCustomerBooking(c.id, reason);
+      toast.success('Booking cancelled.');
+      fetchCustomers();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to cancel booking.');
     }
   };
 
@@ -1195,6 +1227,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     onView={() => { setOpenMenuId(null); navigate(`${paths.customerDetails}/view/${c.id}`); }}
                     onEdit={paths.isAdmin ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
                     onDelete={paths.isAdmin ? () => { setOpenMenuId(null); handleDelete(c); } : undefined}
+                    onCancelBooking={paths.isAdmin ? () => { setOpenMenuId(null); handleCancelBooking(c); } : undefined}
                     onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                     onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                     onOpenPaymentHistory={() => openPaymentHistory(c)}
@@ -1206,15 +1239,15 @@ const CustomerDetailsListPage: React.FC = () => {
           </div>
         ) : (
         <div className="master-table-scroll cust-list-table-scroll">
-          <table className="cust-list-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1250 }}>
+          <table className="cust-list-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1150 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                <th style={{ padding: '12px 14px', width: 40 }}>
+                <th style={{ padding: '10px 12px', width: 40 }}>
                   <input type="checkbox" title="Select all active customers on this page"
                     checked={activePageRows.length > 0 && activePageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
                 {['Action', 'Customer ID', 'Customer Name', 'Employee Name', 'Contact Details', 'Company / Project', 'Building Details', 'Unit Type / Area', 'Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
                 ))}
@@ -1228,11 +1261,11 @@ const CustomerDetailsListPage: React.FC = () => {
               ) : (
                 pageRows.map((c) => (
                   <tr key={c.id} className="cust-divider-top">
-                    <td style={{ padding: '12px 14px' }}>
+                    <td style={{ padding: '10px 12px' }}>
                       <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)}
                         disabled={c.status !== 'active'} title={c.status !== 'active' ? "Inactive customers can't be assigned" : undefined} />
                     </td>
-                    <td style={{ padding: '12px 14px' }}>
+                    <td style={{ padding: '10px 12px' }}>
                       <div className="flex items-center gap-1.5" ref={openMenuId === c.id ? menuRef : undefined}>
                         <div style={{ position: 'relative' }}>
                           <button
@@ -1252,6 +1285,7 @@ const CustomerDetailsListPage: React.FC = () => {
                               onView={() => { setOpenMenuId(null); navigate(`${paths.customerDetails}/view/${c.id}`); }}
                               onEdit={paths.isAdmin ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
                               onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
+                              onCancelBooking={paths.isAdmin ? () => { setOpenMenuId(null); handleCancelBooking(c); } : undefined}
                               onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                               onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                             />
@@ -1265,7 +1299,7 @@ const CustomerDetailsListPage: React.FC = () => {
                         </button>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                       {c.customer_code ? (
                         <button type="button" onClick={() => navigate(`${paths.customerDetails}/view/${c.id}`)}
                           style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, color: 'var(--brand-ink)' }}>
@@ -1275,7 +1309,7 @@ const CustomerDetailsListPage: React.FC = () => {
                         <span style={{ fontSize: 11.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000' }}>—</span>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       <div className="flex items-center gap-2">
                         {c.customer_photo_url ? (
                           <img src={resolveFileUrl(c.customer_photo_url)} alt="" className="rounded-full flex-shrink-0" style={{ width: 30, height: 30, objectFit: 'cover' }} />
@@ -1287,7 +1321,7 @@ const CustomerDetailsListPage: React.FC = () => {
                         {c.customer_name}
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px' }}>
+                    <td style={{ padding: '10px 12px' }}>
                       <div className="flex items-center gap-2">
                         {c.assigned_employee_photo_url ? (
                           <img src={resolveFileUrl(c.assigned_employee_photo_url)} alt="" className="rounded-full flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'cover' }} />
@@ -1299,15 +1333,15 @@ const CustomerDetailsListPage: React.FC = () => {
                         <span style={{ fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{c.assigned_employee_name || '—'}</span>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
                       <div className="flex items-center gap-1.5"><MdPhone size={13} /> {c.mobile_number}</div>
                       <div className="flex items-center gap-1.5 mt-0.5"><MdEmail size={13} /> {c.email}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
                       <div style={{ fontWeight: 700 }}>{c.company_name || '—'}</div>
                       <div>{c.project_name || '—'}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
                       <div style={{ fontWeight: 700 }}>{c.building_name}</div>
                       {/* A shop booking has no wing/flat (mutually exclusive
                           with a flat booking) — show its own Shop No instead
@@ -1316,16 +1350,16 @@ const CustomerDetailsListPage: React.FC = () => {
                         ? <div>Shop {c.shop_no || '—'}</div>
                         : <div>{c.wing_name} Wing, {c.flat_no}</div>}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       {c.unit_type === 'shop'
                         ? `Shop${c.shop_area != null ? ` / ${c.shop_area} Sqft` : ''}`
                         : `${c.flat_type || '—'}${c.area_sqft != null ? ` / ${c.area_sqft} Sqft` : ''}`}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{formatDate(c.booking_date)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{formatDate(c.booking_date)}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       {c.monthly_emi != null ? `₹ ${c.monthly_emi.toLocaleString('en-IN')}` : '—'}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       {c.monthly_installment_date ? formatDate(c.monthly_installment_date) : '—'}
                     </td>
                   </tr>

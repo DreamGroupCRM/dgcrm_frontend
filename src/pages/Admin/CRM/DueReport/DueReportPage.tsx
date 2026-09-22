@@ -1020,29 +1020,33 @@ const DueReportPage: React.FC = () => {
           Follow Up. ────────────────────────────────────────────────────── */}
       <div className="due-report-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="due-report-table-scroll" style={{ overflowX: 'auto' }}>
-          <table className="due-report-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1400 }}>
+          <table className="due-report-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1150 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Customer Name', 'Company / Project / Location', 'Building Details', 'Assigned Employee', 'Contact (Email / Mobile)', 'Payment For / Amount', 'Monthly Pending', 'Total Amount', 'Follow Up'].map((h) => (
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
+                {/* V_23.0 — Payment For/Amount and Monthly Pending merged
+                    into one "Payment Details" column (payment type, pending
+                    months × EMI/due amount, compact status indicator); the
+                    standalone Monthly Pending column is gone. */}
+                {['Customer Name', 'Company / Project / Location', 'Building Details', 'Assigned Employee', 'Contact (Email / Mobile)', 'Payment Details', 'Total Amount', 'Follow Up'].map((h) => (
+                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {(loadingDueList || (statusFilter === 'upcoming' && loadingUpcoming)) ? (
-                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
+                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
               ) : filteredDueRows.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
+                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
                   {baseDisplayRows.length === 0 ? 'No customers currently have a payment due.' : 'No dues match the selected filters.'}
                 </td></tr>
               ) : (
                 pagedDueRows.map((r) => (
                   <tr key={r.key} style={{ borderTop: `1px solid ${t.divider}` }}>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.customer_name}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.company_name || '—'}</div>
                       {(r.project_name || r.location) && (
                         <div className="master-cell-truncate" title={`${r.project_name || ''}${r.project_name && r.location ? ' • ' : ''}${r.location || ''}`}
@@ -1051,7 +1055,7 @@ const DueReportPage: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
                       {(r.wing_name || r.flat_no) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
@@ -1059,24 +1063,24 @@ const DueReportPage: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.assigned_employee_name || '—'}</div>
                       {r.assigned_employee_code && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.assigned_employee_code}</div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary }}>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary }}>
                       <div>{r.email || '—'}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.mobile_number || '—'}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                      {/* V_23.0 item 10 — badge now shows the row's actual
-                          phase-aware label ("EMI Before"/"EMI After" share
-                          one color, per getPaymentForDisplay's own comment,
-                          so the pair reads as one grouped/background
-                          treatment) instead of the generic EMIAmount
-                          fallback. The raw backend wording is only shown
-                          below when it says something the badge doesn't. */}
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                      {/* V_23.0 — Payment Details column: payment type,
+                          pending months × EMI/due amount, and a compact
+                          Overdue/Due Today/Upcoming colour indicator, all
+                          in one column (the old separate Monthly Pending
+                          column's content now lives here). The status pill
+                          and detail text below it are the only things
+                          colour-coded — never the whole row/cell. */}
                       {(() => {
                         const disp = getPaymentForDisplay(r);
                         return (
@@ -1088,26 +1092,20 @@ const DueReportPage: React.FC = () => {
                               {disp.label}
                             </span>
                             {r.payment_for !== disp.label && (
-                              <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>{r.payment_for}</div>
+                              <span style={{ fontSize: 10.5, color: t.textSecondary, marginLeft: 6 }}>{r.payment_for}</span>
                             )}
                           </>
                         );
                       })()}
-                    </td>
-                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                      {/* V_23.0 item 4 — color-coded by STATUS (Overdue =
-                          Red, Due Today = Green, Due within the next 7 days
-                          = Yellow, further-out Upcoming = neutral gray),
-                          not by months-pending severity as before. Applied
-                          only to this compact pill + the detail text right
-                          below it — never the whole row/cell background. */}
-                      <span style={{
-                        display: 'inline-block', padding: '3px 9px', borderRadius: 999,
-                        fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em',
-                        color: '#fff', background: r.statusColor,
-                      }}>
-                        {r.statusLabel}
-                      </span>
+                      <div style={{ marginTop: 5 }}>
+                        <span style={{
+                          display: 'inline-block', padding: '3px 9px', borderRadius: 999,
+                          fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em',
+                          color: '#fff', background: r.statusColor,
+                        }}>
+                          {r.statusLabel}
+                        </span>
+                      </div>
                       <div style={{ marginTop: 4 }}>
                         {r.months_pending ? (
                           <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>
@@ -1133,7 +1131,7 @@ const DueReportPage: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       {/* Item 14 — show the multiplication behind a
                           multi-month amount (e.g. "₹15,000 × 3 =
                           ₹45,000"), falling back to a plain total for a
@@ -1142,7 +1140,7 @@ const DueReportPage: React.FC = () => {
                         ? `${rupee(r.per_month_amount)} × ${r.months_pending} = ${rupee(r.amount)}`
                         : rupee(r.amount)}
                     </td>
-                    <td style={{ padding: '12px 14px' }}>
+                    <td style={{ padding: '10px 12px' }}>
                       {(() => {
                         const scheduled = followUpByCustomer.get(String(r.customer_id));
                         return (

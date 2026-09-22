@@ -17,6 +17,7 @@ import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { ROUTES } from '../../../../constants';
 import {
   fetchCustomerFullDetails,
+  fetchNextCustomerCode,
   createCustomerWithDetails,
   updateCustomerWithDetails,
   checkDuplicateCustomerContacts,
@@ -85,6 +86,19 @@ const MAX_BOOSTER_AMOUNT_DIGITS = 7;
 // then reports it in local time, which shifts the day by one for anyone
 // behind UTC and would make the 15th fail the check for them.
 const dayOfMonth = (value: string): number => Number(value.slice(8, 10)) || 0;
+
+// V_23.0 — Installment Date is only ever allowed on the 1st-15th of a
+// month (matches the backend's own MAX_INSTALLMENT_DAY_OF_MONTH check in
+// customer.service.ts, the real authority). A native <input type="date">
+// can't disable individual calendar days, so instead of letting an
+// out-of-range pick sit there until submit-time validation catches it,
+// this clamps it the instant it's chosen — same net effect as "disabled"
+// from the user's point of view, just enforced on change rather than by
+// greying out cells in a browser-drawn calendar we don't control.
+const clampInstallmentDate = (value: string): string => {
+  if (!value || dayOfMonth(value) <= MAX_INSTALLMENT_DAY_OF_MONTH) return value;
+  return `${value.slice(0, 8)}${String(MAX_INSTALLMENT_DAY_OF_MONTH).padStart(2, '0')}`;
+};
 
 // Fires showPicker() on both click AND focus — a plain onClick alone opens
 // the calendar when the browser-drawn icon is clicked, but clicking into
@@ -952,6 +966,19 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     toast.success(`${selectedUnit.unitType === 'shop' ? 'Shop' : 'Flat'} ${selectedUnit.no} selected from Building View.`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routerLocation.state]);
+
+  // ── customer code preview (Add) — mirrors EmployeeDetailsCrudPage's own
+  // employee code preview. Purely a display hint: it calls the read-only
+  // /customers/next-code endpoint (never increments customer_code_seq), so
+  // opening, cancelling, or navigating away from this form never burns a
+  // code — only a successful POST /customers does that.
+  useEffect(() => {
+    if (mode !== 'add') return;
+    (async () => {
+      const code = await fetchNextCustomerCode();
+      setCustomerCode(code || ''); // '' -> the "Customer ID - ..." badge stays hidden
+    })();
+  }, [mode]);
 
   useEffect(() => {
     if (mode === 'add' || !id) return;
@@ -2016,7 +2043,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <Field t={t} label="Installment Date" required error={errorFor('installmentDate')} fieldRef={setFieldRef('installmentDate') as React.Ref<HTMLDivElement>}>
             <input type="date" value={installmentDate} readOnly={isView} disabled={isView}
-              onClick={openPicker} onFocus={openPicker} onChange={(e) => setInstallmentDate(e.target.value)} className={fieldClass} />
+              onClick={openPicker} onFocus={openPicker}
+              onChange={(e) => {
+                const clamped = clampInstallmentDate(e.target.value);
+                if (clamped !== e.target.value) {
+                  toast.error(`Installment Date can only fall between the 1st and ${MAX_INSTALLMENT_DAY_OF_MONTH}th of a month — moved to the ${MAX_INSTALLMENT_DAY_OF_MONTH}th.`);
+                }
+                setInstallmentDate(clamped);
+              }} className={fieldClass} />
           </Field>
           <Field t={t} label="Monthly EMI Before Possession (₹)" required error={errorFor('monthlyEmiBeforePossession')} fieldRef={setFieldRef('monthlyEmiBeforePossession') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={monthlyEmiBeforePossession} onChange={setMonthlyEmiBeforePossession} />

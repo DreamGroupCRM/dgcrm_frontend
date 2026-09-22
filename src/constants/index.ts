@@ -60,6 +60,9 @@ export const ROUTES = {
     PAYMENT_UPCOMING: '/admin/crm/payment-upcoming',
 
     // Standalone
+    // V_23.0 — Cancelled Booking module, admin-only (see Sidebar.tsx: it's
+    // only ever added to buildAdminNavItems, never employeeNavItems).
+    CANCELLED_BOOKING: '/admin/cancelled-booking',
     AUDIT_HISTORY: '/admin/audit-history',
     CUSTOMIZE_SCHEME: '/admin/customize-scheme',
     BUILDING_2D_VIEW: '/admin/building-2d-view',

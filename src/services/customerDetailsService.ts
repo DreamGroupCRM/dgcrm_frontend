@@ -467,6 +467,17 @@ export const fetchTakenParkingNumbers = async (buildingId: string, excludeId?: s
   return (res.data.data?.taken ?? []) as string[];
 };
 
+// ── Preview the next auto-generated customer code (optional) ───────────────
+/** GET /api/customers/next-code — returns { success: true, code: 'C014' } */
+export const fetchNextCustomerCode = async (): Promise<string | null> => {
+  try {
+    const res = await axiosInstance.get('/customers/next-code');
+    return res.data?.code ?? null;
+  } catch {
+    return null; // backend may not have this endpoint yet — caller falls back gracefully
+  }
+};
+
 // ── Create new customer ──────────────────────────────────────────────────────
 // NOTE: kept as originally written. CreateCustomerPayload has no
 // aadhar_card_no field, which CreateCustomerSchema requires (the one
@@ -525,6 +536,91 @@ export const updateCustomerWithDetails = async (id: string, formData: FormData):
 export const deleteCustomer = async (id: string): Promise<CustomerDeleteResponse> => {
   const res = await axiosInstance.delete(`/customers/${id}`);
   return res.data;
+};
+
+// ── Cancelled Booking module (V_23.0) ───────────────────────────────────────
+export interface CancelledCustomerRow {
+  id: string;
+  customer_code: string;
+  customer_name: string;
+  building_name: string | null;
+  wing_name: string | null;
+  flat_no: string | null;
+  flat_amount: number;
+  cancellation_reason: string | null;
+  cancelled_at: string | null;
+}
+
+interface RawCancelledCustomer {
+  id: number | string;
+  customer_code: string;
+  name: string | null; middle_name: string | null; last_name: string | null;
+  building?: { building_name: string } | null;
+  wing?: { name: string } | null;
+  flat?: { flat_number: string } | null;
+  shop?: { shop_no: string } | null;
+  flat_amount: number;
+  cancellation_reason: string | null;
+  cancelled_at: string | null;
+}
+
+/** POST /api/customers/:id/cancel-booking */
+export const cancelCustomerBooking = async (id: string, reason: string): Promise<{ success: boolean; message: string }> => {
+  const res = await axiosInstance.post(`/customers/${id}/cancel-booking`, { reason });
+  return res.data;
+};
+
+/** GET /api/customers/cancelled?page=&limit=&search= */
+export const fetchCancelledCustomers = async (
+  page: number, limit: number, search?: string
+): Promise<{ success: boolean; rows: CancelledCustomerRow[]; total: number }> => {
+  const res = await axiosInstance.get('/customers/cancelled', { params: { page, limit, search: search || undefined } });
+  const rows: RawCancelledCustomer[] = res.data.rows ?? [];
+  return {
+    success: res.data.success,
+    total: res.data.total ?? 0,
+    rows: rows.map((c) => ({
+      id: String(c.id),
+      customer_code: c.customer_code,
+      customer_name: [c.name, c.middle_name, c.last_name].filter(Boolean).join(' ') || '—',
+      building_name: c.building?.building_name ?? null,
+      wing_name: c.wing?.name ?? null,
+      flat_no: c.flat?.flat_number ?? c.shop?.shop_no ?? null,
+      flat_amount: c.flat_amount,
+      cancellation_reason: c.cancellation_reason,
+      cancelled_at: c.cancelled_at,
+    })),
+  };
+};
+
+export interface RefundEntry {
+  id: string;
+  refunded_amount: number;
+  refund_date: string;
+  notes: string | null;
+  created_at: string;
+  created_by_name: string | null;
+}
+export interface RefundSummary {
+  total_paid: number;
+  total_refunded: number;
+  remaining_refundable: number;
+  refunds: RefundEntry[];
+}
+
+/** GET /api/customers/:id/refunds */
+export const fetchRefundSummary = async (customerId: string): Promise<RefundSummary> => {
+  const res = await axiosInstance.get(`/customers/${customerId}/refunds`);
+  return res.data.data;
+};
+
+/** POST /api/customers/:id/refunds */
+export const createRefund = async (
+  customerId: string,
+  payload: { refunded_amount: number; refund_date?: string; notes?: string }
+): Promise<RefundSummary> => {
+  const res = await axiosInstance.post(`/customers/${customerId}/refunds`, payload);
+  return res.data.data;
 };
 
 // ── Assign one or more customers to an employee ─────────────────────────────
