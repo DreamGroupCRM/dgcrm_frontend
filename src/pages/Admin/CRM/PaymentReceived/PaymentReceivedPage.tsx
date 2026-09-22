@@ -468,8 +468,7 @@ const PaymentReceivedPage: React.FC = () => {
         </div>
         <div>
           <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Payment Received</h1>
-          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Every approved payment — pending payments are reviewed on the Payment Approval tab</p>
-        </div>
+          </div>
       </div>
 
       {/* ── Top stat boxes — gradient StatCard, same look used site-wide.

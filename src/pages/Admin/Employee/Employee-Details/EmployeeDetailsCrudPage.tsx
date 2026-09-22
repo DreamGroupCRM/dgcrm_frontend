@@ -1190,7 +1190,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             </button>
             <div>
               <h1 className="emp-crud-title">View Employee</h1>
-              <p className="emp-crud-subtitle">Employee details</p>
             </div>
           </div>
 
@@ -1365,9 +1364,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <h1 className="emp-crud-title">
               {mode === 'add' ? 'Create Employee' : 'Edit Employee'}
             </h1>
-            <p className="emp-crud-subtitle">
-              {mode === 'add' ? 'Add new employee details' : 'Employee details'}
-            </p>
           </div>
         </div>
 

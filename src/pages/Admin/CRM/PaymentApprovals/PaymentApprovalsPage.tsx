@@ -419,8 +419,7 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
         </div>
         <div>
           <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Payment Approvals</h1>
-          <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '2px 0 0' }}>Approving moves a payment onto the Payment Received page and lets its receipt be printed</p>
-        </div>
+          </div>
       </div>
 
       {/* ── Top stat boxes — Awaiting Approval kept exactly as it already
