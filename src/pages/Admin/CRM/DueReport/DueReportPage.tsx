@@ -151,8 +151,17 @@ interface StatBoxSpec { label: string; value: number; color: string; icon: IconT
 // message, just surfaced here as its own selectable option instead of a
 // checkbox. ───────────────────────────────────────────────────────────────
 interface PaymentForUiOption { key: string; label: string; value: PaymentFor; isAdvance?: boolean; }
+// V_23.0 — "Monthly Installment" split into "EMI Before"/"EMI After" to
+// mirror the Booster Before/After pair. Both cosmetic options submit the
+// SAME underlying value (EMIAmount) to collectPayment: the backend's
+// due-list already computes/labels installments as "EMI Before"/"EMI
+// After" depending on where they fall in the customer's schedule
+// (payment.service.ts's getDueListDetailed), but collectPayment itself
+// has no before/after concept — it just settles whichever EMI
+// installment is next due regardless of which label was picked here.
 const PAYMENT_FOR_UI_OPTIONS: PaymentForUiOption[] = [
-  { key: 'emi', label: 'Monthly Installment', value: 'EMIAmount' },
+  { key: 'emi_before', label: 'EMI Before', value: 'EMIAmount' },
+  { key: 'emi_after', label: 'EMI After', value: 'EMIAmount' },
   { key: 'booking', label: 'Booking Amount', value: 'BookingAmount' },
   { key: 'pay_after_booking', label: 'Remaining Booking Amount', value: 'PayAfterbooking' },
   { key: 'possession', label: 'Possession Amount', value: 'PossessionAmount' },
@@ -164,16 +173,37 @@ const MODE_OF_PAYMENT_OPTIONS = ['Cash', 'Cheque', 'Online', 'Other'];
 
 // Friendly label + color per payment_for_key, reused by both the top
 // category boxes (click-to-filter) and the table's own Payment For column
-// badge — same convention PaymentUpcomingPage uses.
+// badge — same convention PaymentUpcomingPage uses. EMIAmount's own label
+// here is only a fallback; EMI rows are actually labeled "EMI Before"/
+// "EMI After" via getPaymentForDisplay() below, using the SAME color for
+// both phases so they read as one grouped category (per explicit request),
+// distinguished only by their text label.
 const PAYMENT_FOR_KEY_META: Record<PaymentFor, { label: string; color: string; icon: IconType }> = {
-  EMIAmount: { label: 'Monthly Installment', color: 'var(--brand-ink)', icon: MdPayments },
+  EMIAmount: { label: 'EMI Before', color: 'var(--brand-ink)', icon: MdPayments },
   BookingAmount: { label: 'Booking Amount', color: '#dc2626', icon: MdReceiptLong },
   PayAfterbooking: { label: 'Remaining Booking Amount', color: '#ea580c', icon: MdSchedule },
   PossessionAmount: { label: 'Possession Amount', color: '#7c3aed', icon: MdVpnKey },
   AnnualAmount: { label: 'Booster Before Possession', color: '#16a34a', icon: MdStars },
   AnnualAmount1: { label: 'Booster After Possession', color: '#0d9488', icon: MdWorkspacePremium },
 };
-const PAYMENT_FOR_KEY_ORDER: PaymentFor[] = ['EMIAmount', 'BookingAmount', 'PayAfterbooking', 'PossessionAmount', 'AnnualAmount', 'AnnualAmount1'];
+const PAYMENT_FOR_KEY_ORDER: Exclude<PaymentFor, 'EMIAmount'>[] = ['BookingAmount', 'PayAfterbooking', 'PossessionAmount', 'AnnualAmount', 'AnnualAmount1'];
+
+// A row's displayed Payment-For label/color — EMI rows show "EMI Before"/
+// "EMI After" (from the backend's own due_status text) instead of the
+// generic EMIAmount fallback, while keeping the SAME color for both so the
+// pair reads as one grouped/background treatment.
+const getPaymentForDisplay = (r: { payment_for_key: PaymentFor; payment_for: string }): { label: string; color: string } => {
+  if (r.payment_for_key === 'EMIAmount') {
+    return { label: r.payment_for === 'EMI After' ? 'EMI After' : 'EMI Before', color: PAYMENT_FOR_KEY_META.EMIAmount.color };
+  }
+  return { label: PAYMENT_FOR_KEY_META[r.payment_for_key].label, color: PAYMENT_FOR_KEY_META[r.payment_for_key].color };
+};
+
+// Category filter (top stat boxes' click-to-filter) needs to distinguish
+// EMI's two phases even though they share one payment_for_key.
+type CategoryFilterKey = Exclude<PaymentFor, 'EMIAmount'> | 'EMI Before' | 'EMI After';
+const matchesCategoryFilter = (r: { payment_for_key: PaymentFor; payment_for: string }, key: CategoryFilterKey): boolean =>
+  key === 'EMI Before' || key === 'EMI After' ? (r.payment_for_key === 'EMIAmount' && getPaymentForDisplay(r).label === key) : r.payment_for_key === key;
 
 type DueStatusFilter = 'all' | 'overdue' | 'due_today' | 'upcoming';
 
@@ -348,9 +378,11 @@ const DueReportPage: React.FC = () => {
     [dueRows]
   );
 
-  // ── Toolbar filters — Payment For + Building + Employee, all narrowing
-  // the same flat due-item list, in that left-to-right order. ─────────────
-  const [filterPaymentFor, setFilterPaymentFor] = useState('');
+  // ── Toolbar filters — Building + Employee, all narrowing the same flat
+  // due-item list, in that left-to-right order. The separate "Select
+  // Payment For" dropdown that used to sit here was removed (V_23.0):
+  // Payment For is already filterable via the stat-box click-to-filter
+  // above, and this dropdown duplicated that with a different UI. ────────
   const [filterBuilding, setFilterBuilding] = useState('');
   const [filterEmployee, setFilterEmployee] = useState('');
   // ── New (V_22.0): global search across every field, and a Status filter
@@ -358,8 +390,8 @@ const DueReportPage: React.FC = () => {
   // (below) is a separate, ANDed narrowing on top of all of these. ────────
   const [globalSearch, setGlobalSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<DueStatusFilter>('all');
-  const [categoryFilter, setCategoryFilter] = useState<PaymentFor | null>(null);
-  const toggleCategoryFilter = (key: PaymentFor) => setCategoryFilter((prev) => (prev === key ? null : key));
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilterKey | null>(null);
+  const toggleCategoryFilter = (key: CategoryFilterKey) => setCategoryFilter((prev) => (prev === key ? null : key));
 
   // Item 8 (V_23.0) — this toolbar had no Clear/Reset Filters control at
   // all; every filter here is plain client-side state narrowing the same
@@ -367,9 +399,9 @@ const DueReportPage: React.FC = () => {
   // just resetting this state, same pattern as CustomerDetailsListPage's
   // clearAllFilters/anyFilterApplied.
   const anyFilterApplied =
-    !!filterPaymentFor || !!filterBuilding || !!filterEmployee || !!globalSearch || statusFilter !== 'all' || !!categoryFilter;
+    !!filterBuilding || !!filterEmployee || !!globalSearch || statusFilter !== 'all' || !!categoryFilter;
   const clearAllFilters = () => {
-    setFilterPaymentFor(''); setFilterBuilding(''); setFilterEmployee('');
+    setFilterBuilding(''); setFilterEmployee('');
     setGlobalSearch(''); setStatusFilter('all'); setCategoryFilter(null);
   };
 
@@ -396,11 +428,6 @@ const DueReportPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
-  const paymentForFilterOptions = useMemo(
-    () => Array.from(new Set(dueRows.map((r) => r.payment_for).filter((v): v is string => !!v))),
-    [dueRows]
-  );
-
   // ── Normalize both data sources into one display shape the table
   // renders — see DisplayRow's own comment. ───────────────────────────────
   const dueDisplayRows: DisplayRow[] = useMemo(() => dueRows.map((r, i) => ({
@@ -415,7 +442,9 @@ const DueReportPage: React.FC = () => {
     months_pending: r.months_pending,
     per_month_amount: r.per_month_amount,
     statusLabel: r.due_category === 'due_today' ? 'Due Today' : 'Overdue',
-    statusColor: r.due_category === 'due_today' ? '#d97706' : '#dc2626',
+    // V_23.0 — color-coded status: Overdue = Red, Due Today = Green,
+    // Upcoming = Yellow (below). Was Overdue = Red, Due Today = Amber.
+    statusColor: r.due_category === 'due_today' ? '#16a34a' : '#dc2626',
     detailText: r.due_status.replace(/^Overdue\s+/, '').replace(/^Due Today\s*\|\s*/, ''),
     dueRow: r,
   })), [dueRows]);
@@ -431,7 +460,8 @@ const DueReportPage: React.FC = () => {
     amount: r.amount,
     months_pending: null,
     per_month_amount: null,
-    statusLabel: 'Upcoming', statusColor: '#4f46e5',
+    // V_23.0 — Upcoming = Yellow (was indigo).
+    statusLabel: 'Upcoming', statusColor: '#ca8a04',
     detailText: `Due on ${new Date(r.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
   })), [upcomingRows]);
 
@@ -445,10 +475,9 @@ const DueReportPage: React.FC = () => {
   const filteredDueRows = useMemo(() => {
     const q = globalSearch.trim().toLowerCase();
     return baseDisplayRows.filter((r) => {
-      if (filterPaymentFor && r.payment_for !== filterPaymentFor) return false;
       if (filterBuilding && r.building_name !== filterBuilding) return false;
       if (filterEmployee && r.assigned_employee_name !== filterEmployee) return false;
-      if (categoryFilter && r.payment_for_key !== categoryFilter) return false;
+      if (categoryFilter && !matchesCategoryFilter(r, categoryFilter)) return false;
       if (q && ![
         r.customer_code, r.customer_name, r.email, r.mobile_number,
         r.assigned_employee_name, r.assigned_employee_code,
@@ -457,18 +486,29 @@ const DueReportPage: React.FC = () => {
       ].some((v) => (v || '').toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [baseDisplayRows, filterPaymentFor, filterBuilding, filterEmployee, categoryFilter, globalSearch]);
+  }, [baseDisplayRows, filterBuilding, filterEmployee, categoryFilter, globalSearch]);
 
   // ── Stat boxes — sums across the (unfiltered) full due-item list, one
   // per payment-for category, plus a grand Total. Always reflect current
   // Due/Overdue amounts regardless of the Status filter above — the boxes
   // are the page's own headline numbers, not a view of whatever the table
-  // happens to be showing. ─────────────────────────────────────────────────
+  // happens to be showing. EMIAmount rows are split into "EMI Before"/"EMI
+  // After" sums (V_23.0) rather than one combined EMI sum — any EMI row
+  // not literally labeled "EMI After" is counted as "EMI Before", which
+  // also safely covers any row using the older unphased label. ───────────
   const boxSums = useMemo(() => {
-    const sums: Record<PaymentFor, number> = { EMIAmount: 0, BookingAmount: 0, PayAfterbooking: 0, PossessionAmount: 0, AnnualAmount: 0, AnnualAmount1: 0 };
-    for (const r of dueRows) sums[r.payment_for_key] += r.amount;
-    const total = Object.values(sums).reduce((s, v) => s + v, 0);
-    return { ...sums, total };
+    const sums: Record<Exclude<PaymentFor, 'EMIAmount'>, number> = { BookingAmount: 0, PayAfterbooking: 0, PossessionAmount: 0, AnnualAmount: 0, AnnualAmount1: 0 };
+    let emiBefore = 0;
+    let emiAfter = 0;
+    for (const r of dueRows) {
+      if (r.payment_for_key === 'EMIAmount') {
+        if (r.payment_for === 'EMI After') emiAfter += r.amount; else emiBefore += r.amount;
+      } else {
+        sums[r.payment_for_key] += r.amount;
+      }
+    }
+    const total = emiBefore + emiAfter + Object.values(sums).reduce((s, v) => s + v, 0);
+    return { ...sums, emiBefore, emiAfter, total };
   }, [dueRows]);
 
   const handleRefresh = () => fetchDueRows();
@@ -501,15 +541,31 @@ const DueReportPage: React.FC = () => {
     }
   };
 
-  // ── Client-side pagination over the filtered due-item list. ─────────────
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  useEffect(() => { setPage(1); }, [filterPaymentFor, filterBuilding, filterEmployee, statusFilter, categoryFilter, globalSearch]);
+  // ── Pagination + scroll-triggered lazy loading over the filtered
+  // due-item list (item 11). A single "visibleCount" — how many of
+  // filteredDueRows are rendered, always from the top — drives BOTH the
+  // normal Prev/Next/page-number controls AND lazy loading, so there is
+  // one source of truth and structurally no way to duplicate a row between
+  // them: the table always renders exactly filteredDueRows.slice(0,
+  // visibleCount). Clicking a page number, Next, or scrolling to the
+  // bottom of the table all just move visibleCount by whole page-size
+  // increments; Prev shrinks it back down. Default page size is 50 (item
+  // 11.1); the page-size selector (PaginationFooter, unchanged) still
+  // controls that increment. ───────────────────────────────────────────────
+  const [limit, setLimitRaw] = useState(50);
+  const [visibleCount, setVisibleCount] = useState(50);
+  const setLimit = (n: number) => { setLimitRaw(n); setVisibleCount(n); };
+  useEffect(() => { setVisibleCount(limit); }, [filterBuilding, filterEmployee, statusFilter, categoryFilter, globalSearch]);
   const totalPages = Math.max(1, Math.ceil(filteredDueRows.length / limit));
-  const safePage = Math.min(page, totalPages);
-  const from = filteredDueRows.length === 0 ? 0 : (safePage - 1) * limit + 1;
-  const to = Math.min(safePage * limit, filteredDueRows.length);
-  const pagedDueRows = useMemo(() => filteredDueRows.slice((safePage - 1) * limit, safePage * limit), [filteredDueRows, safePage, limit]);
+  const safePage = Math.min(Math.max(1, Math.ceil(visibleCount / limit)), totalPages);
+  const setPage = (p: number) => setVisibleCount(Math.min(filteredDueRows.length, Math.max(limit, p * limit)));
+  const from = filteredDueRows.length === 0 ? 0 : 1;
+  const to = Math.min(visibleCount, filteredDueRows.length);
+  const pagedDueRows = useMemo(() => filteredDueRows.slice(0, Math.min(visibleCount, filteredDueRows.length)), [filteredDueRows, visibleCount]);
+  const hasMoreRows = to < filteredDueRows.length;
+  const loadNextPage = useCallback(() => {
+    setVisibleCount((v) => Math.min(filteredDueRows.length, v + limit));
+  }, [filteredDueRows.length, limit]);
   const pageBtns = useCallback(() => {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
     const end = Math.min(totalPages, start + 4);
@@ -517,6 +573,21 @@ const DueReportPage: React.FC = () => {
     for (let i = start; i <= end; i++) arr.push(i);
     return arr;
   }, [safePage, totalPages]);
+
+  // Scroll-triggered lazy loading (item 11.2) — an IntersectionObserver on
+  // a sentinel row placed after the last data row inside the table's own
+  // scroll container; scrolling it into view loads the next page-size
+  // increment, same as clicking "Next" above.
+  const lazyLoadSentinelRef = useRef<HTMLTableRowElement>(null);
+  useEffect(() => {
+    const el = lazyLoadSentinelRef.current;
+    if (!el || !hasMoreRows) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) loadNextPage();
+    }, { root: el.closest('.due-report-table-scroll'), rootMargin: '200px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMoreRows, loadNextPage]);
 
   // ── Add Payment Details ──────────────────────────────────────────────
   const [apCustomerSearch, setApCustomerSearch] = useState('');
@@ -533,14 +604,6 @@ const DueReportPage: React.FC = () => {
 
   const apSelectedCustomer = useMemo(() => customers.find((c) => c.id === apCustomerId) ?? null, [customers, apCustomerId]);
   const apSelectedPaymentFor = useMemo(() => PAYMENT_FOR_UI_OPTIONS.find((o) => o.key === apPaymentForKey) ?? null, [apPaymentForKey]);
-  // V_22.0 — Company is no longer free-typed; it's read straight off the
-  // selected customer's building's linked business Company (see
-  // Building.entity.ts's business_company_id / buildingService.ts), same
-  // as collectPayment now derives it server-side.
-  const apDerivedCompanyName = useMemo(
-    () => buildings.find((b) => b.id === apSelectedCustomer?.building_id)?.business_company_name || '',
-    [buildings, apSelectedCustomer]
-  );
 
   const handleCustomerSearchChange = (v: string) => {
     setApCustomerSearch(v);
@@ -696,7 +759,11 @@ const DueReportPage: React.FC = () => {
   });
   const readOnlyInputStyle: React.CSSProperties = { ...fieldInputStyle(false), background: t.insetBg, cursor: 'not-allowed', color: t.textSecondary };
 
-  const statBoxSpecs: (StatBoxSpec & { key: PaymentFor | 'total' })[] = [
+  // EMI Before/After lead the row, sharing PAYMENT_FOR_KEY_META.EMIAmount's
+  // color so the pair reads as one grouped/background treatment (V_23.0).
+  const statBoxSpecs: (StatBoxSpec & { key: CategoryFilterKey | 'total' })[] = [
+    { key: 'EMI Before' as const, label: 'EMI Before', value: boxSums.emiBefore, color: PAYMENT_FOR_KEY_META.EMIAmount.color, icon: MdPayments },
+    { key: 'EMI After' as const, label: 'EMI After', value: boxSums.emiAfter, color: PAYMENT_FOR_KEY_META.EMIAmount.color, icon: MdPayments },
     ...PAYMENT_FOR_KEY_ORDER.map((key) => ({
       key, label: PAYMENT_FOR_KEY_META[key].label, value: boxSums[key], color: PAYMENT_FOR_KEY_META[key].color, icon: PAYMENT_FOR_KEY_META[key].icon,
     })),
@@ -721,7 +788,7 @@ const DueReportPage: React.FC = () => {
           click-to-filter on the table below (same convention Payment
           Upcoming's own boxes use) — click again, or click Total, to
           clear it. ────────────────────────────────────────────────────── */}
-      <div className="due-report-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-3 mb-5">
+      <div className="due-report-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3 mb-5">
         {statBoxSpecs.map((spec) => (
           <StatCard key={spec.key} label={spec.label} value={rupee(spec.value)} icon={spec.icon} color={spec.color}
             bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loadingDueList} compact
@@ -746,55 +813,26 @@ const DueReportPage: React.FC = () => {
               <SearchableSelect t={t} placeholder="Select or type customer name" options={customerOptions} value={apCustomerSearch} onChange={handleCustomerSearchChange} />
               {errorFor('customer') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('customer')}</p>}
             </div>
-            <div>
-              {/* V_22.0 — no longer free-typed; read straight off the
-                  selected customer's building's linked business Company. */}
-              <label style={fieldLabelStyle}>Company</label>
-              <input type="text" readOnly value={apDerivedCompanyName} placeholder="—" style={readOnlyInputStyle} />
-            </div>
-            <div>
-              <label style={fieldLabelStyle}>Building Name</label>
-              <input type="text" readOnly value={apSelectedCustomer?.building_name || ''} placeholder="—" style={readOnlyInputStyle} />
-            </div>
-            <div>
-              <label style={fieldLabelStyle}>Wing</label>
-              <input type="text" readOnly value={apSelectedCustomer?.wing_name || ''} placeholder="—" style={readOnlyInputStyle} />
-            </div>
-            <div>
-              <label style={fieldLabelStyle}>Flat Number</label>
-              <input type="text" readOnly value={apSelectedCustomer?.flat_no || ''} placeholder="—" style={readOnlyInputStyle} />
-            </div>
-            {/* Extra Pay is an advance against future EMIs, not tied to any
-                one installment — it has no Installment Date at all (takes
-                today's date via Payment Date instead), so the field is
-                hidden rather than shown blank/disabled. */}
-            {/* V_23.0 item 9 — terminology only, the underlying fields are
-                unchanged: the scheduled installment this payment settles
-                (inst_date) is now called "Payment Date", and the date the
-                money was actually received (payment_date) is "Receipt
-                Date". */}
-            {!apSelectedPaymentFor?.isAdvance && (
+            {/* V_23.0 item 8 — Company (a derived, read-only display field,
+                never actually editable) is removed from this form entirely;
+                Building/Wing/Flat already identify the unit, and Company is
+                still visible on the customer's own record. Building/Wing/
+                Flat are grouped into one row (item 8.2) since they're
+                always shown together and never edited independently. */}
+            <div className="due-report-building-group xl:col-span-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14 }}>
               <div>
-                <label style={fieldLabelStyle}>Payment Date</label>
-                {/* Read-only — auto-filled from the suggested default date
-                    for the selected Payment For, same as Building/Wing/Flat
-                    above. Not employee-editable. */}
-                <input type="date" readOnly value={apInstDate} style={readOnlyInputStyle} />
+                <label style={fieldLabelStyle}>Building Name</label>
+                <input type="text" readOnly value={apSelectedCustomer?.building_name || ''} placeholder="—" style={readOnlyInputStyle} />
               </div>
-            )}
-            {/* Receipt Date is admin-only (item 9). It was previously shown
-                and editable to everyone, but the server has always ignored
-                a non-admin's value and stamped "now" instead (see
-                payment.service.ts's finalPaymentDate) — so an employee was
-                being shown a control whose value was silently discarded.
-                Hiding it makes the UI tell the truth; the same server rule
-                remains the actual boundary. */}
-            {isAdmin && (
               <div>
-                <label style={fieldLabelStyle}>Receipt Date</label>
-                <input type="date" value={apPaymentDate} onChange={(e) => setApPaymentDate(e.target.value)} style={fieldInputStyle()} />
+                <label style={fieldLabelStyle}>Wing</label>
+                <input type="text" readOnly value={apSelectedCustomer?.wing_name || ''} placeholder="—" style={readOnlyInputStyle} />
               </div>
-            )}
+              <div>
+                <label style={fieldLabelStyle}>Flat Number</label>
+                <input type="text" readOnly value={apSelectedCustomer?.flat_no || ''} placeholder="—" style={readOnlyInputStyle} />
+              </div>
+            </div>
             <div ref={setFieldRef('payment_for')}>
               <label style={fieldLabelStyle}>Payment For</label>
               <select value={apPaymentForKey} onChange={(e) => handlePaymentForChange(e.target.value)} style={fieldInputStyle(!!errorFor('payment_for'))}>
@@ -814,6 +852,35 @@ const DueReportPage: React.FC = () => {
                 {errorFor('amount') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('amount')}</p>}
               </div>
             )}
+            {/* Extra Pay is an advance against future EMIs, not tied to any
+                one installment — it has no Payment Date at all (takes
+                today's date via Received Date instead), so the field is
+                hidden rather than shown blank/disabled. */}
+            {!apSelectedPaymentFor?.isAdvance && (
+              <div>
+                <label style={fieldLabelStyle}>Payment Date</label>
+                {/* Read-only — auto-filled from the suggested default date
+                    for the selected Payment For, same as Building/Wing/Flat
+                    above. Not employee-editable. */}
+                <input type="date" readOnly value={apInstDate} style={readOnlyInputStyle} />
+              </div>
+            )}
+            {/* V_23.0 item 8.4 — renamed from "Receipt Date" to "Received
+                Date", and now shown to everyone (previously admin-only):
+                the server has always stamped "now" for a non-admin
+                regardless of any value sent (see payment.service.ts's
+                finalPaymentDate), so an employee sees today's date here,
+                read-only — the same rule the server already enforces, just
+                made visible instead of hidden. Admin keeps the original
+                editable/backdatable control. */}
+            <div>
+              <label style={fieldLabelStyle}>Received Date</label>
+              {isAdmin ? (
+                <input type="date" value={apPaymentDate} onChange={(e) => setApPaymentDate(e.target.value)} style={fieldInputStyle()} />
+              ) : (
+                <input type="date" readOnly value={ymd(new Date())} style={readOnlyInputStyle} />
+              )}
+            </div>
             <div ref={setFieldRef('mode_of_payment')}>
               <label style={fieldLabelStyle}>Mode of Payment</label>
               <select value={apModeOfPayment} onChange={(e) => setApModeOfPayment(e.target.value)} style={fieldInputStyle(!!errorFor('mode_of_payment'))}>
@@ -826,15 +893,16 @@ const DueReportPage: React.FC = () => {
               <button type="button" onClick={handleSubmitAddPayment} disabled={submitting}
                 className="w-full px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
                 style={{ background: submitting ? '#6b7280' : 'var(--brand-gradient)', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer' }}>
-                {submitting ? 'Submitting...' : 'Submit'}
+                {submitting ? 'Submitting...' : 'OK'}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Toolbar — Payment For + Building + Employee + global search +
-          Status filters, follow-up badge, Export CSV and Refresh all in a
+      {/* ── Toolbar — Building + Employee + global search + Status filters
+          (Payment For is filtered via the stat boxes above instead — see
+          item 8.3), follow-up badge, Export CSV and Refresh all in a
           single row. Filter widths are kept narrow (and the follow-up
           badge/export button compact) so the whole row fits typical
           laptop/sidebar widths without a horizontal scrollbar; flex-wrap
@@ -843,9 +911,9 @@ const DueReportPage: React.FC = () => {
       <div className="due-report-toolbar rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="due-report-toolbar-row flex items-center flex-wrap" style={{ gap: 10 }}>
           <div className="due-report-toolbar-filters flex items-center flex-wrap gap-2" style={{ minWidth: 0 }}>
-            <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
-              <SearchableSelect t={t} placeholder="Select Payment For" options={paymentForFilterOptions} value={filterPaymentFor} onChange={setFilterPaymentFor} />
-            </div>
+            {/* V_23.0 item 8.3 — the "Select Payment For" dropdown that used
+                to sit here was removed: it duplicated the stat boxes'
+                click-to-filter above with a different control. */}
             <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Select Building" options={buildingNames} value={filterBuilding} onChange={setFilterBuilding} />
             </div>
@@ -931,7 +999,8 @@ const DueReportPage: React.FC = () => {
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.company_name || '—'}</div>
                       {(r.project_name || r.location) && (
-                        <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
+                        <div className="master-cell-truncate" title={`${r.project_name || ''}${r.project_name && r.location ? ' • ' : ''}${r.location || ''}`}
+                          style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
                           {r.project_name || ''}{r.project_name && r.location ? ' • ' : ''}{r.location || ''}
                         </div>
                       )}
@@ -955,33 +1024,57 @@ const DueReportPage: React.FC = () => {
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.mobile_number || '—'}</div>
                     </td>
                     <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                      <span style={{
-                        display: 'inline-block', padding: '3px 9px', borderRadius: 999,
-                        fontSize: 10.5, fontWeight: 700, color: '#fff', background: PAYMENT_FOR_KEY_META[r.payment_for_key].color,
-                      }}>
-                        {PAYMENT_FOR_KEY_META[r.payment_for_key].label}
-                      </span>
-                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>{r.payment_for}</div>
-                      {/* Item 10.1/10.2 — the actual per-instalment amount,
-                          on the same line as what it is for. Falls back to
-                          the row total for a one-time amount, which has no
-                          separate per-month figure. */}
-                      <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginTop: 3 }}>
-                        {rupee(r.per_month_amount ?? r.amount)}
-                      </div>
+                      {/* V_23.0 item 10 — badge now shows the row's actual
+                          phase-aware label ("EMI Before"/"EMI After" share
+                          one color, per getPaymentForDisplay's own comment,
+                          so the pair reads as one grouped/background
+                          treatment) instead of the generic EMIAmount
+                          fallback. The raw backend wording is only shown
+                          below when it says something the badge doesn't. */}
+                      {(() => {
+                        const disp = getPaymentForDisplay(r);
+                        return (
+                          <>
+                            <span style={{
+                              display: 'inline-block', padding: '3px 9px', borderRadius: 999,
+                              fontSize: 10.5, fontWeight: 700, color: '#fff', background: disp.color,
+                            }}>
+                              {disp.label}
+                            </span>
+                            {r.payment_for !== disp.label && (
+                              <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>{r.payment_for}</div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </td>
                     <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                      {r.months_pending ? (
-                        <span style={{
-                          display: 'inline-block', padding: '3px 9px', borderRadius: 999,
-                          fontSize: 10.5, fontWeight: 700, color: '#fff',
-                          background: r.months_pending >= 5 ? '#dc2626' : r.months_pending >= 3 ? '#ea580c' : '#d97706',
-                        }}>
-                          {r.months_pending} month{r.months_pending === 1 ? '' : 's'}
-                        </span>
-                      ) : (
-                        <span style={{ color: t.textSecondary, fontSize: 11.5 }}>—</span>
-                      )}
+                      {/* V_23.0 item 12 — color-coded by STATUS (Overdue =
+                          Red, Due Today = Green, Upcoming = Yellow), not by
+                          months-pending severity as before. */}
+                      <span style={{
+                        display: 'inline-block', padding: '3px 9px', borderRadius: 999,
+                        fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em',
+                        color: '#fff', background: r.statusColor,
+                      }}>
+                        {r.statusLabel}
+                      </span>
+                      <div style={{ marginTop: 4 }}>
+                        {r.months_pending ? (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>
+                            {r.months_pending} month{r.months_pending === 1 ? '' : 's'} pending
+                          </span>
+                        ) : (
+                          <span style={{ color: t.textSecondary, fontSize: 11.5 }}>—</span>
+                        )}
+                        {/* Item 13 — the corresponding EMI/per-instalment
+                            amount, under the pending-months count. */}
+                        {r.per_month_amount != null && (
+                          <div style={{ fontSize: 11, fontWeight: 600, color: t.textSecondary, marginTop: 1 }}>
+                            {rupee(r.per_month_amount)} / month
+                          </div>
+                        )}
+                      </div>
                       {/* Item 10.3/10.7 — the overdue period and dates move
                           under the month count, replacing the separate
                           Detail column. */}
@@ -992,11 +1085,13 @@ const DueReportPage: React.FC = () => {
                       )}
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                      {/* Item 10.2/10.4 — the amount genuinely owed, never
-                          a "₹10,000 × 12" expression. The per-instalment
-                          figure and the month count are each shown in their
-                          own column already, so nothing is lost. */}
-                      {rupee(r.amount)}
+                      {/* Item 14 — show the multiplication behind a
+                          multi-month amount (e.g. "₹15,000 × 3 =
+                          ₹45,000"), falling back to a plain total for a
+                          one-time amount with no separate per-month figure. */}
+                      {r.months_pending && r.months_pending > 1 && r.per_month_amount != null
+                        ? `${rupee(r.per_month_amount)} × ${r.months_pending} = ${rupee(r.amount)}`
+                        : rupee(r.amount)}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       {(() => {
@@ -1030,6 +1125,14 @@ const DueReportPage: React.FC = () => {
                     </td>
                   </tr>
                 ))
+              )}
+              {/* Item 11.2 — invisible sentinel row; scrolling it into view
+                  inside .due-report-table-scroll loads the next page-size
+                  increment (see the IntersectionObserver above). Rendered
+                  only while there's more to load, so it never becomes an
+                  extra empty row at the true end of the list. */}
+              {hasMoreRows && (
+                <tr ref={lazyLoadSentinelRef} aria-hidden="true"><td colSpan={9} style={{ padding: 0, border: 'none' }} /></tr>
               )}
             </tbody>
           </table>

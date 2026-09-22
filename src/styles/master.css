@@ -153,9 +153,17 @@ html.dark .master-search-box-accent svg {
    dark theme. camelCase headers: no more uppercase transform/letter-
    spacing, just the label text itself in normal case — item 7. Light grid
    border on all 4 sides of every cell (border-collapse merges adjacent
-   cells' borders into single lines) so rows and columns read clearly. */
+   cells' borders into single lines) so rows and columns read clearly.
+   V_23.0 (Global GridView item) — the 12px/16px default was the single
+   biggest source of "too much vertical space" across every list page in
+   the app; every page here still reads its own padding through
+   --master-cell-padding first, so a page that already set its own value
+   is unaffected — this only tightens the shared fallback every OTHER
+   master-table page was implicitly using. The 600px/380px phone
+   breakpoints in Responsive.css hardcode their own smaller padding
+   directly (not through this var) and are unaffected either way. */
 .master-table th {
-  padding: var(--master-cell-padding, 12px 16px);
+  padding: var(--master-cell-padding, 8px 12px);
   text-align: left;
   font-size: 12.5px;
   font-weight: 700;
@@ -165,12 +173,32 @@ html.dark .master-search-box-accent svg {
 }
 
 .master-table td {
-  padding: var(--master-cell-padding, 12px 16px);
+  padding: var(--master-cell-padding, 8px 12px);
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   color: #000000;
   border: 1px solid #e2e8f0;
+}
+
+/* ── Long-value truncation (Global GridView item) ─────────────────────────
+   Opt-in utility for a column whose values can run long enough to force
+   horizontal scrolling (a free-text name, an address, a multi-part
+   location string). NOT applied blanket to every cell — most columns
+   (codes, dates, badges, short names) are fine at their natural width, and
+   forcing a fixed max-width onto every column would just as easily BREAK
+   short ones by clipping content that already fit. Apply this class only
+   to a specific <td>'s inner wrapper where a column is known to run long,
+   and pair it with a `title` attribute carrying that cell's full,
+   untruncated text — text-overflow:ellipsis has no way to recover the
+   original string for a tooltip on its own; the browser's native title
+   tooltip is what actually shows the full value on hover. */
+.master-cell-truncate {
+  display: block;
+  max-width: var(--master-cell-truncate-width, 220px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 html.dark .master-table th,
