@@ -52,13 +52,19 @@ const Accordion: React.FC<{
   const [open, setOpen] = useState(!!defaultOpen);
   return (
     <div className="rounded-2xl mb-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, overflow: 'hidden' }}>
+      {/* Solid green heading band, per explicit design request — matches
+          neither the light/dark surface color nor any status color, so it's
+          hardcoded here rather than read from a theme token. */}
       <button type="button" onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3.5"
-        style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
-        <span className="flex items-center gap-2" style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>
-          {icon} {title}
+        style={{ background: '#059669', border: 'none', cursor: 'pointer' }}>
+        <span className="flex items-center gap-2.5" style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>
+          <span className="flex items-center justify-center rounded-lg" style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.2)', color: '#fff', flexShrink: 0 }}>
+            {icon}
+          </span>
+          {title}
         </span>
-        {open ? <MdExpandLess size={20} color={t.textSecondary} /> : <MdExpandMore size={20} color={t.textSecondary} />}
+        {open ? <MdExpandLess size={20} color="#fff" /> : <MdExpandMore size={20} color="#fff" />}
       </button>
       {open && <div className="px-4 pb-4" style={{ borderTop: `1px solid ${t.divider}` }}>{children}</div>}
     </div>
@@ -243,7 +249,7 @@ const CancelledBookingPage: React.FC = () => {
             Showing details for <span style={{ color: t.textPrimary }}>{selected.customer_name} ({selected.customer_code})</span>
           </div>
 
-          <Accordion t={t} icon={<MdReceiptLong size={17} color="var(--brand-ink)" />} title="Booking & Payment Details" defaultOpen>
+          <Accordion t={t} icon={<MdReceiptLong size={17} color="#fff" />} title="Booking & Payment Details" defaultOpen>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-4">
               <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Customer</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{selected.customer_name}</div><div style={{ fontSize: 10.5, color: t.textSecondary }}>{selected.customer_code}</div></div>
               <div><div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase' }}>Building</div><div style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{selected.building_name || '—'}</div></div>
@@ -286,7 +292,7 @@ const CancelledBookingPage: React.FC = () => {
             </div>
           </Accordion>
 
-          <Accordion t={t} icon={<MdCurrencyRupee size={17} color="#16a34a" />} title="Payment Refund">
+          <Accordion t={t} icon={<MdCurrencyRupee size={17} color="#fff" />} title="Payment Refund">
             {loadingRefunds || !refundSummary ? (
               <p style={{ color: t.textSecondary, fontSize: 12, padding: '16px 0' }}>Loading refund details...</p>
             ) : (
