@@ -391,6 +391,39 @@ export const fetchPaymentReceivedSummary = async (): Promise<PaymentReceivedSumm
   const res = await axiosInstance.get('/payments/received-summary');
   return res.data.data;
 };
+
+// ── Payment Received's 8 category stat boxes (V_23.0) — EMI Before/After,
+// Booking, Remaining Booking, Possession, Booster Before/After, and a grand
+// Total. Takes the SAME PaymentListFilters shape fetchPaymentList does (no
+// page/limit — this is an aggregate, not a page of rows) so a caller can
+// pass through its current table filters unchanged and get back sums that
+// always match what the table itself is showing.
+export interface PaymentCategorySummary {
+  emi_before: number;
+  emi_after: number;
+  booking: number;
+  pay_after_booking: number;
+  possession: number;
+  booster_before: number;
+  booster_after: number;
+  total: number;
+}
+/** GET /api/payments/category-summary?approval=&search=&... */
+export const fetchPaymentCategorySummary = async (filters?: PaymentListFilters): Promise<PaymentCategorySummary> => {
+  const params: Record<string, string | number> = {};
+  if (filters?.approval) params.approval = filters.approval;
+  if (filters?.search?.trim()) params.search = filters.search.trim();
+  if (filters?.building_id) params.building_id = filters.building_id;
+  if (filters?.wing_id) params.wing_id = filters.wing_id;
+  if (filters?.flat_id) params.flat_id = filters.flat_id;
+  if (filters?.mode_of_payment) params.mode_of_payment = filters.mode_of_payment;
+  if (filters?.company) params.company = filters.company;
+  if (filters?.received_by) params.received_by = filters.received_by;
+  if (filters?.date_from) params.date_from = filters.date_from;
+  if (filters?.date_to) params.date_to = filters.date_to;
+  const res = await axiosInstance.get('/payments/category-summary', { params });
+  return res.data.data;
+};
 /** PUT /api/payments/:id/approve */
 export const approvePayment = async (id: string | number): Promise<{ success: boolean; message: string }> => {
   const res = await axiosInstance.put(`/payments/${id}/approve`);

@@ -22,9 +22,11 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@/utils/toast';
 import {
   MdPayments, MdRefresh, MdSearch, MdDownload, MdClose, MdKeyboardArrowDown,
-  MdFilterAlt, MdVisibility, MdDelete, MdHome, MdHourglassEmpty,
+  MdFilterAlt, MdVisibility, MdDelete,
   MdCheckCircle, MdUpcoming, MdMoreVert,
+  MdReceiptLong, MdSchedule, MdVpnKey, MdStars, MdWorkspacePremium, MdAccountBalanceWallet,
 } from 'react-icons/md';
+import { IconType } from 'react-icons';
 
 import { useAppDispatch } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
@@ -38,7 +40,7 @@ import { RowActionMenu, useRowActionMenu } from '../../../../components/common/R
 import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
 import {
   fetchPaymentList, paymentForLabel, PaymentListRow,
-  fetchPaymentReceivedSummary, PaymentReceivedSummary, fetchPaymentReceipt, deletePayment,
+  fetchPaymentCategorySummary, PaymentCategorySummary, fetchPaymentReceipt, deletePayment,
 } from '../../../../services/paymentService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
@@ -155,17 +157,14 @@ const PaymentReceivedPage: React.FC = () => {
   // ── Row actions three-dot menu — see components/common/RowActionMenu. ──
   const rowMenu = useRowActionMenu<string>();
 
-  // ── Top stat boxes — Total Flat Sold (total sale value of every sold
-  // flat), Total Amount Received (every approved payment), Total Pending
-  // Amount (the difference) — independent of the table's own filters. ────
-  const [summary, setSummary] = useState<PaymentReceivedSummary | null>(null);
-  const fetchSummary = useCallback(async () => {
-    try {
-      setSummary(await fetchPaymentReceivedSummary());
-    } catch {
-      // Stat boxes just stay at their last known value on failure.
-    }
-  }, []);
+  // ── Top stat boxes — one sum per Payment For category (EMI Before/After,
+  // Booking, Remaining Booking, Possession, Booster Before/After) plus a
+  // grand Total (V_23.0 — replaces the old Total Flat Sold/Amount
+  // Received/Pending Amount trio). fetchCategorySummary itself is defined
+  // further down (see fetchRows) since it depends on appliedFilters, which
+  // isn't declared yet at this point in the component. ────────────────────
+  const [categorySummary, setCategorySummary] = useState<PaymentCategorySummary | null>(null);
+  const [categorySummaryError, setCategorySummaryError] = useState(false);
 
   // ── Filter panel data sources ────────────────────────────────────────
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -264,26 +263,36 @@ const PaymentReceivedPage: React.FC = () => {
   const handleBuildingChange = (v: string) => { setDraftBuildingName(v); setDraftWingName(''); setDraftFlatNo(''); };
   const handleWingChange = (v: string) => { setDraftWingName(v); setDraftFlatNo(''); };
 
+  // V_23.0 — picking a Date Range preset (Today/Yesterday/Last Week/Last
+  // Month, etc.) now applies immediately, instead of only updating the
+  // draft From/To fields and waiting for a "Filter" click: it commits
+  // straight into appliedFilters, so both the 8 category stat boxes and
+  // the table below update together the moment a preset is chosen. Manual
+  // From/To typing is unaffected — that still only takes effect on
+  // "Filter", same as every other field in this panel.
   const applyDateRangePreset = (preset: string) => {
     setDraftDateRange(preset);
     const fmt = (d: Date) => d.toISOString().slice(0, 10);
     const today = new Date();
-    if (preset === 'today') { setDraftFromDate(fmt(today)); setDraftToDate(fmt(today)); }
+    let from = '';
+    let to = '';
+    if (preset === 'today') { from = fmt(today); to = fmt(today); }
     else if (preset === 'yesterday') {
       const y = new Date(today); y.setDate(y.getDate() - 1);
-      setDraftFromDate(fmt(y)); setDraftToDate(fmt(y));
+      from = fmt(y); to = fmt(y);
     } else if (preset === 'last_week') {
-      const from = new Date(today); from.setDate(from.getDate() - 7);
-      setDraftFromDate(fmt(from)); setDraftToDate(fmt(today));
+      const f = new Date(today); f.setDate(f.getDate() - 7);
+      from = fmt(f); to = fmt(today);
     } else if (preset === 'last_15_days') {
-      const from = new Date(today); from.setDate(from.getDate() - 15);
-      setDraftFromDate(fmt(from)); setDraftToDate(fmt(today));
+      const f = new Date(today); f.setDate(f.getDate() - 15);
+      from = fmt(f); to = fmt(today);
     } else if (preset === 'last_month') {
-      const from = new Date(today); from.setMonth(from.getMonth() - 1);
-      setDraftFromDate(fmt(from)); setDraftToDate(fmt(today));
-    } else {
-      setDraftFromDate(''); setDraftToDate('');
+      const f = new Date(today); f.setMonth(f.getMonth() - 1);
+      from = fmt(f); to = fmt(today);
     }
+    setDraftFromDate(from);
+    setDraftToDate(to);
+    setAppliedFilters((prev) => ({ ...prev, date_from: from || undefined, date_to: to || undefined }));
   };
 
   // ── Applied filters — what the table actually queries by. ────────────
@@ -315,7 +324,20 @@ const PaymentReceivedPage: React.FC = () => {
     }
   }, [page, limit, appliedFilters]);
 
-  useEffect(() => { fetchRows(); fetchSummary(); }, [fetchRows, fetchSummary]);
+  // Same appliedFilters object fetchRows queries by (minus page/limit,
+  // which an aggregate has no use for) — this is what guarantees the 8 stat
+  // boxes and the table below always match: whatever date range/building/
+  // etc. is currently applied, both this and fetchRows query it identically.
+  const fetchCategorySummary = useCallback(async () => {
+    setCategorySummaryError(false);
+    try {
+      setCategorySummary(await fetchPaymentCategorySummary({ approval: 'approved', ...appliedFilters }));
+    } catch {
+      setCategorySummaryError(true);
+    }
+  }, [appliedFilters]);
+
+  useEffect(() => { fetchRows(); fetchCategorySummary(); }, [fetchRows, fetchCategorySummary]);
   useEffect(() => { setPage(1); }, [appliedFilters]);
   // Selection is page-scoped — clear it whenever the visible rows change
   // under it (new page, filter, refresh, or a delete removes rows) so a
@@ -341,14 +363,6 @@ const PaymentReceivedPage: React.FC = () => {
     setDraftReceivedBy(''); setDraftProjectName(''); setDraftBuildingName(''); setDraftWingName(''); setDraftFlatNo('');
     setDraftMode(''); setDraftCompany(''); setDraftDateRange(''); setDraftFromDate(''); setDraftToDate('');
     setAppliedFilters((prev) => ({ search: prev.search }));
-  };
-
-  // Same as handleResetFilters, plus clears the search box too — used by
-  // the "Total Amount Received" stat box's click, since that number
-  // represents every approved payment with nothing filtered out at all.
-  const handleShowAllReceived = () => {
-    setSearchQuery('');
-    handleResetFilters();
   };
 
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
@@ -430,7 +444,7 @@ const PaymentReceivedPage: React.FC = () => {
       await deletePayment(row.id);
       toast.success('Payment deleted.');
       fetchRows();
-      fetchSummary();
+      fetchCategorySummary();
     } catch {
       toast.error('Failed to delete payment.');
     } finally {
@@ -457,6 +471,25 @@ const PaymentReceivedPage: React.FC = () => {
   // compact (not stretched to fill their grid column) and in fresh light
   // tints instead of the earlier solid orange/gray, per explicit request. ──
   const actionBtnBase: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 14px', height: 38, borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' };
+
+  // ── Top stat boxes — same 8 categories, colors, icons and compact
+  // gradient StatCard DueReportPage's own Payment Dues boxes use (EMI
+  // Before/After share one color the same way there, so the pair reads as
+  // one grouped treatment) — kept as a local spec array, not a shared
+  // import, matching this codebase's per-page-duplication convention (see
+  // e.g. FilterSelect above, defined identically on this page and Payment
+  // Approvals). Non-clickable: unlike Payment Dues, these don't double as a
+  // table filter — the Date Range panel above already does that job. ──────
+  const categoryBoxSpecs: { key: keyof PaymentCategorySummary; label: string; color: string; icon: IconType }[] = [
+    { key: 'emi_before', label: 'EMI Before', color: '#2563eb', icon: MdPayments },
+    { key: 'emi_after', label: 'EMI After', color: '#2563eb', icon: MdPayments },
+    { key: 'booking', label: 'Booking Amount', color: '#dc2626', icon: MdReceiptLong },
+    { key: 'pay_after_booking', label: 'Remaining Booking Amount', color: '#ea580c', icon: MdSchedule },
+    { key: 'possession', label: 'Possession Amount', color: '#7c3aed', icon: MdVpnKey },
+    { key: 'booster_before', label: 'Booster Before Possession', color: '#16a34a', icon: MdStars },
+    { key: 'booster_after', label: 'Booster After Possession', color: '#0d9488', icon: MdWorkspacePremium },
+    { key: 'total', label: 'Total', color: '#0891b2', icon: MdAccountBalanceWallet },
+  ];
 
   return (
     <div className="pr-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
@@ -513,29 +546,30 @@ const PaymentReceivedPage: React.FC = () => {
           </div>
       </div>
 
-      {/* ── Top stat boxes — gradient StatCard, same look used site-wide.
-          Total Flat Sold isn't a filterable dimension of this table (it's
-          a sale-value total, not a payment) so it stays non-clickable.
-          Total Amount Received represents every approved payment with
-          nothing filtered — clicking it clears the filter panel + search.
-          Total Pending Amount is reviewed on the Payment Approval tab,
-          never here — clicking it switches tabs instead of trying to
-          "filter" a page that, by definition, never shows pending
-          rows. ─────────────────────────────────────────────────────── */}
-      <div className="pr-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
-        <StatCard label="Total Flat Sold" value={rupee(summary?.total_flat_sold ?? 0)} icon={MdHome} color="#7c3aed" bg="" loading={!summary}
-          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-        <StatCard label="Total Amount Received" value={rupee(summary?.total_amount_received ?? 0)} icon={MdPayments} color="#16a34a" bg="" loading={!summary}
-          onClick={handleShowAllReceived}
-          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-        {/* Payment Approval is an admin-only tab, and this page is also
-            reachable from the employee sidebar (no tabs shown there) — so
-            for an employee this tile stays a plain figure rather than a
-            control that would do nothing for them. */}
-        <StatCard label="Total Pending Amount" value={rupee(summary?.total_pending_amount ?? 0)} icon={MdHourglassEmpty} color="#ea580c" bg="" loading={!summary}
-          onClick={paths.isAdmin ? () => setActiveTab('approval') : undefined}
-          surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+      {/* ── Top stat boxes (V_23.0) — one sum per Payment For category plus
+          a grand Total, same saturated-gradient StatCard/hover-expand
+          treatment as Payment Dues' own 8-box row (see PaymentReceived.css)
+          — the hovered box grows to show its full label/value while its 7
+          siblings compress, all 8 staying in one row on xl screens. These
+          always reflect the SAME appliedFilters (including Date Range) the
+          table below queries by, so the two can never disagree. A failed
+          fetch shows a retry rather than silently freezing at stale
+          numbers. ─────────────────────────────────────────────────────── */}
+      <div className="pr-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3 mb-5">
+        {categoryBoxSpecs.map((spec) => (
+          <StatCard key={spec.key} label={spec.label} value={rupee(categorySummary?.[spec.key] ?? 0)} icon={spec.icon} color={spec.color}
+            bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={!categorySummary && !categorySummaryError} compact
+            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        ))}
       </div>
+      {categorySummaryError && (
+        <div className="flex items-center gap-2 mb-5" style={{ fontSize: 12, color: '#dc2626' }}>
+          <span>Failed to load payment totals.</span>
+          <button type="button" onClick={fetchCategorySummary} style={{ fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none', color: '#dc2626', fontSize: 12 }}>
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* ── Filter panel — Received By/Company/Project/Building/Wing/Flat in
           row 1, Mode/Date Range/From/To + action buttons in row 2 (exactly
@@ -601,7 +635,7 @@ const PaymentReceivedPage: React.FC = () => {
               style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
               <MdDownload size={16} /> <span className="pr-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
             </button>
-            <button type="button" onClick={() => { fetchRows(); fetchSummary(); }} title="Refresh"
+            <button type="button" onClick={() => { fetchRows(); fetchCategorySummary(); }} title="Refresh"
               className="pr-refresh-btn flex items-center justify-center rounded-xl"
               style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
               <MdRefresh size={18} />
