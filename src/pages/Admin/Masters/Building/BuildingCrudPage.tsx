@@ -815,7 +815,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   const flatsRef = useRef<HTMLDivElement>(null);
   const shopsRef = useRef<HTMLDivElement>(null);
   const parkingRef = useRef<HTMLDivElement>(null);
-  const validationChecks: { field: string; message: string; failed: () => boolean; sectionRef: React.RefObject<HTMLDivElement> }[] = [
+  const validationChecks: { field: string; message: string; failed: () => boolean; sectionRef: React.RefObject<HTMLDivElement | null> }[] = [
     { field: 'projectDetails', message: 'Please fill all Project Details fields, including Company.', sectionRef: projectDetailsRef,
       failed: () => (!isEdit && !businessCompanyId) || !projectName.trim() || !location.trim() || !buildingName.trim() },
     { field: 'wings', message: 'Please give every wing a name and a valid floor count.', sectionRef: wingsRef,

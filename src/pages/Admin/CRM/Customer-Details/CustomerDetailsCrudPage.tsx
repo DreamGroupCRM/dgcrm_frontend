@@ -1708,7 +1708,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Customer Details (Personal Details) ──────────────────────── */}
       <AccordionSection theme={t} icon={<MdPerson size={16} />} title="Customer Details" gradient="var(--grad-green)"
         open={openSections.personal} onToggle={() => setOpenSections((p) => ({ ...p, personal: !p.personal }))}
-        sectionRef={(el) => (sectionRefs.current.personal = el)}>
+        sectionRef={(el) => { sectionRefs.current.personal = el; }}>
         <SubHeading t={t} title="Personal Details" />
 
         {/* Row 1 of 3 — Name + Photo */}
@@ -1821,7 +1821,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Property Booking Details ─────────────────────────────────── */}
       <AccordionSection theme={t} icon={<MdApartment size={16} />} title="Property Booking Details" gradient="var(--grad-green)"
         open={openSections.property} onToggle={() => setOpenSections((p) => ({ ...p, property: !p.property }))}
-        sectionRef={(el) => (sectionRefs.current.property = el)}>
+        sectionRef={(el) => { sectionRefs.current.property = el; }}>
 
         {/* V_23.0 item 4 — the "Select Flat (Building View)" button that
             used to sit here (opening the 2D Building View in picker mode)
@@ -2005,7 +2005,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Payment Details ──────────────────────────────────────────── */}
       <AccordionSection theme={t} icon={<MdPayments size={16} />} title="Payment Details" gradient="var(--grad-green)"
         open={openSections.payment} onToggle={() => setOpenSections((p) => ({ ...p, payment: !p.payment }))}
-        sectionRef={(el) => (sectionRefs.current.payment = el)}>
+        sectionRef={(el) => { sectionRefs.current.payment = el; }}>
 
         {/* Row 1 of 3 — Remaining Booking Amount & Date spans 2 columns (its
             own amount+date pair was squeezing into the same 1/5-width slot
@@ -2115,7 +2115,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Document Upload ──────────────────────────────────────────── */}
       <AccordionSection theme={t} icon={<MdDescription size={16} />} title="Document Upload" gradient="var(--grad-green)"
         open={openSections.documents} onToggle={() => setOpenSections((p) => ({ ...p, documents: !p.documents }))}
-        sectionRef={(el) => (sectionRefs.current.documents = el)}>
+        sectionRef={(el) => { sectionRefs.current.documents = el; }}>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field t={t} label="Application Form" required error={errorFor('applicationForm')} fieldRef={setFieldRef('applicationForm') as React.Ref<HTMLDivElement>}>

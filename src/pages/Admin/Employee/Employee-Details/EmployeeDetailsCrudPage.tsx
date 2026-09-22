@@ -1384,7 +1384,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Personal Details ─────────────────────────────────────────── */}
       <AccordionSection theme={t} icon={<MdPerson size={16} />} title="Personal Details" gradient="var(--grad-green)"
         open={openSections.personal} onToggle={() => setOpenSections((p) => ({ ...p, personal: !p.personal }))}
-        sectionRef={(el) => (sectionRefs.current.personal = el)}>
+        sectionRef={(el) => { sectionRefs.current.personal = el; }}>
 
         {/* Row 1 of 3 (V_23.0 item 5) — Name + Date of Birth + Photo,
             Employee Photo placed right next to Date of Birth as asked. */}
@@ -1475,7 +1475,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Office Use Only ──────────────────────────────────────────── */}
       <AccordionSection theme={t} icon={<MdBusinessCenter size={16} />} title="Office Use Only" gradient="var(--grad-green)"
         open={openSections.office} onToggle={() => setOpenSections((p) => ({ ...p, office: !p.office }))}
-        sectionRef={(el) => (sectionRefs.current.office = el)}>
+        sectionRef={(el) => { sectionRefs.current.office = el; }}>
 
         {/* All 10 fields flow across exactly 2 rows on desktop (5 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -1525,7 +1525,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Bank Details ─────────────────────────────────────────────── */}
       <AccordionSection theme={t} icon={<MdAccountBalance size={16} />} title="Bank Details" gradient="var(--grad-green)"
         open={openSections.bank} onToggle={() => setOpenSections((p) => ({ ...p, bank: !p.bank }))}
-        sectionRef={(el) => (sectionRefs.current.bank = el)}>
+        sectionRef={(el) => { sectionRefs.current.bank = el; }}>
 
         {/* All 7 fields flow across exactly 2 rows on desktop (4 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1564,7 +1564,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       {/* ── Assign Action & Module for this Employee ────────────────── */}
       <AccordionSection theme={t} icon={<MdGroups size={16} />} title="Assign Action & Module for this Employee" gradient="var(--grad-green)"
         open={openSections.assign} onToggle={() => setOpenSections((p) => ({ ...p, assign: !p.assign }))}
-        sectionRef={(el) => (sectionRefs.current.assign = el)}>
+        sectionRef={(el) => { sectionRefs.current.assign = el; }}>
 
         {/* Department (left) + Designation (right) — side by side, equal balance */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
