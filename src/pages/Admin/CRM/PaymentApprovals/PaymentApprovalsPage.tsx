@@ -29,7 +29,6 @@ import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
-import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
 import {
   fetchPaymentList, approvePayment, bulkApprovePayments, deletePayment, fetchPaymentReceipt,
   fetchApprovalStats, paymentForLabel, PaymentListRow, PaymentApprovalStats,
@@ -37,7 +36,6 @@ import {
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import { companyService } from '../../../../services/companyService';
-import { exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport';
 import { Building, PaymentReceipt } from '../../../../types/index';
 import { formatLastLogin, showAlert } from '../../../../utils';
 import './PaymentApprovals.css';
@@ -286,7 +284,11 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
     setApprovingId(row.id);
     try {
       await approvePayment(row.id);
-      toast.success(`Payment ${row.receipt_number} approved.`);
+      // V_23.0 item 2 — the receipt number is generated server-side ON
+      // this approval call; `row` is the PRE-approval snapshot (always
+      // null here), so it can't be echoed back without an extra round
+      // trip. fetchRows() below picks up the real number a moment later.
+      toast.success(`Payment for ${row.customer_name || 'customer'} approved.`);
       fetchRows();
       fetchStats();
     } catch {
@@ -297,8 +299,10 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
   };
 
   const handleDelete = async (row: PaymentListRow) => {
+    // V_23.0 item 2 — every row on this page is, by definition, not yet
+    // approved, so it never has a receipt number to reference here.
     const result = await showAlert.confirm(
-      `This will permanently delete the ₹${row.amount.toLocaleString('en-IN')} pending payment (Receipt ${row.receipt_number}) for ${row.customer_name}.`,
+      `This will permanently delete the ₹${row.amount.toLocaleString('en-IN')} pending payment for ${row.customer_name}.`,
       'Delete Payment?'
     );
     if (!result.isConfirmed) return;
@@ -354,10 +358,11 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
         toast.error('No pending payments to export.');
         return;
       }
-      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Date', 'Receipt Date', 'Maintenance', 'Amount', 'Total Amount', 'Mode', 'Payment For', 'Received By', 'Company'];
+      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Date', 'Receipt Date', 'Amount', 'Total Amount', 'Mode', 'Payment For', 'Received By', 'Company'];
       const csvRows = exportRows.map((r) => [
-        r.receipt_number, r.customer_name || '', r.building_name || '', r.wing_name || '', r.flat_no || '',
-        formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.maintenance || 0, r.amount, r.amount + (r.maintenance || 0),
+        // V_23.0 item 2 — always blank here: every exported row is pending.
+        r.receipt_number || '', r.customer_name || '', r.building_name || '', r.wing_name || '', r.flat_no || '',
+        formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.amount, r.amount + (r.maintenance || 0),
         r.mode_of_payment || '', paymentForLabel(r.payment_type), r.received_by || '', r.company || '',
       ]);
       const csv = [header, ...csvRows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -375,10 +380,10 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
     }
   };
 
-  // ── Receipt Details (View) popup + the View Receipt preview layered on
-  // top of it. ──────────────────────────────────────────────────────────
+  // ── Payment Details (View) popup. V_23.0 item 2 — the "View Receipt"
+  // preview that used to layer on top of this was removed: every row on
+  // this page is pending approval, so there is no receipt to preview yet.
   const [viewModal, setViewModal] = useState<{ row: PaymentListRow; loading: boolean; data?: PaymentReceipt } | null>(null);
-  const [receiptPreview, setReceiptPreview] = useState<PaymentReceipt | null>(null);
 
   const openViewModal = async (row: PaymentListRow) => {
     setViewModal({ row, loading: true });
@@ -527,16 +532,18 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                   <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={rows.length === 0}
                     style={{ cursor: rows.length === 0 ? 'not-allowed' : 'pointer' }} />
                 </th>
-                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Date', 'Receipt Date', 'Maintenance', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
+                {/* V_23.0 item 7 — Maintenance column removed, matching
+                    Payment Received's own table (same merged page). */}
+                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Date', 'Receipt Date', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={14} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading pending payments...</td></tr>
+                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading pending payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={14} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments are waiting for approval.</td></tr>
+                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments are waiting for approval.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -562,7 +569,10 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                         </button>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number}</td>
+                    {/* V_23.0 item 2 — blank until approved; every row here
+                        is unapproved by definition, so this always reads
+                        "Pending". */}
+                    <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.receipt_number || 'Pending'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.customer_name || '—'}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code || '—'}</div>
@@ -577,7 +587,6 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.payment_tag === 'Extra Pay' ? '—' : formatDMY(r.inst_date)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMY(r.payment_date || r.created_at)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#16a34a', fontWeight: 600, whiteSpace: 'nowrap' }}>{rupee(r.maintenance || 0)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount + (r.maintenance || 0))}</td>
                     <td style={{ padding: '12px 14px' }}>
@@ -615,7 +624,9 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
         <div className="pa-modal-backdrop fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div className="pa-modal rounded-2xl w-full overflow-hidden" style={{ maxWidth: 560, background: t.surfaceBg, maxHeight: '88vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3.5" style={{ background: '#f97316' }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>Receipt Details - {viewModal.row.receipt_number}</div>
+              {/* V_23.0 item 2 — no receipt number to show here yet; this
+                  modal only ever opens for a pending (unapproved) row. */}
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>Payment Details — Pending Approval</div>
               <button type="button" onClick={() => setViewModal(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#fff', padding: 4, display: 'flex' }}>
                 <MdClose size={20} />
               </button>
@@ -664,16 +675,11 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                       className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
                       Close
                     </button>
-                    <button type="button" onClick={() => viewModal.data && exportPaymentReceiptPdf(viewModal.data)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold"
-                      style={{ background: isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', border: 'none', color: '#16a34a', cursor: 'pointer' }}>
-                      <MdDownload size={15} /> Download Receipt
-                    </button>
-                    <button type="button" onClick={() => viewModal.data && setReceiptPreview(viewModal.data)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold"
-                      style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-ink)', cursor: 'pointer' }}>
-                      <MdVisibility size={15} /> View Receipt
-                    </button>
+                    {/* V_23.0 item 2 — View/Download Receipt removed from
+                        this modal: every row here is pending approval, so
+                        there is no receipt (no receipt number, no PDF
+                        worth generating) until it's approved and moves to
+                        Payment Received, where those actions live instead. */}
                     <button type="button" disabled={approvingId === viewModal.row.id}
                       onClick={async () => { await handleApprove(viewModal.row); setViewModal(null); }}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
@@ -692,15 +698,6 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
             </div>
           </div>
         </div>
-      )}
-
-      {/* ── View Receipt preview — layered above the Receipt Details popup. ── */}
-      {receiptPreview && (
-        <PaymentReceiptViewModal
-          data={receiptPreview}
-          onClose={() => setReceiptPreview(null)}
-          onDownload={() => exportPaymentReceiptPdf(receiptPreview)}
-        />
       )}
     </div>
   );

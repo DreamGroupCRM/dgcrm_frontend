@@ -25,7 +25,10 @@ export const DOCUMENT_ACCEPT =
   '.jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx';
 export const DOCUMENT_TYPE_LABELS =
   'JPG, JPEG, PNG, WEBP, GIF, PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX';
-export const DOCUMENT_MAX_MB = 10;
+// V_23.0 item 1 — unified to 5 MB for every upload type (was 10 for
+// documents; matches the backend's own maxBytesFor() default in
+// uploadTypes.ts, which this constant must be kept in sync with).
+export const DOCUMENT_MAX_MB = 5;
 
 export const unsupportedTypeMessage = (labels: string): string =>
   `This file type is not supported. Allowed file types: ${labels}.`;

@@ -202,39 +202,30 @@ const LIGHT_PROFESSIONAL: AppearancePalette = {
   },
 };
 
-// ── 'dark-professional' — deep emerald/jade identity. Not "forced dark
-// mode" (see file header) — a moodier, higher-contrast accent family that
-// happens to read especially well once the user is also in dark mode. A
-// touch more saturated than the old flat teal so the gradient doesn't
-// read muddy on the table header band. ──────────────────────────────────
-const DARK_PROFESSIONAL: AppearancePalette = {
-  label: 'Dark Professional',
-  accent: '#047857', accentDark: '#34d399',
-  accentHover: '#065f46', accentHoverDark: '#6ee7b7',
-  accentFocus: '#059669', accentFocusDark: '#34d399',
-  btnPrimaryGradient: '#065f46',
-  btnPrimaryGradientDark: '#064e3b',
-  tableHeaderGradient: '#065f46',
-  tableHeaderGradientDark: '#022c22',
+// ── 'midnight-navy' — deep steel-blue/navy identity (V_23.0: replaces the
+// old 'dark-professional' emerald/jade palette — green is now reserved for
+// Payment Due's status indicators, see DueReportPage.tsx, and can no
+// longer double as a selectable theme accent without the two visually
+// colliding). Reuses EXISTING's own status-color families rather than a
+// custom set, same reasoning as 'neutral-gray' below: a theme swap
+// shouldn't make "Approved"/"Rejected" harder to read at a glance. ───────
+const MIDNIGHT_NAVY: AppearancePalette = {
+  label: 'Midnight Navy',
+  accent: '#1e3a8a', accentDark: '#60a5fa',
+  accentHover: '#172554', accentHoverDark: '#93c5fd',
+  accentFocus: '#1d4ed8', accentFocusDark: '#60a5fa',
+  btnPrimaryGradient: '#1e3a8a',
+  btnPrimaryGradientDark: '#0f172a',
+  tableHeaderGradient: '#1e3a8a',
+  tableHeaderGradientDark: '#0f172a',
   duplicateIcon: '#b91c1c',
-  systemBorder: '#94a3b8',
-  navActiveBg: '#e6fdf3', navActiveBgDark: 'rgba(52,211,153,0.18)',
-  navActiveText: '#047857', navActiveTextDark: '#34d399',
-  navActiveBorder: '#047857', navActiveBorderDark: '#34d399',
-  avatarGradient: '#065f46',
-  avatarGradientDark: '#064e3b',
-  families: {
-    accentInfo:   { bg: '#e6fdf3', fg: '#047857', bgDark: 'rgba(52,211,153,0.18)',  fgDark: '#6ee7b7' },
-    info:         { bg: '#e0f2fe', fg: '#0369a1', bgDark: 'rgba(56,189,248,0.18)',  fgDark: '#7dd3fc' },
-    infoSky:      { bg: '#ecfeff', fg: '#0e7490', bgDark: 'rgba(34,211,238,0.18)',  fgDark: '#67e8f9' },
-    warning:      { bg: '#fefce8', fg: '#a16207', bgDark: 'rgba(234,179,8,0.18)',   fgDark: '#fde047' },
-    warningAmber: { bg: '#fff7ed', fg: '#c2410c', bgDark: 'rgba(251,146,60,0.18)',  fgDark: '#fdba74' },
-    neutral:      { bg: '#f1f5f9', fg: '#334155', bgDark: 'rgba(100,116,139,0.2)',  fgDark: '#cbd5e1' },
-    neutralMuted: { bg: '#f1f5f9', fg: '#64748b', bgDark: 'rgba(100,116,139,0.16)', fgDark: '#94a3b8' },
-    danger:       { bg: '#fef2f2', fg: '#b91c1c', bgDark: 'rgba(248,113,113,0.18)', fgDark: '#fca5a5' },
-    violet:       { bg: '#f5f3ff', fg: '#5b21b6', bgDark: 'rgba(167,139,250,0.18)', fgDark: '#c4b5fd' },
-    success:      { bg: '#ecfdf5', fg: '#047857', bgDark: 'rgba(52,211,153,0.18)',  fgDark: '#6ee7b7' },
-  },
+  systemBorder: '#64748b',
+  navActiveBg: '#e0e7ff', navActiveBgDark: 'rgba(96,165,250,0.18)',
+  navActiveText: '#1e3a8a', navActiveTextDark: '#60a5fa',
+  navActiveBorder: '#1e3a8a', navActiveBorderDark: '#60a5fa',
+  avatarGradient: '#1e3a8a',
+  avatarGradientDark: '#0f172a',
+  families: EXISTING.families,
 };
 
 // ── 'modern' — vibrant, saturated single-hue-forward indigo. More
@@ -270,40 +261,31 @@ const MODERN: AppearancePalette = {
   },
 };
 
-// ── 'executive' — warm bronze/copper into gold. The original navy+gold
-// combination clashed (cool blue against warm gold has no bridging hue,
-// so the gradient's middle read as muddy grey-brown) — this version stays
-// in one warm family throughout (charcoal → bronze → gold) so the
-// transition reads rich rather than dull. Still a premium/boardroom feel;
-// jewel-tone status colors instead of pastels. ──────────────────────────
-const EXECUTIVE: AppearancePalette = {
-  label: 'Executive',
-  accent: '#b45309', accentDark: '#f59e0b',
-  accentHover: '#92400e', accentHoverDark: '#fbbf24',
-  accentFocus: '#b45309', accentFocusDark: '#f59e0b',
-  btnPrimaryGradient: '#292524',
-  btnPrimaryGradientDark: '#1c1917',
-  tableHeaderGradient: '#292524',
-  tableHeaderGradientDark: '#1c1917',
-  duplicateIcon: '#7f1d1d',
-  systemBorder: '#6b7280',
-  navActiveBg: '#fdf1e0', navActiveBgDark: 'rgba(245,158,11,0.18)',
-  navActiveText: '#b45309', navActiveTextDark: '#f59e0b',
-  navActiveBorder: '#b45309', navActiveBorderDark: '#f59e0b',
-  avatarGradient: '#292524',
-  avatarGradientDark: '#1c1917',
-  families: {
-    accentInfo:   { bg: '#fdf1e0', fg: '#b45309', bgDark: 'rgba(245,158,11,0.18)',  fgDark: '#fbbf24' },
-    info:         { bg: '#e2e8f0', fg: '#1e293b', bgDark: 'rgba(148,163,184,0.18)', fgDark: '#cbd5e1' },
-    infoSky:      { bg: '#e0f2fe', fg: '#075985', bgDark: 'rgba(56,189,248,0.16)',  fgDark: '#7dd3fc' },
-    warning:      { bg: '#fef3c7', fg: '#854d0e', bgDark: 'rgba(202,138,4,0.18)',   fgDark: '#facc15' },
-    warningAmber: { bg: '#fde8d7', fg: '#9a3412', bgDark: 'rgba(194,65,12,0.18)',   fgDark: '#fb923c' },
-    neutral:      { bg: '#e5e7eb', fg: '#374151', bgDark: 'rgba(107,114,128,0.2)',  fgDark: '#d1d5db' },
-    neutralMuted: { bg: '#e5e7eb', fg: '#6b7280', bgDark: 'rgba(107,114,128,0.16)', fgDark: '#9ca3af' },
-    danger:       { bg: '#fbe2e2', fg: '#7f1d1d', bgDark: 'rgba(153,27,27,0.24)',   fgDark: '#f87171' },
-    violet:       { bg: '#e9e4f0', fg: '#4c1d95', bgDark: 'rgba(109,40,217,0.2)',   fgDark: '#c4b5fd' },
-    success:      { bg: '#dcefe0', fg: '#14532d', bgDark: 'rgba(21,128,61,0.2)',    fgDark: '#4ade80' },
-  },
+// ── 'plum-boardroom' — deep plum/aubergine identity (V_23.0: replaces the
+// old 'executive' bronze/gold palette — gold read close enough to amber/
+// yellow to risk colliding with Payment Due's own Due-Today indicator,
+// which now owns yellow; see DueReportPage.tsx). Same "one warm family
+// throughout" premium/boardroom feel as the palette it replaces, just
+// shifted from warm gold to a jewel-tone violet-plum instead. Reuses
+// EXISTING's own status-color families, same reasoning as 'midnight-navy'
+// above. ──────────────────────────────────────────────────────────────
+const PLUM_BOARDROOM: AppearancePalette = {
+  label: 'Plum Boardroom',
+  accent: '#581c87', accentDark: '#d8b4fe',
+  accentHover: '#3b0764', accentHoverDark: '#e9d5ff',
+  accentFocus: '#6b21a8', accentFocusDark: '#d8b4fe',
+  btnPrimaryGradient: '#3b0764',
+  btnPrimaryGradientDark: '#2e1065',
+  tableHeaderGradient: '#3b0764',
+  tableHeaderGradientDark: '#2e1065',
+  duplicateIcon: '#b91c1c',
+  systemBorder: '#78716c',
+  navActiveBg: '#f3e8ff', navActiveBgDark: 'rgba(216,180,254,0.18)',
+  navActiveText: '#581c87', navActiveTextDark: '#d8b4fe',
+  navActiveBorder: '#581c87', navActiveBorderDark: '#d8b4fe',
+  avatarGradient: '#3b0764',
+  avatarGradientDark: '#2e1065',
+  families: EXISTING.families,
 };
 
 // ── 'ocean-gradient' — teal-into-blue diagonal gradient. Unlike the 5
@@ -331,26 +313,10 @@ const OCEAN_GRADIENT: AppearancePalette = {
   families: LIGHT_PROFESSIONAL.families,
 };
 
-// ── 'sunset-gradient' — warm coral-into-magenta diagonal gradient, the
-// same "two-stop gradient string" treatment as Ocean Gradient above. ────
-const SUNSET_GRADIENT: AppearancePalette = {
-  label: 'Sunset Gradient',
-  accent: '#c2410c', accentDark: '#fb923c',
-  accentHover: '#9a3412', accentHoverDark: '#fdba74',
-  accentFocus: '#ea580c', accentFocusDark: '#fb923c',
-  btnPrimaryGradient: 'linear-gradient(135deg, #f97316, #db2777)',
-  btnPrimaryGradientDark: 'linear-gradient(135deg, #9a3412, #831843)',
-  tableHeaderGradient: 'linear-gradient(135deg, #f97316, #db2777)',
-  tableHeaderGradientDark: 'linear-gradient(135deg, #9a3412, #831843)',
-  duplicateIcon: '#be123c',
-  systemBorder: '#a8a29e',
-  navActiveBg: '#fff1e6', navActiveBgDark: 'rgba(251,146,60,0.18)',
-  navActiveText: '#c2410c', navActiveTextDark: '#fb923c',
-  navActiveBorder: '#c2410c', navActiveBorderDark: '#fb923c',
-  avatarGradient: 'linear-gradient(135deg, #f97316, #db2777)',
-  avatarGradientDark: 'linear-gradient(135deg, #9a3412, #831843)',
-  families: EXECUTIVE.families,
-};
+// ── 'sunset-gradient' was removed (V_23.0) — its orange-into-magenta
+// gradient read too close to the warm/red family Payment Due's Overdue
+// indicator now owns; see DueReportPage.tsx and the file-header note
+// above 'midnight-navy'/'plum-boardroom'. ────────────────────────────────
 
 // ── 'coral-reef' — built from the user-supplied Coolors palette (Light
 // Cyan #D6FFF6, Russian Violet #231651, Medium Turquoise #4DCCBD, Spanish
@@ -410,11 +376,10 @@ const NEUTRAL_GRAY: AppearancePalette = {
 export const APPEARANCE_PALETTES: Record<AppearanceId, AppearancePalette> = {
   existing: EXISTING,
   'light-professional': LIGHT_PROFESSIONAL,
-  'dark-professional': DARK_PROFESSIONAL,
+  'midnight-navy': MIDNIGHT_NAVY,
   modern: MODERN,
-  executive: EXECUTIVE,
+  'plum-boardroom': PLUM_BOARDROOM,
   'ocean-gradient': OCEAN_GRADIENT,
-  'sunset-gradient': SUNSET_GRADIENT,
   'coral-reef': CORAL_REEF,
   'neutral-gray': NEUTRAL_GRAY,
 };

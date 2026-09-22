@@ -56,7 +56,9 @@ export interface PaymentOverview {
   overdue: number;
 }
 export interface NeedsAttentionOverduePayment { customer_id: number; customer_name: string; amount_due: number }
-export interface NeedsAttentionPendingApproval { transaction_id: number; receipt_number: string; customer_id: number; customer_name: string; amount: number }
+// V_23.0 item 2 — receipt_number is always null here: every row in this
+// list is, by definition, pending approval (not yet assigned a number).
+export interface NeedsAttentionPendingApproval { transaction_id: number; receipt_number: string | null; customer_id: number; customer_name: string; amount: number }
 export interface NeedsAttentionUnassignedCustomer { customer_id: number; customer_name: string }
 export interface NeedsAttentionOverdueTask { task_id: number; title: string; due_date: string | null; assigned_to_name: string | null }
 export interface NeedsAttention {

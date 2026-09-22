@@ -331,10 +331,10 @@ const PaymentReceivedPage: React.FC = () => {
         toast.error('No payments to export.');
         return;
       }
-      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Date', 'Receipt Date', 'Maintenance', 'Amount', 'Total Amount', 'Mode', 'Payment For', 'Received By', 'Company'];
+      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Date', 'Receipt Date', 'Amount', 'Total Amount', 'Mode', 'Payment For', 'Received By', 'Company'];
       const csvRows = exportRows.map((r) => [
         r.receipt_number, r.customer_name || '', r.building_name || '', r.wing_name || '', r.flat_no || '',
-        formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.maintenance || 0, r.amount, r.amount + (r.maintenance || 0),
+        formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.amount, r.amount + (r.maintenance || 0),
         r.mode_of_payment || '', paymentForLabel(r.payment_type), r.received_by || '', r.company || '',
       ]);
       const csv = [header, ...csvRows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -575,16 +575,16 @@ const PaymentReceivedPage: React.FC = () => {
                   <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={rows.length === 0}
                     style={{ cursor: rows.length === 0 ? 'not-allowed' : 'pointer' }} />
                 </th>
-                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Date', 'Receipt Date', 'Maintenance', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
+                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Date', 'Receipt Date', 'Amount', 'Total Amount', 'Payment Method', 'Payment Type', 'Received By', 'Company'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={14} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
+                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={14} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
+                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -603,11 +603,18 @@ const PaymentReceivedPage: React.FC = () => {
                           style={{ width: 26, height: 26, background: isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', border: 'none', color: '#16a34a', cursor: downloadingId === r.id ? 'not-allowed' : 'pointer' }}>
                           <MdDownload size={13} />
                         </button>
-                        <button type="button" title="Delete" disabled={deletingId === r.id} onClick={() => handleDelete(r)}
-                          className="flex items-center justify-center rounded-lg"
-                          style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: deletingId === r.id ? 'not-allowed' : 'pointer' }}>
-                          <MdDelete size={13} />
-                        </button>
+                        {/* V_23.0 item 7 — delete is admin-only; the backend
+                            route (DELETE /payments/:id) already enforces
+                            this via requireAdmin, so this is UI-side only —
+                            an employee must not even see the button, not
+                            just have it fail silently on click. */}
+                        {paths.isAdmin && (
+                          <button type="button" title="Delete" disabled={deletingId === r.id} onClick={() => handleDelete(r)}
+                            className="flex items-center justify-center rounded-lg"
+                            style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: deletingId === r.id ? 'not-allowed' : 'pointer' }}>
+                            <MdDelete size={13} />
+                          </button>
+                        )}
                       </div>
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number}</td>
@@ -625,8 +632,11 @@ const PaymentReceivedPage: React.FC = () => {
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.payment_tag === 'Extra Pay' ? '—' : formatDMY(r.inst_date)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMY(r.payment_date || r.created_at)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#16a34a', fontWeight: 600, whiteSpace: 'nowrap' }}>{rupee(r.maintenance || 0)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
+                    {/* V_23.0 item 7 — the Maintenance column itself is
+                        removed, but Total Amount still folds r.maintenance
+                        in silently, same math as before; only the standalone
+                        column display is gone. */}
                     <td style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount + (r.maintenance || 0))}</td>
                     <td style={{ padding: '12px 14px' }}>
                       <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(0, 0, 255,0.18)' : '#efebe9', color: 'var(--brand-ink)', fontSize: 10.5, whiteSpace: 'nowrap' }}>

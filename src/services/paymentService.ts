@@ -44,7 +44,8 @@ import {
 // for the authoritative field list. ──────────────────────────────────────
 interface BackendAmountTransaction {
   id: number | string;
-  receipt_number: string;
+  // V_23.0 item 2 — null until an admin approves the payment.
+  receipt_number: string | null;
   payment_type: string;
   company: string | null;
   mode_of_payment: string | null;
@@ -301,7 +302,8 @@ export const fetchCustomerDueGrid = async (customerId: string | number): Promise
 // ── Payment Received (item 16) ───────────────────────────────────────────
 export interface PaymentListRow {
   id: string;
-  receipt_number: string;
+  // V_23.0 item 2 — null until an admin approves the payment.
+  receipt_number: string | null;
   payment_type: PaymentFor;
   amount: number;
   customer_id: string;

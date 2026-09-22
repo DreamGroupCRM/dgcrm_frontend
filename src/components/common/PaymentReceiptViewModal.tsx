@@ -70,7 +70,8 @@ export const PaymentReceiptViewModal: React.FC<PaymentReceiptViewModalProps> = (
           <div style={{ borderTop: '2px solid #1e293b', margin: '6px 0 10px' }} />
 
           <div style={{ fontSize: 11.5, color: '#1e3a8a', lineHeight: 2 }}>
-            <div className="flex justify-between"><span>RECEIPT NO : <strong>{tx.receipt_number}</strong></span><span>DATE : <strong>{formatDMY(tx.date || tx.created_at)}</strong></span></div>
+            {/* V_23.0 item 2 — null until an admin approves the payment. */}
+            <div className="flex justify-between"><span>RECEIPT NO : <strong>{tx.receipt_number || 'Pending Approval'}</strong></span><span>DATE : <strong>{formatDMY(tx.date || tx.created_at)}</strong></span></div>
             <div>RECEIVED WITH THANKS FROM : <strong>{customer.customer_name || '—'}</strong></div>
             <div>THE SUM OF RUPEES : <strong>{numberToIndianWords(tx.amount)}</strong></div>
             {!!tx.maintenance && <div>MAINTENANCE : <strong>{rupee(tx.maintenance)}</strong> &nbsp; TOTAL : <strong>{rupee(total)}</strong></div>}

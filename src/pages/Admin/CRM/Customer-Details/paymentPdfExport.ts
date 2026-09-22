@@ -300,7 +300,11 @@ export function exportPaymentReceiptPdf(data: PaymentReceipt): void {
 
   doc.setFontSize(9);
   const line = (label: string, value: string) => { doc.text(label, marginX, y); doc.setFont('helvetica', 'bold'); doc.text(value, marginX + 130, y); doc.setFont('helvetica', 'normal'); y += 15; };
-  line('RECEIPT NO :', tx.receipt_number);
+  // V_23.0 item 2 — null until an admin approves the payment; an admin can
+  // still open this PDF for an unapproved transaction (existing behavior —
+  // see payment.service.ts's getPaymentReceipt), so this has to degrade
+  // gracefully instead of printing the literal string "null".
+  line('RECEIPT NO :', tx.receipt_number || 'PENDING APPROVAL');
   line('DATE :', formatDMY(tx.date || tx.created_at));
   line('RECEIVED WITH THANKS FROM :', customer.customer_name || '—');
 
@@ -332,5 +336,5 @@ export function exportPaymentReceiptPdf(data: PaymentReceipt): void {
   doc.text('This Receipt is Computer Generated, Does not Required Signature', marginX, y);
   doc.setTextColor(0, 0, 0);
 
-  doc.save(`Receipt-${tx.receipt_number}.pdf`);
+  doc.save(`Receipt-${tx.receipt_number || `Pending-${tx.id}`}.pdf`);
 }

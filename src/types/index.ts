@@ -781,7 +781,8 @@ export interface CustomerPaymentRecord {
   // which would otherwise misleadingly read as "this payment settled that
   // specific installment."
   payment_tag?   : string | null;
-  receipt_number?: string;
+  // V_23.0 item 2 — null until an admin approves the payment.
+  receipt_number?: string | null;
   company?       : string;
   maintenance?   : number;
 }
@@ -977,7 +978,9 @@ export interface CollectPaymentPayload {
 export interface CollectPaymentResponse {
   success      : boolean;
   transactionId: number;
-  receiptNumber: string;
+  // V_23.0 item 2 — always null at collection time now; a receipt number
+  // is only assigned once an admin approves the payment.
+  receiptNumber: string | null;
   message      : string;
   tag?         : string;     // "Extra Pay" — only present when is_advance_pay was used
 }
@@ -1055,7 +1058,8 @@ export interface CustomerRemainingResponse {
 // building_id/wing_id/flat_id, not building/wing/flat names).
 export interface PaymentReceiptTransaction {
   id             : string;
-  receipt_number : string;
+  // V_23.0 item 2 — null until an admin approves the payment.
+  receipt_number : string | null;
   payment_type   : PaymentFor;
   amount         : number; // whichever type-specific column was non-null
   company        : string | null;

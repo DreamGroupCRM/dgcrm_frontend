@@ -148,7 +148,8 @@ interface BackendCustomer {
 }
 interface BackendAmountTransaction {
   id: number | string;
-  receipt_number: string;
+  // V_23.0 item 2 — null until an admin approves the payment.
+  receipt_number: string | null;
   payment_type: string;
   mode_of_payment: string | null;
   date: string | null;

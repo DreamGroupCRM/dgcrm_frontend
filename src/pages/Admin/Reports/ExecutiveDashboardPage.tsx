@@ -585,7 +585,9 @@ const ExecutiveDashboardPage: React.FC = () => {
                   <button key={r.transaction_id} type="button" onClick={() => navigate('/admin/crm/payment-received')}
                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg"
                     style={{ background: t.insetBg, border: 'none', marginBottom: 6, cursor: 'pointer', textAlign: 'left' }}>
-                    <span style={{ fontSize: 12, color: t.textPrimary, fontWeight: 500 }}>{r.customer_name} · {r.receipt_number}</span>
+                    {/* V_23.0 item 2 — every row here is pending approval,
+                        so it never has a receipt number yet. */}
+                    <span style={{ fontSize: 12, color: t.textPrimary, fontWeight: 500 }}>{r.customer_name}</span>
                     <span className="flex items-center gap-1" style={{ fontSize: 12, fontWeight: 700, color: '#ea580c' }}>{rupee(r.amount)} <MdArrowForward size={13} /></span>
                   </button>
                 ))}

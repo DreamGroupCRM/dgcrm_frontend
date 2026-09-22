@@ -31,18 +31,23 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { STORAGE_KEYS } from '../../constants';
 
+// V_23.0 — 'dark-professional' (green), 'executive' (gold/amber) and
+// 'sunset-gradient' (orange-red) were removed: Payment Due's status
+// indicators now own green/yellow/red (see DueReportPage.tsx), so a
+// selectable theme accent in the same hue families would visually collide
+// with payment status. Replaced by 'midnight-navy' and 'plum-boardroom' —
+// see appearanceTokens.ts for the actual color values.
 export type AppearanceId =
-  | 'existing' | 'light-professional' | 'dark-professional' | 'modern' | 'executive'
-  | 'ocean-gradient' | 'sunset-gradient' | 'coral-reef' | 'neutral-gray';
+  | 'existing' | 'light-professional' | 'midnight-navy' | 'modern' | 'plum-boardroom'
+  | 'ocean-gradient' | 'coral-reef' | 'neutral-gray';
 
 export const APPEARANCE_OPTIONS: { id: AppearanceId; label: string; implemented: boolean }[] = [
   { id: 'existing', label: 'Existing / Current', implemented: true },
   { id: 'light-professional', label: 'Light Professional', implemented: true },
-  { id: 'dark-professional', label: 'Dark Professional', implemented: true },
+  { id: 'midnight-navy', label: 'Midnight Navy', implemented: true },
   { id: 'modern', label: 'Modern', implemented: true },
-  { id: 'executive', label: 'Executive', implemented: true },
+  { id: 'plum-boardroom', label: 'Plum Boardroom', implemented: true },
   { id: 'ocean-gradient', label: 'Ocean Gradient', implemented: true },
-  { id: 'sunset-gradient', label: 'Sunset Gradient', implemented: true },
   { id: 'coral-reef', label: 'Coral Reef', implemented: true },
   { id: 'neutral-gray', label: 'Gray', implemented: true },
 ];

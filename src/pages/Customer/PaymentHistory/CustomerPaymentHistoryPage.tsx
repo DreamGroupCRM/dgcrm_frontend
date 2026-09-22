@@ -86,7 +86,9 @@ const CustomerPaymentHistoryPage: React.FC = () => {
               <tbody>
                 {sorted.map((r) => (
                   <tr key={r.id}>
-                    <td className="cp-nowrap" style={{ fontWeight: 700 }}>{r.receipt_number}</td>
+                    {/* V_23.0 item 2 — blank until an admin approves the
+                        payment; the Status column already shows that. */}
+                    <td className="cp-nowrap" style={{ fontWeight: 700 }}>{r.receipt_number || 'Pending'}</td>
                     <td>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <MdPayments size={13} /> {paymentForLabel(r.payment_type)}

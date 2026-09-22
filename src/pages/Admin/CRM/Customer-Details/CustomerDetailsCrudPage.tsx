@@ -574,7 +574,7 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
           Upload {label}
         </span>
       )}
-      <p style={{ fontSize: 10, color: t.textSecondary, margin: '4px 0 0' }}>PDF, JPG, PNG (Max 2MB)</p>
+      <p style={{ fontSize: 10, color: t.textSecondary, margin: '4px 0 0' }}>PDF, JPG, PNG (Max 5MB)</p>
     </div>
   );
 };

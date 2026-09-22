@@ -175,7 +175,9 @@ export async function exportDashboardToExcel(data: ExecutiveDashboardData, range
   const attnSheet = wb.addWorksheet('Needs Attention');
   attnSheet.columns = [{ header: 'Category', key: 'cat', width: 22 }, { header: 'Detail', key: 'detail', width: 32 }, { header: 'Amount / Due', key: 'amt', width: 18 }];
   data.needs_attention.overdue_payments.forEach((r) => attnSheet.addRow({ cat: 'Overdue Payment', detail: r.customer_name, amt: r.amount_due }));
-  data.needs_attention.pending_payment_approvals.forEach((r) => attnSheet.addRow({ cat: 'Pending Approval', detail: `${r.customer_name} (${r.receipt_number})`, amt: r.amount }));
+  // V_23.0 item 2 — every row here is, by definition, not yet approved, so
+  // it never has a receipt number (that's only assigned on approval).
+  data.needs_attention.pending_payment_approvals.forEach((r) => attnSheet.addRow({ cat: 'Pending Approval', detail: r.customer_name, amt: r.amount }));
   data.needs_attention.unassigned_customers.forEach((r) => attnSheet.addRow({ cat: 'Unassigned Customer', detail: r.customer_name, amt: '' }));
   data.needs_attention.overdue_tasks.forEach((r) => attnSheet.addRow({ cat: 'Overdue Activity', detail: r.title, amt: r.due_date || '' }));
   styleHeader(attnSheet);

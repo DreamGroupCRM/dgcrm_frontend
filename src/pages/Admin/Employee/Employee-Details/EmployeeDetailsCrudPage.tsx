@@ -1408,7 +1408,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Date of Birth" required error={errorFor('date_of_birth')} fieldRef={setFieldRef('date_of_birth') as React.Ref<HTMLDivElement>}>
             <DobPicker theme={t} value={form.date_of_birth} disabled={isView} onChange={(v) => set('date_of_birth', v)} />
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload Profile Photo" hint="JPG, PNG (Max 2MB)" accept={IMAGE_ACCEPT} required
+          <FileUploadBox t={t} isView={isView} label="Upload Profile Photo" hint="JPG, PNG (Max 5MB)" accept={IMAGE_ACCEPT} required
             file={files.profile_photo} existingUrl={existingUrls.profile_photo} onChange={setFile('profile_photo')} onView={openPreview}
             fieldRef={setFieldRef('profile_photo') as React.Ref<HTMLDivElement>} />
         </div>
@@ -1457,7 +1457,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* Row 3 of 3 (V_23.0 item 5) — ID proofs, unchanged content-wise,
             just now the last row instead of the 3rd of 4. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept={DOCUMENT_ACCEPT} required
+          <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 5MB)" accept={DOCUMENT_ACCEPT} required
             file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={handleAadharCardChange} onView={openPreview}
             fieldRef={setFieldRef('aadhar_card') as React.Ref<HTMLDivElement>} />
           <Field t={t} label="Aadhar Number" required error={errorFor('aadhar_number')} fieldRef={setFieldRef('aadhar_number') as React.Ref<HTMLDivElement>}>
@@ -1465,7 +1465,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => set('aadhar_number', sanitizeDigits(e.target.value, 12))} className={fieldClass} />
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept={DOCUMENT_ACCEPT} required
+          <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 5MB)" accept={DOCUMENT_ACCEPT} required
             file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={handlePanCardChange} onView={openPreview}
             fieldRef={setFieldRef('pan_card') as React.Ref<HTMLDivElement>} />
           <Field t={t} label="PAN Number" required error={errorFor('pan_number')} fieldRef={setFieldRef('pan_number') as React.Ref<HTMLDivElement>}>
@@ -1559,7 +1559,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter branch name" value={form.branch} readOnly={isView} disabled={isView}
               onChange={(e) => set('branch', e.target.value)} className={fieldClass} />
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload Bank Passbook Photo" hint="JPG, PNG (Max 2MB)" accept={IMAGE_ACCEPT} required
+          <FileUploadBox t={t} isView={isView} label="Upload Bank Passbook Photo" hint="JPG, PNG (Max 5MB)" accept={IMAGE_ACCEPT} required
             file={files.passbook_photo} existingUrl={existingUrls.passbook_photo} onChange={setFile('passbook_photo')} onView={openPreview}
             fieldRef={setFieldRef('passbook_photo') as React.Ref<HTMLDivElement>} />
         </div>
