@@ -537,9 +537,9 @@ const PaymentReceivedPage: React.FC = () => {
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
-      {/* ── Filter panel — Received By/Building/Wing/Flat/Mode/Company in
-          row 1, Date Range/From/To + action buttons in row 2 (exactly 2
-          rows, no Payment For field). ────────────────────────────────── */}
+      {/* ── Filter panel — Received By/Company/Project/Building/Wing/Flat in
+          row 1, Mode/Date Range/From/To + action buttons in row 2 (exactly
+          2 rows of 6 columns on xl, no Payment For field). ─────────────── */}
       <div className="pr-filter-card rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="pr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-3.5">
           <FilterSelect t={t} label="Received By" value={draftReceivedBy} onChange={setDraftReceivedBy}
@@ -555,10 +555,10 @@ const PaymentReceivedPage: React.FC = () => {
             placeholder="--Select--" options={wingOptions.map((n) => ({ value: n, label: n }))} disabled={!selectedBuilding} />
           <FilterSelect t={t} label="Flat Number" value={draftFlatNo} onChange={setDraftFlatNo}
             placeholder="--Select--" options={flatsInScope.map((f) => ({ value: f.flat_no, label: f.flat_no }))} disabled={!selectedWing} />
-          <FilterSelect t={t} label="ModeOfPayment" value={draftMode} onChange={setDraftMode}
-            placeholder="--Select Payment Method--" options={MODE_OF_PAYMENT_OPTIONS.map((m) => ({ value: m, label: m }))} />
         </div>
         <div className="pr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
+          <FilterSelect t={t} label="ModeOfPayment" value={draftMode} onChange={setDraftMode}
+            placeholder="--Select Payment Method--" options={MODE_OF_PAYMENT_OPTIONS.map((m) => ({ value: m, label: m }))} />
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
             <label style={labelStyle}>Received Date From</label>
@@ -568,7 +568,7 @@ const PaymentReceivedPage: React.FC = () => {
             <label style={labelStyle}>Received Date To</label>
             <input type="date" value={draftToDate} onChange={(e) => { setDraftToDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
           </div>
-          <div className="pr-filter-actions flex items-center gap-2 flex-wrap" style={{ gridColumn: 'span 3 / span 3' }}>
+          <div className="pr-filter-actions flex items-center gap-2 flex-wrap" style={{ gridColumn: 'span 2 / span 2' }}>
             <button type="button" onClick={handleFilter}
               style={{ ...actionBtnBase, background: 'var(--brand-gradient)', color: '#fff', border: 'none' }}>
               <MdFilterAlt size={15} /> Filter

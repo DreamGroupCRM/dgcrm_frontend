@@ -464,7 +464,9 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
-      {/* ── Filter panel ─────────────────────────────────────────────────── */}
+      {/* ── Filter panel — Received By/Company/Project/Building/Wing/Flat in
+          row 1, Mode/Date Range/From/To + action buttons in row 2 (exactly
+          2 rows of 6 columns on xl). ─────────────────────────────────────── */}
       <div className="pa-filter-card rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="pa-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-3.5">
           <FilterSelect t={t} label="Received By" value={draftReceivedBy} onChange={setDraftReceivedBy}
@@ -480,10 +482,10 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
             placeholder="--Select--" options={wingOptions.map((n) => ({ value: n, label: n }))} disabled={!selectedBuilding} />
           <FilterSelect t={t} label="Flat Number" value={draftFlatNo} onChange={setDraftFlatNo}
             placeholder="--Select--" options={flatsInScope.map((f) => ({ value: f.flat_no, label: f.flat_no }))} disabled={!selectedWing} />
-          <FilterSelect t={t} label="ModeOfPayment" value={draftMode} onChange={setDraftMode}
-            placeholder="--Select Payment Method--" options={MODE_OF_PAYMENT_OPTIONS.map((m) => ({ value: m, label: m }))} />
         </div>
         <div className="pa-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
+          <FilterSelect t={t} label="ModeOfPayment" value={draftMode} onChange={setDraftMode}
+            placeholder="--Select Payment Method--" options={MODE_OF_PAYMENT_OPTIONS.map((m) => ({ value: m, label: m }))} />
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
             <label style={labelStyle}>Received Date From</label>
