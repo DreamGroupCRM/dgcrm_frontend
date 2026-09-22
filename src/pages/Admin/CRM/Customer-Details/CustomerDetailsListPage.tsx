@@ -25,14 +25,14 @@ import {
   fetchCustomerFullDetails, fetchCustomerScheme, cancelCustomerBooking,
 } from '../../../../services/customerDetailsService';
 import {
-  collectPayment, fetchCustomerDue, fetchPaymentReceipt, deletePayment, paymentForLabel,
+  collectPayment, fetchPaymentReceipt, deletePayment, paymentForLabel,
 } from '../../../../services/paymentService';
 import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceiptPdf } from './paymentPdfExport';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
   Customer, Building, CustomerPaymentRecord, CustomerListSummary, CustomerListFilters,
-  PaymentFor, CustomerDueSummary, PaymentReceipt, CollectPaymentPayload, isAdminRole,
+  PaymentFor, PaymentReceipt, CollectPaymentPayload, isAdminRole,
 } from '../../../../types/index';
 import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
 import './CustomerDetails.css';
@@ -482,14 +482,12 @@ const CustomerDetailsListPage: React.FC = () => {
   const [infoModal, setInfoModal] = useState<{
     type: 'payment'; customer: Customer; loading: boolean;
     payments?: CustomerPaymentRecord[];
-    // Pending Amount shown in the Customer Details header — the modal's AI
-    // Customer Intelligence / Customer Due panels were removed (only the
-    // remaining_amount figure from this is still shown), but `due` itself
-    // stays fetched for that.
-    due?: CustomerDueSummary;
     // Total Cost of Flat — the list's own Customer type doesn't carry
     // flat_amount, so this is fetched alongside everything else above via
     // the same allSettled call (fetchCustomerFullDetails), best-effort.
+    // Pending Amount is derived from this and `payments` at render time
+    // (totalFlatCost - sum of payments) — see its own comment below for
+    // why this replaced a separate fetchCustomerDue() call.
     totalFlatCost?: number;
   } | null>(null);
 
@@ -816,21 +814,29 @@ const CustomerDetailsListPage: React.FC = () => {
   const openPaymentHistory = async (c: Customer) => {
     setInfoModal({ type: 'payment', customer: c, loading: true });
     try {
-      // Payment History is unchanged; Customer Due (only its remaining_amount,
-      // for the Pending Amount line in the header) and Total Flat Cost are
-      // fetched alongside it so the one modal shows all of it — using
-      // allSettled so a due/full-details failure never blocks the existing
-      // payment history from rendering.
-      const [historyRes, dueRes, fullRes] = await Promise.allSettled([
+      // Payment History is unchanged; Total Flat Cost is fetched alongside
+      // it so the modal can show it and derive Pending Amount from it —
+      // using allSettled so a full-details failure never blocks the
+      // existing payment history from rendering.
+      //
+      // Pending Amount used to come from fetchCustomerDue's remaining_amount
+      // — that's "how much is currently OVERDUE" (getTotalDueAmount), a
+      // completely different number from "how much of the flat cost is
+      // still unpaid": a customer who just paid their Booking Amount with
+      // no EMI due yet has $0 overdue but ~the whole flat cost still
+      // outstanding, which is what this line, sitting directly under
+      // "Total Flat Cost", is actually supposed to show. Fixed by deriving
+      // it here instead: totalFlatCost minus the sum of this customer's own
+      // payments (the same figure the modal's own Grand Total already
+      // shows), so the two numbers are guaranteed to agree.
+      const [historyRes, fullRes] = await Promise.allSettled([
         fetchCustomerPaymentHistory(c.id),
-        fetchCustomerDue(c.id),
         fetchCustomerFullDetails(c.id),
       ]);
       if (historyRes.status === 'rejected') throw historyRes.reason;
       setInfoModal({
         type: 'payment', customer: c, loading: false,
         payments: historyRes.value.rows,
-        due: dueRes.status === 'fulfilled' ? dueRes.value.data : undefined,
         totalFlatCost: fullRes.status === 'fulfilled' ? fullRes.value.data?.total_cost ?? undefined : undefined,
       });
     } catch {
@@ -843,18 +849,18 @@ const CustomerDetailsListPage: React.FC = () => {
   // data sources openPaymentHistory does. ─────────────────────────────────
   const handleDownloadPaymentHistoryPdf = async (c: Customer) => {
     try {
-      const [historyRes, dueRes, fullRes] = await Promise.allSettled([
+      const [historyRes, fullRes] = await Promise.allSettled([
         fetchCustomerPaymentHistory(c.id),
-        fetchCustomerDue(c.id),
         fetchCustomerFullDetails(c.id),
       ]);
       if (historyRes.status === 'rejected') throw historyRes.reason;
-      exportPaymentHistoryPdf(
-        c,
-        historyRes.value.rows,
-        fullRes.status === 'fulfilled' ? fullRes.value.data?.total_cost ?? null : null,
-        dueRes.status === 'fulfilled' ? dueRes.value.data.remaining_amount : null
-      );
+      const totalFlatCost = fullRes.status === 'fulfilled' ? fullRes.value.data?.total_cost ?? null : null;
+      // Same fix as openPaymentHistory above — Pending Amount is the flat
+      // cost minus what this customer has actually paid, not the separate
+      // "currently overdue" figure fetchCustomerDue used to supply here.
+      const totalPaid = historyRes.value.rows.reduce((s, p) => s + p.amount, 0);
+      const pendingAmount = totalFlatCost != null ? Math.max(0, totalFlatCost - totalPaid) : null;
+      exportPaymentHistoryPdf(c, historyRes.value.rows, totalFlatCost, pendingAmount);
     } catch {
       toast.error('Failed to generate the payment history PDF.');
     }
@@ -1409,7 +1415,11 @@ const CustomerDetailsListPage: React.FC = () => {
                     <div style={{ fontSize: 12, color: t.textPrimary }}>Mobile No.: <strong>{infoModal.customer.mobile_number}</strong></div>
                     <div style={{ fontSize: 12, color: '#16a34a' }}>Total Flat Cost: <strong>{infoModal.totalFlatCost != null ? `₹ ${infoModal.totalFlatCost.toLocaleString('en-IN')}` : '—'}</strong></div>
                     <div />
-                    <div style={{ fontSize: 12, color: '#dc2626' }}>Pending Amount: <strong>{infoModal.due ? `₹ ${infoModal.due.remaining_amount.toLocaleString('en-IN')}` : '—'}</strong></div>
+                    <div style={{ fontSize: 12, color: '#dc2626' }}>Pending Amount: <strong>
+                      {infoModal.totalFlatCost != null
+                        ? `₹ ${Math.max(0, infoModal.totalFlatCost - (infoModal.payments ?? []).reduce((s, p) => s + p.amount, 0)).toLocaleString('en-IN')}`
+                        : '—'}
+                    </strong></div>
                   </div>
 
                   <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>Payment Details</div>

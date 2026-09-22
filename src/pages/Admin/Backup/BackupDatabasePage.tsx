@@ -8,12 +8,13 @@
 // typing a confirmation phrase, not just a plain Yes/No dialog.
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from '@/utils/toast';
-import { MdStorage, MdAdd, MdRestore, MdDelete, MdRefresh, MdShield, MdWarning, MdClose } from 'react-icons/md';
+import { MdStorage, MdAdd, MdRestore, MdDelete, MdRefresh, MdShield, MdWarning, MdClose, MdMoreVert } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
+import { RowActionMenu, useRowActionMenu } from '../../../components/common/RowActionMenu';
 import { formatLastLogin } from '../../../utils';
 import { fetchSnapshots, createSnapshot, restoreSnapshot, deleteSnapshot, BackupSnapshot } from '../../../services/backupService';
 import './BackupDatabasePage.css';
@@ -37,6 +38,7 @@ const BackupDatabasePage: React.FC = () => {
   const [labelInput, setLabelInput] = useState('');
 
   const [restoreTarget, setRestoreTarget] = useState<BackupSnapshot | null>(null);
+  const rowMenu = useRowActionMenu<number>();
   const [confirmText, setConfirmText] = useState('');
   const [restoring, setRestoring] = useState(false);
 
@@ -179,13 +181,18 @@ const BackupDatabasePage: React.FC = () => {
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#fff' : '#000' }}>{s.created_by_name || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatBytes(s.size_bytes)}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      <div className="flex items-center gap-2">
-                        <button type="button" title="Restore this snapshot" onClick={() => { setRestoreTarget(s); setConfirmText(''); }} className="master-icon-btn">
-                          <MdRestore size={15} />
+                      <div className="flex items-center justify-center">
+                        <button type="button" title="Actions" className="master-icon-btn"
+                          ref={rowMenu.openId === s.id ? rowMenu.buttonRef : undefined}
+                          onClick={rowMenu.toggle(s.id, 2)}>
+                          <MdMoreVert size={15} />
                         </button>
-                        <button type="button" title="Delete this snapshot" onClick={() => handleDelete(s)} className="master-icon-btn" style={{ color: '#dc2626' }}>
-                          <MdDelete size={15} />
-                        </button>
+                        {rowMenu.openId === s.id && rowMenu.pos && (
+                          <RowActionMenu t={t} pos={rowMenu.pos} actions={[
+                            { key: 'restore', label: 'Restore this snapshot', icon: <MdRestore size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); setRestoreTarget(s); setConfirmText(''); } },
+                            { key: 'delete', label: 'Delete this snapshot', icon: <MdDelete size={14} />, danger: true, onClick: () => { rowMenu.close(); handleDelete(s); } },
+                          ]} />
+                        )}
                       </div>
                     </td>
                   </tr>

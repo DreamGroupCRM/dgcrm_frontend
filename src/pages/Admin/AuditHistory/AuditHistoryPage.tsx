@@ -10,6 +10,7 @@ import { toast } from '@/utils/toast';
 import {
   MdHistory, MdAdd, MdEdit, MdDelete, MdRefresh, MdVisibility, MdClose,
   MdFilterList, MdChevronLeft, MdChevronRight, MdKeyboardDoubleArrowLeft, MdKeyboardDoubleArrowRight,
+  MdMoreVert,
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
@@ -18,6 +19,7 @@ import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../styles/theme';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
+import { RowActionMenu, useRowActionMenu } from '../../../components/common/RowActionMenu';
 import { fetchAuditLogList, fetchAuditEntityTypes, AuditLogEntry } from '../../../services/auditService';
 import { formatLastLogin } from '../../../utils';
 import './AuditHistoryPage.css';
@@ -159,6 +161,7 @@ const AuditHistoryPage: React.FC = () => {
   }, [safePage, totalPages]);
 
   const [detailEntry, setDetailEntry] = useState<AuditLogEntry | null>(null);
+  const rowMenu = useRowActionMenu<string>();
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
@@ -254,9 +257,18 @@ const AuditHistoryPage: React.FC = () => {
                       {r.performed_by_name || r.performed_by_email || (r.performed_by ? `User #${r.performed_by}` : 'System')}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
-                      <button type="button" title="View field-level detail" onClick={() => setDetailEntry(r)} className="master-icon-btn">
-                        <MdVisibility size={15} />
-                      </button>
+                      <div className="flex items-center justify-center">
+                        <button type="button" title="Actions" className="master-icon-btn"
+                          ref={rowMenu.openId === r.id ? rowMenu.buttonRef : undefined}
+                          onClick={rowMenu.toggle(r.id, 1)}>
+                          <MdMoreVert size={15} />
+                        </button>
+                        {rowMenu.openId === r.id && rowMenu.pos && (
+                          <RowActionMenu t={t} pos={rowMenu.pos} actions={[
+                            { key: 'view', label: 'View field-level detail', icon: <MdVisibility size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); setDetailEntry(r); } },
+                          ]} />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

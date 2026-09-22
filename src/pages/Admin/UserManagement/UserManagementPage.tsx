@@ -8,11 +8,12 @@
 // activate/deactivate/delete). SuperAdmin-only, enforced server-side.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/utils/toast';
-import { MdPeople, MdCheckCircle, MdCancel, MdDelete, MdRefresh, MdKey, MdClose, MdLock, MdPersonAddAlt1, MdContentCopy, MdEdit } from 'react-icons/md';
+import { MdPeople, MdCheckCircle, MdCancel, MdDelete, MdRefresh, MdKey, MdClose, MdLock, MdPersonAddAlt1, MdContentCopy, MdEdit, MdMoreVert } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
+import { RowActionMenu, useRowActionMenu } from '../../../components/common/RowActionMenu';
 import StatCard from '../../../components/masters/StatCard';
 import { PhoneInput } from '../../../components/common/PhoneInput';
 import { ValidationErrorSummary } from '../../../components/common/ValidationErrorSummary';
@@ -41,6 +42,7 @@ const UserManagementPage: React.FC = () => {
   const [rows, setRows] = useState<UserManagementRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const rowMenu = useRowActionMenu<number>();
 
   const [pwTarget, setPwTarget] = useState<UserManagementRow | null>(null);
   const [newPassword, setNewPassword] = useState('');
@@ -317,33 +319,41 @@ const UserManagementPage: React.FC = () => {
                       </td>
                       <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatLastLogin(row.last_login_at)}</td>
                       <td style={{ padding: '12px 14px' }}>
-                        <div className="um-row-actions flex items-center gap-2">
-                          {row.base_role === 'admin' && (
-                            <button type="button" title={locked ? lockReason : 'Edit admin details'}
-                              onClick={() => !locked && openEditModal(row)} disabled={locked}
-                              className="master-icon-btn" style={{ opacity: locked ? 0.4 : 1, cursor: locked ? 'not-allowed' : 'pointer' }}>
-                              <MdEdit size={15} />
-                            </button>
+                        <div className="um-row-actions flex items-center justify-center">
+                          <button type="button" title="Actions" className="master-icon-btn"
+                            ref={rowMenu.openId === row.id ? rowMenu.buttonRef : undefined}
+                            onClick={rowMenu.toggle(row.id, 4)}>
+                            <MdMoreVert size={15} />
+                          </button>
+                          {rowMenu.openId === row.id && rowMenu.pos && (
+                            <RowActionMenu t={t} pos={rowMenu.pos} actions={[
+                              ...(row.base_role === 'admin' ? [{
+                                key: 'edit', label: 'Edit admin details', icon: <MdEdit size={14} color="var(--brand-ink)" />,
+                                disabled: locked, title: locked ? lockReason : 'Edit admin details',
+                                onClick: () => { rowMenu.close(); if (!locked) openEditModal(row); },
+                              }] : []),
+                              {
+                                key: 'toggle', label: row.is_active ? 'Disable' : 'Enable',
+                                icon: row.is_active ? <MdCancel size={14} color="#dc2626" /> : <MdCheckCircle size={14} color="#16a34a" />,
+                                disabled: locked || busyId === row.id, title: locked ? lockReason : row.is_active ? 'Disable' : 'Enable',
+                                onClick: () => { rowMenu.close(); if (!locked) handleToggleActive(row); },
+                              },
+                              // Set-password stays available for your own account
+                              // (that's a normal thing to do) but not for the
+                              // protected Super Admin.
+                              {
+                                key: 'password', label: 'Set new password', icon: <MdKey size={14} color="var(--brand-ink)" />,
+                                disabled: isProtectedSuperAdmin && !isSelf,
+                                title: isProtectedSuperAdmin && !isSelf ? lockReason : 'Set new password',
+                                onClick: () => { rowMenu.close(); if (!(isProtectedSuperAdmin && !isSelf)) { setPwTarget(row); setNewPassword(''); } },
+                              },
+                              {
+                                key: 'delete', label: 'Delete', icon: <MdDelete size={14} />, danger: true,
+                                disabled: locked || busyId === row.id, title: locked ? lockReason : 'Delete',
+                                onClick: () => { rowMenu.close(); if (!locked) handleDelete(row); },
+                              },
+                            ]} />
                           )}
-                          <button type="button" title={locked ? lockReason : row.is_active ? 'Disable' : 'Enable'}
-                            onClick={() => !locked && handleToggleActive(row)} disabled={locked || busyId === row.id}
-                            className="master-icon-btn" style={{ opacity: locked ? 0.4 : 1, cursor: locked ? 'not-allowed' : 'pointer', color: row.is_active ? '#dc2626' : '#16a34a' }}>
-                            {row.is_active ? <MdCancel size={15} /> : <MdCheckCircle size={15} />}
-                          </button>
-                          {/* Set-password stays available for your own
-                              account (that's a normal thing to do) but not
-                              for the protected Super Admin. */}
-                          <button type="button" title={isProtectedSuperAdmin && !isSelf ? lockReason : 'Set new password'}
-                            onClick={() => { if (!(isProtectedSuperAdmin && !isSelf)) { setPwTarget(row); setNewPassword(''); } }}
-                            disabled={isProtectedSuperAdmin && !isSelf}
-                            className="master-icon-btn" style={{ opacity: isProtectedSuperAdmin && !isSelf ? 0.4 : 1, cursor: isProtectedSuperAdmin && !isSelf ? 'not-allowed' : 'pointer' }}>
-                            <MdKey size={15} />
-                          </button>
-                          <button type="button" title={locked ? lockReason : 'Delete'}
-                            onClick={() => !locked && handleDelete(row)} disabled={locked || busyId === row.id}
-                            className="master-icon-btn" style={{ opacity: locked ? 0.4 : 1, cursor: locked ? 'not-allowed' : 'pointer', color: '#dc2626' }}>
-                            <MdDelete size={15} />
-                          </button>
                         </div>
                       </td>
                     </tr>

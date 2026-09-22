@@ -9,12 +9,13 @@
 // server-side.
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from '@/utils/toast';
-import { MdPendingActions, MdCheckCircle, MdCancel, MdRefresh, MdVisibility, MdClose } from 'react-icons/md';
+import { MdPendingActions, MdCheckCircle, MdCancel, MdRefresh, MdVisibility, MdClose, MdMoreVert } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
+import { RowActionMenu, useRowActionMenu } from '../../../components/common/RowActionMenu';
 import { showAlert, formatLastLogin } from '../../../utils';
 import './ChangeRequestsPage.css';
 import {
@@ -58,6 +59,7 @@ const ChangeRequestsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [detailsRow, setDetailsRow] = useState<ChangeRequestRow | null>(null);
+  const rowMenu = useRowActionMenu<string>();
 
   useEffect(() => { dispatch(setPageTitle('Change Requests')); }, [dispatch]);
 
@@ -167,15 +169,18 @@ const ChangeRequestsPage: React.FC = () => {
                       </td>
                       <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatLastLogin(row.requested_at)}</td>
                       <td style={{ padding: '12px 14px' }}>
-                        <div className="flex items-center gap-2">
-                          <button type="button" title="Approve" onClick={() => handleApprove(row)} disabled={busy}
-                            className="master-icon-btn" style={{ color: '#16a34a', cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.5 : 1 }}>
-                            <MdCheckCircle size={16} />
+                        <div className="flex items-center justify-center">
+                          <button type="button" title="Actions" className="master-icon-btn"
+                            ref={rowMenu.openId === row.id ? rowMenu.buttonRef : undefined}
+                            onClick={rowMenu.toggle(row.id, 2)}>
+                            <MdMoreVert size={16} />
                           </button>
-                          <button type="button" title="Reject" onClick={() => handleReject(row)} disabled={busy}
-                            className="master-icon-btn" style={{ color: '#dc2626', cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.5 : 1 }}>
-                            <MdCancel size={16} />
-                          </button>
+                          {rowMenu.openId === row.id && rowMenu.pos && (
+                            <RowActionMenu t={t} pos={rowMenu.pos} actions={[
+                              { key: 'approve', label: 'Approve', icon: <MdCheckCircle size={14} color="#16a34a" />, disabled: busy, onClick: () => { rowMenu.close(); handleApprove(row); } },
+                              { key: 'reject', label: 'Reject', icon: <MdCancel size={14} />, danger: true, disabled: busy, onClick: () => { rowMenu.close(); handleReject(row); } },
+                            ]} />
+                          )}
                         </div>
                       </td>
                     </tr>

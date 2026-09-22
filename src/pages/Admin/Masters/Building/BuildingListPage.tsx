@@ -7,11 +7,12 @@ import {
   MdAdd, MdDownload, MdRefresh,
   MdSearch, MdApartment, MdViewQuilt,
   MdBusiness, MdLayers, MdHome, MdStorefront,
-  MdToggleOn, MdToggleOff, MdVisibility, MdEdit,
+  MdToggleOn, MdToggleOff, MdVisibility, MdEdit, MdMoreVert,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
+import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FetchBuildingList, DisableBuilding, EnableBuilding, BuildingSortKey } from '../../../../services/buildingService';
 import { Building, BuildingListSummary, isAdminRole } from '../../../../types/index';
@@ -20,14 +21,14 @@ import SortableTh, { SortDir } from '../../../../components/masters/SortableTh';
 import StatCard from '../../../../components/masters/StatCard';
 import MultiStatCard from '../../../../components/masters/MultiStatCard';
 import Building2DViewModal from '../../Building2D/Building2DViewModal';
+import { RowActionMenu, RowMenuAction, useRowActionMenu } from '../../../../components/common/RowActionMenu';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
-// Fixed width for the Actions column — sized for View/Edit/"View 3D
-// Structure" plus the role-gated Disable/Enable toggle (only rendered for
-// Admin/Superadmin), + gaps + cell padding, so it never grows/shrinks with
-// the number of other columns in the table.
-const ACTION_COL_WIDTH = 152;
+// Fixed width for the Actions column — a single three-dot trigger now
+// (V_23.0), so it never grows/shrinks with the number of other columns in
+// the table.
+const ACTION_COL_WIDTH = 56;
 
 // ── derived helpers ──────────────────────────────────────────────────────────
 const totalFlatsOf = (b: Building): number =>
@@ -38,6 +39,37 @@ const totalFlatsOf = (b: Building): number =>
 
 const totalFloorsOf = (b: Building): number =>
   (b.wings ?? []).reduce((sum, w) => sum + (w.floors?.length ?? 0), 0);
+
+// V_23.0 — one instance per row, so its own useRowActionMenu state is
+// naturally isolated per building (same pattern as MasterIconButtons).
+// A separate component (not inline in the .map() body) because hooks can
+// only be called from a component/hook, never from a plain callback.
+const BuildingRowActions: React.FC<{
+  t: AppTheme; isActive: boolean; canToggleActive: boolean;
+  onView: () => void; onEdit: () => void; onToggleActive: () => void; onView2D: () => void;
+}> = ({ t, isActive, canToggleActive, onView, onEdit, onToggleActive, onView2D }) => {
+  const menu = useRowActionMenu<'open'>();
+  const actions: RowMenuAction[] = [
+    { key: 'view', label: 'View', icon: <MdVisibility size={14} color="var(--brand-ink)" />, onClick: () => { menu.close(); onView(); } },
+    { key: 'edit', label: 'Edit', icon: <MdEdit size={14} color="var(--brand-ink)" />, onClick: () => { menu.close(); onEdit(); } },
+    ...(canToggleActive ? [{
+      key: 'toggle', label: isActive ? 'Disable Building' : 'Enable Building',
+      icon: isActive ? <MdToggleOn size={15} color="#16a34a" /> : <MdToggleOff size={15} color="#dc2626" />,
+      onClick: () => { menu.close(); onToggleActive(); },
+    }] : []),
+    { key: 'view2d', label: 'View 2D Structure', icon: <MdViewQuilt size={14} color="var(--brand-ink)" />, onClick: () => { menu.close(); onView2D(); } },
+  ];
+  return (
+    <div className="flex items-center justify-center">
+      <button type="button" title="Actions" className="master-icon-btn"
+        ref={menu.openId ? menu.buttonRef : undefined}
+        onClick={menu.toggle('open', actions.length)}>
+        <MdMoreVert size={15} />
+      </button>
+      {menu.openId && menu.pos && <RowActionMenu t={t} pos={menu.pos} actions={actions} />}
+    </div>
+  );
+};
 
 const BuildingListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -377,32 +409,13 @@ const BuildingListPage: React.FC = () => {
                         zIndex: 1, background: isDisabled ? rowBg : (isDark ? t.surfaceBg : '#ffffff'),
                         borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                       }}>
-                        <div className="flex items-center justify-center gap-1">
-                          <button type="button" title="View" className="master-icon-btn"
-                            onClick={() => navigate(`/admin/masters/building/view/${b.id}`)}>
-                            <MdVisibility size={15} />
-                          </button>
-                          <button type="button" title="Edit" className="master-icon-btn"
-                            onClick={() => navigate(`/admin/masters/building/edit/${b.id}`)}>
-                            <MdEdit size={15} />
-                          </button>
-                          {canToggleActive && (
-                            <button
-                              type="button"
-                              title={b.is_active ? 'Disable Building' : 'Enable Building'}
-                              className="master-icon-btn"
-                              onClick={() => handleToggleActive(b)}
-                            >
-                              {b.is_active
-                                ? <MdToggleOn size={17} style={{ color: '#16a34a' }} />
-                                : <MdToggleOff size={17} style={{ color: '#dc2626' }} />}
-                            </button>
-                          )}
-                          <button type="button" title="View 2D Structure" className="master-icon-btn"
-                            onClick={() => setViewBuildingId(b.id)}>
-                            <MdViewQuilt size={15} />
-                          </button>
-                        </div>
+                        <BuildingRowActions
+                          t={t} isActive={b.is_active} canToggleActive={canToggleActive}
+                          onView={() => navigate(`/admin/masters/building/view/${b.id}`)}
+                          onEdit={() => navigate(`/admin/masters/building/edit/${b.id}`)}
+                          onToggleActive={() => handleToggleActive(b)}
+                          onView2D={() => setViewBuildingId(b.id)}
+                        />
                       </td>
                       <td>{b.id}</td>
                       <td>{b.business_company_name || '—'}</td>

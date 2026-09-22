@@ -13,7 +13,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from '@/utils/toast';
 import {
   MdEventAvailable, MdCheckCircle, MdCancel, MdTimelapse, MdBeachAccess,
-  MdAdd, MdRefresh, MdHourglassEmpty,
+  MdAdd, MdRefresh, MdHourglassEmpty, MdMoreVert,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -21,6 +21,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { getFormInputStyle, FormField } from '../../../../components/common/MasterListUI';
 import StatCard from '../../../../components/masters/StatCard';
+import { RowActionMenu, useRowActionMenu } from '../../../../components/common/RowActionMenu';
 import DateRangePresetFilter, { DateRangePreset, computeDateRangePreset } from '../../../../components/common/DateRangePresetFilter';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import { fetchAttendance, markAttendance, AttendanceRecord, AttendanceStatus } from '../../../../services/attendanceService';
@@ -145,6 +146,7 @@ const AttendancePage: React.FC = () => {
   const [lvRecords, setLvRecords] = useState<LeaveRecord[]>([]);
   const [lvLoading, setLvLoading] = useState(false);
   const [lvBusyId, setLvBusyId] = useState<string | null>(null);
+  const lvRowMenu = useRowActionMenu<string>();
 
   const loadLeaves = useCallback(async () => {
     setLvLoading(true);
@@ -402,15 +404,18 @@ const AttendancePage: React.FC = () => {
                         <td style={{ padding: '12px 14px', fontSize: 11, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatLastLogin(r.created_at)}</td>
                         <td style={{ padding: '12px 14px' }}>
                           {r.status === 'pending' ? (
-                            <div className="flex items-center gap-2">
-                              <button type="button" title="Approve" disabled={lvBusyId === r.id} onClick={() => handleLeaveReview(r, 'approved')}
-                                className="master-icon-btn" style={{ color: '#16a34a', cursor: lvBusyId === r.id ? 'not-allowed' : 'pointer', opacity: lvBusyId === r.id ? 0.5 : 1 }}>
-                                <MdCheckCircle size={16} />
+                            <div className="flex items-center justify-center">
+                              <button type="button" title="Actions" className="master-icon-btn"
+                                ref={lvRowMenu.openId === r.id ? lvRowMenu.buttonRef : undefined}
+                                onClick={lvRowMenu.toggle(r.id, 2)}>
+                                <MdMoreVert size={16} />
                               </button>
-                              <button type="button" title="Reject" disabled={lvBusyId === r.id} onClick={() => handleLeaveReview(r, 'rejected')}
-                                className="master-icon-btn" style={{ color: '#dc2626', cursor: lvBusyId === r.id ? 'not-allowed' : 'pointer', opacity: lvBusyId === r.id ? 0.5 : 1 }}>
-                                <MdCancel size={16} />
-                              </button>
+                              {lvRowMenu.openId === r.id && lvRowMenu.pos && (
+                                <RowActionMenu t={t} pos={lvRowMenu.pos} actions={[
+                                  { key: 'approve', label: 'Approve', icon: <MdCheckCircle size={14} color="#16a34a" />, disabled: lvBusyId === r.id, onClick: () => { lvRowMenu.close(); handleLeaveReview(r, 'approved'); } },
+                                  { key: 'reject', label: 'Reject', icon: <MdCancel size={14} />, danger: true, disabled: lvBusyId === r.id, onClick: () => { lvRowMenu.close(); handleLeaveReview(r, 'rejected'); } },
+                                ]} />
+                              )}
                             </div>
                           ) : (
                             <span style={{ fontSize: 11, color: t.textSecondary }}>

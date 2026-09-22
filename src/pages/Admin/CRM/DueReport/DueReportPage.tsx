@@ -178,8 +178,14 @@ const MODE_OF_PAYMENT_OPTIONS = ['Cash', 'Cheque', 'Online', 'Other'];
 // "EMI After" via getPaymentForDisplay() below, using the SAME color for
 // both phases so they read as one grouped category (per explicit request),
 // distinguished only by their text label.
+//
+// EMIAmount's color is a fixed hex, deliberately NOT var(--brand-ink) —
+// that reads the active Appearance theme's accent, so switching themes
+// changed the EMI Before/After badge's color while every other category
+// here stayed fixed. Every category badge on this page is a plain fixed
+// color now, matching the other four.
 const PAYMENT_FOR_KEY_META: Record<PaymentFor, { label: string; color: string; icon: IconType }> = {
-  EMIAmount: { label: 'EMI Before', color: 'var(--brand-ink)', icon: MdPayments },
+  EMIAmount: { label: 'EMI Before', color: '#2563eb', icon: MdPayments },
   BookingAmount: { label: 'Booking Amount', color: '#dc2626', icon: MdReceiptLong },
   PayAfterbooking: { label: 'Remaining Booking Amount', color: '#ea580c', icon: MdSchedule },
   PossessionAmount: { label: 'Possession Amount', color: '#7c3aed', icon: MdVpnKey },
@@ -469,10 +475,10 @@ const DueReportPage: React.FC = () => {
   // V_23.0 item 4 — "Due within the next 7 days" is its own yellow bucket,
   // distinct from the Upcoming tab's full 30-day fetch (unchanged — this
   // only affects which COLOR/label a row gets, not what data is fetched).
-  // A row more than 7 days out keeps the "Upcoming" label but in a neutral
-  // color, since only Overdue/Due Today/Due-within-7-days are reserved
-  // status colors (red/green/yellow) — everything further out isn't one of
-  // those three states.
+  // Exactly 3 status colors exist anywhere in this column, always: red
+  // (Overdue), green (Due Today), yellow (everything else not yet due —
+  // "Due Soon" within 7 days and "Upcoming" further out both read as
+  // yellow; only the text label tells them apart).
   const upcomingDisplayRows: DisplayRow[] = useMemo(() => upcomingRows.map((r, i) => {
     const daysUntilDue = Math.round((new Date(r.due_date).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
     const dueSoon = daysUntilDue >= 0 && daysUntilDue <= 7;
@@ -488,7 +494,7 @@ const DueReportPage: React.FC = () => {
       months_pending: null,
       per_month_amount: null,
       statusLabel: dueSoon ? 'Due Soon' : 'Upcoming',
-      statusColor: dueSoon ? '#ca8a04' : '#6b7280',
+      statusColor: '#ca8a04',
       detailText: `Due on ${new Date(r.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
     };
   }), [upcomingRows]);

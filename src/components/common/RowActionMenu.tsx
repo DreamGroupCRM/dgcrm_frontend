@@ -21,6 +21,10 @@ export interface RowMenuAction {
   onClick: () => void;
   disabled?: boolean;
   danger?: boolean; // red text — e.g. Delete
+  // Overrides the button's tooltip — for a disabled action that needs to
+  // explain WHY (e.g. "The Super Admin account is protected") rather than
+  // just showing its own label back as a no-op tooltip.
+  title?: string;
 }
 
 export const ROW_MENU_WIDTH = 200;
@@ -53,7 +57,7 @@ export const RowActionMenu: React.FC<{
     }}
   >
     {actions.map((a, i) => (
-      <button key={a.key} type="button" onClick={a.onClick} disabled={a.disabled}
+      <button key={a.key} type="button" title={a.title ?? a.label} onClick={a.onClick} disabled={a.disabled}
         className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap"
         style={{
           background: 'transparent', border: 'none',

@@ -95,3 +95,35 @@
   .due-report-export-btn-text { display: inline; font-size: 10px !important; }
   .due-report-export-btn { padding: 6px 8px !important; }
 }
+
+/* ---------- Stat box hover-expand (xl: >=1280px, where the grid is
+   already one row of 8 via the JSX's xl:grid-cols-8) ----------
+   The label/value clip at 8-across because each box only gets ~1/8th of
+   the row's width (.master-stat-label truncates with an ellipsis, see
+   master.css). Rather than widen every box (which would force horizontal
+   scroll or shrink the rest of the page), the hovered box alone grows to
+   show its full label/value while its 7 siblings compress to make room —
+   all 8 stay in the one row the whole time, nothing wraps or scrolls.
+   Below xl the grid still wraps normally (2/4 per row) and this is
+   skipped entirely — flex-grow hover states don't make sense once boxes
+   are already wrapping onto multiple rows. */
+@media (min-width: 1280px) {
+  .due-report-stat-grid {
+    display: flex !important;
+    flex-wrap: nowrap;
+  }
+  .due-report-stat-grid > * {
+    flex: 1 1 0%;
+    min-width: 0;
+    /* flex-grow (not the `flex` shorthand) is what's animated — every
+       browser interpolates a bare number smoothly, and transitioning the
+       shorthand risks the browser only tweening flex-basis instead. Fast
+       per explicit request — 110ms is about as quick as a transition
+       reads as "eased" rather than "instant/jarring". */
+    transition: flex-grow 110ms ease-out;
+  }
+  .due-report-stat-grid > *:hover {
+    flex-grow: 5;
+    z-index: 1;
+  }
+}
