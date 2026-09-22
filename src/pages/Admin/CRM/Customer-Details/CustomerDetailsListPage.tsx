@@ -1089,15 +1089,18 @@ const CustomerDetailsListPage: React.FC = () => {
             <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} className="cust-date-field" />
           </div>
 
-          {anyFilterApplied && (
-            <button
-              type="button" onClick={clearAllFilters} title="Reset Filters" aria-label="Reset Filters"
-              className="flex items-center justify-center rounded-full"
-              style={{ width: 36, height: 36, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}
-            >
-              <MdClose size={17} />
-            </button>
-          )}
+          {/* Always visible (not just when a filter is applied), per explicit
+              product decision — clicking it with nothing set is a harmless
+              no-op (clearAllFilters just re-sets already-empty state), and
+              a fixed clear-filters button reads clearer than one that
+              appears/disappears as you type. */}
+          <button
+            type="button" onClick={clearAllFilters} title="Reset Filters" aria-label="Reset Filters"
+            className="flex items-center justify-center rounded-full"
+            style={{ width: 36, height: 36, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0, opacity: anyFilterApplied ? 1 : 0.5 }}
+          >
+            <MdClose size={17} />
+          </button>
         </div>
       </div>
 
