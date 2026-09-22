@@ -8,7 +8,7 @@
 // leaves no trace on the target record. Admin/superadmin only, enforced
 // server-side.
 import React, { useCallback, useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { MdPendingActions, MdCheckCircle, MdCancel, MdRefresh, MdVisibility, MdClose } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../hooks';

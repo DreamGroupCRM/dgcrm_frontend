@@ -6,7 +6,7 @@
 // row's parent_id makes it a reply).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { MdSave, MdArrowBack, MdReply, MdSend, MdPersonAdd } from 'react-icons/md';
 
 import { useAppearanceTokens } from '../../styles/appearanceTokens';

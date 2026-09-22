@@ -29,17 +29,16 @@
   background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d97706' fill-opacity='.35'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4z'/%3E%3C/g%3E%3C/svg%3E");
 }
 
-/* ── Login page background: an AI neural network on black
-   (login_ai_tech_black.svg), shown at full opacity — the artwork carries
-   its own readability wash so the form stays legible without the
-   stylesheet dimming it a second time, and being vector it stays sharp at
-   any viewport or pixel density.
+/* ── Login page background: a circuit-board photo (login_circuit_bg.webp),
+   shown at full opacity/clarity — no dimming overlay, so its own left/
+   right detail and the login card (a dark translucent glass panel, see
+   LoginPage.tsx's inline style) both stay readable on their own.
 
-   The source is square with its core dead centre, so `cover` +
-   `center center` crops it symmetrically: a wide desktop loses top and
-   bottom, a tall phone loses left and right, and the glowing core sits
-   behind the login card either way — which is what makes one asset fit
-   both without a second mobile-specific image.
+   `cover` + `center center` fills any viewport without distorting the
+   image's aspect ratio: a wide desktop crops top/bottom, a tall phone
+   crops left/right, and the image's own plainer, darker middle band ends
+   up behind the login card either way — which is what keeps the card
+   readable without needing a second mobile-specific crop/asset.
    LoginPage.tsx is this class's only consumer. ───────────────────────── */
 .login-bg-image {
   position: absolute;

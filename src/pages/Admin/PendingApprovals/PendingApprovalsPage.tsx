@@ -11,7 +11,7 @@
 // V_21.0 added Lead to this same queue (previously permission-gated with
 // no review step at all).
 import React, { useCallback, useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { MdPendingActions, MdCheckCircle, MdCancel, MdRefresh } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../hooks';

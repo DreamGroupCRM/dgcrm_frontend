@@ -25,19 +25,19 @@ import { showAlert, homeRouteForRole } from '../../utils';
 import { authService } from '../../services/authService';
 import { takeLogoutReason } from '../../services/axiosConfig';
 import Logo from '../../components/ui/Logo';
-// Circuit-board/login-panel background — shown at full brightness/clarity
-// (not dimmed) so the artwork itself, including its own illustrated login
-// box, reads clearly; the real login card is centered on top of it so it
-// lands on that same illustrated box regardless of viewport size.
-// Vector, not a raster photo. A generated JPEG/PNG would have to be picked
-// at one resolution and then stretched by object-fit: cover across every
-// viewport from a 4K monitor to a phone — which is exactly how the
-// original circuit-board JPEG ended up looking soft. This is drawn as SVG
-// instead, so it is pixel-exact at any size and density while staying
-// under 10 KB. Its viewBox is square with slice cropping, so the neural
-// core stays centred whether the viewport is wide (desktop) or tall
-// (mobile) — see the file itself.
-import loginBgImage from '../../assets/images/login_ai_tech_black.svg';
+// Circuit-board background photo (explicit product choice, replacing the
+// earlier vector artwork) — shown at full brightness/clarity (not dimmed)
+// so the artwork's own left/right circuit detail stays clearly visible;
+// the login card is centered on top of it, landing on the image's own
+// plainer, darker middle band so it doesn't fight the card for contrast.
+// object-fit: cover (see .login-bg-image in Responsive.css) crops it to
+// fill any viewport without distorting its aspect ratio. Note: unlike the
+// previous SVG, this is a fixed-resolution raster (1672×941) — on a
+// viewport wider than that (e.g. a 1920px+/4K desktop monitor) `cover`
+// scales it up past its native size, which will look softer there than on
+// a laptop/tablet/phone screen. That's an inherent tradeoff of using a
+// raster photo instead of vector artwork, not a bug in how it's mounted.
+import loginBgImage from '../../assets/images/login_circuit_bg.webp';
 
 import {
   TextField,

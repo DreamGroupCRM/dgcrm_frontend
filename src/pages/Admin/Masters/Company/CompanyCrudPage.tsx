@@ -7,13 +7,14 @@
 //   'view' → pre-filled form, all inputs disabled, Go Back only
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import { MdArrowBack, MdBusiness, MdClose } from 'react-icons/md';
+import { toast } from '@/utils/toast';
+import { MdArrowBack, MdBusiness, MdClose, MdVisibility } from 'react-icons/md';
 import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { FormField, getFormLabelStyle, getFormInputStyle } from '../../../../components/common/MasterListUI';
+import DocumentViewerModal from '../../../../components/common/DocumentViewerModal';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
 import { phoneNumberError } from '../../../../utils/phoneValidation';
 import { pincodeError, panError, gstError, sanitizeDigits, sanitizeAlphanumericUpper } from '../../../../utils/fieldValidation';
@@ -130,6 +131,20 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
   const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(!isAdd);
   const fileRef = useRef<HTMLInputElement>(null);
+  // V_23.0 item 3 — a small View icon beside the logo field, reusing the
+  // same shared Quick View modal Employee/Customer documents already use.
+  const [logoPreviewOpen, setLogoPreviewOpen] = useState(false);
+  // A freshly-picked File gets an object URL for a live thumbnail (revoked
+  // on unmount/change); an already-saved logo just needs resolving.
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (logoFile) {
+      const url = URL.createObjectURL(logoFile);
+      setLogoPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setLogoPreviewUrl(existingLogoUrl ? resolveFileUrl(existingLogoUrl) : null);
+  }, [logoFile, existingLogoUrl]);
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const setFieldRef = (key: string) => (el: HTMLDivElement | null) => { fieldRefs.current[key] = el; };
 
@@ -461,7 +476,11 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
           {/* ── Logo ── */}
           <Field label="Company Logo" t={t}>
             {isView ? (
-              /* View mode: thumbnail + path */
+              /* View mode: thumbnail + path + a View icon to open the
+                 full-size logo (item 3) — the thumbnail here is small and
+                 sits within a plain disabled-text-field row, so it's easy
+                 to miss that it's the actual logo rather than a decorative
+                 icon; the icon makes "there's more to see here" explicit. */
               <div className="flex items-center gap-3">
                 <div
                   className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
@@ -480,41 +499,56 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
                   value={existingLogoUrl || 'No logo uploaded'}
                   style={{ ...fieldStyle(), flex: 1 }}
                 />
+                {existingLogoUrl && (
+                  <button type="button" onClick={() => setLogoPreviewOpen(true)}
+                    title="View" aria-label="View company logo"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.accentText, padding: 0, display: 'flex', flexShrink: 0 }}>
+                    <MdVisibility size={18} />
+                  </button>
+                )}
               </div>
             ) : (
-              /* Add / Edit mode: file picker styled like other fields */
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                background: t.inputBg,
-                border: `1px solid ${t.inputBorder}`,
-                borderRadius: 10,
-                padding: '6px 10px 6px 6px',
-                boxSizing: 'border-box',
-                width: '100%',
-              }}>
-                {/* Choose File button — sits inside the field box */}
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  style={{
-                    flexShrink: 0,
-                    background: t.insetBg,
-                    border: `1px solid ${t.inputBorder}`,
-                    borderRadius: 7,
-                    padding: '5px 12px',
-                    fontSize: 11.5,
-                    fontWeight: 500,
-                    color: t.textSecondary,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    fontFamily: t.fontFamily,
-                    lineHeight: '20px',
-                  }}
-                >
+              // V_23.0 item 5 — the whole box opens the file picker on
+              // click (previously only the "Choose File" button did), and
+              // now shows a live thumbnail preview + a View icon (item 3)
+              // for an already-saved logo, matching Employee/Customer's
+              // own upload fields.
+              <div
+                role="button" tabIndex={0}
+                onClick={() => fileRef.current?.click()}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click(); } }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: t.inputBg,
+                  border: `1px solid ${t.inputBorder}`,
+                  borderRadius: 10,
+                  padding: '6px 10px 6px 6px',
+                  boxSizing: 'border-box',
+                  width: '100%',
+                  cursor: 'pointer',
+                }}>
+                {logoPreviewUrl && (
+                  <img src={logoPreviewUrl} alt="" className="rounded-lg flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'contain', background: t.insetBg }} />
+                )}
+                {/* Choose File — a visual label only now; the whole row
+                    above already opens the picker on click. */}
+                <span style={{
+                  flexShrink: 0,
+                  background: t.insetBg,
+                  border: `1px solid ${t.inputBorder}`,
+                  borderRadius: 7,
+                  padding: '5px 12px',
+                  fontSize: 11.5,
+                  fontWeight: 500,
+                  color: t.textSecondary,
+                  whiteSpace: 'nowrap',
+                  fontFamily: t.fontFamily,
+                  lineHeight: '20px',
+                }}>
                   Choose File
-                </button>
+                </span>
 
                 {/* Filename text — fills remaining space */}
                 <span style={{
@@ -533,12 +567,24 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
                       : 'No file chosen'}
                 </span>
 
+                {/* Only an already-SAVED logo (no new pick pending) can be
+                    opened in the viewer — a freshly-picked file's thumbnail
+                    is already showing right beside this. */}
+                {!logoFile && existingLogoUrl && (
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setLogoPreviewOpen(true); }}
+                    title="View" aria-label="View company logo"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.accentText, padding: 0, display: 'flex', flexShrink: 0 }}>
+                    <MdVisibility size={17} />
+                  </button>
+                )}
+
                 {/* ✕ cancel — only when a new file is selected */}
                 {logoFile && (
                   <button
                     type="button"
                     title="Remove selected file"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setLogoFile(null);
                       if (fileRef.current) fileRef.current.value = '';
                     }}
@@ -614,6 +660,10 @@ const CompanyCrudPage: React.FC<Props> = ({ mode }) => {
             </button>
           )}
       </div>
+
+      {logoPreviewOpen && existingLogoUrl && (
+        <DocumentViewerModal t={t} label="Company Logo" url={resolveFileUrl(existingLogoUrl)} onClose={() => setLogoPreviewOpen(false)} />
+      )}
     </div>
   );
 };

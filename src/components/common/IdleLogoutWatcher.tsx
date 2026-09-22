@@ -27,7 +27,7 @@
 // a timer here could otherwise be bypassed simply by not running it.
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { logoutThunk } from '../../redux/thunks/authThunks';
 

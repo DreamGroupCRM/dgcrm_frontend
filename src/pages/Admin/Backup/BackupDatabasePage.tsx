@@ -7,7 +7,7 @@
 // radius (Restore rolls back EVERY company's data), so Restore requires
 // typing a confirmation phrase, not just a plain Yes/No dialog.
 import React, { useCallback, useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { MdStorage, MdAdd, MdRestore, MdDelete, MdRefresh, MdShield, MdWarning, MdClose } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';

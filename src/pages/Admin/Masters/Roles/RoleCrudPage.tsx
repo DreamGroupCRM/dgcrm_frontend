@@ -16,7 +16,7 @@ import {
   MenuItem,
 } from '@mui/material';
 import { FiArrowLeft, FiSave, FiEdit2 } from 'react-icons/fi';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import {
   fetchRoleById,
   createRole,

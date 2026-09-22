@@ -3,7 +3,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import {
   MdAdd, MdDownload, MdRefresh, MdSearch, MdKeyboardArrowDown, MdSettings, MdBolt,
 } from 'react-icons/md';

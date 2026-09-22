@@ -21,12 +21,16 @@ const App: React.FC = () => {
     <ThemeProvider theme={muiTheme}>
       <CssBaseline />
       <AppRoutes />
-      {/* Toast notifications — top-right, 5 second auto-close for both
-          success and error (the stale comment above said "3 second" but
-          the value was actually 1000ms/1s; ~26 individual toast.success()
-          call sites also explicitly overrode it back to ~1s, which would
-          have silently fought this default — those overrides have been
-          removed so every toast now genuinely gets 5s).
+      {/* Toast notifications — top-right, 5 second auto-close by default.
+          This default is what success/info/warn toasts actually use.
+          Error toasts do NOT use this default any more: every call site
+          imports `toast` from src/utils/toast.ts instead of directly from
+          'react-toastify', and that wrapper forces `autoClose: false` on
+          every .error() call — a failed/erred/no-response outcome stays
+          on screen until manually closed, rather than timing out, so it
+          can't be missed. ToastContainer itself doesn't need a
+          `autoClose={false}` override for this — it only sets the
+          shared default that success/info/warn still use.
           closeButton is react-toastify's own default (true) — made
           explicit here since a related fix was needed for its visibility:
           the button itself was rendering white-on-white in this app's

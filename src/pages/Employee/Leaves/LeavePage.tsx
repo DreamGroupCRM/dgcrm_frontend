@@ -6,7 +6,7 @@
 // resolved via the same employee-stats endpoint the Employee Dashboard and
 // Attendance page already use.
 import React, { useCallback, useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { MdBeachAccess } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../hooks';

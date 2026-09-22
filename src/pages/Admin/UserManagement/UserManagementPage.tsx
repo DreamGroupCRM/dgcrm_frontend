@@ -7,7 +7,7 @@
 // business record (Employee/Customer pages already own their own
 // activate/deactivate/delete). SuperAdmin-only, enforced server-side.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { MdPeople, MdCheckCircle, MdCancel, MdDelete, MdRefresh, MdKey, MdClose, MdLock, MdPersonAddAlt1, MdContentCopy, MdEdit } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';

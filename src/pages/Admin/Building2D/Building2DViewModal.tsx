@@ -16,7 +16,7 @@
 // building" popup.
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { MdClose, MdKeyboardArrowDown } from 'react-icons/md';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { FetchBuildingList, ViewBuilding } from '../../../services/buildingService';

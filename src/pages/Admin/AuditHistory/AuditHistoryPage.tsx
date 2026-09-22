@@ -6,7 +6,7 @@
 // already writes here via recordAudit() (see shared/audit.ts); this page
 // is the first place any of it gets shown back (item 11).
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import {
   MdHistory, MdAdd, MdEdit, MdDelete, MdRefresh, MdVisibility, MdClose,
   MdFilterList, MdChevronLeft, MdChevronRight, MdKeyboardDoubleArrowLeft, MdKeyboardDoubleArrowRight,

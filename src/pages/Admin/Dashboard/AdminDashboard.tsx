@@ -7,7 +7,7 @@
 // API call at all; wired to the real, company-scoped data so it reflects
 // whatever is actually in the database, including an empty one.
 import React, { useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../styles/theme';

@@ -64,6 +64,34 @@
   .Toastify__toast-theme--light .Toastify__close-button {
     color: var(--toastify-text-color-light, #757575);
   }
+
+  /* Mobile toast visibility fix. react-toastify's own bundled CSS (see
+     node_modules/react-toastify/dist/ReactToastify.css) puts a top-
+     positioned container flush at `top: env(safe-area-inset-top)` under
+     480px width — env(safe-area-inset-top) is 0 on the vast majority of
+     phones (it's only nonzero on a hardware notch/Dynamic Island), so the
+     toast ends up rendered at the literal y=0 edge of the page: exactly
+     where a phone browser's own address bar/status bar chrome commonly
+     overlaps the page even though CSS reports that space as available,
+     which is what made it look "hidden"/half cut-off at the top instead
+     of genuinely not shown — position:fixed itself was always correctly
+     tracking the viewport (this app's scrolling happens inside
+     DashboardLayout's <main>, a sibling of the toast container, never an
+     ancestor of it, so no ancestor transform/overflow could be clipping
+     it either). Pulling it down a little from that exact edge is the
+     actual fix, not a z-index/position change. !important is required to
+     beat the library's own !important-free but more specific selector
+     (a class + pseudo-class-like modifier beats a bare tag), which would
+     otherwise still win since both rules are the same specificity band
+     loaded in the same cascade layer. */
+  @media only screen and (max-width: 480px) {
+    .Toastify__toast-container--top-left,
+    .Toastify__toast-container--top-center,
+    .Toastify__toast-container--top-right {
+      top: max(12px, env(safe-area-inset-top)) !important;
+      position: fixed !important;
+    }
+  }
 }
 
 @layer utilities {

@@ -26,7 +26,7 @@
 // Possession has been entered.
 import React, { useMemo, useState } from 'react';
 import { IconType } from 'react-icons';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import {
   MdCalculate, MdPayments, MdListAlt,
   MdHome, MdAccountBalanceWallet, MdSchedule, MdTrendingDown, MdTrendingUp,

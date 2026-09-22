@@ -4,7 +4,7 @@
 // the backend, see leads.service.ts's resolveEmployeeScope) portals.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import {
   MdAdd, MdDownload, MdUpload, MdRefresh, MdSearch, MdPerson, MdContentCopy, MdClose,
 } from 'react-icons/md';

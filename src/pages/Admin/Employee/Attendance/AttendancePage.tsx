@@ -10,7 +10,7 @@
 // attendance API (GET/POST /api/attendance) and leave API
 // (leaves.routes.ts) — nothing new on the backend.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import {
   MdEventAvailable, MdCheckCircle, MdCancel, MdTimelapse, MdBeachAccess,
   MdAdd, MdRefresh, MdHourglassEmpty,

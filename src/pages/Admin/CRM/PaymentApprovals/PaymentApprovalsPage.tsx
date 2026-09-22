@@ -14,7 +14,7 @@
 // as it already was, per explicit request.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import {
   MdPayments, MdRefresh, MdCheckCircle, MdHourglassEmpty, MdDownload,
   MdVisibility, MdDelete, MdClose, MdKeyboardArrowDown, MdFilterAlt, MdSearch,

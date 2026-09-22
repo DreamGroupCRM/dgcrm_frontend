@@ -21,7 +21,7 @@
 // the fetched list — Customer ID/Name/Email/Mobile, Employee Name/Code,
 // Building Name.
 import React, { useEffect, useMemo, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { IconType } from 'react-icons';
 import {
   MdUpcoming, MdRefresh, MdSearch, MdEvent, MdAccountBalanceWallet, MdClose,

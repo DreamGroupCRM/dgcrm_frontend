@@ -13,7 +13,7 @@
 // leaves.routes.ts) — this page never sends employee_id for its own
 // actions, only for read filters.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import {
   MdFingerprint, MdLocationOn, MdLocationOff, MdMap, MdEventBusy, MdWbSunny,
   MdHomeWork, MdClose, MdCheckCircle,

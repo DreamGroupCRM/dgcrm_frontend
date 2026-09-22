@@ -28,7 +28,7 @@
 //     with location.state.selectedUnit for CustomerDetailsCrudPage to read.
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { MdArrowBack, MdCheckCircle, MdKeyboardArrowDown } from 'react-icons/md';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { FetchBuildingList, ViewBuilding } from '../../../services/buildingService';

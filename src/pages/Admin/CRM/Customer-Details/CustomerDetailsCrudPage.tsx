@@ -4,7 +4,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import {
   MdArrowBack, MdSave, MdPerson, MdApartment, MdClose, MdKeyboardArrowDown, MdAdd,
   MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew, MdGridView,
@@ -450,7 +450,16 @@ const CompactFileUpload: React.FC<{
           onChange(picked);
         }} />
       {displayName ? (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}` }}>
+        // V_23.0 item 5 — clicking ANYWHERE in this box (not just the tiny
+        // "Choose file" state below) re-opens the file picker, so replacing
+        // an already-selected/already-saved file doesn't require deleting
+        // it first. The View/Delete icon buttons each stop propagation so
+        // clicking THEM fires their own action instead of also reopening
+        // the picker underneath.
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl" role="button" tabIndex={isView ? -1 : 0}
+          onClick={() => !isView && inputRef.current?.click()}
+          onKeyDown={(e) => { if (!isView && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); inputRef.current?.click(); } }}
+          style={{ background: t.insetBg, border: `1px solid ${t.inputBorder}`, cursor: isView ? 'default' : 'pointer' }}>
           {previewUrl ? (
             <img src={previewUrl} alt="" className="rounded-lg flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'cover' }} />
           ) : (
@@ -462,14 +471,14 @@ const CompactFileUpload: React.FC<{
               its object URL is already what the thumbnail beside this is
               showing. */}
           {onView && typeof value === 'string' && value && (
-            <button type="button" onClick={() => onView(value)}
+            <button type="button" onClick={(e) => { e.stopPropagation(); onView(value); }}
               title="View" aria-label="View file"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.accentText, padding: 0, display: 'flex', flexShrink: 0 }}>
               <MdVisibility size={16} />
             </button>
           )}
           {!isView && (
-            <button type="button" onClick={() => onChange(null)}
+            <button type="button" onClick={(e) => { e.stopPropagation(); onChange(null); }}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0, display: 'flex', flexShrink: 0 }}>
               <MdDelete size={16} />
             </button>
@@ -487,7 +496,7 @@ const CompactFileUpload: React.FC<{
 };
 
 // Larger dashed drop-card (Application Form / Declaration Form / Allotment Letter).
-const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; value: FileValue; onChange: (f: File | null) => void }> = ({ t, isView, label, value, onChange }) => {
+const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; value: FileValue; onChange: (f: File | null) => void; onView?: (url: string) => void }> = ({ t, isView, label, value, onChange, onView }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const displayName = fileDisplayName(value);
 
@@ -509,7 +518,16 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
   }, [value]);
 
   return (
-    <div className="rounded-xl p-4 text-center" style={{ border: `1.5px dashed ${t.inputBorder}`, background: t.inputBg }}>
+    // V_23.0 item 5 — the whole card opens the file picker on click
+    // (previously only the "Upload {label}" text-button did, and only in
+    // the empty state — once a file was picked there was no way to click
+    // the card itself to replace it, only the small delete X). The View/
+    // Delete icon buttons stop propagation so they fire their own action
+    // instead of also reopening the picker underneath.
+    <div className="rounded-xl p-4 text-center" role="button" tabIndex={isView ? -1 : 0}
+      onClick={() => !isView && inputRef.current?.click()}
+      onKeyDown={(e) => { if (!isView && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); inputRef.current?.click(); } }}
+      style={{ border: `1.5px dashed ${t.inputBorder}`, background: t.inputBg, cursor: isView ? 'default' : 'pointer' }}>
       <input ref={inputRef} type="file" accept={DOCUMENT_ACCEPT} style={{ display: 'none' }}
         onChange={(e) => {
           const picked = e.target.files?.[0] ?? null;
@@ -526,18 +544,26 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
       {displayName ? (
         <div className="flex items-center justify-center gap-2">
           <span className="truncate" style={{ fontSize: 11, color: t.textPrimary, maxWidth: 150 }}>{displayName}</span>
+          {/* Only an already-SAVED file (a string url) can be opened in the
+              viewer — same rule as CompactFileUpload above. */}
+          {onView && typeof value === 'string' && value && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onView(value); }}
+              title="View" aria-label="View file"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.accentText, padding: 0, display: 'flex' }}>
+              <MdVisibility size={15} />
+            </button>
+          )}
           {!isView && (
-            <button type="button" onClick={() => onChange(null)}
+            <button type="button" onClick={(e) => { e.stopPropagation(); onChange(null); }}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0, display: 'flex' }}>
               <MdDelete size={15} />
             </button>
           )}
         </div>
       ) : (
-        <button type="button" disabled={isView} onClick={() => inputRef.current?.click()}
-          style={{ background: 'transparent', border: 'none', cursor: isView ? 'not-allowed' : 'pointer', color: 'var(--brand-ink)', fontSize: 11, fontWeight: 700, fontFamily: t.fontFamily }}>
+        <span style={{ color: 'var(--brand-ink)', fontSize: 11, fontWeight: 700, fontFamily: t.fontFamily }}>
           Upload {label}
-        </button>
+        </span>
       )}
       <p style={{ fontSize: 10, color: t.textSecondary, margin: '4px 0 0' }}>PDF, JPG, PNG (Max 2MB)</p>
     </div>
@@ -2043,13 +2069,16 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field t={t} label="Application Form" required error={errorFor('applicationForm')} fieldRef={setFieldRef('applicationForm') as React.Ref<HTMLDivElement>}>
-            <DocumentDropCard t={t} isView={isView} label="Application Form" value={applicationForm} onChange={setApplicationForm} />
+            <DocumentDropCard t={t} isView={isView} label="Application Form" value={applicationForm} onChange={setApplicationForm}
+              onView={(url) => openPreview('Application Form', url)} />
           </Field>
           <Field t={t} label="Declaration Form" required error={errorFor('declarationForm')} fieldRef={setFieldRef('declarationForm') as React.Ref<HTMLDivElement>}>
-            <DocumentDropCard t={t} isView={isView} label="Declaration Form" value={declarationForm} onChange={setDeclarationForm} />
+            <DocumentDropCard t={t} isView={isView} label="Declaration Form" value={declarationForm} onChange={setDeclarationForm}
+              onView={(url) => openPreview('Declaration Form', url)} />
           </Field>
           <Field t={t} label="Allotment Letter" required error={errorFor('allotmentLetter')} fieldRef={setFieldRef('allotmentLetter') as React.Ref<HTMLDivElement>}>
-            <DocumentDropCard t={t} isView={isView} label="Allotment Letter" value={allotmentLetter} onChange={setAllotmentLetter} />
+            <DocumentDropCard t={t} isView={isView} label="Allotment Letter" value={allotmentLetter} onChange={setAllotmentLetter}
+              onView={(url) => openPreview('Allotment Letter', url)} />
           </Field>
         </div>
       </AccordionSection>

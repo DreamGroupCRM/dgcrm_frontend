@@ -9,7 +9,7 @@
 // as pending.
 import React, { useEffect, useMemo, useState } from 'react';
 import { CircularProgress } from '@mui/material';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { MdReceiptLong, MdVisibility, MdDownload, MdPayments } from 'react-icons/md';
 import { formatDate } from '../../../utils';
 import { paymentForLabel } from '../../../services/paymentService';

@@ -3,7 +3,7 @@
 // are available for a module on the employee/role permission page.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { MdGridOn, MdRefresh, MdDoneAll, MdSettings } from 'react-icons/md';
 import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';

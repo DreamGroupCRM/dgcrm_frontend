@@ -11,7 +11,7 @@
 // customer's own info at the top. Nothing here is editable — it's a report.
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import {
   MdArrowBack, MdCalculate, MdListAlt, MdPerson, MdApartment, MdPhone,
   MdEmail, MdChat, MdLocationOn, MdBadge, MdExpandMore, MdExpandLess,

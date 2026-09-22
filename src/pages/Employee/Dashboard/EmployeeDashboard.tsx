@@ -6,7 +6,7 @@
 // their customers, their attendance) — this used to be hardcoded demo
 // values identical for every employee regardless of who logged in.
 import React, { useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';

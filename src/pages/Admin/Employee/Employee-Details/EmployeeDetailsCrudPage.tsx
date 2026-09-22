@@ -3,7 +3,7 @@
 // ==========================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import {
   MdArrowBack, MdCloudUpload, MdPerson, MdBusinessCenter, MdAccountBalance,
   MdGroups, MdDescription, MdCheckCircle, MdOpenInNew, MdVisibility, MdDownload,
@@ -205,23 +205,56 @@ const FileUploadBox: React.FC<{
   file: File | null | undefined; existingUrl?: string | null;
   onChange: (f: File | null) => void;
   fieldRef?: React.Ref<HTMLDivElement>;
-}> = ({ t, isView, label, hint, accept, required, file, existingUrl, onChange, fieldRef }) => {
+  // V_23.0 item 3 — a small View icon beside the field, so an already-
+  // saved upload can be previewed without leaving this form. Only an
+  // already-SAVED file (existingUrl, no fresh pick in progress) can be
+  // opened this way — the same rule Customer's CompactFileUpload uses.
+  onView?: (label: string, url: string) => void;
+}> = ({ t, isView, label, hint, accept, required, file, existingUrl, onChange, fieldRef, onView }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const displayName = file?.name || (existingUrl ? String(existingUrl).split('/').pop() : null);
+
+  // Real image preview, same treatment as Customer's CompactFileUpload — a
+  // freshly-picked File gets an object URL (revoked on unmount/change), an
+  // already-uploaded value just needs resolving. A non-image (PDF/DOC/etc)
+  // isn't previewable as a thumbnail, so it falls back to the cloud icon.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (file && file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    if (!file && existingUrl && previewKindFor(existingUrl) === 'image') {
+      setPreviewUrl(resolveFileUrl(existingUrl));
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [file, existingUrl]);
+
   return (
     <Field t={t} label={label} required={required} fieldRef={fieldRef}>
-      <button
-        type="button"
-        disabled={isView}
-        onClick={() => inputRef.current?.click()}
+      {/* The whole box opens the file picker on click (item 5) — including
+          when a file is already selected/saved, so replacing it doesn't
+          need a separate delete step first. The View icon below stops
+          propagation so clicking IT previews the file instead of also
+          reopening the picker underneath. */}
+      <div
+        role="button" tabIndex={isView ? -1 : 0}
+        onClick={() => !isView && inputRef.current?.click()}
+        onKeyDown={(e) => { if (!isView && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); inputRef.current?.click(); } }}
         className="w-full flex items-center gap-2.5 rounded-xl"
         style={{
           border: `1.5px dashed ${t.inputBorder}`, padding: '12px 14px',
           background: isView ? t.insetBg : t.inputBg, cursor: isView ? 'default' : 'pointer', textAlign: 'left',
         }}
       >
-        <MdCloudUpload size={18} style={{ color: t.accentText, flexShrink: 0 }} />
-        <div className="min-w-0">
+        {previewUrl ? (
+          <img src={previewUrl} alt="" className="rounded-lg flex-shrink-0" style={{ width: 32, height: 32, objectFit: 'cover' }} />
+        ) : (
+          <MdCloudUpload size={18} style={{ color: t.accentText, flexShrink: 0 }} />
+        )}
+        <div className="min-w-0" style={{ flex: 1 }}>
           <div style={{ fontSize: 11.5, fontWeight: 600, color: t.accentText }}>
             {displayName ? 'Change File' : label.startsWith('Upload') ? label : `Upload ${label}`}
           </div>
@@ -229,7 +262,14 @@ const FileUploadBox: React.FC<{
             {displayName || hint}
           </div>
         </div>
-      </button>
+        {onView && !file && existingUrl && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); onView(label, resolveFileUrl(existingUrl)); }}
+            title="View" aria-label={`View ${label}`}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.accentText, padding: 0, display: 'flex', flexShrink: 0 }}>
+            <MdVisibility size={17} />
+          </button>
+        )}
+      </div>
       {/* Pre-checked here so a wrong pick is refused instantly rather than
           after the whole file has been uploaded. The server re-validates
           everything (extension, mime AND real magic bytes) regardless —
@@ -1406,7 +1446,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* Row 3 of 4 — ID proofs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <FileUploadBox t={t} isView={isView} label="Upload Aadhar Card" hint="JPG, PNG, PDF (Max 2MB)" accept={DOCUMENT_ACCEPT} required
-            file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={handleAadharCardChange}
+            file={files.aadhar_card} existingUrl={existingUrls.aadhar_card} onChange={handleAadharCardChange} onView={openPreview}
             fieldRef={setFieldRef('aadhar_card') as React.Ref<HTMLDivElement>} />
           <Field t={t} label="Aadhar Number" required error={errorFor('aadhar_number')} fieldRef={setFieldRef('aadhar_number') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter aadhar number" value={form.aadhar_number} readOnly={isView} disabled={isView} maxLength={12}
@@ -1414,7 +1454,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
           <FileUploadBox t={t} isView={isView} label="Upload PAN Card" hint="JPG, PNG, PDF (Max 2MB)" accept={DOCUMENT_ACCEPT} required
-            file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={handlePanCardChange}
+            file={files.pan_card} existingUrl={existingUrls.pan_card} onChange={handlePanCardChange} onView={openPreview}
             fieldRef={setFieldRef('pan_card') as React.Ref<HTMLDivElement>} />
           <Field t={t} label="PAN Number" required error={errorFor('pan_number')} fieldRef={setFieldRef('pan_number') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter PAN number" value={form.pan_number} readOnly={isView} disabled={isView} maxLength={10}
@@ -1435,7 +1475,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </Field>
           <FileUploadBox t={t} isView={isView} label="Upload Profile Photo" hint="JPG, PNG (Max 2MB)" accept={IMAGE_ACCEPT} required
-            file={files.profile_photo} existingUrl={existingUrls.profile_photo} onChange={setFile('profile_photo')}
+            file={files.profile_photo} existingUrl={existingUrls.profile_photo} onChange={setFile('profile_photo')} onView={openPreview}
             fieldRef={setFieldRef('profile_photo') as React.Ref<HTMLDivElement>} />
         </div>
       </AccordionSection>
@@ -1484,9 +1524,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             </div>
           </Field>
           <FileUploadBox t={t} isView={isView} label="Resume" hint="PDF, DOC, DOCX (Max 5MB)" accept={DOCUMENT_ACCEPT}
-            file={files.resume} existingUrl={existingUrls.resume} onChange={setFile('resume')} />
+            file={files.resume} existingUrl={existingUrls.resume} onChange={setFile('resume')} onView={openPreview} />
           <FileUploadBox t={t} isView={isView} label="Appointment Letter" hint="PDF, DOC, DOCX (Max 5MB)" accept={DOCUMENT_ACCEPT}
-            file={files.appointment_letter} existingUrl={existingUrls.appointment_letter} onChange={setFile('appointment_letter')} />
+            file={files.appointment_letter} existingUrl={existingUrls.appointment_letter} onChange={setFile('appointment_letter')} onView={openPreview} />
         </div>
       </AccordionSection>
 
@@ -1524,7 +1564,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               onChange={(e) => set('branch', e.target.value)} className={fieldClass} />
           </Field>
           <FileUploadBox t={t} isView={isView} label="Upload Bank Passbook Photo" hint="JPG, PNG (Max 2MB)" accept={IMAGE_ACCEPT} required
-            file={files.passbook_photo} existingUrl={existingUrls.passbook_photo} onChange={setFile('passbook_photo')}
+            file={files.passbook_photo} existingUrl={existingUrls.passbook_photo} onChange={setFile('passbook_photo')} onView={openPreview}
             fieldRef={setFieldRef('passbook_photo') as React.Ref<HTMLDivElement>} />
         </div>
       </AccordionSection>

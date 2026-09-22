@@ -12,7 +12,7 @@
 // that hand-off; it's how collectPayment already behaves everywhere else.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { toast } from 'react-toastify';
+import { toast } from '@/utils/toast';
 import { IconType } from 'react-icons';
 import {
   MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
