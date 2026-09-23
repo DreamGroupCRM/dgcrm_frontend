@@ -37,6 +37,7 @@ import { AppTheme } from '../../../styles/theme';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { exportSchemePdf } from './schemePdfExport';
+import { LOAN_TENURE_YEARS, LOAN_INTEREST_RATE } from './bankLoanConstants';
 
 type Theme = AppTheme;
 
@@ -319,9 +320,9 @@ const SchemeSummaryRow: React.FC<{
 //    own Total Cost of Flat, so the comparison is apples-to-apples against
 //    the same flat. Tenure/rate are fixed per the brief, not editable here —
 //    surfaced as read-only labels rather than form fields so they can't be
-//    mistaken for inputs. ──────────────────────────────────────────────────
-const LOAN_TENURE_YEARS = 20;
-const LOAN_INTEREST_RATE = 8.5;
+//    mistaken for inputs. LOAN_TENURE_YEARS/LOAN_INTEREST_RATE now live in
+//    bankLoanConstants.ts, shared with schemePdfExport.ts — see that file's
+//    comment for why (the PDF used to silently disagree with this card). ──
 
 interface LoanComparison { monthlyEmi: number; principal: number; totalInterest: number; totalPayable: number; }
 
@@ -342,9 +343,9 @@ function computeLoanComparison(principal: number): LoanComparison {
 // THIS card rather than up in the page header, since it's a PDF of this
 // exact comparison — co-locating them makes that relationship obvious.
 const BankComparisonSidebar: React.FC<{
-  t: Theme; isDark: boolean; totalCost: number;
+  t: Theme; isDark: boolean; totalCost: number; ourMonthlyEmi: number;
   onGeneratePdf: () => void; generatingPdf: boolean;
-}> = ({ t, isDark, totalCost, onGeneratePdf, generatingPdf }) => {
+}> = ({ t, isDark, totalCost, ourMonthlyEmi, onGeneratePdf, generatingPdf }) => {
   const loan = useMemo(() => computeLoanComparison(totalCost), [totalCost]);
   const hasCost = totalCost > 0;
   const pdfDisabled = generatingPdf || !hasCost;
@@ -375,6 +376,10 @@ const BankComparisonSidebar: React.FC<{
                 Bank Loan ({LOAN_TENURE_YEARS} yrs @ {LOAN_INTEREST_RATE}%)
               </div>
               <div className="flex items-center justify-between mb-1.5">
+                <span style={{ fontSize: 10.5, color: t.textSecondary }}>Total Flat Cost</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary }}>{formatINR(totalCost)}</span>
+              </div>
+              <div className="flex items-center justify-between mb-1.5">
                 <span style={{ fontSize: 10.5, color: t.textSecondary }}>Monthly EMI</span>
                 <span style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary }}>{formatINR(loan.monthlyEmi)}</span>
               </div>
@@ -384,10 +389,14 @@ const BankComparisonSidebar: React.FC<{
               </div>
             </div>
             <div className="rounded-xl p-3 mb-3" style={{ background: isDark ? 'rgba(22,163,74,0.1)' : '#f0fdf4', border: `1px solid ${isDark ? 'rgba(22,163,74,0.25)' : '#bbf7d0'}` }}>
-              <div style={{ fontSize: 9.5, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 }}>Our Plan (0% Interest)</div>
-              <div className="flex items-center justify-between">
+              <div style={{ fontSize: 9.5, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 }}>Dream Group Plan</div>
+              <div className="flex items-center justify-between mb-1.5">
                 <span style={{ fontSize: 10.5, color: t.textSecondary }}>Total Payable</span>
                 <span style={{ fontSize: 12.5, fontWeight: 800, color: '#16a34a' }}>{formatINR(totalCost)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span style={{ fontSize: 10.5, color: t.textSecondary }}>Our Monthly EMI</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: '#16a34a' }}>{formatINR(ourMonthlyEmi)}</span>
               </div>
             </div>
             <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2' }}>
@@ -754,7 +763,7 @@ const CustomizeSchemePage: React.FC = () => {
         </div>
 
         <div className="lg:sticky lg:top-4">
-          <BankComparisonSidebar t={t} isDark={isDark} totalCost={totalCost} onGeneratePdf={handleGeneratePdf} generatingPdf={generatingPdf} />
+          <BankComparisonSidebar t={t} isDark={isDark} totalCost={totalCost} ourMonthlyEmi={monthlyEmiBeforePossession} onGeneratePdf={handleGeneratePdf} generatingPdf={generatingPdf} />
         </div>
       </div>
 

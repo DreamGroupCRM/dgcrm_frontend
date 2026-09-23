@@ -17,13 +17,18 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logoUrl from '../../../assets/images/logo_dream_group.png';
+import { LOAN_TENURE_YEARS, LOAN_INTEREST_RATE } from './bankLoanConstants';
 
 const rupee = (n: number): string => `Rs. ${Math.round(n).toLocaleString('en-IN')}`;
 const inr = (n: number): string => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
-// ── Bank loan (8% p.a., 20-year / 240-month tenure, reducing-balance EMI) ──
-const BANK_RATE_PERCENT = 8;
-const BANK_TENURE_YEARS = 20;
+// ── Bank loan (20-year / 240-month tenure, reducing-balance EMI) — rate and
+// tenure come from bankLoanConstants.ts, shared with CustomizeSchemePage.tsx's
+// on-screen sidebar so this PDF can never again quote a different interest
+// rate (and therefore a different EMI/Total Payable) than what the page
+// itself showed for the exact same Flat Cost.
+const BANK_RATE_PERCENT = LOAN_INTEREST_RATE;
+const BANK_TENURE_YEARS = LOAN_TENURE_YEARS;
 const BANK_TENURE_MONTHS = BANK_TENURE_YEARS * 12;
 
 // ── Our interest-free plan (0%, 7-year / 84-month tenure, flat split) ──
