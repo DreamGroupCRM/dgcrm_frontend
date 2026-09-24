@@ -192,7 +192,8 @@ export interface DueListDetailRow {
   // or a one-time due like Booking/Possession/Remaining Booking).
   due_date_from: string;
   due_date_to: string;
-  due_category: 'overdue' | 'due_today';
+  // 'upcoming' = not due yet but inside its early-visibility window.
+  due_category: 'overdue' | 'due_today' | 'upcoming';
   // Number of stacked-up monthly EMI installments this row represents;
   // null for one-time dues (Booking/Remaining Booking/Possession/Annual).
   months_pending: number | null;

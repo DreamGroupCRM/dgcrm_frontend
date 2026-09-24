@@ -31,8 +31,6 @@ import {
   fetchDueListDetailed, collectPayment, fetchDefaultAmount, DueListDetailRow,
   fetchCustomerDueGrid,
 } from '../../../../services/paymentService';
-import { fetchUpcomingListDetailed } from '../../../../services/paymentUpcomingService';
-import { UpcomingListDetailRow } from '../../../../types/paymentUpcoming';
 import { fetchAllCustomerDetails } from '../../../../services/customerDetailsService';
 import { FetchBuildingList } from '../../../../services/buildingService';
 import { FetchEmployeeDetails, Employee } from '../../../../services/employeeDetailsService';
@@ -40,7 +38,7 @@ import { tasksService, Task } from '../../../../services/tasksService';
 import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../../types/index';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { formatDate } from '../../../../utils';
-import { serverToday, serverTodayYmd, serverYmdPlusDays } from '../../../../utils/serverTime';
+import { serverTodayYmd, serverYmdPlusDays } from '../../../../utils/serverTime';
 import './DueReport.css';
 
 type Theme = AppTheme;
@@ -305,12 +303,8 @@ const STATUS_COLORS: Record<'overdue' | 'due_today' | 'upcoming', string> = {
   upcoming: '#a16207',  // Dark yellow
 };
 
-// ── Unified row shape the table renders — either an overdue/due-today row
-// (DueListDetailRow) or, when the Status filter is set to Upcoming, an
-// upcoming-installment row (UpcomingListDetailRow, reusing the already-
-// built Payment Upcoming endpoint for a rolling 30-day window rather than
-// duplicating that logic here). `dueRow` is set only for the former —
-// Follow-Up only makes sense against something actually due. ────────────
+// ── Row shape the table renders, built from a DueListDetailRow (overdue,
+// due today, or upcoming within its early-visibility window). ────────────
 interface DisplayRow {
   key: string;
   customer_id: number; customer_code: string; customer_name: string;
@@ -550,33 +544,15 @@ const DueReportPage: React.FC = () => {
     setGlobalSearch(''); setStatusFilter('all'); setCategoryFilter(null);
   };
 
-  // ── Upcoming (Status = Upcoming) — lazily fetched once, reusing the
-  // already-built Payment Upcoming endpoint for a rolling next-30-days
-  // window rather than duplicating that logic here. ───────────────────────
-  const [upcomingRows, setUpcomingRows] = useState<UpcomingListDetailRow[]>([]);
-  const [loadingUpcoming, setLoadingUpcoming] = useState(false);
-  useEffect(() => {
-    if (statusFilter !== 'upcoming' || upcomingRows.length > 0) return;
-    (async () => {
-      setLoadingUpcoming(true);
-      try {
-        const from = serverTodayYmd();
-        const to = serverYmdPlusDays(30);
-        const res = await fetchUpcomingListDetailed(from, to);
-        setUpcomingRows(res.rows);
-      } catch {
-        toast.error('Failed to load upcoming payments.');
-      } finally {
-        setLoadingUpcoming(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter]);
-
-  // ── Normalize both data sources into one display shape the table
-  // renders — see DisplayRow's own comment. ───────────────────────────────
+  // ── One display shape for every row. The backend decides what shows and
+  // its status: overdue, due today, or 'upcoming' — not due yet but inside
+  // its early window (EMI 3 days before; Remaining Booking, Possession and
+  // Boosters 1 month before; Booking Amount from the day it was added). ──
+  const STATUS_LABEL: Record<DueListDetailRow['due_category'], string> = {
+    overdue: 'Overdue', due_today: 'Due Today', upcoming: 'Upcoming',
+  };
   const dueDisplayRows: DisplayRow[] = useMemo(() => dueRows.map((r, i) => ({
-    key: `due-${r.customer_id}-${r.payment_for}-${i}`,
+    key: `due-${r.customer_id}-${r.payment_for}-${r.due_category}-${i}`,
     customer_id: r.customer_id, customer_code: r.customer_code, customer_name: r.customer_name,
     email: r.email, mobile_number: r.mobile_number,
     assigned_employee_name: r.assigned_employee_name, assigned_employee_code: r.assigned_employee_code,
@@ -586,51 +562,17 @@ const DueReportPage: React.FC = () => {
     amount: r.amount,
     months_pending: r.months_pending,
     per_month_amount: r.per_month_amount,
-    statusLabel: r.due_category === 'due_today' ? 'Due Today' : 'Overdue',
-    // Overdue = Red, Due Today = Green — see STATUS_COLORS above.
-    statusColor: r.due_category === 'due_today' ? STATUS_COLORS.due_today : STATUS_COLORS.overdue,
-    // V_23.0 — bare date range only, no "N months and N days" prose and no
-    // "amount x months" math (that now lives in its own line above this
-    // one — see the Payment Details cell's JSX). due_date_from/to come
-    // pre-formatted (DD/MM/YYYY) from the backend.
+    statusLabel: STATUS_LABEL[r.due_category],
+    statusColor: STATUS_COLORS[r.due_category],
+    // due_date_from/to come pre-formatted (DD/MM/YYYY) from the backend.
     detailText: `(from: ${r.due_date_from}, to: ${r.due_date_to})`,
     dueRow: r,
   })), [dueRows]);
 
-  // "Due within the next 7 days" ("Due Soon") is a label-only distinction
-  // inside the Upcoming bucket, distinct from the Upcoming tab's full
-  // 30-day fetch (unchanged — this only affects which LABEL a row gets, not
-  // what data is fetched or its color). Exactly 3 status colors exist
-  // anywhere on this page, always, per STATUS_COLORS above: red (Overdue),
-  // green (Due Today), dark yellow (Due Soon + Upcoming).
-  const upcomingDisplayRows: DisplayRow[] = useMemo(() => upcomingRows.map((r, i) => {
-    const daysUntilDue = Math.round((new Date(r.due_date).setHours(0, 0, 0, 0) - serverToday().getTime()) / 86400000);
-    const dueSoon = daysUntilDue >= 0 && daysUntilDue <= 7;
-    return {
-      key: `up-${r.customer_id}-${r.due_date}-${i}`,
-      customer_id: r.customer_id, customer_code: r.customer_code, customer_name: r.customer_name,
-      email: r.email, mobile_number: r.mobile_number,
-      assigned_employee_name: r.assigned_employee_name, assigned_employee_code: r.assigned_employee_code,
-      company_name: r.company_name, project_name: r.project_name, location: r.location,
-      building_name: r.building_name, wing_name: r.wing_name, flat_no: r.flat_no,
-      payment_for: r.payment_for, payment_for_key: r.payment_for_key,
-      amount: r.amount,
-      months_pending: null,
-      per_month_amount: null,
-      statusLabel: dueSoon ? 'Due Soon' : 'Upcoming',
-      // "Due Soon" is just the near-term slice of the Upcoming bucket (there
-      // is no separate "Due Soon" option in the Status filter).
-      statusColor: STATUS_COLORS.upcoming,
-      detailText: `Due on ${new Date(r.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
-    };
-  }), [upcomingRows]);
-
-  const baseDisplayRows: DisplayRow[] = useMemo(() => {
-    if (statusFilter === 'upcoming') return upcomingDisplayRows;
-    if (statusFilter === 'overdue') return dueDisplayRows.filter((r) => r.dueRow?.due_category === 'overdue');
-    if (statusFilter === 'due_today') return dueDisplayRows.filter((r) => r.dueRow?.due_category === 'due_today');
-    return dueDisplayRows;
-  }, [statusFilter, dueDisplayRows, upcomingDisplayRows]);
+  const baseDisplayRows: DisplayRow[] = useMemo(
+    () => (statusFilter === 'all' ? dueDisplayRows : dueDisplayRows.filter((r) => r.dueRow?.due_category === statusFilter)),
+    [statusFilter, dueDisplayRows]
+  );
 
   const filteredDueRows = useMemo(() => {
     const q = globalSearch.trim().toLowerCase();
@@ -1190,7 +1132,7 @@ const DueReportPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {(loadingDueList || (statusFilter === 'upcoming' && loadingUpcoming)) ? (
+              {loadingDueList ? (
                 <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
               ) : filteredDueRows.length === 0 ? (
                 <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
