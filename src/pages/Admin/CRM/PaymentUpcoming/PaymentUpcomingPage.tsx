@@ -365,7 +365,14 @@ const PaymentUpcomingPage: React.FC = () => {
                       }}>
                         {PAYMENT_FOR_KEY_META[r.payment_for_key].label}
                       </span>
-                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>{r.payment_for}</div>
+                      {/* The exact schedule line (e.g. "12th EMI") only adds
+                          information for EMI rows — every one-time type
+                          (Booking/Remaining Booking/Possession/Booster) has
+                          r.payment_for set to the SAME text as the badge
+                          above, which just repeated it a second time. */}
+                      {r.payment_for !== PAYMENT_FOR_KEY_META[r.payment_for_key].label && (
+                        <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>{r.payment_for}</div>
+                      )}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div className="flex items-center gap-1.5">
