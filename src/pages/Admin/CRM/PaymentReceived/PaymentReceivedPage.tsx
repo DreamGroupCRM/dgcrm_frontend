@@ -736,11 +736,11 @@ const PaymentReceivedPage: React.FC = () => {
                     <td style={{ padding: '10px 12px' }}>
                       <div className="flex items-center gap-1 flex-wrap">
                         {r.payment_tag === 'Extra Pay' ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: '#b45309', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                          <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: '#2563eb', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
                             Extra Pay
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: isDark ? 'rgba(234,88,12,0.15)' : '#ffedd5', color: '#ea580c', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                          <span className="inline-flex items-center px-2 py-1 rounded-md font-semibold" style={{ background: '#2563eb', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
                             {paymentTypeLabel(r)}
                           </span>
                         )}
