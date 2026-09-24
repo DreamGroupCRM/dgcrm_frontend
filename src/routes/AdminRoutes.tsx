@@ -51,11 +51,11 @@ import AuditHistoryPage from '../pages/Admin/AuditHistory/AuditHistoryPage';
 // Cancelled Booking (V_23.0) — admin-only, see Sidebar.tsx and
 // customer.routes.ts's own requireAdmin gate on the backing endpoints.
 const CancelledBookingPage = lazy(() => import('../pages/Admin/CRM/CancelledBooking/CancelledBookingPage'));
-// Payment Received — replaces its former PlaceholderPage (item 16). Now
-// also hosts Payment Approvals and Payment Upcoming as tabs internally
-// (V_23.0), so those two are no longer separate routes/lazy imports here —
-// see the redirects below and that page's own header comment.
+// Payment Received — also hosts Payment Approvals as a tab (the old
+// payment-approvals route redirects there). Payment Upcoming is its own
+// admin route, opened from the "Payment Upcoming" button on Payment Received.
 import PaymentReceivedPage from '../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage';
+const PaymentUpcomingPage = lazy(() => import('../pages/Admin/CRM/PaymentUpcoming/PaymentUpcomingPage'));
 // Attendance — replaces its former PlaceholderPage, backed by the existing
 // working attendance API (V_21.0). Leave Requests (previously its own
 // LeaveApprovalsPage/route) now lives inside this same page as a tab.
@@ -142,7 +142,7 @@ const AdminRoutes: React.FC = () => (
           inside Payment Received (V_23.0), same merge pattern as
           Leave -> Attendance below. */}
       <Route path="crm/payment-approvals" element={<Navigate to={ROUTES.ADMIN.PAYMENT_RECEIVED} replace />} />
-      <Route path="crm/payment-upcoming" element={<Navigate to={ROUTES.ADMIN.PAYMENT_RECEIVED} replace />} />
+      <Route path="crm/payment-upcoming" element={<PaymentUpcomingPage />} />
       <Route path="crm/leads" element={<LeadListPage />} />
       <Route path="crm/leads/add" element={<LeadCrudPage mode="add" />} />
       <Route path="crm/leads/view/:id" element={<LeadCrudPage mode="view" />} />

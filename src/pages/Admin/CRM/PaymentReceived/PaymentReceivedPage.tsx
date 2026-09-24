@@ -51,7 +51,6 @@ import { showAlert } from '../../../../utils';
 import './PaymentReceived.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import PaymentApprovalsPage from '../PaymentApprovals/PaymentApprovalsPage';
-import PaymentUpcomingPage from '../PaymentUpcoming/PaymentUpcomingPage';
 
 type Theme = AppTheme;
 
@@ -163,9 +162,10 @@ const FilterSelect: React.FC<{
 // V_23.0 — Payment Received/Approval/Upcoming, previously 3 sidebar
 // entries/routes, are now one page with a tab switcher (mirroring the
 // earlier Attendance+Leave merge — see that page's own header comment).
-// "Payment Received" is the only survivor in the sidebar and the only
-// route (/admin/crm/payment-received); the old /payment-approvals and
-// /payment-upcoming routes now just redirect here (AdminRoutes.tsx).
+// "Payment Received" is the only survivor in the sidebar; the old
+// /payment-approvals route redirects here. Payment Upcoming is no longer a
+// tab — it's its own admin route again, opened via the "Payment Upcoming"
+// button next to Export CSV.
 //
 // Approval and Upcoming were always admin-only (no employee route/sidebar
 // entry ever existed for either, though their GET endpoints happen to be
@@ -173,7 +173,7 @@ const FilterSelect: React.FC<{
 // payment.routes.ts). The tab switcher itself is therefore only rendered
 // for an admin caller; an employee sees exactly what they always saw on
 // this page — no tabs, Received content only — via paths.isAdmin below.
-type PaymentTab = 'received' | 'approval' | 'upcoming';
+type PaymentTab = 'received' | 'approval';
 
 const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -231,7 +231,7 @@ const PaymentReceivedPage: React.FC = () => {
   // stripping out of files that are otherwise unrelated to this page.
   useEffect(() => {
     dispatch(setPageTitle(
-      activeTab === 'received' ? 'Payment Received' : activeTab === 'approval' ? 'Payment Approvals' : 'Payment Upcoming'
+      activeTab === 'received' ? 'Payment Received' : 'Payment Approvals'
     ));
   }, [dispatch, activeTab]);
 
@@ -536,8 +536,8 @@ const PaymentReceivedPage: React.FC = () => {
 
   return (
     <div className="pr-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      {/* ── Tab switcher — Approval and Upcoming both live here now, admin
-          only (see this file's own header comment for why: neither ever
+      {/* ── Tab switcher — Approval lives here as a tab, admin
+          only (see this file's own header comment for why: it never
           had an employee-facing route/sidebar entry, so an employee sees
           no tabs at all — exactly the single Payment Received page they
           always had). Styled identically to the Attendance+Leave tab
@@ -562,22 +562,11 @@ const PaymentReceivedPage: React.FC = () => {
             }}>
             <MdCheckCircle size={16} /> Payment Approval
           </button>
-          <button type="button" onClick={() => setActiveTab('upcoming')}
-            className="pr-tab flex items-center gap-2 rounded-xl"
-            style={{
-              padding: '9px 18px', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
-              background: activeTab === 'upcoming' ? 'var(--brand-gradient)' : 'transparent',
-              color: activeTab === 'upcoming' ? '#fff' : t.textSecondary,
-            }}>
-            <MdUpcoming size={16} /> Payment Upcoming
-          </button>
         </div>
       )}
 
       {activeTab === 'approval' ? (
         <PaymentApprovalsPage onNavigateToReceived={() => setActiveTab('received')} />
-      ) : activeTab === 'upcoming' ? (
-        <PaymentUpcomingPage />
       ) : (
       <>
       <div className="pr-header flex items-center gap-3 mb-6">
@@ -676,6 +665,13 @@ const PaymentReceivedPage: React.FC = () => {
             )}
           </div>
           <div className="pr-toolbar-actions flex items-center gap-2.5" style={{ flexShrink: 0 }}>
+            {paths.isAdmin && (
+              <button type="button" onClick={() => navigate(ROUTES.ADMIN.PAYMENT_UPCOMING)}
+                className="pr-upcoming-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
+                style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <MdUpcoming size={16} /> <span className="pr-export-btn-text">Payment Upcoming</span>
+              </button>
+            )}
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
               className="pr-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
               style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
