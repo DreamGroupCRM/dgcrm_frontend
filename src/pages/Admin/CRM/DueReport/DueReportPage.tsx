@@ -17,7 +17,7 @@ import { IconType } from 'react-icons';
 import {
   MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
   MdReceiptLong, MdSchedule, MdVpnKey, MdAccountBalanceWallet, MdNoteAdd,
-  MdSearch, MdStars, MdWorkspacePremium,
+  MdSearch, MdStars, MdWorkspacePremium, MdForum,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -40,6 +40,7 @@ import { tasksService, Task } from '../../../../services/tasksService';
 import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../../types/index';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { formatDate } from '../../../../utils';
+import { serverToday, serverTodayYmd, serverYmdPlusDays } from '../../../../utils/serverTime';
 import './DueReport.css';
 
 type Theme = AppTheme;
@@ -133,7 +134,7 @@ const SearchableSelect: React.FC<{
 // ── Status filter dropdown — custom (not a native <select>) because native
 // <option> elements can't take a rounded, colored background in any
 // browser. Each status option renders as a pill in its fixed STATUS_COLORS
-// color (Overdue red, Due Today yellow, Upcoming green); "All Status" stays
+// color (Overdue red, Due Today green, Upcoming dark yellow); "All Status" stays
 // neutral. Portaled for the same toolbar-clipping reason as SearchableSelect.
 const STATUS_FILTER_OPTIONS: { value: DueStatusFilter; label: string }[] = [
   { value: 'all', label: 'All Status' },
@@ -300,8 +301,8 @@ type DueStatusFilter = 'all' | 'overdue' | 'due_today' | 'upcoming';
 // never change on theme/appearance switches (by design, per requirement).
 const STATUS_COLORS: Record<'overdue' | 'due_today' | 'upcoming', string> = {
   overdue: '#dc2626',   // Red
-  due_today: '#ca8a04', // Yellow
-  upcoming: '#16a34a',  // Green
+  due_today: '#16a34a', // Green
+  upcoming: '#a16207',  // Dark yellow
 };
 
 // ── Unified row shape the table renders — either an overdue/due-today row
@@ -346,45 +347,31 @@ const DueReportPage: React.FC = () => {
   const [loadingDueList, setLoadingDueList] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
 
-  // ── Follow-up (V_22.0) — per-row note + date + assigned employee, backed
-  // by the Task entity's customer_id link. Plus an in-app-only badge for
-  // how many open follow-ups (across the team) are due today/tomorrow.
+  // ── Follow-up — ONE open follow-up per customer (note + date + assignee,
+  // backed by the Task entity's customer_id). It applies to every due row of
+  // that customer: scheduling it from the "EMI Before" row also shows it on
+  // the same customer's "Booking Amount" row. Opening the popup for a
+  // customer who already has one edits (reschedules) that follow-up instead
+  // of adding a second one — previously a reschedule created a new task
+  // while the row kept showing the older, sooner one, so the date looked
+  // like it never changed.
+  interface FollowUpTarget { customer_id: number | string; customer_name: string; customer_code: string }
   const [followUpEmployees, setFollowUpEmployees] = useState<Employee[]>([]);
-  const [followUpRow, setFollowUpRow] = useState<DueListDetailRow | null>(null);
+  const [followUpRow, setFollowUpRow] = useState<FollowUpTarget | null>(null);
+  const [followUpEditing, setFollowUpEditing] = useState<Task | null>(null);
   const [followUpNote, setFollowUpNote] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [followUpAssignedTo, setFollowUpAssignedTo] = useState('');
   const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
-  const [followUpCounts, setFollowUpCounts] = useState({ today: 0, tomorrow: 0 });
-  // The badge's own click target — today's + tomorrow's open follow-ups,
-  // each tagged with which day it falls on so the popup can group them.
-  const [followUpListTasks, setFollowUpListTasks] = useState<(Task & { dueBucket: 'today' | 'tomorrow' })[]>([]);
   const [followUpListOpen, setFollowUpListOpen] = useState(false);
 
-  const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
-  // Item 10.5 — the table needs each row's OWN scheduled follow-up, not
-  // just the today/tomorrow badge count, so this fetches every pending
-  // follow-up once and derives both from it. That is one request where
-  // there used to be two, and it also covers follow-ups scheduled further
-  // out, which the two date-filtered calls could never see.
   const [pendingFollowUps, setPendingFollowUps] = useState<Task[]>([]);
 
   const fetchFollowUpCounts = useCallback(async () => {
     try {
-      const today = ymd(new Date());
-      const tomorrow = ymd(new Date(Date.now() + 86400000));
-      const tasks = await tasksService.fetchTasks({ status: 'pending' });
-      setPendingFollowUps(tasks);
-
-      const todayTasks = tasks.filter((task) => (task.due_date ?? '').slice(0, 10) === today);
-      const tomorrowTasks = tasks.filter((task) => (task.due_date ?? '').slice(0, 10) === tomorrow);
-      setFollowUpCounts({ today: todayTasks.length, tomorrow: tomorrowTasks.length });
-      setFollowUpListTasks([
-        ...todayTasks.map((task) => ({ ...task, dueBucket: 'today' as const })),
-        ...tomorrowTasks.map((task) => ({ ...task, dueBucket: 'tomorrow' as const })),
-      ]);
-    } catch { /* badge just stays at its last known count if this fails */ }
+      setPendingFollowUps(await tasksService.fetchTasks({ status: 'pending' }));
+    } catch { /* list/badge just keep their last known state if this fails */ }
   }, []);
 
   // Soonest still-open follow-up per customer — what each row displays.
@@ -401,35 +388,76 @@ const DueReportPage: React.FC = () => {
     return map;
   }, [pendingFollowUps]);
 
+  // "Take Follow Ups" list — every customer's open follow-up, soonest first,
+  // whatever date it's on (not just today/tomorrow).
+  const followUpListTasks = useMemo(
+    () => Array.from(followUpByCustomer.values()).sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999')),
+    [followUpByCustomer]
+  );
+
   useEffect(() => { fetchFollowUpCounts(); }, [fetchFollowUpCounts]);
 
-  const openFollowUp = (row: DueListDetailRow) => {
-    setFollowUpRow(row);
-    setFollowUpNote('');
-    const tomorrow = new Date(Date.now() + 86400000);
-    setFollowUpDate(ymd(tomorrow));
-    setFollowUpAssignedTo('');
+  const openFollowUp = (target: FollowUpTarget) => {
+    const existing = followUpByCustomer.get(String(target.customer_id)) ?? null;
+    setFollowUpRow(target);
+    setFollowUpEditing(existing);
+    setFollowUpNote(existing?.description ?? '');
+    setFollowUpDate(existing?.due_date ? existing.due_date.slice(0, 10) : serverYmdPlusDays(1));
+    setFollowUpAssignedTo(existing?.assigned_to != null ? String(existing.assigned_to) : '');
   };
-  const closeFollowUp = () => setFollowUpRow(null);
+  const closeFollowUp = () => { setFollowUpRow(null); setFollowUpEditing(null); };
 
   const handleSubmitFollowUp = async () => {
     if (!followUpRow) return;
+    if (!followUpDate) { toast.error('Please select a follow-up date.'); return; }
     setFollowUpSubmitting(true);
     try {
-      await tasksService.createTask({
-        title: `Follow-up: ${followUpRow.customer_name}`,
-        description: followUpNote.trim() || null,
-        due_date: followUpDate || null,
-        assigned_to: followUpAssignedTo || null,
-        customer_id: followUpRow.customer_id,
-      });
-      toast.success('Follow-up scheduled.');
+      const title = `Follow-up: ${followUpRow.customer_name}`;
+      const description = followUpNote.trim() || null;
+      // Only an admin picks the assignee; the server assigns an employee's
+      // own follow-ups to themselves.
+      const assignee = isAdmin ? { assigned_to: followUpAssignedTo || null } : {};
+      let keptId: string | number;
+      if (followUpEditing) {
+        await tasksService.updateTask(followUpEditing.id, { title, description, status: 'pending', due_date: followUpDate, ...assignee });
+        keptId = followUpEditing.id;
+      } else {
+        const created = await tasksService.createTask({ title, description, due_date: followUpDate, customer_id: followUpRow.customer_id, ...assignee });
+        keptId = created.id;
+      }
+      // Older duplicate open follow-ups for this customer (created before
+      // rescheduling edited in place) would otherwise keep showing instead
+      // of the date just set — close them; they stay in the history.
+      const stale = pendingFollowUps.filter((tk) => String(tk.customer_id) === String(followUpRow.customer_id) && String(tk.id) !== String(keptId));
+      await Promise.all(stale.map((tk) => tasksService.updateTask(tk.id, {
+        title: tk.title, description: tk.description, due_date: tk.due_date, status: 'superseded',
+      })));
+      toast.success(followUpEditing ? 'Follow-up updated.' : 'Follow-up scheduled.');
       closeFollowUp();
       fetchFollowUpCounts();
     } catch {
-      toast.error('Failed to schedule the follow-up.');
+      toast.error('Failed to save the follow-up.');
     } finally {
       setFollowUpSubmitting(false);
+    }
+  };
+
+  // ── Follow-up history — every follow-up ever set for one customer
+  // (open, done and replaced), oldest first, as a conversation-style log.
+  const [historyTarget, setHistoryTarget] = useState<FollowUpTarget | null>(null);
+  const [historyTasks, setHistoryTasks] = useState<Task[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const openFollowUpHistory = async (target: FollowUpTarget) => {
+    setHistoryTarget(target);
+    setHistoryTasks([]);
+    setHistoryLoading(true);
+    try {
+      const tasks = await tasksService.fetchTasks({ customer_id: target.customer_id });
+      setHistoryTasks([...tasks].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))));
+    } catch {
+      toast.error('Failed to load follow-up history.');
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -532,8 +560,8 @@ const DueReportPage: React.FC = () => {
     (async () => {
       setLoadingUpcoming(true);
       try {
-        const from = ymd(new Date());
-        const to = ymd(new Date(Date.now() + 30 * 86400000));
+        const from = serverTodayYmd();
+        const to = serverYmdPlusDays(30);
         const res = await fetchUpcomingListDetailed(from, to);
         setUpcomingRows(res.rows);
       } catch {
@@ -559,7 +587,7 @@ const DueReportPage: React.FC = () => {
     months_pending: r.months_pending,
     per_month_amount: r.per_month_amount,
     statusLabel: r.due_category === 'due_today' ? 'Due Today' : 'Overdue',
-    // Overdue = Red, Due Today = Yellow — see STATUS_COLORS above.
+    // Overdue = Red, Due Today = Green — see STATUS_COLORS above.
     statusColor: r.due_category === 'due_today' ? STATUS_COLORS.due_today : STATUS_COLORS.overdue,
     // V_23.0 — bare date range only, no "N months and N days" prose and no
     // "amount x months" math (that now lives in its own line above this
@@ -574,10 +602,9 @@ const DueReportPage: React.FC = () => {
   // 30-day fetch (unchanged — this only affects which LABEL a row gets, not
   // what data is fetched or its color). Exactly 3 status colors exist
   // anywhere on this page, always, per STATUS_COLORS above: red (Overdue),
-  // yellow (Due Today), green (Due Soon + Upcoming — only the text label
-  // tells those two apart).
+  // green (Due Today), dark yellow (Due Soon + Upcoming).
   const upcomingDisplayRows: DisplayRow[] = useMemo(() => upcomingRows.map((r, i) => {
-    const daysUntilDue = Math.round((new Date(r.due_date).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
+    const daysUntilDue = Math.round((new Date(r.due_date).setHours(0, 0, 0, 0) - serverToday().getTime()) / 86400000);
     const dueSoon = daysUntilDue >= 0 && daysUntilDue <= 7;
     return {
       key: `up-${r.customer_id}-${r.due_date}-${i}`,
@@ -592,7 +619,7 @@ const DueReportPage: React.FC = () => {
       per_month_amount: null,
       statusLabel: dueSoon ? 'Due Soon' : 'Upcoming',
       // "Due Soon" is just the near-term slice of the Upcoming bucket (there
-      // is no separate "Due Soon" option in the Status filter) — Green.
+      // is no separate "Due Soon" option in the Status filter).
       statusColor: STATUS_COLORS.upcoming,
       detailText: `Due on ${new Date(r.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
     };
@@ -740,6 +767,8 @@ const DueReportPage: React.FC = () => {
 
   const apSelectedCustomer = useMemo(() => customers.find((c) => c.id === apCustomerId) ?? null, [customers, apCustomerId]);
   const apSelectedPaymentFor = useMemo(() => PAYMENT_FOR_UI_OPTIONS.find((o) => o.key === apPaymentForKey) ?? null, [apPaymentForKey]);
+  // Every field after Customer Name stays disabled until a customer is picked.
+  const formLocked = !apCustomerId;
 
   // V_23.0 — the disabled Payment Date field now pre-fills from the
   // customer's own saved installment date (customers.installment_date,
@@ -764,6 +793,11 @@ const DueReportPage: React.FC = () => {
     setApCustomerSearch(v);
     const exact = customers.find((c) => `${c.customer_name}${c.customer_code ? ` (${c.customer_code})` : ''}` === v);
     setApCustomerId(exact ? exact.id : null);
+    // Customer cleared/changed to no match: everything below it goes back to
+    // empty (and disabled) rather than keeping the previous customer's values.
+    if (!exact) {
+      setApPaymentForKey(''); setApAmount(''); setApInstDate(''); setApPaymentDate(''); setApModeOfPayment('');
+    }
   };
 
   // ── Item 12 — a payment type that is already fully paid for the selected
@@ -1006,7 +1040,7 @@ const DueReportPage: React.FC = () => {
             </div>
             <div ref={setFieldRef('payment_for')}>
               <label style={fieldLabelStyle}>Payment For</label>
-              <select value={apPaymentForKey} onChange={(e) => handlePaymentForChange(e.target.value)} style={fieldInputStyle(!!errorFor('payment_for'))}>
+              <select value={apPaymentForKey} disabled={formLocked} onChange={(e) => handlePaymentForChange(e.target.value)} style={formLocked ? readOnlyInputStyle : fieldInputStyle(!!errorFor('payment_for'))}>
                 <option value="">-- Select --</option>
                 {PAYMENT_FOR_UI_OPTIONS.map((o) => {
                   const done = isPaymentForCompleted(o);
@@ -1018,7 +1052,7 @@ const DueReportPage: React.FC = () => {
             {apSelectedPaymentFor && (
               <div ref={setFieldRef('amount')}>
                 <label style={fieldLabelStyle}>{apSelectedPaymentFor.label} (₹){apSuggestLoading ? ' (suggesting...)' : ''}</label>
-                <input type="text" inputMode="numeric" value={formatAmountDisplay(apAmount)} onChange={(e) => setApAmount(e.target.value.replace(/[^\d]/g, ''))} placeholder="Enter amount"
+                <input type="text" inputMode="numeric" disabled={formLocked} value={formatAmountDisplay(apAmount)} onChange={(e) => setApAmount(e.target.value.replace(/[^\d]/g, ''))} placeholder="Enter amount"
                   style={fieldInputStyle(!!errorFor('amount'))} />
                 {errorFor('amount') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('amount')}</p>}
               </div>
@@ -1045,14 +1079,14 @@ const DueReportPage: React.FC = () => {
             <div>
               <label style={fieldLabelStyle}>Received Date</label>
               {isAdmin ? (
-                <input type="date" value={apPaymentDate} onChange={(e) => setApPaymentDate(e.target.value)} style={fieldInputStyle()} />
+                <input type="date" value={apPaymentDate} disabled={formLocked} onChange={(e) => setApPaymentDate(e.target.value)} style={formLocked ? readOnlyInputStyle : fieldInputStyle()} />
               ) : (
-                <input type="date" readOnly value={ymd(new Date())} style={readOnlyInputStyle} title="Employees can only record today's date." />
+                <input type="date" readOnly value={serverTodayYmd()} style={readOnlyInputStyle} title="Employees can only record today's date." />
               )}
             </div>
             <div ref={setFieldRef('mode_of_payment')}>
               <label style={fieldLabelStyle}>Mode of Payment</label>
-              <select value={apModeOfPayment} onChange={(e) => setApModeOfPayment(e.target.value)} style={fieldInputStyle(!!errorFor('mode_of_payment'))}>
+              <select value={apModeOfPayment} disabled={formLocked} onChange={(e) => setApModeOfPayment(e.target.value)} style={formLocked ? readOnlyInputStyle : fieldInputStyle(!!errorFor('mode_of_payment'))}>
                 <option value="">--Select Payment Method--</option>
                 {MODE_OF_PAYMENT_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
@@ -1063,9 +1097,9 @@ const DueReportPage: React.FC = () => {
                 table's own toolbar filters (including the customer filter
                 above), then shows every due again. */}
             <div className="flex items-end gap-2">
-              <button type="button" onClick={handleSubmitAddPayment} disabled={submitting}
+              <button type="button" onClick={handleSubmitAddPayment} disabled={submitting || formLocked}
                 className="flex-1 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
-                style={{ background: submitting ? '#6b7280' : 'var(--brand-gradient)', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer' }}>
+                style={{ background: (submitting || formLocked) ? '#6b7280' : 'var(--brand-gradient)', border: 'none', cursor: (submitting || formLocked) ? 'not-allowed' : 'pointer' }}>
                 {submitting ? 'Submitting...' : 'Submit'}
               </button>
               <button type="button" onClick={handleResetAddPaymentForm} disabled={submitting}
@@ -1119,16 +1153,13 @@ const DueReportPage: React.FC = () => {
             )}
           </div>
           <div className="due-report-toolbar-actions flex items-center gap-2" style={{ marginLeft: 'auto', flexShrink: 0 }}>
-            {/* In-app-only badge — open follow-ups due today/tomorrow across
-                the whole team (no email/WhatsApp sending, out of scope).
-                Clicking it opens a popup listing those follow-ups, grouped
-                separately by Today/Tomorrow (V_23.0 item 3 — renamed from
-                the plain "Today: N · Tmrw: N" count button). */}
+            {/* In-app-only badge — every open customer follow-up across the
+                team; clicking it lists them with their follow-up dates. */}
             <button type="button" title="Take Follow Ups" onClick={() => setFollowUpListOpen(true)}
               className="due-report-followup-badge flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold"
               style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
               <MdNoteAdd size={15} style={{ color: '#fff' }} />
-              <span className="due-report-followup-badge-text">Take Follow Ups ({followUpCounts.today + followUpCounts.tomorrow})</span>
+              <span className="due-report-followup-badge-text">Take Follow Ups ({followUpListTasks.length})</span>
             </button>
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
               className="due-report-export-btn flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold"
@@ -1153,20 +1184,16 @@ const DueReportPage: React.FC = () => {
           <table className="due-report-table master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1150 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {/* V_23.0 — Payment For/Amount and Monthly Pending merged
-                    into one "Payment Details" column (payment type, pending
-                    months × EMI/due amount, compact status indicator); the
-                    standalone Monthly Pending column is gone. */}
-                {['Customer Name', 'Company / Project / Location', 'Building Details', 'Contact Details', 'Assigned Employee', 'Payment Details', 'Total Amount', 'Follow Up'].map((h) => (
+                {['Customer Name', 'Company / Project / Location', 'Building Details', 'Contact Details', 'Assigned Employee', 'Payment Details', 'Duration', 'Total Amount', 'Follow Up'].map((h) => (
                   <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {(loadingDueList || (statusFilter === 'upcoming' && loadingUpcoming)) ? (
-                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
+                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
               ) : filteredDueRows.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
+                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
                   {baseDisplayRows.length === 0 ? 'No customers currently have a payment due.' : 'No dues match the selected filters.'}
                 </td></tr>
               ) : (
@@ -1204,47 +1231,35 @@ const DueReportPage: React.FC = () => {
                       )}
                     </td>
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                      {/* Payment Details column, deliberately trimmed to
-                          exactly 3 lines, nothing else:
-                          1) payment type badge + status badge, side by side
-                             — BOTH driven by the row's status color
-                             (r.statusColor), never by payment-type, so a
-                             row's two badges always match: an Overdue "EMI
-                             Before" row shows red+red, never blue+red.
-                          2) "N month(s) x amount" (months_pending is null
-                             for a one-time due, which has no such line)
-                          3) the bare date range in red, and ONLY that —
-                             no "N months and N days" prose, no repeated
-                             amount math. */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* Payment Details: the payment-type badge (in the row's
+                          status color) and the EMI/installment amount below. */}
+                      <span style={{
+                        display: 'inline-block', padding: '3px 9px', borderRadius: 999,
+                        fontSize: 10.5, fontWeight: 700, color: '#fff', background: r.statusColor,
+                      }}>
+                        {getPaymentForDisplay(r).label}
+                      </span>
+                      <div style={{ marginTop: 5, fontSize: 11.5, fontWeight: 700, color: t.textPrimary }}>
+                        {rupee(r.per_month_amount ?? r.amount)}
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                      {/* Duration: number of months pending (status-colored
+                          pill) and the From/To date range. */}
+                      {r.months_pending ? (
                         <span style={{
                           display: 'inline-block', padding: '3px 9px', borderRadius: 999,
                           fontSize: 10.5, fontWeight: 700, color: '#fff', background: r.statusColor,
                         }}>
-                          {getPaymentForDisplay(r).label}
+                          {r.months_pending} Month{r.months_pending === 1 ? '' : 's'}
                         </span>
-                        <span style={{
-                          display: 'inline-block', padding: '3px 9px', borderRadius: 999,
-                          fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em',
-                          color: '#fff', background: r.statusColor,
-                        }}>
-                          {r.statusLabel}
-                        </span>
-                      </div>
-                      <div style={{ marginTop: 5 }}>
-                        {r.months_pending && r.per_month_amount != null ? (
-                          <span style={{ fontSize: 11, fontWeight: 700, color: t.textPrimary }}>
-                            {r.months_pending} month{r.months_pending === 1 ? '' : 's'} x {rupee(r.per_month_amount)}
-                          </span>
-                        ) : (
-                          <span style={{ color: t.textSecondary, fontSize: 11.5 }}>—</span>
-                        )}
-                      </div>
+                      ) : null}
                       {r.detailText && (
-                        <div style={{ fontSize: 10.5, fontWeight: 600, color: '#dc2626', marginTop: 3, whiteSpace: 'normal', maxWidth: 260 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 600, color: r.statusColor, marginTop: r.months_pending ? 5 : 0, whiteSpace: 'normal', maxWidth: 220 }}>
                           {r.detailText}
                         </div>
                       )}
+                      {!r.months_pending && !r.detailText && <span style={{ color: t.textSecondary, fontSize: 11.5 }}>—</span>}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       {/* Item 14 — show the multiplication behind a
@@ -1258,28 +1273,24 @@ const DueReportPage: React.FC = () => {
                     <td style={{ padding: '10px 12px' }}>
                       {(() => {
                         const scheduled = followUpByCustomer.get(String(r.customer_id));
+                        const target: FollowUpTarget = { customer_id: r.customer_id, customer_name: r.customer_name, customer_code: r.customer_code };
+                        const iconBtn: React.CSSProperties = { width: 30, height: 30, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' };
+                        const isPast = !!scheduled?.due_date && scheduled.due_date.slice(0, 10) < serverTodayYmd();
                         return (
-                          <div className="flex items-center gap-2">
-                            {r.dueRow && (
-                              <button type="button" onClick={() => openFollowUp(r.dueRow as DueListDetailRow)}
-                                title={scheduled ? 'Schedule another follow-up' : 'Schedule a follow-up'}
-                                className="flex items-center justify-center rounded-lg flex-shrink-0"
-                                style={{ width: 32, height: 32, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' }}>
-                                <MdNoteAdd size={16} />
-                              </button>
-                            )}
-                            {/* Item 10.5 — an already-scheduled follow-up is
-                                shown on the row itself; previously the only
-                                clue was the page-level today/tomorrow badge. */}
-                            {scheduled && (
-                              <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand-ink)', whiteSpace: 'nowrap' }}>
-                                  {scheduled.due_date ? formatDate(scheduled.due_date) : 'No date'}
-                                </div>
-                                {scheduled.assigned_to_name && (
-                                  <div style={{ fontSize: 10, color: t.textSecondary, whiteSpace: 'nowrap' }}>{scheduled.assigned_to_name}</div>
-                                )}
-                              </div>
+                          <div className="flex items-center gap-1.5">
+                            <button type="button" onClick={() => openFollowUp(target)}
+                              title={scheduled ? 'Change follow-up' : 'Schedule a follow-up'}
+                              className="flex items-center justify-center rounded-lg flex-shrink-0" style={iconBtn}>
+                              <MdNoteAdd size={16} />
+                            </button>
+                            <button type="button" onClick={() => openFollowUpHistory(target)} title="Follow-up history"
+                              className="flex items-center justify-center rounded-lg flex-shrink-0" style={iconBtn}>
+                              <MdForum size={15} />
+                            </button>
+                            {scheduled?.due_date && (
+                              <span style={{ fontSize: 11, fontWeight: 700, color: isPast ? '#dc2626' : 'var(--brand-ink)', whiteSpace: 'nowrap' }}>
+                                {formatDate(scheduled.due_date)}
+                              </span>
                             )}
                           </div>
                         );
@@ -1312,7 +1323,7 @@ const DueReportPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
               <div>
-                <div style={{ fontSize: 14.5, fontWeight: 800, color: t.textPrimary }}>Schedule Follow-up</div>
+                <div style={{ fontSize: 14.5, fontWeight: 800, color: t.textPrimary }}>{followUpEditing ? 'Change Follow-up' : 'Schedule Follow-up'}</div>
                 <div style={{ fontSize: 11, color: t.textSecondary }}>{followUpRow.customer_name} · {followUpRow.customer_code}</div>
               </div>
               <button type="button" onClick={closeFollowUp} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary }}>
@@ -1327,21 +1338,25 @@ const DueReportPage: React.FC = () => {
               </div>
               <div>
                 <label style={fieldLabelStyle}>Follow-up Date</label>
-                <input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} style={fieldInputStyle()} />
+                <input type="date" value={followUpDate} min={serverTodayYmd()} onChange={(e) => setFollowUpDate(e.target.value)} style={fieldInputStyle()} />
               </div>
-              <div>
-                <label style={fieldLabelStyle}>Assign To</label>
-                <select value={followUpAssignedTo} onChange={(e) => setFollowUpAssignedTo(e.target.value)} style={fieldInputStyle()}>
-                  <option value="">-- Unassigned --</option>
-                  {followUpEmployees.map((e) => (
-                    <option key={e.id} value={e.id}>{[e.first_name, e.last_name].filter(Boolean).join(' ')}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Only an admin assigns follow-ups; an employee's own are
+                  assigned to themselves server-side. */}
+              {isAdmin && (
+                <div>
+                  <label style={fieldLabelStyle}>Assign To</label>
+                  <select value={followUpAssignedTo} onChange={(e) => setFollowUpAssignedTo(e.target.value)} style={fieldInputStyle()}>
+                    <option value="">-- Unassigned --</option>
+                    {followUpEmployees.map((e) => (
+                      <option key={e.id} value={e.id}>{[e.first_name, e.last_name].filter(Boolean).join(' ')}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <button type="button" onClick={handleSubmitFollowUp} disabled={followUpSubmitting}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
                 style={{ background: followUpSubmitting ? '#6b7280' : '#16a34a', border: 'none', cursor: followUpSubmitting ? 'not-allowed' : 'pointer' }}>
-                {followUpSubmitting ? 'Scheduling...' : 'Schedule Follow-up'}
+                {followUpSubmitting ? 'Saving...' : followUpEditing ? 'Update Follow-up' : 'Schedule Follow-up'}
               </button>
             </div>
           </div>
@@ -1349,51 +1364,84 @@ const DueReportPage: React.FC = () => {
         document.body
       )}
 
-      {/* ── Follow-up list popup — the badge's own click target, listing
-          every open follow-up due today/tomorrow across the team. ────── */}
+      {/* ── Follow-up list popup — the badge's own click target: every open
+          customer follow-up with the date it's set for, soonest first. ── */}
       {followUpListOpen && createPortal(
         <div className="due-report-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="due-report-modal rounded-2xl w-full" style={{ maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 rounded-t-2xl" style={{ background: 'var(--grad-green)' }}>
-              <div style={{ fontSize: 14.5, fontWeight: 800, color: '#fff' }}>Follow-ups — Today &amp; Tomorrow</div>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: '#fff' }}>Follow-ups ({followUpListTasks.length})</div>
               <button type="button" onClick={() => setFollowUpListOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#fff' }}>
                 <MdClose size={20} />
               </button>
             </div>
             <div style={{ padding: '8px 0', overflowY: 'auto' }}>
               {followUpListTasks.length === 0 ? (
-                <p style={{ color: t.textSecondary, fontSize: 12, padding: '16px 20px' }}>No follow-ups scheduled for today or tomorrow.</p>
-              ) : (
-                // V_23.0 item 3 — Today and Tomorrow are now two distinct
-                // sections, each with its own count heading, instead of one
-                // merged list with a per-row badge as the only distinction.
-                (['today', 'tomorrow'] as const).map((bucket) => {
-                  const tasksForBucket = followUpListTasks.filter((tk) => tk.dueBucket === bucket);
-                  if (tasksForBucket.length === 0) return null;
-                  return (
-                    <div key={bucket}>
-                      <div style={{
-                        padding: '8px 20px 4px', fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em',
-                        color: bucket === 'today' ? '#dc2626' : '#d97706',
-                      }}>
-                        {bucket === 'today' ? 'Today' : 'Tomorrow'} ({tasksForBucket.length})
+                <p style={{ color: t.textSecondary, fontSize: 12, padding: '16px 20px' }}>No follow-ups scheduled.</p>
+              ) : followUpListTasks.map((task) => {
+                const isPast = !!task.due_date && task.due_date.slice(0, 10) < serverTodayYmd();
+                return (
+                  <div key={task.id} style={{ padding: '10px 20px', borderBottom: `1px solid ${t.divider}` }}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>{task.customer_name || task.title}</div>
+                      <div style={{ fontSize: 11.5, fontWeight: 800, color: isPast ? '#dc2626' : 'var(--brand-ink)', whiteSpace: 'nowrap' }}>
+                        {task.due_date ? formatDate(task.due_date) : 'No date'}
                       </div>
-                      {tasksForBucket.map((task) => (
-                        <div key={task.id} style={{ padding: '10px 20px', borderBottom: `1px solid ${t.divider}` }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>{task.customer_name || task.title}</div>
-                          {task.description && (
-                            <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2 }}>{task.description}</div>
-                          )}
-                          <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>
-                            Assigned to: {task.assigned_to_name || 'Unassigned'}
-                          </div>
-                        </div>
-                      ))}
                     </div>
-                  );
-                })
-              )}
+                    {task.description && (
+                      <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2 }}>{task.description}</div>
+                    )}
+                    <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>
+                      Assigned to: {task.assigned_to_name?.trim() || 'Unassigned'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Follow-up history popup — every follow-up set for one customer,
+          oldest first, as a conversation-style log. ─────────────────────── */}
+      {historyTarget && createPortal(
+        <div className="due-report-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="due-report-modal rounded-2xl w-full" style={{ maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
+              <div>
+                <div style={{ fontSize: 14.5, fontWeight: 800, color: t.textPrimary }}>Follow-up History</div>
+                <div style={{ fontSize: 11, color: t.textSecondary }}>{historyTarget.customer_name} · {historyTarget.customer_code}</div>
+              </div>
+              <button type="button" onClick={() => setHistoryTarget(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary }}>
+                <MdClose size={20} />
+              </button>
+            </div>
+            <div style={{ padding: '14px 18px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {historyLoading ? (
+                <p style={{ color: t.textSecondary, fontSize: 12 }}>Loading history...</p>
+              ) : historyTasks.length === 0 ? (
+                <p style={{ color: t.textSecondary, fontSize: 12 }}>No follow-ups yet for this customer.</p>
+              ) : historyTasks.map((task) => {
+                const open = task.status === 'pending';
+                return (
+                  <div key={task.id} style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: '12px 12px 12px 4px', padding: '9px 12px' }}>
+                    <div style={{ fontSize: 12, color: t.textPrimary, whiteSpace: 'pre-wrap' }}>{task.description || <span style={{ color: t.textSecondary }}>(no note)</span>}</div>
+                    <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 6, fontSize: 10.5, color: t.textSecondary }}>
+                      <span style={{ fontWeight: 700, color: 'var(--brand-ink)' }}>Follow-up: {task.due_date ? formatDate(task.due_date) : 'No date'}</span>
+                      <span>·</span>
+                      <span>{task.assigned_to_name?.trim() || 'Unassigned'}</span>
+                      <span>·</span>
+                      <span>Added {formatDate(task.created_at)}</span>
+                      <span style={{ marginLeft: 'auto', padding: '1px 7px', borderRadius: 999, fontWeight: 700, color: '#fff', background: open ? '#16a34a' : '#6b7280' }}>
+                        {open ? 'Open' : task.status === 'superseded' ? 'Replaced' : 'Closed'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>,

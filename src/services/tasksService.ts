@@ -61,9 +61,25 @@ export const createTask = async (payload: CreateTaskPayload): Promise<Task> => {
   return res.data.data as Task;
 };
 
+export interface UpdateTaskPayload {
+  title: string;
+  description?: string | null;
+  status?: string;
+  due_date?: string | null;
+  // Honoured for admins only (server-side); leave out to keep the assignee.
+  assigned_to?: string | number | null;
+}
+
+/** PUT /api/tasks/:id */
+export const updateTask = async (id: string | number, payload: UpdateTaskPayload): Promise<Task> => {
+  const res = await axiosInstance.put(`/tasks/${id}`, payload);
+  return res.data.data as Task;
+};
+
 export const tasksService = {
   fetchTasks,
   createTask,
+  updateTask,
 };
 
 export default tasksService;
