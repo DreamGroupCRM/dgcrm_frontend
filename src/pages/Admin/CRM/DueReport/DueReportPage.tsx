@@ -132,7 +132,7 @@ const SearchableSelect: React.FC<{
 // ── Status filter dropdown — custom (not a native <select>) because native
 // <option> elements can't take a rounded, colored background in any
 // browser. Each status option renders as a pill in its fixed STATUS_COLORS
-// color (Overdue red, Due Today green, Upcoming dark yellow); "All Status" stays
+// color (Overdue dark red, Due Today green, Upcoming dark yellow); "All Status" stays
 // neutral. Portaled for the same toolbar-clipping reason as SearchableSelect.
 const STATUS_FILTER_OPTIONS: { value: DueStatusFilter; label: string }[] = [
   { value: 'all', label: 'All Status' },
@@ -298,7 +298,7 @@ type DueStatusFilter = 'all' | 'overdue' | 'due_today' | 'upcoming';
 // hex literals, not derived from the theme/appearance object `t`, so they
 // never change on theme/appearance switches (by design, per requirement).
 const STATUS_COLORS: Record<'overdue' | 'due_today' | 'upcoming', string> = {
-  overdue: '#dc2626',   // Red
+  overdue: '#991b1b',   // Dark red
   due_today: '#16a34a', // Green
   upcoming: '#a16207',  // Dark yellow
 };
