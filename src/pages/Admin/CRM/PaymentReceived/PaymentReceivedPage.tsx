@@ -10,9 +10,9 @@
 // a payment the moment it's collected, exactly as before.
 //
 // Full redesign per the attached legacy-style reference screenshot:
-// gradient top stat boxes (Total Flat Sold/Amount Received/Pending
-// Amount — a new GET /payments/received-summary endpoint, since none of
-// those 3 numbers existed as a single aggregate anywhere), a
+// admin-only top stat boxes (Total Flat Sold/Amount Received/Pending
+// Amount — GET /payments/received-summary), per-category totals in the
+// table's footer row, a
 // filter/reset panel mirroring Payment Approvals' own (same fields minus
 // Payment For, in 2 rows not 3), and a table whose shape matches Payment
 // Approvals' (checkbox + Actions first) with View Receipt/Download
@@ -24,9 +24,8 @@ import {
   MdPayments, MdRefresh, MdSearch, MdDownload, MdClose, MdKeyboardArrowDown,
   MdFilterAlt, MdVisibility, MdDelete,
   MdCheckCircle, MdUpcoming, MdMoreVert,
-  MdReceiptLong, MdSchedule, MdVpnKey, MdStars, MdWorkspacePremium, MdAccountBalanceWallet,
+  MdHomeWork, MdPendingActions,
 } from 'react-icons/md';
-import { IconType } from 'react-icons';
 
 import { useAppDispatch } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
@@ -41,6 +40,7 @@ import { PaymentReceiptViewModal } from '../../../../components/common/PaymentRe
 import {
   fetchPaymentList, PaymentListRow,
   fetchPaymentCategorySummary, PaymentCategorySummary, fetchPaymentReceipt, deletePayment,
+  fetchPaymentReceivedSummary, PaymentReceivedSummary,
 } from '../../../../services/paymentService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
@@ -105,7 +105,35 @@ const DATE_RANGE_OPTIONS: { value: string; label: string }[] = [
   { value: 'last_week', label: 'Last Week' },
   { value: 'last_15_days', label: 'Last 15 Days' },
   { value: 'last_month', label: 'Last Month' },
+  { value: 'last_financial_year', label: 'Last Financial Year' },
 ];
+
+// Local-time YYYY-MM-DD. toISOString() would convert to UTC first, which in
+// IST shifts local midnight back to the previous calendar day.
+const toYmd = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// Returns the [from, to] Received Date range for a Date Range preset.
+// last_month = the full previous calendar month (e.g. on 24 Sep: 1 Aug–31 Aug).
+// last_financial_year = the previous Apr–Mar Indian FY (e.g. on 24 Sep 2026:
+// 1 Apr 2025–31 Mar 2026; on 10 Feb 2026: 1 Apr 2024–31 Mar 2025).
+const dateRangeForPreset = (preset: string, today: Date = new Date()): [string, string] => {
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  const d = today.getDate();
+  switch (preset) {
+    case 'today': return [toYmd(today), toYmd(today)];
+    case 'yesterday': { const t = new Date(y, m, d - 1); return [toYmd(t), toYmd(t)]; }
+    case 'last_week': return [toYmd(new Date(y, m, d - 7)), toYmd(today)];
+    case 'last_15_days': return [toYmd(new Date(y, m, d - 15)), toYmd(today)];
+    case 'last_month': return [toYmd(new Date(y, m - 1, 1)), toYmd(new Date(y, m, 0))];
+    case 'last_financial_year': {
+      const currentFyStartYear = m >= 3 ? y : y - 1;
+      return [toYmd(new Date(currentFyStartYear - 1, 3, 1)), toYmd(new Date(currentFyStartYear, 2, 31))];
+    }
+    default: return ['', ''];
+  }
+};
 
 // ── Plain <select>-backed dropdown — used for every filter here (all of
 // them are short, known lists; no need for the type-to-filter
@@ -167,14 +195,28 @@ const PaymentReceivedPage: React.FC = () => {
   // ── Row actions three-dot menu — see components/common/RowActionMenu. ──
   const rowMenu = useRowActionMenu<string>();
 
-  // ── Top stat boxes — one sum per Payment For category (EMI Before/After,
-  // Booking, Remaining Booking, Possession, Booster Before/After) plus a
-  // grand Total (V_23.0 — replaces the old Total Flat Sold/Amount
-  // Received/Pending Amount trio). fetchCategorySummary itself is defined
-  // further down (see fetchRows) since it depends on appliedFilters, which
-  // isn't declared yet at this point in the component. ────────────────────
+  // ── Per-category totals (EMI Before/After, Booking, Remaining Booking,
+  // Possession, Booster Before/After, grand Total) — shown in the table's
+  // footer row, not as top boxes. fetchCategorySummary is defined further
+  // down since it depends on appliedFilters. ──────────────────────────────
   const [categorySummary, setCategorySummary] = useState<PaymentCategorySummary | null>(null);
   const [categorySummaryError, setCategorySummaryError] = useState(false);
+
+  // ── Admin-only top boxes: Total Flat Sold / Total Amount Received / Total
+  // Pending Amount. Company-wide figures, not affected by the filters; the
+  // backend route is requireAdmin too, so an employee never fetches them. ──
+  const [receivedSummary, setReceivedSummary] = useState<PaymentReceivedSummary | null>(null);
+  const [receivedSummaryError, setReceivedSummaryError] = useState(false);
+  const fetchReceivedSummary = useCallback(async () => {
+    if (!paths.isAdmin) return;
+    setReceivedSummaryError(false);
+    try {
+      setReceivedSummary(await fetchPaymentReceivedSummary());
+    } catch {
+      setReceivedSummaryError(true);
+    }
+  }, [paths.isAdmin]);
+  useEffect(() => { fetchReceivedSummary(); }, [fetchReceivedSummary]);
 
   // ── Filter panel data sources ────────────────────────────────────────
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -288,30 +330,13 @@ const PaymentReceivedPage: React.FC = () => {
   // V_23.0 — picking a Date Range preset (Today/Yesterday/Last Week/Last
   // Month, etc.) now applies immediately, instead of only updating the
   // draft From/To fields and waiting for a "Filter" click: it commits
-  // straight into appliedFilters, so both the 8 category stat boxes and
-  // the table below update together the moment a preset is chosen. Manual
+  // straight into appliedFilters, so both the table and its totals footer
+  // row update together the moment a preset is chosen. Manual
   // From/To typing is unaffected — that still only takes effect on
   // "Filter", same as every other field in this panel.
   const applyDateRangePreset = (preset: string) => {
     setDraftDateRange(preset);
-    const fmt = (d: Date) => d.toISOString().slice(0, 10);
-    const today = new Date();
-    let from = '';
-    let to = '';
-    if (preset === 'today') { from = fmt(today); to = fmt(today); }
-    else if (preset === 'yesterday') {
-      const y = new Date(today); y.setDate(y.getDate() - 1);
-      from = fmt(y); to = fmt(y);
-    } else if (preset === 'last_week') {
-      const f = new Date(today); f.setDate(f.getDate() - 7);
-      from = fmt(f); to = fmt(today);
-    } else if (preset === 'last_15_days') {
-      const f = new Date(today); f.setDate(f.getDate() - 15);
-      from = fmt(f); to = fmt(today);
-    } else if (preset === 'last_month') {
-      const f = new Date(today); f.setMonth(f.getMonth() - 1);
-      from = fmt(f); to = fmt(today);
-    }
+    const [from, to] = dateRangeForPreset(preset);
     setDraftFromDate(from);
     setDraftToDate(to);
     setAppliedFilters((prev) => ({ ...prev, date_from: from || undefined, date_to: to || undefined }));
@@ -467,6 +492,7 @@ const PaymentReceivedPage: React.FC = () => {
       toast.success('Payment deleted.');
       fetchRows();
       fetchCategorySummary();
+      fetchReceivedSummary();
     } catch {
       toast.error('Failed to delete payment.');
     } finally {
@@ -494,23 +520,18 @@ const PaymentReceivedPage: React.FC = () => {
   // tints instead of the earlier solid orange/gray, per explicit request. ──
   const actionBtnBase: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 14px', height: 38, borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' };
 
-  // ── Top stat boxes — same 8 categories, colors, icons and compact
-  // gradient StatCard DueReportPage's own Payment Dues boxes use (EMI
-  // Before/After share one color the same way there, so the pair reads as
-  // one grouped treatment) — kept as a local spec array, not a shared
-  // import, matching this codebase's per-page-duplication convention (see
-  // e.g. FilterSelect above, defined identically on this page and Payment
-  // Approvals). Non-clickable: unlike Payment Dues, these don't double as a
-  // table filter — the Date Range panel above already does that job. ──────
-  const categoryBoxSpecs: { key: keyof PaymentCategorySummary; label: string; color: string; icon: IconType }[] = [
-    { key: 'emi_before', label: 'EMI Before', color: '#2563eb', icon: MdPayments },
-    { key: 'emi_after', label: 'EMI After', color: '#2563eb', icon: MdPayments },
-    { key: 'booking', label: 'Booking Amount', color: '#dc2626', icon: MdReceiptLong },
-    { key: 'pay_after_booking', label: 'Remaining Booking Amount', color: '#ea580c', icon: MdSchedule },
-    { key: 'possession', label: 'Possession Amount', color: '#7c3aed', icon: MdVpnKey },
-    { key: 'booster_before', label: 'Booster Before Possession', color: '#16a34a', icon: MdStars },
-    { key: 'booster_after', label: 'Booster After Possession', color: '#0d9488', icon: MdWorkspacePremium },
-    { key: 'total', label: 'Total', color: '#0891b2', icon: MdAccountBalanceWallet },
+  // ── Totals footer row — one cell per Payment For category plus the grand
+  // Total. colSpans add up to the table's 12 columns (checkbox + 11 headers)
+  // so the row spans the full width with no gaps. ─────────────────────────
+  const totalsFooterCells: { key: keyof PaymentCategorySummary; label: string; colSpan: number }[] = [
+    { key: 'emi_before', label: 'EMI Before', colSpan: 3 },
+    { key: 'emi_after', label: 'EMI After', colSpan: 1 },
+    { key: 'booking', label: 'Booking Amount', colSpan: 1 },
+    { key: 'pay_after_booking', label: 'Remaining Booking', colSpan: 1 },
+    { key: 'possession', label: 'Possession', colSpan: 1 },
+    { key: 'booster_before', label: 'Booster Before', colSpan: 1 },
+    { key: 'booster_after', label: 'Booster After', colSpan: 2 },
+    { key: 'total', label: 'Total', colSpan: 2 },
   ];
 
   return (
@@ -568,29 +589,31 @@ const PaymentReceivedPage: React.FC = () => {
           </div>
       </div>
 
-      {/* ── Top stat boxes (V_23.0) — one sum per Payment For category plus
-          a grand Total, same saturated-gradient StatCard/hover-expand
-          treatment as Payment Dues' own 8-box row (see PaymentReceived.css)
-          — the hovered box grows to show its full label/value while its 7
-          siblings compress, all 8 staying in one row on xl screens. These
-          always reflect the SAME appliedFilters (including Date Range) the
-          table below queries by, so the two can never disagree. A failed
-          fetch shows a retry rather than silently freezing at stale
-          numbers. ─────────────────────────────────────────────────────── */}
-      <div className="pr-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3 mb-5">
-        {categoryBoxSpecs.map((spec) => (
-          <StatCard key={spec.key} label={spec.label} value={rupee(categorySummary?.[spec.key] ?? 0)} icon={spec.icon} color={spec.color}
-            bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={!categorySummary && !categorySummaryError} compact
-            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-        ))}
-      </div>
-      {categorySummaryError && (
-        <div className="flex items-center gap-2 mb-5" style={{ fontSize: 12, color: '#dc2626' }}>
-          <span>Failed to load payment totals.</span>
-          <button type="button" onClick={fetchCategorySummary} style={{ fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none', color: '#dc2626', fontSize: 12 }}>
-            Retry
-          </button>
-        </div>
+      {/* ── Top stat boxes — admin only. Company-wide totals; they do not
+          follow the filter panel (the per-category totals for the filtered
+          rows live in the table's footer row instead). ─────────────────── */}
+      {paths.isAdmin && (
+        <>
+          <div className="pr-stat-grid grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+            <StatCard label="Total Flat Sold" value={rupee(receivedSummary?.total_flat_sold ?? 0)} icon={MdHomeWork} color="#2563eb"
+              bg="" loading={!receivedSummary && !receivedSummaryError}
+              surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+            <StatCard label="Total Amount Received" value={rupee(receivedSummary?.total_amount_received ?? 0)} icon={MdPayments} color="#16a34a"
+              bg="" loading={!receivedSummary && !receivedSummaryError}
+              surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+            <StatCard label="Total Pending Amount" value={rupee(receivedSummary?.total_pending_amount ?? 0)} icon={MdPendingActions} color="#dc2626"
+              bg="" loading={!receivedSummary && !receivedSummaryError}
+              surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+          </div>
+          {receivedSummaryError && (
+            <div className="flex items-center gap-2 mb-5" style={{ fontSize: 12, color: '#dc2626' }}>
+              <span>Failed to load summary totals.</span>
+              <button type="button" onClick={fetchReceivedSummary} style={{ fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none', color: '#dc2626', fontSize: 12 }}>
+                Retry
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* ── Filter panel — Received By/Company/Project/Building/Wing/Flat in
@@ -658,7 +681,7 @@ const PaymentReceivedPage: React.FC = () => {
               style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
               <MdDownload size={16} /> <span className="pr-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
             </button>
-            <button type="button" onClick={() => { fetchRows(); fetchCategorySummary(); }} title="Refresh"
+            <button type="button" onClick={() => { fetchRows(); fetchCategorySummary(); fetchReceivedSummary(); }} title="Refresh"
               className="pr-refresh-btn flex items-center justify-center rounded-xl"
               style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
               <MdRefresh size={18} />
@@ -773,6 +796,29 @@ const PaymentReceivedPage: React.FC = () => {
                 ))
               )}
             </tbody>
+            {/* ── Totals row — per-category sums for every row matching the
+                current filters (all pages, not just this one), same query
+                as the table. ── */}
+            {!loading && rows.length > 0 && (
+              <tfoot>
+                <tr>
+                  {categorySummaryError ? (
+                    <td colSpan={12} style={{ padding: '5px 12px', background: 'var(--grad-table-header)', color: '#fff', fontSize: 11.5, fontWeight: 700 }}>
+                      Failed to load totals.{' '}
+                      <button type="button" onClick={fetchCategorySummary} style={{ fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none', color: '#fff', fontSize: 11.5, padding: 0 }}>
+                        Retry
+                      </button>
+                    </td>
+                  ) : totalsFooterCells.map((c) => (
+                    <td key={c.key} colSpan={c.colSpan}
+                      style={{ padding: '5px 12px', background: 'var(--grad-table-header)', color: '#fff', fontSize: 11.5, fontWeight: 800, whiteSpace: 'nowrap', borderLeft: '1px solid rgba(255,255,255,0.25)', lineHeight: 1.3 }}>
+                      <span style={{ opacity: 0.85 }}>{c.label}:</span>{' '}
+                      <span>{categorySummary ? rupee(categorySummary[c.key]) : '…'}</span>
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
 
