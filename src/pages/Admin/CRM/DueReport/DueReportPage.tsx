@@ -969,9 +969,9 @@ const DueReportPage: React.FC = () => {
             errors={activeErrors.map((c) => ({ field: c.field, message: c.message }))}
             onErrorClick={revealInvalidField}
           />
-          {/* V_23.0 item 6 — field sequence: Customer Name, combined
-              Building/Wing/Flat, Payment Date, Payment For, the type's own
-              dynamic amount field, Received Date, Mode of Payment. */}
+          {/* Field sequence: Customer Name, combined Building/Wing/Flat,
+              Payment For, the type's own dynamic amount field, Payment Date,
+              Received Date, Mode of Payment. */}
           <div className="due-report-form-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
             <div ref={setFieldRef('customer')}>
               <label style={fieldLabelStyle}>Customer Name</label>
@@ -986,27 +986,24 @@ const DueReportPage: React.FC = () => {
                 Company (a derived, read-only display field, never actually
                 editable) stays removed from this form; it's still visible
                 on the customer's own record. */}
+            {/* A wrapping box rather than a single-line <input>, so a long
+                building name is shown in full instead of being cut off. */}
             <div>
               <label style={fieldLabelStyle}>Building / Wing / Flat</label>
-              <input type="text" readOnly placeholder="—" style={readOnlyInputStyle}
-                value={apSelectedCustomer ? [
+              {(() => {
+                const buildingText = apSelectedCustomer ? [
                   apSelectedCustomer.building_name,
                   apSelectedCustomer.wing_name ? `Wing ${apSelectedCustomer.wing_name}` : '',
                   apSelectedCustomer.flat_no ? `Flat ${apSelectedCustomer.flat_no}` : '',
-                ].filter(Boolean).join(' • ') : ''} />
+                ].filter(Boolean).join(' • ') : '';
+                return (
+                  <div aria-disabled="true" title={buildingText || undefined}
+                    style={{ ...readOnlyInputStyle, minHeight: 38, height: 'auto', whiteSpace: 'normal', overflowWrap: 'anywhere', lineHeight: 1.35 }}>
+                    {buildingText || '—'}
+                  </div>
+                );
+              })()}
             </div>
-            {/* Extra Pay is an advance against future EMIs, not tied to any
-                one installment — it has no Payment Date at all (takes
-                today's date via Received Date instead), so the field is
-                hidden rather than shown blank/disabled. */}
-            {!apSelectedPaymentFor?.isAdvance && (
-              <div>
-                <label style={fieldLabelStyle}>Payment Date</label>
-                {/* Read-only — auto-filled from the suggested default date
-                    for the selected Payment For. Not employee-editable. */}
-                <input type="date" readOnly value={apInstDate} style={readOnlyInputStyle} />
-              </div>
-            )}
             <div ref={setFieldRef('payment_for')}>
               <label style={fieldLabelStyle}>Payment For</label>
               <select value={apPaymentForKey} onChange={(e) => handlePaymentForChange(e.target.value)} style={fieldInputStyle(!!errorFor('payment_for'))}>
@@ -1024,6 +1021,18 @@ const DueReportPage: React.FC = () => {
                 <input type="text" inputMode="numeric" value={formatAmountDisplay(apAmount)} onChange={(e) => setApAmount(e.target.value.replace(/[^\d]/g, ''))} placeholder="Enter amount"
                   style={fieldInputStyle(!!errorFor('amount'))} />
                 {errorFor('amount') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('amount')}</p>}
+              </div>
+            )}
+            {/* Extra Pay is an advance against future EMIs, not tied to any
+                one installment — it has no Payment Date at all (takes
+                today's date via Received Date instead), so the field is
+                hidden rather than shown blank/disabled. */}
+            {!apSelectedPaymentFor?.isAdvance && (
+              <div>
+                <label style={fieldLabelStyle}>Payment Date</label>
+                {/* Read-only — auto-filled from the suggested default date
+                    for the selected Payment For. Not employee-editable. */}
+                <input type="date" readOnly value={apInstDate} style={readOnlyInputStyle} />
               </div>
             )}
             {/* V_23.0 item 6 — Received Date permissions: Employee can only
