@@ -764,6 +764,9 @@ export interface AssignCustomersResponse {
 export interface CustomerPaymentRecord {
   id             : string;
   paid_on        : string;
+  // Raw Received Date and entry timestamp — used to flag backdated entries.
+  payment_date?  : string | null;
+  created_at?    : string;
   inst_date?     : string;
   amount         : number;
   mode?          : string;

@@ -52,6 +52,7 @@ import './PaymentReceived.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import PaymentApprovalsPage from '../PaymentApprovals/PaymentApprovalsPage';
 import { serverToday, toYmd } from '../../../../utils/serverTime';
+import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 
 type Theme = AppTheme;
 
@@ -64,22 +65,6 @@ const formatDMY = (iso: string | null | undefined): string => {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 };
 
-// V_23.0 — a "backdated" entry is one whose Received Date (payment_date)
-// was manually set to a calendar day before the day it was actually
-// recorded (created_at) — only an Admin's collect-payment form even offers
-// a past date at all (an Employee's Received Date is locked to today, see
-// DueReportPage.tsx), so any such gap is by construction an admin
-// backdating a receipt. No new column/flag needed — this is derived from
-// fields the list endpoint already returns, so it keeps working correctly
-// under every existing filter (date-range, building, etc.): the flag is
-// just recomputed per row from whatever set of rows comes back.
-const isBackdatedPayment = (r: { payment_date: string | null; created_at: string }): boolean => {
-  if (!r.payment_date) return false;
-  const paid = new Date(r.payment_date);
-  const created = new Date(r.created_at);
-  if (Number.isNaN(paid.getTime()) || Number.isNaN(created.getTime())) return false;
-  return paid.toDateString() !== created.toDateString() && paid < created;
-};
 
 // V_24.0 — full Payment Type labels, matching Payment Due's own
 // PAYMENT_FOR_KEY_META exactly (kept as a local duplicate rather than a
@@ -772,15 +757,7 @@ const PaymentReceivedPage: React.FC = () => {
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>
                       <div className="flex items-center gap-1.5">
                         {formatDMY(r.payment_date || r.created_at)}
-                        {/* V_23.0 — compact purple dot for an admin-backdated
-                            entry (see isBackdatedPayment's comment). Marks
-                            only this cell, never the whole row, and keeps
-                            showing correctly under any date-range/building/
-                            etc. filter since it's recomputed per row. */}
-                        {isBackdatedPayment(r) && (
-                          <span title="Backdated entry — Received Date was set to an earlier date by an admin"
-                            style={{ width: 7, height: 7, borderRadius: '50%', background: '#9333ea', flexShrink: 0, display: 'inline-block' }} />
-                        )}
+                        <BackdatedDot paymentDate={r.payment_date} createdAt={r.created_at} />
                       </div>
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.company || '—'}</td>

@@ -41,6 +41,7 @@ import { Building, PaymentReceipt } from '../../../../types/index';
 import { formatLastLogin, showAlert } from '../../../../utils';
 import './PaymentApprovals.css';
 import { serverToday, toYmd } from '../../../../utils/serverTime';
+import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 
 type Theme = AppTheme;
 
@@ -664,7 +665,12 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.payment_tag === 'Extra Pay' ? '—' : formatDMY(r.inst_date)}</td>
-                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDMY(r.payment_date || r.created_at)}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                      <div className="flex items-center gap-1.5">
+                        {formatDMY(r.payment_date || r.created_at)}
+                        <BackdatedDot paymentDate={r.payment_date} createdAt={r.created_at} />
+                      </div>
+                    </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.company || '—'}</td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.received_by || '—'}</td>
                   </tr>

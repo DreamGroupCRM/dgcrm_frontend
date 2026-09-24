@@ -38,6 +38,7 @@ import {
 import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
 import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
+import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 
 type Theme = AppTheme;
 
@@ -1488,7 +1489,12 @@ const CustomerDetailsListPage: React.FC = () => {
                                   would misleadingly read as "this installment is paid" if
                                   shown here, so it stays blank instead. */}
                               <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? '—' : (p.inst_date ? formatDate(p.inst_date) : '—')}</td>
-                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{formatDate(p.paid_on)}</td>
+                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                                <div className="flex items-center gap-1.5">
+                                  {formatDate(p.paid_on)}
+                                  <BackdatedDot paymentDate={p.payment_date} createdAt={p.created_at} />
+                                </div>
+                              </td>
                               <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.mode || '—'}</td>
                               <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(p.payment_type)}</td>
                               <td style={{ padding: '8px 12px', fontSize: 11.5, color: '#16a34a', fontWeight: 600 }}>{p.maintenance ? `₹ ${p.maintenance.toLocaleString('en-IN')}` : '0'}</td>

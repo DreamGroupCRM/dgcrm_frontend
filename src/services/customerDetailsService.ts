@@ -330,6 +330,8 @@ const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
 const mapTransactionToPaymentRecord = (t: BackendAmountTransaction): CustomerPaymentRecord => ({
   id: String(t.id),
   paid_on: t.payment_date ?? t.date ?? t.created_at,
+  payment_date: t.payment_date,
+  created_at: t.created_at,
   inst_date: t.inst_date ?? undefined,
   amount: t.emi_amnt ?? t.booking_amount ?? t.pay_after_booking ?? t.possession_amount ?? t.annual_amount ?? t.annual_amount1 ?? 0,
   mode: t.mode_of_payment ?? undefined,
