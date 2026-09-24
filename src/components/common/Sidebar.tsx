@@ -102,6 +102,7 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
   {
     label: 'CRM', icon: <MdLeaderboard />,
     children: [
+      { label: 'Leads', path: ROUTES.ADMIN.LEADS, icon: <MdLeaderboard /> },
       { label: 'Customer Details', path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage /> },
       { label: 'Payment Dues', path: ROUTES.ADMIN.PAYMENT_DUES, icon: <MdPayment /> },
       // Payment Approvals and Payment Upcoming now live inside the Payment
@@ -109,18 +110,15 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
       // Upcoming experience, tab switcher at the top) instead of their own
       // sidebar entries/routes — same pattern as Attendance/Leave above.
       { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
-      { label: 'Leads', path: ROUTES.ADMIN.LEADS, icon: <MdLeaderboard /> },
+      // Cancelled Booking is admin-only by construction: it appears only in
+      // buildAdminNavItems, never employeeNavItems below (matches the
+      // backend's requireAdmin gate on its routes).
+      { label: 'Cancelled Booking', path: ROUTES.ADMIN.CANCELLED_BOOKING, icon: <MdEventBusy /> },
     ],
   },
 
   { label: 'Customize Scheme', path: ROUTES.ADMIN.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
   { label: 'Building View', path: ROUTES.ADMIN.BUILDING_2D_VIEW, icon: <MdGridView /> },
-  // V_23.0 — Cancelled Booking module. Admin-only by construction: this
-  // entry only ever appears in buildAdminNavItems, never employeeNavItems
-  // below, so an Employee/Customer never sees it at all (matches the
-  // backend's own requireAdmin gate on every /customers/cancelled,
-  // /customers/:id/cancel-booking, /customers/:id/refunds route).
-  { label: 'Cancelled Booking', path: ROUTES.ADMIN.CANCELLED_BOOKING, icon: <MdEventBusy /> },
   { label: 'Audit History', path: ROUTES.ADMIN.AUDIT_HISTORY, icon: <MdHistory /> },
   // Admin/superadmin (requireAdmin server-side, not requireSuperAdmin) —
   // the whole point is a regular Admin reviews delete requests an
@@ -167,10 +165,10 @@ const employeeNavItems: NavItem[] = [
   {
     label: 'CRM', icon: <MdLeaderboard />,
     children: [
+      { label: 'Leads', path: ROUTES.EMPLOYEE.LEADS, icon: <MdLeaderboard /> },
       { label: 'Customer Details', path: ROUTES.EMPLOYEE.CUSTOMER_DETAILS, icon: <MdContactPage /> },
       { label: 'Payment Dues', path: ROUTES.EMPLOYEE.PAYMENT_DUES, icon: <MdPayment /> },
       { label: 'Payment Received', path: ROUTES.EMPLOYEE.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
-      { label: 'Leads', path: ROUTES.EMPLOYEE.LEADS, icon: <MdLeaderboard /> },
     ],
   },
 
