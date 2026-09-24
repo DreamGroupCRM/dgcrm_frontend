@@ -24,6 +24,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MdChevronLeft, MdChevronRight, MdCalendarToday } from 'react-icons/md';
 import { PickerTheme } from './DobPicker';
+import { serverTodayYmd } from '../../utils/serverTime';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -33,10 +34,7 @@ const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 const pad2 = (n: number): string => String(n).padStart(2, '0');
 const isoOf = (y: number, m0: number, d: number): string => `${y}-${pad2(m0 + 1)}-${pad2(d)}`;
-const todayIso = (): string => {
-  const t = new Date();
-  return isoOf(t.getFullYear(), t.getMonth(), t.getDate());
-};
+const todayIso = (): string => serverTodayYmd();
 
 interface RestrictedDayPickerTheme extends PickerTheme {
   surfaceBg: string;

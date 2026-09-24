@@ -29,6 +29,7 @@ import { fetchLeaves, reviewLeaveRequest, LeaveRecord, LeaveStatus, LEAVE_TYPE_L
 import { formatDate, formatLastLogin } from '../../../../utils';
 import './AttendancePage.css';
 import { StatusChip } from '../../../../components/common/MasterListUI';
+import { serverTodayYmd } from '../../../../utils/serverTime';
 
 type Tab = 'attendance' | 'leave';
 
@@ -53,7 +54,7 @@ const daysInclusive = (from: string, to: string): number => {
   return Math.max(1, Math.round(ms / 86400000) + 1);
 };
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => serverTodayYmd();
 const emptyAttForm = { employee_id: '', attendance_date: todayISO(), status: 'present' as AttendanceStatus, check_in_time: '', check_out_time: '', remarks: '' };
 
 const AttendancePage: React.FC = () => {
@@ -74,10 +75,9 @@ const AttendancePage: React.FC = () => {
   }, []);
 
   // ── Attendance tab state/logic (unchanged from the former standalone page) ──
-  const attNow = new Date();
   const [attPreset, setAttPreset] = useState<DateRangePreset>('monthly');
-  const [attCustomFrom, setAttCustomFrom] = useState(attNow.toISOString().slice(0, 10));
-  const [attCustomTo, setAttCustomTo] = useState(attNow.toISOString().slice(0, 10));
+  const [attCustomFrom, setAttCustomFrom] = useState(todayISO);
+  const [attCustomTo, setAttCustomTo] = useState(todayISO);
   const [attEmployeeFilter, setAttEmployeeFilter] = useState('');
   const [attStatusFilter, setAttStatusFilter] = useState<AttendanceStatus | ''>('');
   const [attRecords, setAttRecords] = useState<AttendanceRecord[]>([]);
@@ -141,8 +141,8 @@ const AttendancePage: React.FC = () => {
   const [lvStatusFilter, setLvStatusFilter] = useState<'all' | LeaveStatus>('pending');
   const [lvEmployeeFilter, setLvEmployeeFilter] = useState('');
   const [lvPreset, setLvPreset] = useState<DateRangePreset>('monthly');
-  const [lvCustomFrom, setLvCustomFrom] = useState(new Date().toISOString().slice(0, 10));
-  const [lvCustomTo, setLvCustomTo] = useState(new Date().toISOString().slice(0, 10));
+  const [lvCustomFrom, setLvCustomFrom] = useState(todayISO);
+  const [lvCustomTo, setLvCustomTo] = useState(todayISO);
   const [lvRecords, setLvRecords] = useState<LeaveRecord[]>([]);
   const [lvLoading, setLvLoading] = useState(false);
   const [lvBusyId, setLvBusyId] = useState<string | null>(null);

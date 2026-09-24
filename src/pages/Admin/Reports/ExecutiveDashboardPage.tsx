@@ -40,6 +40,7 @@ import {
   SalesInsights, DetectedPattern, PriorityQueueItem,
 } from '../../../services/intelligenceService';
 import { MdAutoAwesome, MdPersonSearch, MdTrendingFlat, MdInsights } from 'react-icons/md';
+import { serverToday, toYmd } from '../../../utils/serverTime';
 
 type Theme = AppTheme;
 
@@ -58,10 +59,9 @@ const PRESET_LABELS: Record<PresetKey, string> = {
   today: 'Today', this_week: 'This Week', this_month: 'This Month', last_month: 'Last Month',
   this_quarter: 'This Quarter', this_year: 'This Year', custom: 'Custom',
 };
-const iso = (d: Date): string => d.toISOString().slice(0, 10);
+const iso = toYmd;
 function computeRange(preset: PresetKey): { from: string; to: string } {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const today = serverToday();
   switch (preset) {
     case 'today': return { from: iso(today), to: iso(today) };
     case 'this_week': {

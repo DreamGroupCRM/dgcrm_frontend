@@ -61,6 +61,7 @@ import {
   CustomerFullDetail,
   CustomerFullDetailResponse,
 } from '../types/index';
+import { serverToday } from '../utils/serverTime';
 
 // booking_date/installment_date/pay_after_booking_date are `timestamp`
 // columns on the backend (not `date`), so they come back as full ISO
@@ -193,7 +194,7 @@ export const nextMonthlyInstallmentDate = (raw: string | null | undefined): stri
   if (!day) return raw;
   const anchorDatePart = raw.slice(0, 10);
 
-  const now = new Date();
+  const now = serverToday();
   const daysInThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const rolledForward = Math.min(day, daysInThisMonth) < now.getDate();
   const targetMonthFirst = new Date(now.getFullYear(), now.getMonth() + (rolledForward ? 1 : 0), 1);

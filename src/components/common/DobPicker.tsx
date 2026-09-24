@@ -13,6 +13,7 @@
 // full keyboard/screen-reader support built in. Year is listed first —
 // it's the field that's actually slow to reach with a calendar.
 import React, { useEffect, useMemo, useState } from 'react';
+import { serverToday } from '../../utils/serverTime';
 
 export interface PickerTheme {
   inputBg: string;
@@ -53,8 +54,8 @@ const parseValue = (value: string): { year: string; month: string; day: string }
   return { year: y || '', month: m ? String(Number(m)) : '', day: d ? String(Number(d)) : '' };
 };
 
-export const DobPicker: React.FC<DobPickerProps> = ({ theme, value, onChange, disabled, maxDate, minYear = new Date().getFullYear() - 120 }) => {
-  const max = maxDate ? new Date(`${maxDate}T00:00:00`) : new Date();
+export const DobPicker: React.FC<DobPickerProps> = ({ theme, value, onChange, disabled, maxDate, minYear = serverToday().getFullYear() - 120 }) => {
+  const max = maxDate ? new Date(`${maxDate}T00:00:00`) : serverToday();
   const maxYear = max.getFullYear();
 
   // Local state is the source of truth for what's currently picked, so a

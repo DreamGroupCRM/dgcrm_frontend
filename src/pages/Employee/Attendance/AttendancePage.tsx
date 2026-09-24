@@ -29,6 +29,7 @@ import { fetchAttendance, punchAttendance, AttendanceRecord, AttendanceStatus } 
 import { fetchLeaves, submitLeaveRequest, LeaveRecord, LeaveStatus, LeaveType, LeaveSession, LEAVE_TYPE_LABEL } from '../../../services/leaveService';
 import { getCurrentLocation } from '../../../utils/geolocation';
 import { formatDate } from '../../../utils';
+import { serverTodayYmd } from '../../../utils/serverTime';
 
 const ATT_STATUS_LABEL: Record<AttendanceStatus, string> = {
   present: 'Present', absent: 'Absent', half_day: 'Half Day', leave: 'Leave',
@@ -44,7 +45,7 @@ const Badge: React.FC<{ label: string; color: string }> = ({ label, color }) => 
     style={{ background: `${color}1a`, color, fontSize: 11 }}>{label}</span>
 );
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => serverTodayYmd();
 
 type QuickActionKind = Extract<LeaveType, 'casual' | 'half_day' | 'work_from_home'>;
 const QUICK_ACTION_META: Record<QuickActionKind, { title: string; icon: React.ReactNode; color: string }> = {

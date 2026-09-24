@@ -37,12 +37,13 @@ import StatCard from '../../../../components/masters/StatCard';
 import { fetchUpcomingAmount, fetchUpcomingListDetailed } from '../../../../services/paymentUpcomingService';
 import { PaymentForKey, UpcomingAmountData, UpcomingListDetailRow } from '../../../../types/paymentUpcoming';
 import './PaymentUpcoming.css';
+import { serverTodayYmd } from '../../../../utils/serverTime';
 
 type Theme = AppTheme;
 
 const rupee = (n: number): string => `₹${n.toLocaleString('en-IN')}`;
 
-const todayYmd = (): string => new Date().toISOString().slice(0, 10);
+const todayYmd = (): string => serverTodayYmd();
 
 // Opens the native calendar on a click/focus anywhere in the field, not
 // just on the small calendar icon — same fix already applied to the date

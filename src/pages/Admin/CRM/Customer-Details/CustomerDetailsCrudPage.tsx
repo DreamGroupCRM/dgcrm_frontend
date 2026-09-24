@@ -48,6 +48,7 @@ import {
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
+import { serverToday } from '../../../../utils/serverTime';
 
 type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
@@ -157,7 +158,7 @@ const calcAge = (dob: string): { years: number; months: number } | null => {
   if (!dob) return null;
   const birth = new Date(dob);
   if (Number.isNaN(birth.getTime())) return null;
-  const now = new Date();
+  const now = serverToday();
   let years = now.getFullYear() - birth.getFullYear();
   let months = now.getMonth() - birth.getMonth();
   if (now.getDate() < birth.getDate()) months -= 1;

@@ -9,6 +9,7 @@
 import React from 'react';
 import { MdCalendarToday } from 'react-icons/md';
 import { AppTheme } from '../../styles/theme';
+import { serverToday, toYmd } from '../../utils/serverTime';
 
 export type DateRangePreset = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
 
@@ -18,12 +19,13 @@ const PRESET_LABELS: Record<DateRangePreset, string> = {
 };
 const PRESET_ORDER: DateRangePreset[] = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'custom'];
 
-const iso = (d: Date): string => d.toISOString().slice(0, 10);
+// Local Y/M/D — toISOString() would convert local midnight to UTC and
+// land on the previous day in IST.
+const iso = toYmd;
 
 /** Resolves a preset (all but 'custom') to a concrete {from, to} ISO date-string range. */
 export function computeDateRangePreset(preset: Exclude<DateRangePreset, 'custom'>): { from: string; to: string } {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const today = serverToday();
   switch (preset) {
     case 'daily':
       return { from: iso(today), to: iso(today) };

@@ -38,6 +38,7 @@ import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { exportSchemePdf } from './schemePdfExport';
 import { LOAN_TENURE_YEARS, LOAN_INTEREST_RATE } from './bankLoanConstants';
+import { serverTodayYmd } from '../../../utils/serverTime';
 
 type Theme = AppTheme;
 
@@ -92,7 +93,7 @@ const addMonths = (d: Date, n: number): Date => {
 const formatDMY = (d: Date | null): string =>
   d ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` : '—';
 
-const todayISO = (): string => new Date().toISOString().slice(0, 10);
+const todayISO = (): string => serverTodayYmd();
 
 // Fires showPicker() on both click AND focus — a plain onClick alone opens
 // the calendar when the browser-drawn icon is clicked, but clicking into

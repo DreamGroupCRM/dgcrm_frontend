@@ -18,6 +18,7 @@ import { fetchLeaves, submitLeaveRequest, LeaveRecord, LeaveStatus, GENERAL_LEAV
 import { formatDate } from '../../../utils';
 import './LeavePage.css';
 import { StatusChip } from '../../../components/common/MasterListUI';
+import { serverTodayYmd } from '../../../utils/serverTime';
 
 const STATUS_LABEL: Record<LeaveStatus, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
 // Colors from styles/statusColors.ts — identical in light and dark theme.
@@ -25,7 +26,7 @@ const StatusBadge: React.FC<{ status: LeaveStatus }> = ({ status }) => (
   <StatusChip label={STATUS_LABEL[status]} status={status} fontSize={11} />
 );
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => serverTodayYmd();
 
 const LeavePage: React.FC = () => {
   const dispatch = useAppDispatch();

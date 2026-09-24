@@ -51,6 +51,7 @@ import { showAlert } from '../../../../utils';
 import './PaymentReceived.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import PaymentApprovalsPage from '../PaymentApprovals/PaymentApprovalsPage';
+import { serverToday, toYmd } from '../../../../utils/serverTime';
 
 type Theme = AppTheme;
 
@@ -107,16 +108,12 @@ const DATE_RANGE_OPTIONS: { value: string; label: string }[] = [
   { value: 'last_financial_year', label: 'Last Financial Year' },
 ];
 
-// Local-time YYYY-MM-DD. toISOString() would convert to UTC first, which in
-// IST shifts local midnight back to the previous calendar day.
-const toYmd = (d: Date): string =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 // Returns the [from, to] Received Date range for a Date Range preset.
 // last_month = the full previous calendar month (e.g. on 24 Sep: 1 Aug–31 Aug).
 // last_financial_year = the previous Apr–Mar Indian FY (e.g. on 24 Sep 2026:
 // 1 Apr 2025–31 Mar 2026; on 10 Feb 2026: 1 Apr 2024–31 Mar 2025).
-const dateRangeForPreset = (preset: string, today: Date = new Date()): [string, string] => {
+const dateRangeForPreset = (preset: string, today: Date = serverToday()): [string, string] => {
   const y = today.getFullYear();
   const m = today.getMonth();
   const d = today.getDate();

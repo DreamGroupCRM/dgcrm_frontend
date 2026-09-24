@@ -11,6 +11,7 @@ import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { store } from './app/store';
 import App from './App';
+import { startServerTimeSync } from './utils/serverTime';
 // master.css must load BEFORE Responsive.css: Responsive.css's job is to
 // override master.css's rules inside @media blocks, but @media alone
 // doesn't add specificity — for two same-specificity selectors the one
@@ -27,8 +28,13 @@ import './styles/master.css';
 import './styles/Responsive.css';
 import './index.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <Provider store={store}>
-    <App />
-  </Provider>
-);
+// Calendars take "today" from the server clock (see utils/serverTime.ts),
+// so sync it before the first render; capped at a few seconds so a slow
+// API never holds the app back.
+void startServerTimeSync().finally(() => {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <Provider store={store}>
+      <App />
+    </Provider>
+  );
+});

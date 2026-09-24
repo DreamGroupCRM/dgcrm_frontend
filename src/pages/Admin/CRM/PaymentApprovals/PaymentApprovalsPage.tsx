@@ -40,6 +40,7 @@ import { companyService } from '../../../../services/companyService';
 import { Building, PaymentReceipt } from '../../../../types/index';
 import { formatLastLogin, showAlert } from '../../../../utils';
 import './PaymentApprovals.css';
+import { serverToday, toYmd } from '../../../../utils/serverTime';
 
 type Theme = AppTheme;
 
@@ -233,8 +234,8 @@ const PaymentApprovalsPage: React.FC<{ onNavigateToReceived?: () => void }> = ({
 
   const applyDateRangePreset = (preset: string) => {
     setDraftDateRange(preset);
-    const fmt = (d: Date) => d.toISOString().slice(0, 10);
-    const today = new Date();
+    const fmt = toYmd;
+    const today = serverToday();
     if (preset === 'today') { setDraftFromDate(fmt(today)); setDraftToDate(fmt(today)); }
     else if (preset === 'yesterday') {
       const y = new Date(today); y.setDate(y.getDate() - 1);

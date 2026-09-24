@@ -21,6 +21,7 @@ import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
 import { RowActionMenu, useRowActionMenu, RowMenuAction } from '../../../../components/common/RowActionMenu';
 import './EmployeeDetails.css';
+import { serverToday } from '../../../../utils/serverTime';
 
 type Theme = AppTheme;
 
@@ -31,7 +32,7 @@ const ageFromDob = (dob: string): string | null => {
   if (!dob) return null;
   const birth = new Date(dob);
   if (Number.isNaN(birth.getTime())) return null;
-  const today = new Date();
+  const today = serverToday();
   let years = today.getFullYear() - birth.getFullYear();
   let months = today.getMonth() - birth.getMonth();
   if (today.getDate() < birth.getDate()) months--;
