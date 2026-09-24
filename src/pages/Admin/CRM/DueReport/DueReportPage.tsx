@@ -130,6 +130,85 @@ const SearchableSelect: React.FC<{
   );
 };
 
+// ── Status filter dropdown — custom (not a native <select>) because native
+// <option> elements can't take a rounded, colored background in any
+// browser. Each status option renders as a pill in its fixed STATUS_COLORS
+// color (Overdue red, Due Today yellow, Upcoming green); "All Status" stays
+// neutral. Portaled for the same toolbar-clipping reason as SearchableSelect.
+const STATUS_FILTER_OPTIONS: { value: DueStatusFilter; label: string }[] = [
+  { value: 'all', label: 'All Status' },
+  { value: 'overdue', label: 'Overdue' },
+  { value: 'due_today', label: 'Due Today' },
+  { value: 'upcoming', label: 'Upcoming' },
+];
+
+const StatusPillSelect: React.FC<{
+  t: Theme; value: DueStatusFilter; onChange: (v: DueStatusFilter) => void;
+}> = ({ t, value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const ref = useRef<HTMLButtonElement>(null);
+
+  const place = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 140) });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (ref.current?.contains(target) || target.closest?.('[data-due-status-menu]')) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [open]);
+
+  const current = STATUS_FILTER_OPTIONS.find((o) => o.value === value) ?? STATUS_FILTER_OPTIONS[0];
+  const pillStyle = (v: DueStatusFilter): React.CSSProperties => v === 'all'
+    ? { background: 'transparent', color: t.inputText }
+    : { background: STATUS_COLORS[v], color: '#fff', fontWeight: 700 };
+
+  return (
+    <>
+      <button ref={ref} type="button" aria-haspopup="listbox" aria-expanded={open}
+        onClick={() => { if (open) { setOpen(false); } else { place(); setOpen(true); } }}
+        className="flex items-center justify-between gap-1"
+        style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '5px 8px', fontSize: 12, cursor: 'pointer', outline: 'none', minHeight: 36 }}>
+        <span style={{ ...pillStyle(current.value), borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>{current.label}</span>
+        <MdKeyboardArrowDown size={16} style={{ color: t.textSecondary, flexShrink: 0 }} />
+      </button>
+      {open && menuPos && createPortal(
+        <div data-due-status-menu role="listbox"
+          style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, width: menuPos.width, zIndex: 200, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {STATUS_FILTER_OPTIONS.map((o) => (
+            <button key={o.value} type="button" role="option" aria-selected={o.value === value}
+              onClick={() => { onChange(o.value); setOpen(false); }}
+              className="w-full text-left"
+              style={{
+                ...pillStyle(o.value), border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 12, cursor: 'pointer', fontFamily: t.fontFamily,
+                outline: o.value === value ? `2px solid ${o.value === 'all' ? t.inputBorder : STATUS_COLORS[o.value]}` : 'none', outlineOffset: 1,
+              }}>
+              {o.label}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+};
+
 const rupee = (n: number): string => `₹${n.toLocaleString('en-IN')}`;
 
 const formatAmountDisplay = (v: string): string => {
@@ -212,6 +291,18 @@ const matchesCategoryFilter = (r: { payment_for_key: PaymentFor; payment_for: st
   key === 'EMI Before' || key === 'EMI After' ? (r.payment_for_key === 'EMIAmount' && getPaymentForDisplay(r).label === key) : r.payment_for_key === key;
 
 type DueStatusFilter = 'all' | 'overdue' | 'due_today' | 'upcoming';
+
+// Single source of truth for the 3 status colors used everywhere on this
+// page — the Payment Details column's badges (both the payment-type pill
+// AND the status pill, which must always match/be driven by status, not
+// payment-type) and the "All Status" filter dropdown's option pills. Plain
+// hex literals, not derived from the theme/appearance object `t`, so they
+// never change on theme/appearance switches (by design, per requirement).
+const STATUS_COLORS: Record<'overdue' | 'due_today' | 'upcoming', string> = {
+  overdue: '#dc2626',   // Red
+  due_today: '#ca8a04', // Yellow
+  upcoming: '#16a34a',  // Green
+};
 
 // ── Unified row shape the table renders — either an overdue/due-today row
 // (DueListDetailRow) or, when the Status filter is set to Upcoming, an
@@ -468,9 +559,8 @@ const DueReportPage: React.FC = () => {
     months_pending: r.months_pending,
     per_month_amount: r.per_month_amount,
     statusLabel: r.due_category === 'due_today' ? 'Due Today' : 'Overdue',
-    // V_23.0 — color-coded status: Overdue = Red, Due Today = Green,
-    // Upcoming = Yellow (below). Was Overdue = Red, Due Today = Amber.
-    statusColor: r.due_category === 'due_today' ? '#16a34a' : '#dc2626',
+    // Overdue = Red, Due Today = Yellow — see STATUS_COLORS above.
+    statusColor: r.due_category === 'due_today' ? STATUS_COLORS.due_today : STATUS_COLORS.overdue,
     // V_23.0 — bare date range only, no "N months and N days" prose and no
     // "amount x months" math (that now lives in its own line above this
     // one — see the Payment Details cell's JSX). due_date_from/to come
@@ -479,13 +569,13 @@ const DueReportPage: React.FC = () => {
     dueRow: r,
   })), [dueRows]);
 
-  // V_23.0 item 4 — "Due within the next 7 days" is its own yellow bucket,
-  // distinct from the Upcoming tab's full 30-day fetch (unchanged — this
-  // only affects which COLOR/label a row gets, not what data is fetched).
-  // Exactly 3 status colors exist anywhere in this column, always: red
-  // (Overdue), green (Due Today), yellow (everything else not yet due —
-  // "Due Soon" within 7 days and "Upcoming" further out both read as
-  // yellow; only the text label tells them apart).
+  // "Due within the next 7 days" ("Due Soon") is a label-only distinction
+  // inside the Upcoming bucket, distinct from the Upcoming tab's full
+  // 30-day fetch (unchanged — this only affects which LABEL a row gets, not
+  // what data is fetched or its color). Exactly 3 status colors exist
+  // anywhere on this page, always, per STATUS_COLORS above: red (Overdue),
+  // yellow (Due Today), green (Due Soon + Upcoming — only the text label
+  // tells those two apart).
   const upcomingDisplayRows: DisplayRow[] = useMemo(() => upcomingRows.map((r, i) => {
     const daysUntilDue = Math.round((new Date(r.due_date).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
     const dueSoon = daysUntilDue >= 0 && daysUntilDue <= 7;
@@ -501,7 +591,9 @@ const DueReportPage: React.FC = () => {
       months_pending: null,
       per_month_amount: null,
       statusLabel: dueSoon ? 'Due Soon' : 'Upcoming',
-      statusColor: '#ca8a04',
+      // "Due Soon" is just the near-term slice of the Upcoming bucket (there
+      // is no separate "Due Soon" option in the Status filter) — Green.
+      statusColor: STATUS_COLORS.upcoming,
       detailText: `Due on ${new Date(r.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
     };
   }), [upcomingRows]);
@@ -1005,13 +1097,7 @@ const DueReportPage: React.FC = () => {
               <SearchableSelect t={t} placeholder="Search by Building Name" options={buildingNames} value={filterBuilding} onChange={setFilterBuilding} />
             </div>
             <div className="due-report-filter-item" style={{ width: 120, flexShrink: 0 }}>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as DueStatusFilter)}
-                style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' }}>
-                <option value="all">All Status</option>
-                <option value="overdue">Overdue</option>
-                <option value="due_today">Due Today</option>
-                <option value="upcoming">Upcoming</option>
-              </select>
+              <StatusPillSelect t={t} value={statusFilter} onChange={setStatusFilter} />
             </div>
             {anyFilterApplied && (
               <button
@@ -1109,9 +1195,13 @@ const DueReportPage: React.FC = () => {
                       )}
                     </td>
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                      {/* V_23.0 — Payment Details column, deliberately
-                          trimmed to exactly 3 lines, nothing else:
+                      {/* Payment Details column, deliberately trimmed to
+                          exactly 3 lines, nothing else:
                           1) payment type badge + status badge, side by side
+                             — BOTH driven by the row's status color
+                             (r.statusColor), never by payment-type, so a
+                             row's two badges always match: an Overdue "EMI
+                             Before" row shows red+red, never blue+red.
                           2) "N month(s) x amount" (months_pending is null
                              for a one-time due, which has no such line)
                           3) the bare date range in red, and ONLY that —
@@ -1120,7 +1210,7 @@ const DueReportPage: React.FC = () => {
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span style={{
                           display: 'inline-block', padding: '3px 9px', borderRadius: 999,
-                          fontSize: 10.5, fontWeight: 700, color: '#fff', background: getPaymentForDisplay(r).color,
+                          fontSize: 10.5, fontWeight: 700, color: '#fff', background: r.statusColor,
                         }}>
                           {getPaymentForDisplay(r).label}
                         </span>
