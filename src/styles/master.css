@@ -746,17 +746,13 @@ html.dark .master-row-icon {
   margin-top: 1px;
 }
 
-/* Header labels may wrap onto two lines — the browser only does this when
-   the table would otherwise overflow its card, so a wide screen keeps
-   single-line headers while a narrower one avoids sideways scrolling.
-   Body cells stay single-line (nowrap) so data never breaks mid-value. */
-.master-table > thead > tr > th {
-  white-space: normal !important;
-}
-
-/* Sortable header buttons (label + ⇅ arrow) may wrap their label too; the
-   arrow stays beside the last word. */
-.master-table > thead > tr > th .master-th-sort {
-  white-space: normal;
-  text-align: left;
+/* Column headers are ALWAYS one line, in every table in the app (list
+   pages, popups, customer portal) — per explicit request. !important so it
+   also beats any inline whiteSpace a page sets on a <th>. Columns size to
+   whichever is wider, the header label or the data; a table wider than
+   its card scrolls sideways inside .master-table-scroll instead of wrapping
+   header text. */
+th,
+th .master-th-sort {
+  white-space: nowrap !important;
 }

@@ -593,7 +593,11 @@ const DueReportPage: React.FC = () => {
     statusColor: STATUS_COLORS[r.due_category],
     statusTextColor: STATUS_TEXT_COLORS[r.due_category],
     // due_date_from/to come pre-formatted (DD/MM/YYYY) from the backend.
-    detailText: `(from: ${r.due_date_from}, to: ${r.due_date_to})`,
+    // A range only when several installments are pending; a single due
+    // (from === to) shows its one due date instead of the same date twice.
+    detailText: r.due_date_from === r.due_date_to
+      ? `(Due date: ${r.due_date_from})`
+      : `(from: ${r.due_date_from}, to: ${r.due_date_to})`,
     dueRow: r,
   })), [dueRows]);
 
@@ -957,9 +961,11 @@ const DueReportPage: React.FC = () => {
                 Company (a derived, read-only display field, never actually
                 editable) stays removed from this form; it's still visible
                 on the customer's own record. */}
-            {/* A wrapping box rather than a single-line <input>, so a long
-                building name is shown in full instead of being cut off. */}
-            <div>
+            {/* Always ONE line: on wide screens this field takes exactly
+                its text's width and the other fields share what's left
+                (see .due-report-bwf in DueReport.css); the full text is
+                also in the tooltip. */}
+            <div className="due-report-bwf">
               <label style={fieldLabelStyle}>Building / Wing / Flat</label>
               {(() => {
                 const buildingText = apSelectedCustomer ? [
@@ -969,7 +975,7 @@ const DueReportPage: React.FC = () => {
                 ].filter(Boolean).join(' - ') : '';
                 return (
                   <div aria-disabled="true" title={buildingText || undefined}
-                    style={{ ...readOnlyInputStyle, minHeight: 38, height: 'auto', whiteSpace: 'normal', overflowWrap: 'anywhere', lineHeight: 1.35 }}>
+                    style={{ ...readOnlyInputStyle, minHeight: 38, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
                     {buildingText || '—'}
                   </div>
                 );
@@ -1012,11 +1018,13 @@ const DueReportPage: React.FC = () => {
                 always stamped "now" for a non-admin regardless of any
                 value sent). Admin gets a real, unrestricted date input —
                 no min/max — so a backdated entry (a previous date) is
-                selectable, which is the whole point for Admin. */}
+                selectable, which is the whole point for Admin. A future date
+                is never allowed (max = the server's today; the backend
+                rejects it too). */}
             <div>
               <label style={fieldLabelStyle}>Received Date</label>
               {isAdmin ? (
-                <input type="date" value={apPaymentDate} disabled={formLocked} onChange={(e) => setApPaymentDate(e.target.value)} style={formLocked ? readOnlyInputStyle : fieldInputStyle()} />
+                <input type="date" value={apPaymentDate} max={serverTodayYmd()} disabled={formLocked} onChange={(e) => setApPaymentDate(e.target.value)} style={formLocked ? readOnlyInputStyle : fieldInputStyle()} />
               ) : (
                 <input type="date" readOnly value={serverTodayYmd()} style={readOnlyInputStyle} title="Employees can only record today's date." />
               )}
@@ -1033,7 +1041,7 @@ const DueReportPage: React.FC = () => {
                 clears every field/dropdown/date in this form AND the
                 table's own toolbar filters (including the customer filter
                 above), then shows every due again. */}
-            <div className="flex items-end gap-2">
+            <div className="due-report-form-actions flex items-end gap-2">
               <button type="button" onClick={handleSubmitAddPayment} disabled={submitting || formLocked}
                 className="flex-1 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
                 style={{ background: (submitting || formLocked) ? '#6b7280' : 'var(--brand-gradient)', border: 'none', cursor: (submitting || formLocked) ? 'not-allowed' : 'pointer' }}>

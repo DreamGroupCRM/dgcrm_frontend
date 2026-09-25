@@ -309,7 +309,7 @@ const AttendancePage: React.FC = () => {
                     </select>
                   </FormField>
                   <FormField label="Date *" t={t}>
-                    <input required type="date" value={attForm.attendance_date} onChange={(e) => setAttForm((f) => ({ ...f, attendance_date: e.target.value }))} style={getFormInputStyle(t)} />
+                    <input required type="date" value={attForm.attendance_date} max={serverTodayYmd()} onChange={(e) => setAttForm((f) => ({ ...f, attendance_date: e.target.value }))} style={getFormInputStyle(t)} />
                   </FormField>
                   <FormField label="Status *" t={t}>
                     <select value={attForm.status} onChange={(e) => setAttForm((f) => ({ ...f, status: e.target.value as AttendanceStatus }))} style={getFormInputStyle(t)}>
