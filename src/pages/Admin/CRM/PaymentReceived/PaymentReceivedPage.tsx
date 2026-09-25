@@ -19,7 +19,7 @@
 // Payment For, in 2 rows not 3), and a table whose shape matches Payment
 // Approvals' (checkbox + Actions first) with View Receipt/Download
 // Receipt/Delete instead of View/Approve/Delete.
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/utils/toast';
 import {
@@ -160,6 +160,45 @@ const APPROVAL_VIEWS: { key: ApprovalView; label: string; color: string }[] = [
   { key: 'pending', label: 'UnApproved', color: '#d97706' },
 ];
 const approvalParam = (v: ApprovalView): 'approved' | 'pending' | undefined => (v === 'all' ? undefined : v);
+
+// ── Totals bar (EMI Before … Total) ─────────────────────────────────────
+// Always ONE line with every entry visible and no horizontal scrollbar.
+// Each entry is only as wide as its label + amount; spare width is spread
+// between them. If the entries don't fit at 13px (a narrow screen or very
+// large amounts), the font steps down until they do (min 8px); it's
+// re-checked whenever the bar resizes or the amounts change.
+const TotalsBar: React.FC<{ items: { key: string; label: string; value: string; grand?: boolean }[] }> = ({ items }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [fontPx, setFontPx] = useState(13);
+  const signature = items.map((i) => i.value).join('|');
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      let size = 13;
+      el.style.fontSize = `${size}px`;
+      while (el.scrollWidth > el.clientWidth + 1 && size > 8) {
+        size -= 0.5;
+        el.style.fontSize = `${size}px`;
+      }
+      setFontPx(size);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [signature]);
+  return (
+    <div ref={ref} className="pr-totals-row" style={{ background: TOTALS_ROW_BG, color: '#fff', fontSize: fontPx }}>
+      {items.map((i) => (
+        <div key={i.key} className={i.grand ? 'pr-totals-item pr-totals-grand' : 'pr-totals-item'}>
+          <span className="pr-totals-label">{i.label}:</span>
+          <span>{i.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -600,18 +639,19 @@ const PaymentReceivedPage: React.FC = () => {
   // tints instead of the earlier solid orange/gray, per explicit request. ──
   const actionBtnBase: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 14px', height: 38, borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' };
 
-  // ── Totals footer row — one cell per Payment For category plus the grand
-  // Total. colSpans add up to the table's 13 columns (checkbox + 12 headers)
-  // so the row spans the full width with no gaps. ─────────────────────────
-  const totalsFooterCells: { key: keyof PaymentCategorySummary; label: string; colSpan: number }[] = [
-    { key: 'emi_before', label: 'EMI Before', colSpan: 4 },
-    { key: 'emi_after', label: 'EMI After', colSpan: 1 },
-    { key: 'booking', label: 'Booking Amount', colSpan: 1 },
-    { key: 'pay_after_booking', label: 'Remaining Booking', colSpan: 1 },
-    { key: 'possession', label: 'Possession', colSpan: 1 },
-    { key: 'booster_before', label: 'Booster Before', colSpan: 1 },
-    { key: 'booster_after', label: 'Booster After', colSpan: 2 },
-    { key: 'total', label: 'Total', colSpan: 2 },
+  // ── Totals footer row — one entry per Payment For category plus the
+  // grand Total, all in ONE full-width cell (not tied to table columns) so
+  // each entry takes only its own text's width. See .pr-totals-row in
+  // PaymentReceived.css for how it always stays on one line. ────────────
+  const totalsFooterCells: { key: keyof PaymentCategorySummary; label: string }[] = [
+    { key: 'emi_before', label: 'EMI Before' },
+    { key: 'emi_after', label: 'EMI After' },
+    { key: 'booking', label: 'Booking Amount' },
+    { key: 'pay_after_booking', label: 'Remaining Booking' },
+    { key: 'possession', label: 'Possession' },
+    { key: 'booster_before', label: 'Booster Before' },
+    { key: 'booster_after', label: 'Booster After' },
+    { key: 'total', label: 'Total' },
   ];
 
   return (
@@ -888,34 +928,25 @@ const PaymentReceivedPage: React.FC = () => {
                 <tr ref={lazyLoadSentinelRef} aria-hidden="true"><td colSpan={13} style={{ padding: 0, border: 'none' }} /></tr>
               )}
             </tbody>
-            {/* ── Totals row — per-category sums for every row matching the
-                current filters (all pages, not just this one), same query
-                as the table. ── */}
-            {!loading && rows.length > 0 && (
-              <tfoot>
-                <tr>
-                  {categorySummaryError ? (
-                    <td colSpan={13} style={{ padding: '12px 12px', background: TOTALS_ROW_BG, color: '#fff', fontSize: 13, fontWeight: 800 }}>
-                      Failed to load totals.{' '}
-                      <button type="button" onClick={fetchCategorySummary} style={{ fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none', color: '#fff', fontSize: 11.5, padding: 0 }}>
-                        Retry
-                      </button>
-                    </td>
-                  ) : totalsFooterCells.map((c) => (
-                    <td key={c.key} colSpan={c.colSpan}
-                      style={{ padding: '10px 10px', background: TOTALS_ROW_BG, color: '#fff', fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', borderLeft: '1px solid rgba(255,255,255,0.3)', lineHeight: 1.35 }}>
-                      {/* Label above the amount (not side by side), so the
-                          totals row never forces its columns wider than the
-                          data rows need. */}
-                      <div style={{ whiteSpace: 'normal' }}>{c.label}</div>
-                      <div>{categorySummary ? rupee(categorySummary[c.key]) : '…'}</div>
-                    </td>
-                  ))}
-                </tr>
-              </tfoot>
-            )}
           </table>
         </div>
+
+        {/* ── Totals bar — per-category sums for every row matching the
+            current filters (all rows, not just the loaded ones), same query
+            as the table. Outside the table's horizontal scroll area, full
+            card width, always one line (see TotalsBar). ── */}
+        {!loading && rows.length > 0 && (
+          categorySummaryError ? (
+            <div style={{ padding: '10px 12px', background: TOTALS_ROW_BG, color: '#fff', fontSize: 13, fontWeight: 800 }}>
+              Failed to load totals.{' '}
+              <button type="button" onClick={fetchCategorySummary} style={{ fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none', color: '#fff', fontSize: 12, padding: 0 }}>
+                Retry
+              </button>
+            </div>
+          ) : (
+            <TotalsBar items={totalsFooterCells.map((c) => ({ key: c.key, label: c.label, value: categorySummary ? rupee(categorySummary[c.key]) : '…', grand: c.key === 'total' }))} />
+          )
+        )}
 
         {total > 0 && (
           <div className="flex items-center justify-center px-4 py-3" style={{ borderTop: `1px solid ${t.divider}`, fontSize: 12, color: t.textSecondary }}>
