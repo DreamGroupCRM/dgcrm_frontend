@@ -121,6 +121,7 @@ interface BackendCustomer {
   assigned_employee_code: string | null;
   assigned_employee_name: string | null;
   assigned_employee_photo_url: string | null;
+  cancellation_pending?: boolean;
   customer_image: string | null;
   aadhar_card_no: string;
   pan_card_no: string | null;
@@ -243,6 +244,7 @@ const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   assigned_employee_code: bc.assigned_employee_code ?? undefined,
   assigned_employee_name: bc.assigned_employee_name ?? undefined,
   assigned_employee_photo_url: bc.assigned_employee_photo_url,
+  cancellation_pending: !!bc.cancellation_pending,
   status: bc.is_active ? 'active' : 'inactive',
   is_active: bc.is_active,
   created_at: bc.created_at,
@@ -580,59 +582,114 @@ export const deleteCustomer = async (id: string): Promise<CustomerDeleteResponse
   return res.data;
 };
 
-// ── Cancelled Booking module (V_23.0) ───────────────────────────────────────
-export interface CancelledCustomerRow {
-  id: string;
-  customer_code: string;
-  customer_name: string;
-  building_name: string | null;
-  wing_name: string | null;
-  flat_no: string | null;
+// ── Cancelled Booking module ────────────────────────────────────────────────
+// Same row shape as the Customer Details list (the backend returns the same
+// joins + assigned employee), plus cancellation details and refund figures.
+export interface CancelledCustomerRow extends Customer {
   flat_amount: number;
   cancellation_reason: string | null;
   cancelled_at: string | null;
+  cancel_letter: string | null;
+  acceptance_letter: string | null;
+  cancel_documents: string | null;
+  returned_documents: string | null;
+  original_documents_returned: boolean;
+  total_paid: number;       // approved payments received — what's refundable
+  total_refunded: number;
+  last_refund_date: string | null;
+  last_refund_mode: string | null;
 }
 
-interface RawCancelledCustomer {
-  id: number | string;
-  customer_code: string;
-  name: string | null; middle_name: string | null; last_name: string | null;
-  building?: { building_name: string } | null;
-  wing?: { name: string } | null;
-  flat?: { flat_number: string } | null;
-  shop?: { shop_no: string } | null;
-  flat_amount: number;
+type RawCancelledCustomer = BackendCustomer & {
+  flat_amount: number | string | null;
   cancellation_reason: string | null;
   cancelled_at: string | null;
+  cancel_letter: string | null;
+  acceptance_letter: string | null;
+  cancel_documents: string | null;
+  returned_documents: string | null;
+  original_documents_returned: boolean | number | null;
+  total_paid: number | string | null;
+  total_refunded: number | string | null;
+  last_refund_date: string | null;
+  last_refund_mode: string | null;
+};
+
+export interface CancelBookingPayload {
+  reason: string;
+  original_documents_returned: boolean;
+  cancel_letter?: File | null;
+  acceptance_letter?: File | null;
+  cancel_documents?: File | null;
+  returned_documents?: File | null;
 }
 
-/** POST /api/customers/:id/cancel-booking */
-export const cancelCustomerBooking = async (id: string, reason: string): Promise<{ success: boolean; message: string }> => {
-  const res = await axiosInstance.post(`/customers/${id}/cancel-booking`, { reason });
+/** POST /api/customers/:id/cancel-booking — admin: cancels now; employee: pending admin approval (202). */
+export const cancelCustomerBooking = async (
+  id: string, payload: CancelBookingPayload,
+): Promise<{ success: boolean; pending?: boolean; message: string }> => {
+  const fd = new FormData();
+  fd.append('reason', payload.reason);
+  fd.append('original_documents_returned', String(payload.original_documents_returned));
+  (['cancel_letter', 'acceptance_letter', 'cancel_documents', 'returned_documents'] as const).forEach((key) => {
+    const file = payload[key];
+    if (file) fd.append(key, file);
+  });
+  const res = await axiosInstance.post(`/customers/${id}/cancel-booking`, fd);
   return res.data;
 };
 
-/** GET /api/customers/cancelled?page=&limit=&search= */
+export interface CancelledCustomerFilters {
+  customer_name?: string;
+  building_id?: string;
+  wing_id?: string;
+  flat_id?: string;
+  refund_amount?: string;
+  refund_date?: string;
+  mode_of_payment?: string;
+  employee_id?: string;
+}
+
+/** GET /api/customers/cancelled — scoped to assigned customers for an employee. */
 export const fetchCancelledCustomers = async (
-  page: number, limit: number, search?: string
+  page: number, limit: number, filters: CancelledCustomerFilters = {},
 ): Promise<{ success: boolean; rows: CancelledCustomerRow[]; total: number }> => {
-  const res = await axiosInstance.get('/customers/cancelled', { params: { page, limit, search: search || undefined } });
+  const params: Record<string, string | number> = { page, limit };
+  Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v; });
+  const res = await axiosInstance.get('/customers/cancelled', { params });
   const rows: RawCancelledCustomer[] = res.data.rows ?? [];
   return {
     success: res.data.success,
     total: res.data.total ?? 0,
     rows: rows.map((c) => ({
-      id: String(c.id),
-      customer_code: c.customer_code,
-      customer_name: [c.name, c.middle_name, c.last_name].filter(Boolean).join(' ') || '—',
-      building_name: c.building?.building_name ?? null,
-      wing_name: c.wing?.name ?? null,
-      flat_no: c.flat?.flat_number ?? c.shop?.shop_no ?? null,
-      flat_amount: c.flat_amount,
+      ...mapCustomerRow(c),
+      flat_amount: Number(c.flat_amount ?? 0),
       cancellation_reason: c.cancellation_reason,
       cancelled_at: c.cancelled_at,
+      cancel_letter: c.cancel_letter ?? null,
+      acceptance_letter: c.acceptance_letter ?? null,
+      cancel_documents: c.cancel_documents ?? null,
+      returned_documents: c.returned_documents ?? null,
+      original_documents_returned: !!Number(c.original_documents_returned ?? 0) || c.original_documents_returned === true,
+      total_paid: Number(c.total_paid ?? 0),
+      total_refunded: Number(c.total_refunded ?? 0),
+      last_refund_date: c.last_refund_date,
+      last_refund_mode: c.last_refund_mode,
     })),
   };
+};
+
+export interface CancelledBookingSummary {
+  total_cancelled: number;
+  total_cancelled_amount: number;
+  total_refund_paid: number;
+  total_refund_balance: number;
+}
+
+/** GET /api/customers/cancelled/summary — admin only. */
+export const fetchCancelledBookingSummary = async (): Promise<CancelledBookingSummary> => {
+  const res = await axiosInstance.get('/customers/cancelled/summary');
+  return res.data.data;
 };
 
 export interface RefundEntry {

@@ -25,6 +25,7 @@ const EmployeeDashboard = lazy(() => import('../pages/Employee/Dashboard/Employe
 const CustomerDetailsListPage = lazy(() => import('../pages/Admin/CRM/Customer-Details/CustomerDetailsListPage'));
 const CustomerDetailsCrudPage = lazy(() => import('../pages/Admin/CRM/Customer-Details/CustomerDetailsCrudPage'));
 const CustomerSchemeViewPage = lazy(() => import('../pages/Admin/CRM/Customer-Details/CustomerSchemeViewPage'));
+const CancelledBookingPage = lazy(() => import('../pages/Admin/CRM/CancelledBooking/CancelledBookingPage'));
 const DueReportPage = lazy(() => import('../pages/Admin/CRM/DueReport/DueReportPage'));
 const PaymentReceivedPage = lazy(() => import('../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage'));
 const CustomizeSchemePage = lazy(() => import('../pages/Admin/CustomizeScheme/CustomizeSchemePage'));
@@ -55,6 +56,9 @@ const EmployeeRoutes: React.FC = () => (
           to a route that does not exist here. */}
       <Route path="customer-details/view/:id" element={<CustomerDetailsCrudPage mode="view" />} />
       <Route path="customer-details/scheme/:id" element={<CustomerSchemeViewPage />} />
+      {/* Scoped server-side to the employee's assigned customers; admin-only
+          parts (summary boxes, approvals) are hidden and refused by the API. */}
+      <Route path="cancelled-booking" element={<CancelledBookingPage />} />
       <Route path="leads" element={<LeadListPage />} />
       <Route path="leads/add" element={<LeadCrudPage mode="add" />} />
       <Route path="leads/view/:id" element={<LeadCrudPage mode="view" />} />

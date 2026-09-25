@@ -16,7 +16,7 @@ export type ChangeRequestStatus = 'pending' | 'approved' | 'rejected';
 export interface ChangeRequestRow {
   id: string;
   module: ChangeRequestModule;
-  action: 'create' | 'edit';
+  action: 'create' | 'edit' | 'cancel_booking';
   entity_id: string | null;
   old_values: Record<string, unknown> | null;
   new_values: Record<string, unknown>;

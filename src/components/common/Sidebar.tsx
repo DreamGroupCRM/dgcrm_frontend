@@ -22,7 +22,7 @@ import {
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
   MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
   MdAdminPanelSettings, MdManageAccounts, MdPendingActions, MdBeachAccess,
-  MdGridView, MdEventBusy,
+  MdGridView,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -110,10 +110,8 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
       // Upcoming experience, tab switcher at the top) instead of their own
       // sidebar entries/routes — same pattern as Attendance/Leave above.
       { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
-      // Cancelled Booking is admin-only by construction: it appears only in
-      // buildAdminNavItems, never employeeNavItems below (matches the
-      // backend's requireAdmin gate on its routes).
-      { label: 'Cancelled Booking', path: ROUTES.ADMIN.CANCELLED_BOOKING, icon: <MdEventBusy /> },
+      // Cancelled Booking is reached from Customer Details (Cancel Booking
+      // action + "Cancelled Bookings" button), not the sidebar.
     ],
   },
 

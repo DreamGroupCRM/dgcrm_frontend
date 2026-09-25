@@ -23,8 +23,9 @@ import StatCard from '../../../../components/masters/StatCard';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
 import {
   fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory,
-  fetchCustomerFullDetails, fetchCustomerScheme, cancelCustomerBooking,
+  fetchCustomerFullDetails, fetchCustomerScheme,
 } from '../../../../services/customerDetailsService';
+import CancelBookingModal from '../CancelledBooking/CancelBookingModal';
 import {
   collectPayment, fetchPaymentReceipt, deletePayment, paymentForLabel,
 } from '../../../../services/paymentService';
@@ -296,7 +297,8 @@ const RowActionMenu: React.FC<{
         <MdDelete size={14} /> Delete
       </button>
     )}
-    {/* V_23.0 — admin-only, same gating as onDelete/onEdit above. */}
+    {/* Admin cancels directly; an employee's goes to admin approval. Hidden
+        while a request is already pending (the handler isn't passed). */}
     {onCancelBooking && (
       <button type="button" onClick={onCancelBooking}
         className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap"
@@ -353,6 +355,13 @@ const CustomerCard: React.FC<{
             <div style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary, lineHeight: 1.25, wordBreak: 'break-word' }}>
               {c.customer_name}
             </div>
+            {c.cancellation_pending && (
+              <span title="Cancel Booking request is waiting for admin approval"
+                className="inline-flex items-center rounded-full px-2"
+                style={{ background: '#b45309', color: '#fff', fontSize: 9.5, fontWeight: 700, lineHeight: '16px' }}>
+                Cancellation Pending
+              </span>
+            )}
             {c.customer_code ? (
               <button type="button" onClick={onView}
                 style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11, fontWeight: 600, color: '#7c3aed' }}>
@@ -802,21 +811,14 @@ const CustomerDetailsListPage: React.FC = () => {
   // is what removes them from this very list) and moves them to the new
   // Cancelled Booking page, where their full booking/payment history and
   // this reason stay visible.
-  const handleCancelBooking = async (c: Customer) => {
+  // Cancel Booking popup (CancelBookingModal): an admin's submit cancels
+  // now; an employee's is sent for admin approval (the backend enforces
+  // this). Never deletes anything — a cancelled customer moves to the
+  // Cancelled Booking page with its full history.
+  const [cancelTarget, setCancelTarget] = useState<Customer | null>(null);
+  const handleCancelBooking = (c: Customer) => {
     setOpenMenuId(null);
-    const { isConfirmed, reason } = await showAlert.confirmWithReason(
-      `This will cancel ${c.customer_name}'s booking and move them to Cancelled Booking. Their payment history is kept, not deleted.`,
-      'Cancel Booking?',
-      'Cancel Booking'
-    );
-    if (!isConfirmed) return;
-    try {
-      await cancelCustomerBooking(c.id, reason);
-      toast.success('Booking cancelled.');
-      fetchCustomers();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Failed to cancel booking.');
-    }
+    setCancelTarget(c);
   };
 
   const openPaymentHistory = async (c: Customer) => {
@@ -1209,6 +1211,11 @@ const CustomerDetailsListPage: React.FC = () => {
               <MdAdd size={18} /> <span className="cust-add-btn-text">Add Customer</span>
             </button>
           )}
+          <button type="button" onClick={() => navigate(paths.cancelledBooking)}
+            className="cust-cancelled-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
+            style={{ background: 'var(--brand-gradient)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <MdEventBusy size={17} /> <span className="cust-export-btn-text">Cancelled Bookings</span>
+          </button>
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
             className="cust-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
             style={{ background: 'var(--brand-gradient)', border: 'none', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1 }}>
@@ -1243,7 +1250,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     onView={() => { setOpenMenuId(null); navigate(`${paths.customerDetails}/view/${c.id}`); }}
                     onEdit={paths.isAdmin ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
                     onDelete={paths.isAdmin ? () => { setOpenMenuId(null); handleDelete(c); } : undefined}
-                    onCancelBooking={paths.isAdmin ? () => { setOpenMenuId(null); handleCancelBooking(c); } : undefined}
+                    onCancelBooking={c.cancellation_pending ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
                     onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                     onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                     onOpenPaymentHistory={() => openPaymentHistory(c)}
@@ -1314,7 +1321,7 @@ const CustomerDetailsListPage: React.FC = () => {
                               onView={() => { setOpenMenuId(null); navigate(`${paths.customerDetails}/view/${c.id}`); }}
                               onEdit={paths.isAdmin ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
                               onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
-                              onCancelBooking={paths.isAdmin ? () => { setOpenMenuId(null); handleCancelBooking(c); } : undefined}
+                              onCancelBooking={c.cancellation_pending ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
                               onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                               onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                             />
@@ -1347,7 +1354,16 @@ const CustomerDetailsListPage: React.FC = () => {
                             {(c.customer_name || '—').slice(0, 1).toUpperCase()}
                           </div>
                         )}
-                        {c.customer_name}
+                        <span>
+                          {c.customer_name}
+                          {c.cancellation_pending && (
+                            <span title="Cancel Booking request is waiting for admin approval"
+                              className="inline-flex items-center rounded-full px-2 ml-1.5"
+                              style={{ background: '#b45309', color: '#fff', fontSize: 9.5, fontWeight: 700, lineHeight: '16px', verticalAlign: 'middle' }}>
+                              Cancellation Pending
+                            </span>
+                          )}
+                        </span>
                       </div>
                     </td>
                     <td style={{ padding: '10px 12px' }}>
@@ -1401,6 +1417,12 @@ const CustomerDetailsListPage: React.FC = () => {
 
         <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={total} pageBtns={pageBtns} />
       </div>
+
+      {cancelTarget && (
+        <CancelBookingModal t={t} customer={cancelTarget} isAdmin={paths.isAdmin}
+          onClose={() => setCancelTarget(null)}
+          onDone={() => { setCancelTarget(null); fetchCustomers(); }} />
+      )}
 
       {/* ── Payment History modal ────────────────────────────────────── */}
       {infoModal && (

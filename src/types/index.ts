@@ -675,6 +675,9 @@ export interface Customer {
   assigned_employee_name?                    : string;
   assigned_employee_photo_url?                : string | null;
 
+  // An employee's Cancel Booking request is waiting for admin approval.
+  cancellation_pending?                        : boolean;
+
   status                                       : CustomerStatus;
   is_active                                     : boolean;
   created_at                                     : string;

@@ -79,6 +79,7 @@ export const ROUTES = {
     ROOT: '/employee',
     DASHBOARD: '/employee/dashboard',
     CUSTOMER_DETAILS: '/employee/customer-details',
+    CANCELLED_BOOKING: '/employee/cancelled-booking',
     LEADS: '/employee/leads',
     PAYMENT_RECEIVED: '/employee/payment-received',
     PAYMENT_DUES: '/employee/payment-dues',

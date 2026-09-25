@@ -35,14 +35,14 @@ const MODULE_LABEL: Record<ChangeRequestModule, string> = {
 };
 const MODULES = Object.keys(MODULE_LABEL) as ChangeRequestModule[];
 
-const ACTION_LABEL: Record<ChangeRequestRow['action'], string> = { create: 'Create', edit: 'Edit' };
+const ACTION_LABEL: Record<ChangeRequestRow['action'], string> = { create: 'Create', edit: 'Edit', cancel_booking: 'Cancel Booking' };
 
 // Best-effort human label for a proposed row without inventing business
 // rules about which field "is" the display name per module — falls back
 // through a few common identity-ish keys, then the request id.
 function summarize(row: ChangeRequestRow): string {
   const v = row.new_values || {};
-  const candidate = (v.name || v.title || v.mobile_number || v.email) as string | undefined;
+  const candidate = (v.customer_name || v.name || v.title || v.mobile_number || v.email) as string | undefined;
   return candidate ? String(candidate) : `Request #${row.id}`;
 }
 
@@ -78,7 +78,9 @@ const ChangeRequestsPage: React.FC = () => {
 
   const handleApprove = async (row: ChangeRequestRow) => {
     const result = await showAlert.confirm(
-      `This will create the proposed ${MODULE_LABEL[row.module]} record ("${summarize(row)}").`,
+      row.action === 'cancel_booking'
+        ? `This will cancel ${summarize(row)}'s booking and move them to Cancelled Booking.`
+        : `This will create the proposed ${MODULE_LABEL[row.module]} record ("${summarize(row)}").`,
       'Approve Request?'
     );
     if (!result.isConfirmed) return;

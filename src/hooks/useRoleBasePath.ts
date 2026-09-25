@@ -28,6 +28,8 @@ export interface RoleBasePaths {
   paymentDues: string;
   /** Where Payment Received lives. */
   paymentReceived: string;
+  /** Where the Cancelled Booking page lives. */
+  cancelledBooking: string;
 }
 
 export function useRoleBasePath(): RoleBasePaths {
@@ -44,6 +46,7 @@ export function useRoleBasePath(): RoleBasePaths {
         customerDetails: '/admin/crm/customer-details',
         paymentDues: '/admin/crm/payment-dues',
         paymentReceived: '/admin/crm/payment-received',
+        cancelledBooking: '/admin/cancelled-booking',
       }
       : {
         isAdmin: false,
@@ -51,6 +54,7 @@ export function useRoleBasePath(): RoleBasePaths {
         customerDetails: '/employee/customer-details',
         paymentDues: '/employee/payment-dues',
         paymentReceived: '/employee/payment-received',
+        cancelledBooking: '/employee/cancelled-booking',
       };
   }, [role]);
 }
