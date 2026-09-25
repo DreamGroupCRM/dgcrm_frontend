@@ -51,8 +51,9 @@ import AuditHistoryPage from '../pages/Admin/AuditHistory/AuditHistoryPage';
 // Cancelled Booking (V_23.0) — admin-only, see Sidebar.tsx and
 // customer.routes.ts's own requireAdmin gate on the backing endpoints.
 const CancelledBookingPage = lazy(() => import('../pages/Admin/CRM/CancelledBooking/CancelledBookingPage'));
-// Payment Received — also hosts Payment Approvals as a tab (the old
-// payment-approvals route redirects there). Payment Upcoming is its own
+// Payment Received — Payment Approval is merged into it (All/Approved/
+// UnApproved views + Approve Selected); the old payment-approvals route
+// redirects there. Payment Upcoming is its own
 // admin route, opened from the "Payment Upcoming" button on Payment Received.
 import PaymentReceivedPage from '../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage';
 const PaymentUpcomingPage = lazy(() => import('../pages/Admin/CRM/PaymentUpcoming/PaymentUpcomingPage'));

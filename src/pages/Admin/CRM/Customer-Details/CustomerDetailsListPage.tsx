@@ -22,7 +22,7 @@ import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
 import {
-  fetchAllCustomerDetails, deleteCustomer, assignCustomersToEmployee, fetchCustomerPaymentHistory,
+  fetchAllCustomerDetails, assignCustomersToEmployee, fetchCustomerPaymentHistory,
   fetchCustomerFullDetails, fetchCustomerScheme,
 } from '../../../../services/customerDetailsService';
 import CancelBookingModal from '../CancelledBooking/CancelBookingModal';
@@ -264,9 +264,9 @@ const unitLabel = (c: Customer): string => {
 
 const RowActionMenu: React.FC<{
   t: Theme; pos: { top: number; left: number };
-  onView: () => void; onEdit?: () => void; onDelete?: () => void; onCancelBooking?: () => void;
+  onView: () => void; onEdit?: () => void; onCancelBooking?: () => void;
   onDownloadHistory: () => void; onDownloadSchedule: () => void;
-}> = ({ t, pos, onView, onEdit, onDelete, onCancelBooking, onDownloadHistory, onDownloadSchedule }) => createPortal(
+}> = ({ t, pos, onView, onEdit, onCancelBooking, onDownloadHistory, onDownloadSchedule }) => createPortal(
   <div
     data-customer-row-menu
     style={{
@@ -280,21 +280,14 @@ const RowActionMenu: React.FC<{
       style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
       <MdVisibility size={14} color="var(--brand-gradient)" /> View
     </button>
-    {/* Edit/Delete are only rendered when a handler was supplied — an
-        employee is not given them, so the menu shows View + the two
-        downloads instead of entries that lead nowhere. */}
+    {/* Edit is only rendered when a handler was supplied — an employee is
+        not given it. There is no Delete entry: customers are never deleted
+        from this list (use Cancel Booking instead). */}
     {onEdit && (
       <button type="button" onClick={onEdit}
         className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
         style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
         <MdEdit size={13} color="var(--brand-ink)" /> Edit
-      </button>
-    )}
-    {onDelete && (
-      <button type="button" onClick={onDelete}
-        className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
-        style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: '#dc2626', fontFamily: t.fontFamily }}>
-        <MdDelete size={14} /> Delete
       </button>
     )}
     {/* Admin cancels directly; an employee's goes to admin approval. Hidden
@@ -327,10 +320,10 @@ const CustomerCard: React.FC<{
   c: Customer; t: Theme; isDark: boolean;
   onOpenMenu: (e: React.MouseEvent<HTMLButtonElement>) => void;
   menuOpen: boolean; menuPos: { top: number; left: number } | null;
-  onView: () => void; onEdit?: () => void; onDelete?: () => void; onCancelBooking?: () => void;
+  onView: () => void; onEdit?: () => void; onCancelBooking?: () => void;
   onDownloadHistory: () => void; onDownloadSchedule: () => void;
   onOpenPaymentHistory: () => void; onOpenScheme: () => void;
-}> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onDelete, onCancelBooking, onDownloadHistory, onDownloadSchedule, onOpenPaymentHistory, onOpenScheme }) => {
+}> = ({ c, t, isDark, onOpenMenu, menuOpen, menuPos, onView, onEdit, onCancelBooking, onDownloadHistory, onDownloadSchedule, onOpenPaymentHistory, onOpenScheme }) => {
   const statusBg = c.status === 'active' ? '#dcfce7' : '#fee2e2';
   const statusColor = c.status === 'active' ? '#16a34a' : '#dc2626';
   return (
@@ -386,7 +379,7 @@ const CustomerCard: React.FC<{
               <MdMoreVert size={18} />
             </button>
             {menuOpen && menuPos && (
-              <RowActionMenu t={t} pos={menuPos} onView={onView} onEdit={onEdit} onDelete={onDelete} onCancelBooking={onCancelBooking}
+              <RowActionMenu t={t} pos={menuPos} onView={onView} onEdit={onEdit} onCancelBooking={onCancelBooking}
                 onDownloadHistory={onDownloadHistory} onDownloadSchedule={onDownloadSchedule} />
             )}
           </div>
@@ -791,19 +784,6 @@ const CustomerDetailsListPage: React.FC = () => {
   };
 
   // ── row actions ──────────────────────────────────────────────────────
-  const handleDelete = async (c: Customer) => {
-    setOpenMenuId(null);
-    const result = await showAlert.confirm(`This will permanently delete ${c.customer_name}'s record.`, 'Delete Customer?');
-    if (!result.isConfirmed) return;
-    try {
-      await deleteCustomer(c.id);
-      toast.success('Customer Deleted Successfully');
-      fetchCustomers();
-    } catch {
-      toast.error('Failed to delete customer.');
-    }
-  };
-
   // V_23.0 — Cancelled Booking module: admin-only, requires a reason (the
   // dialog's own inputValidator blocks Confirm on a blank one — see
   // showAlert.confirmWithReason). Never deletes anything — soft-marks the
@@ -1244,7 +1224,6 @@ const CustomerDetailsListPage: React.FC = () => {
                     menuOpen={openMenuId === c.id} menuPos={menuPos}
                     onView={() => { setOpenMenuId(null); navigate(`${paths.customerDetails}/view/${c.id}`); }}
                     onEdit={paths.isAdmin ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
-                    onDelete={paths.isAdmin ? () => { setOpenMenuId(null); handleDelete(c); } : undefined}
                     onCancelBooking={c.cancellation_pending ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
                     onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                     onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
@@ -1315,7 +1294,6 @@ const CustomerDetailsListPage: React.FC = () => {
                               t={t} pos={menuPos}
                               onView={() => { setOpenMenuId(null); navigate(`${paths.customerDetails}/view/${c.id}`); }}
                               onEdit={paths.isAdmin ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
-                              onDelete={() => { setOpenMenuId(null); handleDelete(c); }}
                               onCancelBooking={c.cancellation_pending ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
                               onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                               onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}

@@ -1,13 +1,15 @@
 // ==========================================
 // DREAM GROUP CRM - PAYMENT RECEIVED PAGE
 // ==========================================
-// V_21.0 — this page shows ONLY approved payments (approval: 'approved'
-// hard-coded below, not a toggle) — a payment that hasn't been approved
-// yet no longer appears here at all. Review/approve pending payments moved
-// to its own dedicated screen, PaymentApprovalsPage.tsx (see Sidebar.tsx's
-// "Payment Approvals" entry). Nothing about is_approved's effect on
-// due/EMI/remaining-balance math changed — those calculations still count
-// a payment the moment it's collected, exactly as before.
+// V_24.0 — Payment Approval is merged into this page (its separate page
+// and tab are gone). The table shows ALL payments by default; the centered
+// All / Approved / UnApproved buttons on the toolbar row narrow it (each
+// shows its live count for the current filters/search). UnApproved = rows
+// submitted from Payment Dues that no admin has approved yet. An admin
+// approves one row from its three-dot menu, or ticks several and clicks
+// "Approve Selected" — approved rows then move to Approved. The search box
+// matches anything shown in the table (see findPaymentList's search). Nothing
+// about is_approved's effect on due/EMI/remaining-balance math changed.
 //
 // Full redesign per the attached legacy-style reference screenshot:
 // admin-only top stat boxes (Total Flat Sold/Amount Received/Pending
@@ -23,7 +25,7 @@ import { toast } from '@/utils/toast';
 import {
   MdPayments, MdRefresh, MdSearch, MdDownload, MdClose, MdKeyboardArrowDown,
   MdFilterAlt, MdVisibility, MdDelete,
-  MdCheckCircle, MdUpcoming, MdMoreVert,
+  MdCheckCircle, MdUpcoming, MdMoreVert, MdHourglassEmpty,
   MdHomeWork, MdPendingActions,
 } from 'react-icons/md';
 
@@ -41,6 +43,7 @@ import {
   fetchPaymentList, PaymentListRow,
   fetchPaymentCategorySummary, PaymentCategorySummary, fetchPaymentReceipt, deletePayment,
   fetchPaymentReceivedSummary, PaymentReceivedSummary,
+  approvePayment, bulkApprovePayments,
 } from '../../../../services/paymentService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
@@ -50,7 +53,6 @@ import { Building, PaymentReceipt } from '../../../../types/index';
 import { showAlert } from '../../../../utils';
 import './PaymentReceived.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
-import PaymentApprovalsPage from '../PaymentApprovals/PaymentApprovalsPage';
 import { serverToday, toYmd } from '../../../../utils/serverTime';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 
@@ -141,28 +143,26 @@ const FilterSelect: React.FC<{
   </div>
 );
 
-// V_23.0 — Payment Received/Approval/Upcoming, previously 3 sidebar
-// entries/routes, are now one page with a tab switcher (mirroring the
-// earlier Attendance+Leave merge — see that page's own header comment).
-// "Payment Received" is the only survivor in the sidebar; the old
-// /payment-approvals route redirects here. Payment Upcoming is no longer a
-// tab — it's its own admin route again, opened via the "Payment Upcoming"
-// button next to Export CSV.
-//
-// Approval and Upcoming were always admin-only (no employee route/sidebar
-// entry ever existed for either, though their GET endpoints happen to be
-// merely `authenticate`-gated server-side, not requireAdmin — see
-// payment.routes.ts). The tab switcher itself is therefore only rendered
-// for an admin caller; an employee sees exactly what they always saw on
-// this page — no tabs, Received content only — via paths.isAdmin below.
-type PaymentTab = 'received' | 'approval';
+// V_24.0 — which rows the table shows: every payment, only approved, or
+// only unapproved (is_approved = false). Maps onto GET /payments' own
+// `approval` param ('all' just omits it).
+type ApprovalView = 'all' | 'approved' | 'pending';
+const APPROVAL_VIEWS: { key: ApprovalView; label: string; color: string }[] = [
+  { key: 'all', label: 'All', color: '#2563eb' },
+  { key: 'approved', label: 'Approved', color: '#16a34a' },
+  { key: 'pending', label: 'UnApproved', color: '#d97706' },
+];
+const approvalParam = (v: ApprovalView): 'approved' | 'pending' | undefined => (v === 'all' ? undefined : v);
 
 const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isDark, t, cssVars } = useAppearanceTokens();
   const paths = useRoleBasePath();
-  const [activeTab, setActiveTab] = useState<PaymentTab>('received');
+  const [approvalView, setApprovalView] = useState<ApprovalView>('all');
+  const [approvalCounts, setApprovalCounts] = useState<{ approved: number; pending: number } | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [bulkApproving, setBulkApproving] = useState(false);
 
   const [rows, setRows] = useState<PaymentListRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -205,17 +205,7 @@ const PaymentReceivedPage: React.FC = () => {
   const [employeeNameOptions, setEmployeeNameOptions] = useState<string[]>([]);
   const [companyNameOptions, setCompanyNameOptions] = useState<string[]>([]);
 
-  // Kept separate from the data-fetch effect below (which only ever runs
-  // once, on mount) so the title updates correctly every time the tab
-  // changes — matching Attendance's own dedicated title effect. The
-  // Approval/Upcoming child components also set this same title
-  // themselves on their own mount; harmless redundancy, not worth
-  // stripping out of files that are otherwise unrelated to this page.
-  useEffect(() => {
-    dispatch(setPageTitle(
-      activeTab === 'received' ? 'Payment Received' : 'Payment Approvals'
-    ));
-  }, [dispatch, activeTab]);
+  useEffect(() => { dispatch(setPageTitle('Payment Received')); }, [dispatch]);
 
   useEffect(() => {
     (async () => {
@@ -331,9 +321,11 @@ const PaymentReceivedPage: React.FC = () => {
   }
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>({});
 
-  // ── Search by Customer ID/Name — a standalone, live field on the toolbar
-  // row (left of Export CSV/Refresh), independent of the Filter/Reset panel
-  // above. Debounced so it doesn't fire a request on every keystroke. ─────
+  // ── Search across all table data — a standalone, live field on the
+  // toolbar row, independent of the Filter/Reset panel above. The backend
+  // matches receipt no., customer name/ID, building/wing/flat, payment
+  // type/method, amount, dates, company and received by. Debounced so it
+  // doesn't fire a request on every keystroke. ────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebouncedValue(searchQuery, 400);
   useEffect(() => {
@@ -343,7 +335,7 @@ const PaymentReceivedPage: React.FC = () => {
   const fetchRows = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchPaymentList(page, limit, { approval: 'approved', ...appliedFilters });
+      const res = await fetchPaymentList(page, limit, { ...appliedFilters, approval: approvalParam(approvalView) });
       if (res.success) { setRows(res.rows); setTotal(res.total); }
       else toast.error('Failed to fetch payments.');
     } catch {
@@ -351,7 +343,23 @@ const PaymentReceivedPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, appliedFilters]);
+  }, [page, limit, appliedFilters, approvalView]);
+
+  // Counts shown inside the Approved/UnApproved buttons (All = their sum).
+  // Same filters/search as the table, so the badges always describe what
+  // clicking the button would show. limit=1 — only `total` is needed.
+  const fetchApprovalCounts = useCallback(async () => {
+    try {
+      const [ap, pe] = await Promise.all([
+        fetchPaymentList(1, 1, { ...appliedFilters, approval: 'approved' }),
+        fetchPaymentList(1, 1, { ...appliedFilters, approval: 'pending' }),
+      ]);
+      setApprovalCounts({ approved: ap.total ?? 0, pending: pe.total ?? 0 });
+    } catch {
+      setApprovalCounts(null);
+    }
+  }, [appliedFilters]);
+  useEffect(() => { fetchApprovalCounts(); }, [fetchApprovalCounts]);
 
   // Same appliedFilters object fetchRows queries by (minus page/limit,
   // which an aggregate has no use for) — this is what guarantees the 8 stat
@@ -360,14 +368,14 @@ const PaymentReceivedPage: React.FC = () => {
   const fetchCategorySummary = useCallback(async () => {
     setCategorySummaryError(false);
     try {
-      setCategorySummary(await fetchPaymentCategorySummary({ approval: 'approved', ...appliedFilters }));
+      setCategorySummary(await fetchPaymentCategorySummary({ ...appliedFilters, approval: approvalParam(approvalView) }));
     } catch {
       setCategorySummaryError(true);
     }
-  }, [appliedFilters]);
+  }, [appliedFilters, approvalView]);
 
   useEffect(() => { fetchRows(); fetchCategorySummary(); }, [fetchRows, fetchCategorySummary]);
-  useEffect(() => { setPage(1); }, [appliedFilters]);
+  useEffect(() => { setPage(1); }, [appliedFilters, approvalView]);
   // Selection is page-scoped — clear it whenever the visible rows change
   // under it (new page, filter, refresh, or a delete removes rows) so a
   // stale id can't be acted on by surprise.
@@ -404,21 +412,59 @@ const PaymentReceivedPage: React.FC = () => {
     });
   };
 
-  // Exports every approved payment matching the current filters — not just
-  // the current page — same "fetch a large batch, then download" pattern
-  // as Payment Approvals' own CSV export.
+  // Only unapproved rows can be approved — approved ones in the selection
+  // are simply skipped.
+  const selectedPendingIds = useMemo(
+    () => rows.filter((r) => selectedIds.has(r.id) && !r.is_approved).map((r) => r.id),
+    [rows, selectedIds]
+  );
+
+  const refreshAll = () => { fetchRows(); fetchCategorySummary(); fetchReceivedSummary(); fetchApprovalCounts(); };
+
+  // Approve actions — admin only (PUT /payments/:id/approve and
+  // /bulk-approve are requireAdmin server-side too).
+  const handleApprove = async (row: PaymentListRow) => {
+    setApprovingId(row.id);
+    try {
+      await approvePayment(row.id);
+      toast.success(`Payment for ${row.customer_name || 'customer'} approved.`);
+      refreshAll();
+    } catch {
+      toast.error('Failed to approve payment.');
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedPendingIds.length === 0) return;
+    setBulkApproving(true);
+    try {
+      const res = await bulkApprovePayments(selectedPendingIds);
+      toast.success(`${res.approved} payment(s) approved.`);
+      setSelectedIds(new Set());
+      refreshAll();
+    } catch {
+      toast.error('Failed to approve selected payments.');
+    } finally {
+      setBulkApproving(false);
+    }
+  };
+
+  // Exports every payment matching the current view + filters — not just
+  // the current page — "fetch a large batch, then download".
   const handleExportCsv = async () => {
     setExportingCsv(true);
     try {
-      const res = await fetchPaymentList(1, 5000, { approval: 'approved', ...appliedFilters });
+      const res = await fetchPaymentList(1, 5000, { ...appliedFilters, approval: approvalParam(approvalView) });
       const exportRows = res.rows ?? [];
       if (exportRows.length === 0) {
         toast.error('No payments to export.');
         return;
       }
-      const header = ['Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'];
+      const header = ['Status', 'Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'];
       const csvRows = exportRows.map((r) => [
-        r.receipt_number, r.customer_name || '', r.building_name || '', r.wing_name || '', r.flat_no || '',
+        r.is_approved ? 'Approved' : 'UnApproved', r.receipt_number || '', r.customer_name || '', r.building_name || '', r.wing_name || '', r.flat_no || '',
         paymentTypeLabel(r), r.mode_of_payment || '', r.amount,
         formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.company || '', r.received_by || '',
       ]);
@@ -427,7 +473,7 @@ const PaymentReceivedPage: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `payments_received_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `payments_${approvalView === 'pending' ? 'unapproved' : approvalView}_${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -464,7 +510,7 @@ const PaymentReceivedPage: React.FC = () => {
 
   const handleDelete = async (row: PaymentListRow) => {
     const result = await showAlert.confirm(
-      `This will permanently delete the ₹${row.amount.toLocaleString('en-IN')} payment (Receipt ${row.receipt_number}) for ${row.customer_name}.`,
+      `This will permanently delete the ₹${row.amount.toLocaleString('en-IN')} payment${row.receipt_number ? ` (Receipt ${row.receipt_number})` : ''} for ${row.customer_name}.`,
       'Delete Payment?'
     );
     if (!result.isConfirmed) return;
@@ -472,9 +518,7 @@ const PaymentReceivedPage: React.FC = () => {
     try {
       await deletePayment(row.id);
       toast.success('Payment deleted.');
-      fetchRows();
-      fetchCategorySummary();
-      fetchReceivedSummary();
+      refreshAll();
     } catch {
       toast.error('Failed to delete payment.');
     } finally {
@@ -503,10 +547,10 @@ const PaymentReceivedPage: React.FC = () => {
   const actionBtnBase: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 14px', height: 38, borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' };
 
   // ── Totals footer row — one cell per Payment For category plus the grand
-  // Total. colSpans add up to the table's 12 columns (checkbox + 11 headers)
+  // Total. colSpans add up to the table's 13 columns (checkbox + 12 headers)
   // so the row spans the full width with no gaps. ─────────────────────────
   const totalsFooterCells: { key: keyof PaymentCategorySummary; label: string; colSpan: number }[] = [
-    { key: 'emi_before', label: 'EMI Before', colSpan: 3 },
+    { key: 'emi_before', label: 'EMI Before', colSpan: 4 },
     { key: 'emi_after', label: 'EMI After', colSpan: 1 },
     { key: 'booking', label: 'Booking Amount', colSpan: 1 },
     { key: 'pay_after_booking', label: 'Remaining Booking', colSpan: 1 },
@@ -518,39 +562,6 @@ const PaymentReceivedPage: React.FC = () => {
 
   return (
     <div className="pr-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      {/* ── Tab switcher — Approval lives here as a tab, admin
-          only (see this file's own header comment for why: it never
-          had an employee-facing route/sidebar entry, so an employee sees
-          no tabs at all — exactly the single Payment Received page they
-          always had). Styled identically to the Attendance+Leave tab
-          switcher this mirrors. */}
-      {paths.isAdmin && (
-        <div className="pr-tabs flex items-center gap-1.5 mb-5" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 5, width: 'fit-content' }}>
-          <button type="button" onClick={() => setActiveTab('received')}
-            className="pr-tab flex items-center gap-2 rounded-xl"
-            style={{
-              padding: '9px 18px', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
-              background: activeTab === 'received' ? 'var(--brand-gradient)' : 'transparent',
-              color: activeTab === 'received' ? '#fff' : t.textSecondary,
-            }}>
-            <MdPayments size={16} /> Payment Received
-          </button>
-          <button type="button" onClick={() => setActiveTab('approval')}
-            className="pr-tab flex items-center gap-2 rounded-xl"
-            style={{
-              padding: '9px 18px', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
-              background: activeTab === 'approval' ? 'var(--brand-gradient)' : 'transparent',
-              color: activeTab === 'approval' ? '#fff' : t.textSecondary,
-            }}>
-            <MdCheckCircle size={16} /> Payment Approval
-          </button>
-        </div>
-      )}
-
-      {activeTab === 'approval' ? (
-        <PaymentApprovalsPage onNavigateToReceived={() => setActiveTab('received')} />
-      ) : (
-      <>
       <div className="pr-header flex items-center gap-3 mb-6">
         <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
           <MdPayments size={22} style={{ color: '#4f46e5' }} />
@@ -632,12 +643,13 @@ const PaymentReceivedPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Toolbar — Search (left), Export CSV + Refresh (right). ──────── */}
+      {/* ── Toolbar — Search (left), All/Approved/UnApproved (center),
+          Approve Selected/Payment Upcoming/Export CSV/Refresh (right). ── */}
       <div className="pr-toolbar rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="pr-toolbar-row flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
-          <div className="pr-toolbar-search flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 280, flexShrink: 0 }}>
+          <div className="pr-toolbar-search flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 260, flexShrink: 0 }}>
             <MdSearch size={17} style={{ color: t.textSecondary, flexShrink: 0 }} />
-            <input type="text" placeholder="Search by Customer ID and Customer Name" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+            <input type="text" placeholder="Search by all" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               style={{ background: 'transparent', border: 'none', outline: 'none', color: t.inputText, fontSize: 12, width: '100%' }} />
             {searchQuery && (
               <button type="button" onClick={() => setSearchQuery('')}
@@ -646,7 +658,40 @@ const PaymentReceivedPage: React.FC = () => {
               </button>
             )}
           </div>
+          <div className="pr-approval-views flex items-center justify-center gap-2" style={{ flex: 1, minWidth: 'max-content' }}>
+            {APPROVAL_VIEWS.map((v) => {
+              const active = approvalView === v.key;
+              const count = !approvalCounts ? null
+                : v.key === 'all' ? approvalCounts.approved + approvalCounts.pending
+                : approvalCounts[v.key];
+              return (
+                <button key={v.key} type="button" onClick={() => setApprovalView(v.key)} aria-pressed={active}
+                  className="flex items-center gap-2 rounded-xl"
+                  style={{
+                    padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                    background: active ? v.color : t.inputBg,
+                    color: active ? '#fff' : t.textPrimary,
+                    border: `1px solid ${active ? v.color : t.inputBorder}`,
+                  }}>
+                  {v.label}
+                  <span style={{
+                    minWidth: 22, padding: '1px 7px', borderRadius: 999, fontSize: 11, fontWeight: 800, textAlign: 'center',
+                    background: active ? 'rgba(255,255,255,0.25)' : v.color, color: '#fff',
+                  }}>
+                    {count ?? '…'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
           <div className="pr-toolbar-actions flex items-center gap-2.5" style={{ flexShrink: 0 }}>
+            {paths.isAdmin && selectedPendingIds.length > 0 && (
+              <button type="button" onClick={handleBulkApprove} disabled={bulkApproving}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
+                style={{ background: '#16a34a', border: 'none', color: '#fff', cursor: bulkApproving ? 'not-allowed' : 'pointer', opacity: bulkApproving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                <MdCheckCircle size={16} /> {bulkApproving ? 'Approving…' : `Approve Selected (${selectedPendingIds.length})`}
+              </button>
+            )}
             {paths.isAdmin && (
               <button type="button" onClick={() => navigate(ROUTES.ADMIN.PAYMENT_UPCOMING)}
                 className="pr-upcoming-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
@@ -659,7 +704,7 @@ const PaymentReceivedPage: React.FC = () => {
               style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
               <MdDownload size={16} /> <span className="pr-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
             </button>
-            <button type="button" onClick={() => { fetchRows(); fetchCategorySummary(); fetchReceivedSummary(); }} title="Refresh"
+            <button type="button" onClick={refreshAll} title="Refresh"
               className="pr-refresh-btn flex items-center justify-center rounded-xl"
               style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
               <MdRefresh size={18} />
@@ -677,7 +722,7 @@ const PaymentReceivedPage: React.FC = () => {
                   <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={rows.length === 0}
                     style={{ cursor: rows.length === 0 ? 'not-allowed' : 'pointer' }} />
                 </th>
-                {['Actions', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'].map((h) => (
+                {['Actions', 'Status', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'].map((h) => (
                   <th key={h}
                     style={h === 'Actions'
                       ? { padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', width: 64, minWidth: 64, maxWidth: 64 }
@@ -687,9 +732,9 @@ const PaymentReceivedPage: React.FC = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={12} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
+                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={12} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
+                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -704,15 +749,22 @@ const PaymentReceivedPage: React.FC = () => {
                           .master-table-scroll's overflow:auto. */}
                       <button type="button" title="Actions"
                         ref={rowMenu.openId === r.id ? rowMenu.buttonRef : undefined}
-                        onClick={rowMenu.toggle(r.id, paths.isAdmin ? 3 : 2)}
+                        onClick={rowMenu.toggle(r.id, (r.is_approved ? 2 : 1) + (paths.isAdmin ? (r.is_approved ? 1 : 2) : 0))}
                         className="flex items-center justify-center rounded-lg"
                         style={{ width: 28, height: 28, background: 'transparent', border: 'none', color: t.textSecondary, cursor: 'pointer' }}>
                         <MdMoreVert size={18} />
                       </button>
                       {rowMenu.openId === r.id && rowMenu.pos && (
                         <RowActionMenu t={t} pos={rowMenu.pos} actions={[
-                          { key: 'view', label: 'View Receipt', icon: <MdVisibility size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); handleViewReceipt(r); } },
-                          { key: 'download', label: 'Download Receipt', icon: <MdDownload size={14} color="#16a34a" />, disabled: downloadingId === r.id, onClick: () => { rowMenu.close(); handleDownloadReceipt(r); } },
+                          { key: 'view', label: r.is_approved ? 'View Receipt' : 'View', icon: <MdVisibility size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); handleViewReceipt(r); } },
+                          // No receipt exists until approval, so Download is
+                          // only offered on approved rows; Approve only on
+                          // unapproved ones (admin).
+                          ...(r.is_approved
+                            ? [{ key: 'download', label: 'Download Receipt', icon: <MdDownload size={14} color="#16a34a" />, disabled: downloadingId === r.id, onClick: () => { rowMenu.close(); handleDownloadReceipt(r); } }]
+                            : paths.isAdmin
+                              ? [{ key: 'approve', label: 'Approve', icon: <MdCheckCircle size={14} color="#16a34a" />, disabled: approvingId === r.id, onClick: () => { rowMenu.close(); handleApprove(r); } }]
+                              : []),
                           // V_23.0 item 7 — delete is admin-only; the backend
                           // route (DELETE /payments/:id) already enforces
                           // this via requireAdmin, so this is UI-side only —
@@ -721,7 +773,19 @@ const PaymentReceivedPage: React.FC = () => {
                         ]} />
                       )}
                     </td>
-                    <td style={{ padding: '10px 12px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      {r.is_approved ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" title={r.approved_by_name ? `Approved by ${r.approved_by_name}${r.approved_at ? ` on ${formatDMY(r.approved_at)}` : ''}` : undefined}
+                          style={{ background: '#16a34a', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                          <MdCheckCircle size={12} /> Approved
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: '#d97706', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                          <MdHourglassEmpty size={12} /> UnApproved
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number || '—'}</td>
                     <td style={{ padding: '10px 12px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{r.customer_name || '—'}</div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code || '—'}</div>
@@ -773,7 +837,7 @@ const PaymentReceivedPage: React.FC = () => {
               <tfoot>
                 <tr>
                   {categorySummaryError ? (
-                    <td colSpan={12} style={{ padding: '5px 12px', background: 'var(--grad-table-header)', color: '#fff', fontSize: 11.5, fontWeight: 700 }}>
+                    <td colSpan={13} style={{ padding: '5px 12px', background: 'var(--grad-table-header)', color: '#fff', fontSize: 11.5, fontWeight: 700 }}>
                       Failed to load totals.{' '}
                       <button type="button" onClick={fetchCategorySummary} style={{ fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none', color: '#fff', fontSize: 11.5, padding: 0 }}>
                         Retry
@@ -800,10 +864,11 @@ const PaymentReceivedPage: React.FC = () => {
         <PaymentReceiptViewModal
           data={receiptPreview}
           onClose={() => setReceiptPreview(null)}
-          onDownload={() => exportPaymentReceiptPdf(receiptPreview)}
+          onDownload={() => {
+            if (!receiptPreview.transaction.is_approved) { toast.error('Receipt is available after admin approval.'); return; }
+            exportPaymentReceiptPdf(receiptPreview);
+          }}
         />
-      )}
-      </>
       )}
     </div>
   );

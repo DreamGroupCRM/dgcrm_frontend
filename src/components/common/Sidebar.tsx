@@ -105,10 +105,8 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
       { label: 'Leads', path: ROUTES.ADMIN.LEADS, icon: <MdLeaderboard /> },
       { label: 'Customer Details', path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage /> },
       { label: 'Payment Dues', path: ROUTES.ADMIN.PAYMENT_DUES, icon: <MdPayment /> },
-      // Payment Approvals and Payment Upcoming now live inside the Payment
-      // Received page itself (one merged Payment Received + Approval +
-      // Upcoming experience, tab switcher at the top) instead of their own
-      // sidebar entries/routes — same pattern as Attendance/Leave above.
+      // Payment Approval is merged into Payment Received (All/Approved/
+      // UnApproved buttons); Payment Upcoming opens from its toolbar button.
       { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
       { label: 'Cancelled Booking', path: ROUTES.ADMIN.CANCELLED_BOOKING, icon: <MdEventBusy /> },
     ],
