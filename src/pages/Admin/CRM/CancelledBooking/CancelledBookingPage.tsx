@@ -37,7 +37,7 @@ import {
 import { fetchChangeRequests, approveChangeRequest, rejectChangeRequest, ChangeRequestRow } from '../../../../services/changeRequestsService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
-import { exportPaymentHistoryPdf, exportPaymentSchedulePdf } from '../Customer-Details/paymentPdfExport';
+import { exportPaymentHistoryPdf, exportPaymentSchedulePdf } from '../Customer-Details/paymentPdfExport.lazy';
 import { Building } from '../../../../types';
 import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
 import { serverTodayYmd } from '../../../../utils/serverTime';
@@ -186,7 +186,7 @@ const CancelledBookingPage: React.FC = () => {
       if (historyRes.status === 'rejected') throw historyRes.reason;
       const totalFlatCost = fullRes.status === 'fulfilled' ? fullRes.value.data?.total_cost ?? null : null;
       const totalPaid = historyRes.value.rows.reduce((s, p) => s + p.amount, 0);
-      exportPaymentHistoryPdf(c, historyRes.value.rows, totalFlatCost, totalFlatCost != null ? Math.max(0, totalFlatCost - totalPaid) : null);
+      await exportPaymentHistoryPdf(c, historyRes.value.rows, totalFlatCost, totalFlatCost != null ? Math.max(0, totalFlatCost - totalPaid) : null);
     } catch {
       toast.error('Failed to generate the payment history PDF.');
     }
@@ -195,7 +195,7 @@ const CancelledBookingPage: React.FC = () => {
     try {
       const res = await fetchCustomerScheme(c.id);
       if (!res.success || !res.data) throw new Error('No scheme data');
-      exportPaymentSchedulePdf(res.data);
+      await exportPaymentSchedulePdf(res.data);
     } catch {
       toast.error('Failed to generate the payment schedule PDF.');
     }
@@ -374,7 +374,7 @@ const CancelledBookingPage: React.FC = () => {
 
       {/* ── Search & filters ───────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 items-end">
+        <div className="cb-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 items-end">
           <div>
             <label style={labelStyle}>Customer Name</label>
             <input type="text" value={draft.customer_name} placeholder="Name or Customer ID"

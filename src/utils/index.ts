@@ -1,7 +1,18 @@
 // ==========================================
 // DREAM GROUP CRM - UTILITY FUNCTIONS
 // ==========================================
-import Swal from 'sweetalert2';
+import type { SweetAlertOptions, SweetAlertResult } from 'sweetalert2';
+
+// SweetAlert2 (~45 KB gzipped) is loaded on demand instead of with the
+// app's first download: every showAlert helper already returns a promise,
+// so it simply awaits the library first. It's also fetched in the
+// background shortly after startup, so the first alert still opens
+// instantly.
+const loadSwal = () => import('sweetalert2').then((m) => m.default);
+const Swal = {
+  fire: async (options: SweetAlertOptions): Promise<SweetAlertResult> => (await loadSwal()).fire(options),
+};
+if (typeof window !== 'undefined') window.setTimeout(() => { void loadSwal(); }, 2000);
 import { BaseRole, isAdminRole, isCustomerRole } from '../types';
 import { ROUTES } from '../constants';
 import { getFileToken } from '../services/fileAccessService';

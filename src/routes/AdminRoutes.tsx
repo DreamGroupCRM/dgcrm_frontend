@@ -2,83 +2,84 @@
 // DREAM GROUP CRM - ADMIN ROUTES
 // ==========================================
 import React, { lazy } from 'react';
+import { lazyPage } from './lazyPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ROUTES } from '../constants';
 import ProtectedRoute from './ProtectedRoute';
 // Company Master — single file handles add / edit / view
-const CompanyListPage = lazy(() => import('../pages/Admin/Masters/Company/CompanyListPage'));
-const CompanyCrudPage = lazy(() => import('../pages/Admin/Masters/Company/CompanyCrudPage'));
+const CompanyListPage = lazyPage(() => import('../pages/Admin/Masters/Company/CompanyListPage'));
+const CompanyCrudPage = lazyPage(() => import('../pages/Admin/Masters/Company/CompanyCrudPage'));
 
-import DepartmentListPage from '@/pages/Admin/Masters/Department/DepartmentListPage';
-import DepartmentCrudPage from '@/pages/Admin/Masters/Department/DepartmentCrudPage';
+const DepartmentListPage = lazyPage(() => import('@/pages/Admin/Masters/Department/DepartmentListPage'));
+const DepartmentCrudPage = lazyPage(() => import('@/pages/Admin/Masters/Department/DepartmentCrudPage'));
 
-import EmployeeDetailsCrudPage from '../pages/Admin/Employee/Employee-Details/EmployeeDetailsCrudPage';
-import EmployeeDetailsListPage from '../pages/Admin/Employee/Employee-Details/EmployeeDetailsListPage';
+const EmployeeDetailsCrudPage = lazyPage(() => import('../pages/Admin/Employee/Employee-Details/EmployeeDetailsCrudPage'));
+const EmployeeDetailsListPage = lazyPage(() => import('../pages/Admin/Employee/Employee-Details/EmployeeDetailsListPage'));
 
-import CustomerDetailsListPage from '../pages/Admin/CRM/Customer-Details/CustomerDetailsListPage';
-import CustomerDetailsCrudPage from '../pages/Admin/CRM/Customer-Details/CustomerDetailsCrudPage';
-import CustomerSchemeViewPage from '../pages/Admin/CRM/Customer-Details/CustomerSchemeViewPage';
+const CustomerDetailsListPage = lazyPage(() => import('../pages/Admin/CRM/Customer-Details/CustomerDetailsListPage'));
+const CustomerDetailsCrudPage = lazyPage(() => import('../pages/Admin/CRM/Customer-Details/CustomerDetailsCrudPage'));
+const CustomerSchemeViewPage = lazyPage(() => import('../pages/Admin/CRM/Customer-Details/CustomerSchemeViewPage'));
 
-import LeadListPage from '../pages/Admin/CRM/Leads/LeadListPage';
-import LeadCrudPage from '../pages/Admin/CRM/Leads/LeadCrudPage';
+const LeadListPage = lazyPage(() => import('../pages/Admin/CRM/Leads/LeadListPage'));
+const LeadCrudPage = lazyPage(() => import('../pages/Admin/CRM/Leads/LeadCrudPage'));
 
-import RoleListPage from '../pages/Admin/Masters/Roles/RoleListPage';
-import RoleCrudPage from '../pages/Admin/Masters/Roles/RoleCrudPage';
+const RoleListPage = lazyPage(() => import('../pages/Admin/Masters/Roles/RoleListPage'));
+const RoleCrudPage = lazyPage(() => import('../pages/Admin/Masters/Roles/RoleCrudPage'));
 
-import BankAccountListPage from '../pages/Admin/Masters/BankAccount/BankAccountListPage';
-import BankAccountCrudPage from '../pages/Admin/Masters/BankAccount/BankAccountCrudPage';
+const BankAccountListPage = lazyPage(() => import('../pages/Admin/Masters/BankAccount/BankAccountListPage'));
+const BankAccountCrudPage = lazyPage(() => import('../pages/Admin/Masters/BankAccount/BankAccountCrudPage'));
 
-import BuildingListPage from '../pages/Admin/Masters/Building/BuildingListPage';
-import BuildingCrudPage from '../pages/Admin/Masters/Building/BuildingCrudPage';
+const BuildingListPage = lazyPage(() => import('../pages/Admin/Masters/Building/BuildingListPage'));
+const BuildingCrudPage = lazyPage(() => import('../pages/Admin/Masters/Building/BuildingCrudPage'));
 
-import ActionModuleListPage from '../pages/Admin/Masters/ActionModule/ActionModuleListPage';
-import ActionMasterCrudPage from '../pages/Admin/Masters/ActionModule/ActionMasterCrudPage';
-import ModuleMasterCrudPage from '../pages/Admin/Masters/ActionModule/ModuleMasterCrudPage';
-import ModuleMappingPage from '../pages/Admin/Masters/ModuleMapping/ModuleMappingPage';
+const ActionModuleListPage = lazyPage(() => import('../pages/Admin/Masters/ActionModule/ActionModuleListPage'));
+const ActionMasterCrudPage = lazyPage(() => import('../pages/Admin/Masters/ActionModule/ActionMasterCrudPage'));
+const ModuleMasterCrudPage = lazyPage(() => import('../pages/Admin/Masters/ActionModule/ModuleMasterCrudPage'));
+const ModuleMappingPage = lazyPage(() => import('../pages/Admin/Masters/ModuleMapping/ModuleMappingPage'));
 
 // Due Report — real data for the "Payment Dues" sidebar entry, replacing
 // its former PlaceholderPage now that GET /api/payments/due-report exists.
-import DueReportPage from '../pages/Admin/CRM/DueReport/DueReportPage';
+const DueReportPage = lazyPage(() => import('../pages/Admin/CRM/DueReport/DueReportPage'));
 
 // Customize Scheme — replaces the former "Interest Free Calculator"
 // placeholder with a real EMI Scheme & Schedule builder.
-import CustomizeSchemePage from '../pages/Admin/CustomizeScheme/CustomizeSchemePage';
+const CustomizeSchemePage = lazyPage(() => import('../pages/Admin/CustomizeScheme/CustomizeSchemePage'));
 // Building View (2D) — lazy-loaded same as AttendancePage etc. below.
-const Building2DViewPage = lazy(() => import('../pages/Admin/Building2D/Building2DViewPage'));
+const Building2DViewPage = lazyPage(() => import('../pages/Admin/Building2D/Building2DViewPage'));
 // Audit History — replaces its former PlaceholderPage now that
 // GET /api/audit-logs exists (item 11).
-import AuditHistoryPage from '../pages/Admin/AuditHistory/AuditHistoryPage';
+const AuditHistoryPage = lazyPage(() => import('../pages/Admin/AuditHistory/AuditHistoryPage'));
 // Cancelled Booking (V_23.0) — admin-only, see Sidebar.tsx and
 // customer.routes.ts's own requireAdmin gate on the backing endpoints.
-const CancelledBookingPage = lazy(() => import('../pages/Admin/CRM/CancelledBooking/CancelledBookingPage'));
+const CancelledBookingPage = lazyPage(() => import('../pages/Admin/CRM/CancelledBooking/CancelledBookingPage'));
 // Payment Received — Payment Approval is merged into it (All/Approved/
 // UnApproved views + Approve Selected); the old payment-approvals route
 // redirects there. Payment Upcoming is its own
 // admin route, opened from the "Payment Upcoming" button on Payment Received.
-import PaymentReceivedPage from '../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage';
-const PaymentUpcomingPage = lazy(() => import('../pages/Admin/CRM/PaymentUpcoming/PaymentUpcomingPage'));
+const PaymentReceivedPage = lazyPage(() => import('../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage'));
+const PaymentUpcomingPage = lazyPage(() => import('../pages/Admin/CRM/PaymentUpcoming/PaymentUpcomingPage'));
 // Attendance — replaces its former PlaceholderPage, backed by the existing
 // working attendance API (V_21.0). Leave Requests (previously its own
 // LeaveApprovalsPage/route) now lives inside this same page as a tab.
-const AttendancePage = lazy(() => import('../pages/Admin/Employee/Attendance/AttendancePage'));
+const AttendancePage = lazyPage(() => import('../pages/Admin/Employee/Attendance/AttendancePage'));
 // Executive Dashboard — new "Reports" sidebar entry.
-const ExecutiveDashboardPage = lazy(() => import('../pages/Admin/Reports/ExecutiveDashboardPage'));
+const ExecutiveDashboardPage = lazyPage(() => import('../pages/Admin/Reports/ExecutiveDashboardPage'));
 // Backup Database — replaces its former PlaceholderPage with real whole-
 // database snapshot/restore. User Management — new Super Admin lobby page.
-const BackupDatabasePage = lazy(() => import('../pages/Admin/Backup/BackupDatabasePage'));
-const UserManagementPage = lazy(() => import('../pages/Admin/UserManagement/UserManagementPage'));
+const BackupDatabasePage = lazyPage(() => import('../pages/Admin/Backup/BackupDatabasePage'));
+const UserManagementPage = lazyPage(() => import('../pages/Admin/UserManagement/UserManagementPage'));
 // Pending Approvals — shared delete-request review queue (see
 // pendingApprovals module in dgcrm_backend). Admin/superadmin, same as
 // Audit History below — no extra ProtectedRoute needed, the parent
 // route already restricts this whole subtree to admin/superadmin.
-const PendingApprovalsPage = lazy(() => import('../pages/Admin/PendingApprovals/PendingApprovalsPage'));
+const PendingApprovalsPage = lazyPage(() => import('../pages/Admin/PendingApprovals/PendingApprovalsPage'));
 // Change Requests — Create/Edit proposal review queue (see changeRequests
 // module in dgcrm_backend). Admin/superadmin, same as Pending Approvals.
-const ChangeRequestsPage = lazy(() => import('../pages/Admin/ChangeRequests/ChangeRequestsPage'));
+const ChangeRequestsPage = lazyPage(() => import('../pages/Admin/ChangeRequests/ChangeRequestsPage'));
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
-const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard'));
-const PlaceholderPage = lazy(() => import('../components/common/PlaceholderPage'));
+const AdminDashboard = lazyPage(() => import('../pages/Admin/Dashboard/AdminDashboard'));
+const PlaceholderPage = lazyPage(() => import('../components/common/PlaceholderPage'));
 
 const AdminRoutes: React.FC = () => (
   <Routes>

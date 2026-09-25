@@ -24,7 +24,7 @@ import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { fetchMyBookingScheme, fetchMyBookingDueGrid } from '../../../services/customerPortalService';
 import { DueGridRow } from '../../../services/paymentService';
 import { CustomerSchemeData, CustomerSchemeSummaryRow, CustomerScheduleRow } from '../../../types/index';
-import { exportPaymentSchedulePdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport';
+import { exportPaymentSchedulePdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport.lazy';
 import { useCustomerPortal } from '../CustomerPortalContext';
 import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
 

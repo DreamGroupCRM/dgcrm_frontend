@@ -33,7 +33,7 @@ import {
 } from '../../../services/executiveDashboardService';
 import { FetchBuildingList } from '../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../services/employeeDetailsService';
-import { exportDashboardToPdf, exportDashboardToExcel } from './dashboardExport';
+import { exportDashboardToPdf, exportDashboardToExcel } from './dashboardExport.lazy';
 import './ExecutiveDashboard.css';
 import {
   fetchSalesInsights, fetchPatterns, fetchPriorityQueue,

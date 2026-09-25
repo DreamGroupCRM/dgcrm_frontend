@@ -2,12 +2,13 @@
 // DREAM GROUP CRM - EMPLOYEE ROUTES
 // ==========================================
 import React, { lazy } from 'react';
+import { lazyPage } from './lazyPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ROUTES } from '../constants';
 import ProtectedRoute from './ProtectedRoute';
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
-const EmployeeDashboard = lazy(() => import('../pages/Employee/Dashboard/EmployeeDashboard'));
+const EmployeeDashboard = lazyPage(() => import('../pages/Employee/Dashboard/EmployeeDashboard'));
 
 // Customer Details, Payment Dues and Payment Received were PlaceholderPage
 // stubs here — which is why a customer an admin assigned to an employee
@@ -22,21 +23,21 @@ const EmployeeDashboard = lazy(() => import('../pages/Employee/Dashboard/Employe
 //
 // Audit History is NOT among them: it stays admin-only, and /api/audit is
 // requireAdmin server-side.
-const CustomerDetailsListPage = lazy(() => import('../pages/Admin/CRM/Customer-Details/CustomerDetailsListPage'));
-const CustomerDetailsCrudPage = lazy(() => import('../pages/Admin/CRM/Customer-Details/CustomerDetailsCrudPage'));
-const CustomerSchemeViewPage = lazy(() => import('../pages/Admin/CRM/Customer-Details/CustomerSchemeViewPage'));
-const CancelledBookingPage = lazy(() => import('../pages/Admin/CRM/CancelledBooking/CancelledBookingPage'));
-const DueReportPage = lazy(() => import('../pages/Admin/CRM/DueReport/DueReportPage'));
-const PaymentReceivedPage = lazy(() => import('../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage'));
-const CustomizeSchemePage = lazy(() => import('../pages/Admin/CustomizeScheme/CustomizeSchemePage'));
-const Building2DViewPage = lazy(() => import('../pages/Admin/Building2D/Building2DViewPage'));
-const LeadListPage = lazy(() => import('../pages/Employee/Leads/LeadListPage'));
-const LeadCrudPage = lazy(() => import('../pages/Employee/Leads/LeadCrudPage'));
+const CustomerDetailsListPage = lazyPage(() => import('../pages/Admin/CRM/Customer-Details/CustomerDetailsListPage'));
+const CustomerDetailsCrudPage = lazyPage(() => import('../pages/Admin/CRM/Customer-Details/CustomerDetailsCrudPage'));
+const CustomerSchemeViewPage = lazyPage(() => import('../pages/Admin/CRM/Customer-Details/CustomerSchemeViewPage'));
+const CancelledBookingPage = lazyPage(() => import('../pages/Admin/CRM/CancelledBooking/CancelledBookingPage'));
+const DueReportPage = lazyPage(() => import('../pages/Admin/CRM/DueReport/DueReportPage'));
+const PaymentReceivedPage = lazyPage(() => import('../pages/Admin/CRM/PaymentReceived/PaymentReceivedPage'));
+const CustomizeSchemePage = lazyPage(() => import('../pages/Admin/CustomizeScheme/CustomizeSchemePage'));
+const Building2DViewPage = lazyPage(() => import('../pages/Admin/Building2D/Building2DViewPage'));
+const LeadListPage = lazyPage(() => import('../pages/Employee/Leads/LeadListPage'));
+const LeadCrudPage = lazyPage(() => import('../pages/Employee/Leads/LeadCrudPage'));
 // Attendance — replaces its former PlaceholderPage, backed by the existing
 // working attendance API, self-scoped (V_21.0).
-const AttendancePage = lazy(() => import('../pages/Employee/Attendance/AttendancePage'));
+const AttendancePage = lazyPage(() => import('../pages/Employee/Attendance/AttendancePage'));
 // Leave — first real frontend for the leave module, self-scoped (V_21.0).
-const LeavePage = lazy(() => import('../pages/Employee/Leaves/LeavePage'));
+const LeavePage = lazyPage(() => import('../pages/Employee/Leaves/LeavePage'));
 
 const EmployeeRoutes: React.FC = () => (
   <Routes>

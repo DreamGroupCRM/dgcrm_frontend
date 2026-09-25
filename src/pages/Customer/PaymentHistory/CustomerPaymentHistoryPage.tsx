@@ -22,7 +22,7 @@ import {
   fetchMyBookingPayments, fetchMyBookingDueGrid, fetchMyPaymentReceipt, PortalPaymentRow,
 } from '../../../services/customerPortalService';
 import { PaymentReceiptViewModal } from '../../../components/common/PaymentReceiptViewModal';
-import { exportPaymentReceiptPdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport';
+import { exportPaymentReceiptPdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport.lazy';
 import { PaymentReceipt } from '../../../types/index';
 import { useCustomerPortal } from '../CustomerPortalContext';
 import { PageHead, Card, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
@@ -70,10 +70,10 @@ const CustomerPaymentHistoryPage: React.FC = () => {
   // Both View and Download need the same fetch — the list row does not
   // carry enough to render or print a receipt, only the receipt endpoint
   // does.
-  const withReceipt = async (id: number, use: (data: PaymentReceipt) => void) => {
+  const withReceipt = async (id: number, use: (data: PaymentReceipt) => void | Promise<void>) => {
     setBusyId(id);
     try {
-      use(await fetchMyPaymentReceipt(id));
+      await use(await fetchMyPaymentReceipt(id));
     } catch {
       toast.error('We could not open this receipt. Please try again.');
     } finally {

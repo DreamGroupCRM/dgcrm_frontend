@@ -18,7 +18,7 @@ import {
   AppearanceId,
 } from '../../redux/slices/appearanceSlice';
 
-import { FiSun, FiMoon, FiMoreVertical, FiSettings } from 'react-icons/fi';
+import { FiSun, FiMoon, FiMoreVertical, FiMoreHorizontal, FiSettings } from 'react-icons/fi';
 import { AiOutlineInstagram, AiOutlineWhatsApp } from 'react-icons/ai';
 import { FaFacebookF } from 'react-icons/fa';
 import { MdLogout, MdCheckBox, MdCheckBoxOutlineBlank } from 'react-icons/md';
@@ -241,9 +241,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
               background: 'transparent', color: t.textPrimary, cursor: 'pointer', flexShrink: 0,
             }}
           >
-            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 6h14M3 12h14M3 18h14" strokeLinecap="round" />
-            </svg>
+            {/* Three dots (⋮) open the sidebar menu on phones/tablets. */}
+            <FiMoreVertical size={20} />
           </button>
         )}
 
@@ -336,7 +335,9 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
               title="More options"
               isDark={isDark}
             >
-              <FiMoreVertical size={20} />
+              {/* Horizontal dots (⋯) so it's never confused with the ⋮
+                  sidebar-menu button on the left. */}
+              <FiMoreHorizontal size={20} />
             </IconBtn>
 
             {moreOpen && (

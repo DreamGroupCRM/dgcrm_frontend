@@ -48,7 +48,7 @@ import {
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import { companyService } from '../../../../services/companyService';
-import { exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport';
+import { exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport.lazy';
 import { Building, PaymentReceipt } from '../../../../types/index';
 import { showAlert } from '../../../../utils';
 import './PaymentReceived.css';
@@ -604,7 +604,7 @@ const PaymentReceivedPage: React.FC = () => {
     setDownloadingId(row.id);
     try {
       const res = await fetchPaymentReceipt(row.id);
-      exportPaymentReceiptPdf(res.data);
+      await exportPaymentReceiptPdf(res.data);
     } catch {
       toast.error('Failed to download receipt.');
     } finally {

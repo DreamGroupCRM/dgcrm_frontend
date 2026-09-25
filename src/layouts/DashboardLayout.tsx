@@ -1,7 +1,7 @@
 // ==========================================
 // DREAM GROUP CRM - DASHBOARD LAYOUT
 // ==========================================
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAppSelector } from '../hooks';
 import Sidebar from '../components/common/Sidebar';
@@ -11,6 +11,7 @@ import { getTheme } from '../styles/theme';
 import { useAppearanceTokens } from '../styles/appearanceTokens';
 import { ensureFileToken } from '../services/fileAccessService';
 import '../styles/Responsive.css';
+import { preloadPages } from '../routes/lazyPage';
 
 const DashboardLayout: React.FC = () => {
   const { mode } = useAppSelector((s) => s.theme);
@@ -45,6 +46,10 @@ const DashboardLayout: React.FC = () => {
     const id = window.setInterval(() => { void ensureFileToken(); }, 30 * 60 * 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  // Once the dashboard is up and the browser is idle, fetch the other
+  // pages' code in the background so opening any of them is instant.
+  useEffect(() => { preloadPages(); }, []);
 
   return (
     <div
@@ -81,7 +86,15 @@ const DashboardLayout: React.FC = () => {
           }}
         >
           <div className="animate-fade-in">
-            <Outlet />
+            {/* A page whose code is still loading shows a small spinner in
+                the content area only — sidebar and header stay in place. */}
+            <Suspense fallback={
+              <div className="flex items-center justify-center" style={{ minHeight: 240 }}>
+                <span className="animate-spin rounded-full" style={{ width: 28, height: 28, border: '3px solid rgba(0,0,0,0.12)', borderTopColor: 'var(--brand-ink, #0f766e)' }} />
+              </div>
+            }>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>

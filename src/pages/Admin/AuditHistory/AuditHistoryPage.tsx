@@ -181,7 +181,7 @@ const AuditHistoryPage: React.FC = () => {
           <MdFilterList size={18} style={{ color: '#fff', flexShrink: 0 }} />
           <h3 style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>Filter Audit History</h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="ah-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div>
             <label style={{ ...FILTER_LABEL_STYLE, color: t.textSecondary }}>Entity Type</label>
             <select value={entityTypeFilter} onChange={(e) => setEntityTypeFilter(e.target.value)}

@@ -28,6 +28,8 @@ import { installOpenDatePickerOnClick } from './utils/openDatePickerOnClick';
 import './styles/master.css';
 import './styles/Responsive.css';
 import './index.css';
+// Phone layout rules (<640px) — last so they can override page styles.
+import './styles/mobile.css';
 
 // Calendars take "today" from the server clock (see utils/serverTime.ts),
 // so sync it before the first render; capped at a few seconds so a slow

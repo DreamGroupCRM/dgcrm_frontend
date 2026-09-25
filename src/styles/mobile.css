@@ -1,0 +1,126 @@
+/* ==========================================================================
+   DGCRM — PHONE LAYOUT (app-like on mobile screens)
+   ==========================================================================
+   Loaded last (main.tsx), and only active below 640px, so laptop/desktop
+   layouts are untouched. Goals: less scrolling, nothing hidden, buttons and
+   icons compact and aligned in rows.
+   - Page-level stylesheets (DueReport.css, PaymentReceived.css, …) load
+     after this file with their own route chunks, so rules here that must
+     win use !important.
+   - Nothing is hidden: labels that used to be cut with "…" wrap instead,
+     and wide tables keep scrolling sideways inside their own card. */
+
+@media (max-width: 639px) {
+  /* ── Stat / summary boxes: two per row, compact ───────────────────────── */
+  main .grid:has(> .master-stat-card),
+  main .grid:has(> * > .master-stat-card) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  /* An odd last box takes the full row instead of leaving a hole. */
+  main .grid:has(> .master-stat-card) > .master-stat-card:last-child:nth-child(odd),
+  main .grid:has(> * > .master-stat-card) > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  .master-stat-card {
+    min-height: 56px !important;
+    padding: 7px 8px !important;
+    gap: 6px !important;
+  }
+  .master-stat-card .master-stat-icon {
+    width: 26px !important;
+    height: 26px !important;
+  }
+  .master-stat-card .master-stat-icon svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+  .master-stat-label {
+    font-size: 10.5px !important;
+    white-space: normal !important;   /* wrap, never cut off */
+    line-height: 1.2;
+  }
+  .master-stat-value {
+    font-size: 13px !important;
+  }
+
+  /* ── Filter panels & the Payment Due entry form: two fields per row ──── */
+  .pr-filter-grid,
+  .due-report-form-grid,
+  .payment-upcoming-search-row,
+  .cb-filter-grid,
+  .ah-filter-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  /* Long values get the full row: customer name, building/wing/flat, and
+     the action-button groups. */
+  .due-report-form-grid > :first-child,
+  .due-report-form-grid > .due-report-bwf,
+  .due-report-form-grid > .due-report-form-actions,
+  .pr-filter-grid > .pr-filter-actions {
+    grid-column: 1 / -1;
+  }
+  .pr-filter-grid > .pr-filter-actions,
+  .due-report-form-grid > .due-report-form-actions {
+    display: flex !important;
+    gap: 8px;
+  }
+  .pr-filter-grid > .pr-filter-actions > button,
+  .due-report-form-grid > .due-report-form-actions > button {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+  /* Customer Details filters: wrap two per row instead of scrolling. */
+  .cust-filter-row {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+    gap: 8px !important;
+  }
+  .cust-filter-row > * {
+    flex: 1 1 calc(50% - 8px) !important;
+    min-width: 0 !important;
+  }
+
+  /* ── Payment Received totals bar: every entry visible, two per row ───── */
+  .pr-totals-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 6px;
+    font-size: 11.5px !important;
+    padding: 8px 4px !important;
+    white-space: normal !important;
+  }
+  .pr-totals-row .pr-totals-item {
+    border-left: none !important;
+    padding: 0 8px !important;
+  }
+  .pr-totals-row .pr-totals-grand {
+    grid-column: 1 / -1;
+    font-size: 1.05em;
+  }
+
+  /* ── Buttons & toolbars: compact, aligned in rows ─────────────────────── */
+  main button {
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Toolbars that hold several buttons wrap neatly instead of squeezing. */
+  .pr-toolbar-row,
+  .pr-toolbar-actions,
+  .due-report-toolbar > div,
+  .master-actions {
+    flex-wrap: wrap !important;
+    row-gap: 8px !important;
+  }
+
+  /* ── Page header (icon + title) ───────────────────────────────────────── */
+  main h1 {
+    font-size: 16px !important;
+  }
+
+  /* ── Popups use the full width of the phone ───────────────────────────── */
+  .due-report-modal-backdrop {
+    padding: 8px !important;
+  }
+}

@@ -29,7 +29,7 @@ import CancelBookingModal from '../CancelledBooking/CancelBookingModal';
 import {
   collectPayment, fetchPaymentReceipt, deletePayment, paymentForLabel,
 } from '../../../../services/paymentService';
-import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceiptPdf } from './paymentPdfExport';
+import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceiptPdf } from './paymentPdfExport.lazy';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
@@ -851,7 +851,7 @@ const CustomerDetailsListPage: React.FC = () => {
       // "currently overdue" figure fetchCustomerDue used to supply here.
       const totalPaid = historyRes.value.rows.reduce((s, p) => s + p.amount, 0);
       const pendingAmount = totalFlatCost != null ? Math.max(0, totalFlatCost - totalPaid) : null;
-      exportPaymentHistoryPdf(c, historyRes.value.rows, totalFlatCost, pendingAmount);
+      await exportPaymentHistoryPdf(c, historyRes.value.rows, totalFlatCost, pendingAmount);
     } catch {
       toast.error('Failed to generate the payment history PDF.');
     }
@@ -863,7 +863,7 @@ const CustomerDetailsListPage: React.FC = () => {
     try {
       const res = await fetchCustomerScheme(c.id);
       if (!res.success || !res.data) throw new Error('No scheme data');
-      exportPaymentSchedulePdf(res.data);
+      await exportPaymentSchedulePdf(res.data);
     } catch {
       toast.error('Failed to generate the payment schedule PDF.');
     }
@@ -949,7 +949,7 @@ const CustomerDetailsListPage: React.FC = () => {
   const handleDownloadReceiptForTransaction = async (transactionId: string) => {
     try {
       const res = await fetchPaymentReceipt(transactionId);
-      exportPaymentReceiptPdf(res.data);
+      await exportPaymentReceiptPdf(res.data);
     } catch (err: any) {
       if (err?.response?.status === 403) {
         toast.error('Receipt is not available until this payment is approved.');
@@ -1080,7 +1080,7 @@ const CustomerDetailsListPage: React.FC = () => {
             enabled and independently usable — a genuinely empty option
             list surfaces via SearchableSelect's own empty-state message,
             not by disabling the field. */}
-        <div className="flex items-end gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 2 }}>
+        <div className="cust-filter-row flex items-end gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 2 }}>
           <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Customer Name</label>
             <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={handleCustomerNameFilterChange} />

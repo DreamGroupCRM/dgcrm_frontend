@@ -36,7 +36,7 @@ import {
 import { AppTheme } from '../../../styles/theme';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
-import { exportSchemePdf } from './schemePdfExport';
+import { exportSchemePdf } from './schemePdfExport.lazy';
 import { LOAN_TENURE_YEARS, LOAN_INTEREST_RATE } from './bankLoanConstants';
 import { serverTodayYmd } from '../../../utils/serverTime';
 
