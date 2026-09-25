@@ -18,6 +18,7 @@ export interface Task {
   assigned_to: number | string | null;
   assigned_to_name: string | null;
   assigned_by: number | string | null;
+  assigned_by_name?: string | null; // who logged it (GET /tasks only)
   customer_id: number | string | null;
   customer_name: string | null;
   due_date: string | null;

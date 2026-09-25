@@ -310,6 +310,23 @@ const STATUS_TEXT_COLORS: Record<'overdue' | 'due_today' | 'upcoming', string> =
   upcoming: '#1f2937',
 };
 
+// Follow-up History: entries grouped under the day they were logged
+// (dd/mm/yyyy), oldest day first and oldest entry first within a day —
+// read top to bottom like a chat log.
+const groupByDay = (tasks: Task[]): [string, Task[]][] => {
+  const groups = new Map<string, Task[]>();
+  for (const task of tasks) {
+    const day = formatDate(task.created_at);
+    const list = groups.get(day);
+    if (list) list.push(task); else groups.set(day, [task]);
+  }
+  return Array.from(groups.entries());
+};
+const formatTime = (iso: string): string => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+};
+
 // ── Row shape the table renders, built from a DueListDetailRow (overdue,
 // due today, or upcoming within its early-visibility window). ────────────
 interface DisplayRow {
@@ -402,7 +419,9 @@ const DueReportPage: React.FC = () => {
     const existing = followUpByCustomer.get(String(target.customer_id)) ?? null;
     setFollowUpRow(target);
     setFollowUpEditing(existing);
-    setFollowUpNote(existing?.description ?? '');
+    // Each save is a new conversation entry in the history, so the note
+    // starts empty; the previous note is shown above the field instead.
+    setFollowUpNote('');
     setFollowUpDate(existing?.due_date ? existing.due_date.slice(0, 10) : serverYmdPlusDays(1));
     setFollowUpAssignedTo(existing?.assigned_to != null ? String(existing.assigned_to) : '');
   };
@@ -419,16 +438,13 @@ const DueReportPage: React.FC = () => {
       // own follow-ups to themselves.
       const assignee = isAdmin ? { assigned_to: followUpAssignedTo || null } : {};
       let keptId: string | number;
-      if (followUpEditing) {
-        await tasksService.updateTask(followUpEditing.id, { title, description, status: 'pending', due_date: followUpDate, ...assignee });
-        keptId = followUpEditing.id;
-      } else {
-        const created = await tasksService.createTask({ title, description, due_date: followUpDate, customer_id: followUpRow.customer_id, ...assignee });
-        keptId = created.id;
-      }
-      // Older duplicate open follow-ups for this customer (created before
-      // rescheduling edited in place) would otherwise keep showing instead
-      // of the date just set — close them; they stay in the history.
+      // Always a NEW entry (never an in-place edit), so every conversation
+      // stays in the Follow-up History with its own date and note. Admin
+      // keeps the previous assignee unless they picked another.
+      const created = await tasksService.createTask({ title, description, due_date: followUpDate, customer_id: followUpRow.customer_id, ...assignee });
+      keptId = created.id;
+      // The customer's previous open follow-up(s) are marked Replaced so
+      // only the date just set shows as open; they stay in the history.
       const stale = pendingFollowUps.filter((tk) => String(tk.customer_id) === String(followUpRow.customer_id) && String(tk.id) !== String(keptId));
       await Promise.all(stale.map((tk) => tasksService.updateTask(tk.id, {
         title: tk.title, description: tk.description, due_date: tk.due_date, status: 'superseded',
@@ -443,8 +459,9 @@ const DueReportPage: React.FC = () => {
     }
   };
 
-  // ── Follow-up history — every follow-up ever set for one customer
-  // (open, done and replaced), oldest first, as a conversation-style log.
+  // ── Follow-up history — every follow-up ever logged for one customer
+  // (open, done and replaced), grouped date-wise, oldest first, as a
+  // conversation-style log.
   const [historyTarget, setHistoryTarget] = useState<FollowUpTarget | null>(null);
   const [historyTasks, setHistoryTasks] = useState<Task[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -1282,9 +1299,15 @@ const DueReportPage: React.FC = () => {
             </div>
             <div className="p-5" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
+                {followUpEditing?.description && (
+                  <div style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 10, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, fontSize: 11.5, color: t.textSecondary }}>
+                    <span style={{ fontWeight: 700, color: t.textPrimary }}>Last conversation ({formatDate(followUpEditing.created_at)}):</span>{' '}
+                    {followUpEditing.description}
+                  </div>
+                )}
                 <label style={fieldLabelStyle}>Note</label>
                 <textarea rows={3} value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)}
-                  placeholder="What needs to be followed up on?" style={{ ...fieldInputStyle(), resize: 'vertical' }} />
+                  placeholder="What was discussed with the customer?" style={{ ...fieldInputStyle(), resize: 'vertical' }} />
               </div>
               <div>
                 <label style={fieldLabelStyle}>Follow-up Date</label>
@@ -1374,24 +1397,36 @@ const DueReportPage: React.FC = () => {
                 <p style={{ color: t.textSecondary, fontSize: 12 }}>Loading history...</p>
               ) : historyTasks.length === 0 ? (
                 <p style={{ color: t.textSecondary, fontSize: 12 }}>No follow-ups yet for this customer.</p>
-              ) : historyTasks.map((task) => {
-                const open = task.status === 'pending';
-                return (
-                  <div key={task.id} style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: '12px 12px 12px 4px', padding: '9px 12px' }}>
-                    <div style={{ fontSize: 12, color: t.textPrimary, whiteSpace: 'pre-wrap' }}>{task.description || <span style={{ color: t.textSecondary }}>(no note)</span>}</div>
-                    <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 6, fontSize: 10.5, color: t.textSecondary }}>
-                      <span style={{ fontWeight: 700, color: 'var(--brand-ink)' }}>Follow-up: {task.due_date ? formatDate(task.due_date) : 'No date'}</span>
-                      <span>·</span>
-                      <span>{task.assigned_to_name?.trim() || 'Unassigned'}</span>
-                      <span>·</span>
-                      <span>Added {formatDate(task.created_at)}</span>
-                      <span style={{ marginLeft: 'auto', padding: '1px 7px', borderRadius: 999, fontWeight: 700, color: '#fff', background: open ? '#16a34a' : '#6b7280' }}>
-                        {open ? 'Open' : task.status === 'superseded' ? 'Replaced' : 'Closed'}
-                      </span>
-                    </div>
+              ) : groupByDay(historyTasks).map(([day, tasks]) => (
+                <div key={day} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {/* Date divider — the day the conversation was logged. */}
+                  <div className="flex items-center gap-2" style={{ fontSize: 11, fontWeight: 800, color: t.textSecondary }}>
+                    <span style={{ flex: 1, height: 1, background: t.divider }} />
+                    <span style={{ padding: '2px 10px', borderRadius: 999, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>{day}</span>
+                    <span style={{ flex: 1, height: 1, background: t.divider }} />
                   </div>
-                );
-              })}
+                  {tasks.map((task) => {
+                    const open = task.status === 'pending';
+                    return (
+                      <div key={task.id} style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: '12px 12px 12px 4px', padding: '9px 12px' }}>
+                        <div className="flex items-center gap-2" style={{ fontSize: 10.5, color: t.textSecondary, marginBottom: 4 }}>
+                          <span style={{ fontWeight: 700, color: t.textPrimary }}>{task.assigned_by_name?.trim() || '—'}</span>
+                          <span>{formatTime(task.created_at)}</span>
+                          <span style={{ marginLeft: 'auto', padding: '1px 7px', borderRadius: 999, fontWeight: 700, color: '#fff', background: open ? '#16a34a' : '#6b7280' }}>
+                            {open ? 'Open' : task.status === 'superseded' ? 'Replaced' : 'Closed'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12.5, color: t.textPrimary, whiteSpace: 'pre-wrap' }}>{task.description || <span style={{ color: t.textSecondary }}>(no note)</span>}</div>
+                        <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 6, fontSize: 10.5, color: t.textSecondary }}>
+                          <span style={{ fontWeight: 700, color: 'var(--brand-ink)' }}>Next follow-up: {task.due_date ? formatDate(task.due_date) : 'No date'}</span>
+                          <span>·</span>
+                          <span>Assigned to {task.assigned_to_name?.trim() || 'Unassigned'}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
         </div>,
