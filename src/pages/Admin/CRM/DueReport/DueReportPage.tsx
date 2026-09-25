@@ -971,7 +971,7 @@ const DueReportPage: React.FC = () => {
                   apSelectedCustomer.building_name,
                   apSelectedCustomer.wing_name ? `Wing ${apSelectedCustomer.wing_name}` : '',
                   apSelectedCustomer.flat_no ? `Flat ${apSelectedCustomer.flat_no}` : '',
-                ].filter(Boolean).join(' • ') : '';
+                ].filter(Boolean).join(' | ') : '';
                 return (
                   <div aria-disabled="true" title={buildingText || undefined}
                     style={{ ...readOnlyInputStyle, minHeight: 38, height: 'auto', whiteSpace: 'normal', overflowWrap: 'anywhere', lineHeight: 1.35 }}>
@@ -1158,7 +1158,7 @@ const DueReportPage: React.FC = () => {
                       <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
                       {(r.wing_name || r.flat_no) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
-                          {r.wing_name ? `Wing ${r.wing_name}` : ''}{r.wing_name && r.flat_no ? ' • ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
+                          {r.wing_name ? `Wing ${r.wing_name}` : ''}{r.wing_name && r.flat_no ? ' | ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
                         </div>
                       )}
                     </td>

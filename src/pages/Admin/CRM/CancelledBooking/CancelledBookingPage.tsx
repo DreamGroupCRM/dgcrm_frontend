@@ -573,7 +573,7 @@ const CancelledBookingPage: React.FC = () => {
             </div>
             <div className="p-5" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ fontSize: 12 }}>
-                <div><div style={labelStyle}>Flat Details</div><div style={{ color: t.textPrimary, fontWeight: 600 }}>{refundFor.building_name || '—'} • {unitText(refundFor)}</div></div>
+                <div><div style={labelStyle}>Flat Details</div><div style={{ color: t.textPrimary, fontWeight: 600 }}>{refundFor.building_name || '—'} | {unitText(refundFor)}</div></div>
                 <div><div style={labelStyle}>Cancellation Date</div><div style={{ color: t.textPrimary, fontWeight: 600 }}>{refundFor.cancelled_at ? formatDate(refundFor.cancelled_at) : '—'}</div></div>
                 <div><div style={labelStyle}>Original Documents Returned</div><div style={{ color: t.textPrimary, fontWeight: 600 }}>{refundFor.original_documents_returned ? 'Yes' : 'No'}</div></div>
                 <div style={{ gridColumn: '1 / -1' }}>

@@ -730,7 +730,7 @@ const PaymentReceivedPage: React.FC = () => {
                       <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
                       {(r.wing_name || r.flat_no) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
-                          {r.wing_name ? `Wing ${r.wing_name}` : ''}{r.wing_name && r.flat_no ? ' • ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
+                          {r.wing_name ? `Wing ${r.wing_name}` : ''}{r.wing_name && r.flat_no ? ' | ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
                         </div>
                       )}
                     </td>
