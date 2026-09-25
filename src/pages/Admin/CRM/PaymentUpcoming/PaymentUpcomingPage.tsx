@@ -207,20 +207,20 @@ const PaymentUpcomingPage: React.FC = () => {
   return (
     <div className="payment-upcoming-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
       <div className="payment-upcoming-header flex items-center gap-3 mb-5">
-        {/* Back to Payment Received — this page is opened from its
-            "Payment Upcoming" toolbar button and has no sidebar entry. */}
-        <button type="button" onClick={() => navigate(ROUTES.ADMIN.PAYMENT_RECEIVED)} title="Back to Payment Received"
-          aria-label="Back to Payment Received"
-          className="flex items-center justify-center rounded-xl flex-shrink-0"
-          style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer' }}>
-          <MdArrowBack size={20} />
-        </button>
         <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
           <MdUpcoming size={22} style={{ color: '#4f46e5' }} />
         </div>
         <div>
           <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Payment Upcoming</h1>
           </div>
+        {/* Back to Payment Received — this page is opened from its
+            "Payment Upcoming" toolbar button and has no sidebar entry. */}
+        <button type="button" onClick={() => navigate(ROUTES.ADMIN.PAYMENT_RECEIVED)} title="Back to Payment Received"
+          aria-label="Back to Payment Received"
+          className="flex items-center justify-center rounded-xl flex-shrink-0 ml-auto"
+          style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer' }}>
+          <MdArrowBack size={20} />
+        </button>
       </div>
 
       {/* ── Per-category stat boxes — every Payment For option, moved to
