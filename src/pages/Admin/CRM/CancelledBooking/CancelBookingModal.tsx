@@ -25,8 +25,8 @@ type FileKey = 'cancel_letter' | 'acceptance_letter' | 'cancel_documents' | 'ret
 const flatDetails = (c: Customer): string => {
   if (!c.building_name) return '—';
   return c.unit_type === 'shop'
-    ? `${c.building_name} | Shop ${c.shop_no || '—'}`
-    : [c.building_name, c.wing_name ? `Wing ${c.wing_name}` : '', c.flat_no ? `Flat ${c.flat_no}` : ''].filter(Boolean).join(' | ');
+    ? `${c.building_name} - Shop ${c.shop_no || '—'}`
+    : [c.building_name, c.wing_name ? `${c.wing_name} Wing` : '', c.flat_no ? `Flat ${c.flat_no}` : ''].filter(Boolean).join(' - ');
 };
 
 const rupee = (n: number): string => `₹ ${(n || 0).toLocaleString('en-IN')}`;
