@@ -18,10 +18,9 @@ import { useSortedRows } from '../../../../components/masters/useSortedRows';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
-// Fixed width for the Actions column — sized for exactly 3 icon buttons
-// + gaps + cell padding, so it never grows/shrinks with the number of
-// other columns in the table.
-const ACTION_COL_WIDTH = 96;
+// Fixed width for the Actions column — one three-dot (⋮) menu button plus
+// cell padding.
+const ACTION_COL_WIDTH = 56;
 
 type SortKey = 'id' | 'company_name' | 'name' | 'account_holder_name' | 'account_number' | 'created_at';
 

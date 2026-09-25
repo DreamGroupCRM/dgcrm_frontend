@@ -903,9 +903,12 @@ const PaymentReceivedPage: React.FC = () => {
                     </td>
                   ) : totalsFooterCells.map((c) => (
                     <td key={c.key} colSpan={c.colSpan}
-                      style={{ padding: '12px 12px', background: TOTALS_ROW_BG, color: '#fff', fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', borderLeft: '1px solid rgba(255,255,255,0.3)', lineHeight: 1.3 }}>
-                      <span>{c.label}:</span>{' '}
-                      <span>{categorySummary ? rupee(categorySummary[c.key]) : '…'}</span>
+                      style={{ padding: '10px 10px', background: TOTALS_ROW_BG, color: '#fff', fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', borderLeft: '1px solid rgba(255,255,255,0.3)', lineHeight: 1.35 }}>
+                      {/* Label above the amount (not side by side), so the
+                          totals row never forces its columns wider than the
+                          data rows need. */}
+                      <div style={{ whiteSpace: 'normal' }}>{c.label}</div>
+                      <div>{categorySummary ? rupee(categorySummary[c.key]) : '…'}</div>
                     </td>
                   ))}
                 </tr>

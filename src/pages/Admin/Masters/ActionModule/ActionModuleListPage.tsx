@@ -21,7 +21,7 @@ import { fetchModuleMasterList, deleteModuleMaster } from '../../../../services/
 import { ActionMaster, ModuleMaster } from '../../../../types/index';
 import { formatDate, showAlert } from '../../../../utils';
 
-const ACTION_COL_WIDTH = 96;
+const ACTION_COL_WIDTH = 56; // one three-dot (⋮) menu button + padding
 type ModuleSortKey = 'm_id' | 'm_name' | 'm_slug' | 'm_sort_order' | 'm_created_at';
 type ActionSortKey = 'id' | 'name' | 'code' | 'created_at';
 

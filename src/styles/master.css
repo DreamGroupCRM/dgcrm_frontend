@@ -703,3 +703,60 @@ html.dark .master-row-icon {
     width: 100%;
   }
 }
+
+/* ── Compact tables (V_24.0) ─────────────────────────────────────────────
+   Every list table (Company, Department, Bank Account, Building, Employee
+   Details, Customer Details, Payment Due/Received/Upcoming, Cancelled
+   Booking, …) uses .master-table. Rows are only as tall as their content
+   and columns only as wide as their content, so more data fits on one
+   screen with less scrolling in either direction.
+   - min-width: 0 !important cancels each page's inline table minWidth
+     (e.g. 1150–1350px) that forced horizontal scrolling even when the data
+     fit. width:100% + auto layout still spread spare width across columns;
+     .master-table-scroll still scrolls when content genuinely needs more.
+   - Header/body cell padding is tightened here with !important because
+     most pages set padding inline on every cell. The `> thead > tr > th` /
+     `> tbody > tr > td` selectors deliberately skip <tfoot>, so a totals
+     row keeps its own (taller) styling. */
+.master-table {
+  min-width: 0 !important;
+}
+
+.master-table > thead > tr > th,
+.master-table > tbody > tr > td {
+  padding: 5px 6px !important;
+  line-height: 1.3;
+  vertical-align: middle;
+}
+
+.master-table > thead > tr > th {
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
+
+/* Sticky Actions column / checkbox column — just enough room for the icon. */
+.master-table > thead > tr > th.master-table-actions-th,
+.master-table > tbody > tr > td.master-table-actions-td {
+  padding: 4px 6px !important;
+}
+
+/* Second lines inside a cell (code under a name, wing/flat under a
+   building, amount under a badge) sit close to the first line. */
+.master-table > tbody > tr > td > div + div {
+  margin-top: 1px;
+}
+
+/* Header labels may wrap onto two lines — the browser only does this when
+   the table would otherwise overflow its card, so a wide screen keeps
+   single-line headers while a narrower one avoids sideways scrolling.
+   Body cells stay single-line (nowrap) so data never breaks mid-value. */
+.master-table > thead > tr > th {
+  white-space: normal !important;
+}
+
+/* Sortable header buttons (label + ⇅ arrow) may wrap their label too; the
+   arrow stays beside the last word. */
+.master-table > thead > tr > th .master-th-sort {
+  white-space: normal;
+  text-align: left;
+}
