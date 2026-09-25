@@ -25,8 +25,10 @@ import { toast } from '@/utils/toast';
 import { IconType } from 'react-icons';
 import {
   MdUpcoming, MdRefresh, MdSearch, MdEvent, MdAccountBalanceWallet, MdClose,
-  MdReceiptLong, MdSchedule, MdVpnKey, MdPayments, MdStars, MdWorkspacePremium,
+  MdReceiptLong, MdSchedule, MdVpnKey, MdPayments, MdStars, MdWorkspacePremium, MdArrowBack,
 } from 'react-icons/md';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../../constants';
 
 import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
@@ -67,6 +69,7 @@ const PAYMENT_FOR_KEY_META: Record<PaymentForKey, { label: string; color: string
 
 const PaymentUpcomingPage: React.FC = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { isDark, t, cssVars } = useAppearanceTokens();
 
   useEffect(() => { dispatch(setPageTitle('Payment Upcoming')); }, [dispatch]);
@@ -204,6 +207,14 @@ const PaymentUpcomingPage: React.FC = () => {
   return (
     <div className="payment-upcoming-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
       <div className="payment-upcoming-header flex items-center gap-3 mb-5">
+        {/* Back to Payment Received — this page is opened from its
+            "Payment Upcoming" toolbar button and has no sidebar entry. */}
+        <button type="button" onClick={() => navigate(ROUTES.ADMIN.PAYMENT_RECEIVED)} title="Back to Payment Received"
+          aria-label="Back to Payment Received"
+          className="flex items-center justify-center rounded-xl flex-shrink-0"
+          style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer' }}>
+          <MdArrowBack size={20} />
+        </button>
         <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
           <MdUpcoming size={22} style={{ color: '#4f46e5' }} />
         </div>
