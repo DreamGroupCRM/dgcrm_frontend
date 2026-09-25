@@ -22,7 +22,7 @@ import {
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
   MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
   MdAdminPanelSettings, MdManageAccounts, MdPendingActions, MdBeachAccess,
-  MdGridView,
+  MdGridView, MdEventBusy,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -110,8 +110,7 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
       // Upcoming experience, tab switcher at the top) instead of their own
       // sidebar entries/routes — same pattern as Attendance/Leave above.
       { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
-      // Cancelled Booking is reached from Customer Details (Cancel Booking
-      // action + "Cancelled Bookings" button), not the sidebar.
+      { label: 'Cancelled Booking', path: ROUTES.ADMIN.CANCELLED_BOOKING, icon: <MdEventBusy /> },
     ],
   },
 
@@ -167,6 +166,9 @@ const employeeNavItems: NavItem[] = [
       { label: 'Customer Details', path: ROUTES.EMPLOYEE.CUSTOMER_DETAILS, icon: <MdContactPage /> },
       { label: 'Payment Dues', path: ROUTES.EMPLOYEE.PAYMENT_DUES, icon: <MdPayment /> },
       { label: 'Payment Received', path: ROUTES.EMPLOYEE.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
+      // Scoped to the employee's assigned customers; admin-only parts
+      // (summary boxes, approvals) are refused by the API.
+      { label: 'Cancelled Booking', path: ROUTES.EMPLOYEE.CANCELLED_BOOKING, icon: <MdEventBusy /> },
     ],
   },
 

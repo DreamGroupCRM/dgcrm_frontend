@@ -1211,11 +1211,6 @@ const CustomerDetailsListPage: React.FC = () => {
               <MdAdd size={18} /> <span className="cust-add-btn-text">Add Customer</span>
             </button>
           )}
-          <button type="button" onClick={() => navigate(paths.cancelledBooking)}
-            className="cust-cancelled-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
-            style={{ background: 'var(--brand-gradient)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            <MdEventBusy size={17} /> <span className="cust-export-btn-text">Cancelled Bookings</span>
-          </button>
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
             className="cust-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
             style={{ background: 'var(--brand-gradient)', border: 'none', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1 }}>
