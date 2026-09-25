@@ -13,6 +13,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MdAccessTime } from 'react-icons/md';
+import { cssRect } from '../../utils/appZoom';
 
 export interface PickerTheme {
   inputBg: string;
@@ -111,7 +112,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({ theme, value, onChange, 
   // document.body portal at a `fixed` position instead, same fix as the
   // app's other dropdowns/pickers.
   const openPicker = () => {
-    const r = ref.current?.getBoundingClientRect();
+    const r = cssRect(ref.current);
     if (r) setMenuPos({ top: r.bottom + 4, left: r.left });
     setOpen((v) => !v);
   };
@@ -129,7 +130,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({ theme, value, onChange, 
   useEffect(() => {
     if (!open) return;
     const reposition = () => {
-      const r = ref.current?.getBoundingClientRect();
+      const r = cssRect(ref.current);
       if (r) setMenuPos({ top: r.bottom + 4, left: r.left });
     };
     window.addEventListener('scroll', reposition, true);

@@ -22,6 +22,7 @@ import { MdAdd, MdKeyboardArrowDown, MdSearch } from 'react-icons/md';
 // platform since they don't depend on any installed font.
 import * as FlagIcons from 'country-flag-icons/react/3x2';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js/min';
+import { cssRect } from '../../utils/appZoom';
 
 export interface PickerTheme {
   inputBg: string;
@@ -103,7 +104,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   // portal at a `fixed` position computed from the trigger's own bounding
   // rect instead, same fix already applied to the app's other dropdowns.
   const openDropdown = () => {
-    const r = ref.current?.getBoundingClientRect();
+    const r = cssRect(ref.current);
     if (r) setMenuPos({ top: r.bottom + 4, left: r.left });
     setOpen((v) => !v);
   };
@@ -123,7 +124,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   useEffect(() => {
     if (!open) return;
     const reposition = () => {
-      const r = ref.current?.getBoundingClientRect();
+      const r = cssRect(ref.current);
       if (r) setMenuPos({ top: r.bottom + 4, left: r.left });
     };
     window.addEventListener('scroll', reposition, true);

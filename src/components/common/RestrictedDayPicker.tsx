@@ -25,6 +25,7 @@ import { createPortal } from 'react-dom';
 import { MdChevronLeft, MdChevronRight, MdCalendarToday } from 'react-icons/md';
 import { PickerTheme } from './DobPicker';
 import { serverTodayYmd } from '../../utils/serverTime';
+import { cssRect } from '../../utils/appZoom';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -100,7 +101,7 @@ export const RestrictedDayPicker: React.FC<RestrictedDayPickerProps> = ({
   const toggleOpen = () => {
     if (disabled) return;
     if (!open) {
-      const r = ref.current?.getBoundingClientRect();
+      const r = cssRect(ref.current);
       if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
     }
     setOpen((v) => !v);

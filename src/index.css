@@ -120,3 +120,40 @@
     to   { opacity: 1; transform: translateY(0); }
   }
 }
+
+/* ==========================================
+   APP-WIDE 90% SCALE (laptop/desktop)
+   ==========================================
+   Browser zoom 100% should look like browser zoom 90%: smaller text,
+   fields and boxes so more fits on screen with less scrolling. The whole
+   page is drawn at 90% with CSS zoom on <html>. Phones/tablets (<1024px)
+   stay at 100% — their text is already small.
+   - Full-height layouts: under zoom, 100vh is 90% of the screen, so every
+     full-height rule divides by --app-zoom to still fill it.
+   - Popups placed next to a field/button convert coordinates with
+     utils/appZoom.ts (cssRect/viewportWidth/viewportHeight). */
+:root {
+  --app-zoom: 1;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --app-zoom: 0.9;
+  }
+  html {
+    zoom: var(--app-zoom);
+  }
+  .h-screen {
+    height: calc(100vh / var(--app-zoom)) !important;
+  }
+  .min-h-screen {
+    min-height: calc(100vh / var(--app-zoom)) !important;
+  }
+  .login-page-container {
+    min-height: calc(100vh / var(--app-zoom)) !important;
+  }
+  .cp-shell,
+  .cp-main {
+    min-height: calc(100vh / var(--app-zoom)) !important;
+  }
+}

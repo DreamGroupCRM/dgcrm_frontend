@@ -49,6 +49,7 @@ import { AccordionSection } from '../../../../components/common/Accordion';
 import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { serverToday } from '../../../../utils/serverTime';
+import { cssRect } from '../../../../utils/appZoom';
 
 type Mode = 'add' | 'edit' | 'view';
 interface Props { mode: Mode; }
@@ -345,7 +346,7 @@ const SearchableSelect: React.FC<{
   // fixed-height panel the trigger could drift within while staying visible.
   const openDropdown = () => {
     if (disabled) return;
-    const r = ref.current?.getBoundingClientRect();
+    const r = cssRect(ref.current);
     if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
     setOpen(true);
   };

@@ -15,6 +15,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { AppTheme } from '../../styles/theme';
+import { cssRect, viewportWidth, viewportHeight } from '../../utils/appZoom';
 
 export interface RowMenuAction {
   key: string;
@@ -52,11 +53,11 @@ const ROW_HEIGHT_PX = 34;
 // dropdown at its edge.
 export const computeRowMenuPos = (rect: DOMRect, actionCount: number): { top: number; left: number } => {
   const menuHeight = actionCount * ROW_HEIGHT_PX + 8;
-  const spaceRight = window.innerWidth - rect.right;
+  const spaceRight = viewportWidth() - rect.right;
   const left = spaceRight >= ROW_MENU_WIDTH + 8
     ? rect.right + 4
     : Math.max(8, rect.left - ROW_MENU_WIDTH - 4);
-  const top = Math.max(8, Math.min(rect.top, window.innerHeight - menuHeight - 8));
+  const top = Math.max(8, Math.min(rect.top, viewportHeight() - menuHeight - 8));
   return { top, left };
 };
 
@@ -109,7 +110,7 @@ export function useRowActionMenu<T extends string | number>() {
 
   const toggle = (id: T, actionCount: number) => (e: React.MouseEvent<HTMLButtonElement>) => {
     if (openId === id) { setOpenId(null); setPos(null); return; }
-    setPos(computeRowMenuPos(e.currentTarget.getBoundingClientRect(), actionCount));
+    setPos(computeRowMenuPos(cssRect(e.currentTarget)!, actionCount));
     setOpenId(id);
   };
 

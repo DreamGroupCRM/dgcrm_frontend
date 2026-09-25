@@ -40,6 +40,7 @@ import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { formatDate } from '../../../../utils';
 import { serverTodayYmd, serverYmdPlusDays } from '../../../../utils/serverTime';
+import { cssRect } from '../../../../utils/appZoom';
 import './DueReport.css';
 
 type Theme = AppTheme;
@@ -66,7 +67,7 @@ const SearchableSelect: React.FC<{
 
   const openDropdown = () => {
     if (disabled) return;
-    const r = ref.current?.getBoundingClientRect();
+    const r = cssRect(ref.current);
     if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
     setOpen(true);
   };
@@ -85,7 +86,7 @@ const SearchableSelect: React.FC<{
   useEffect(() => {
     if (!open) return;
     const reposition = () => {
-      const r = ref.current?.getBoundingClientRect();
+      const r = cssRect(ref.current);
       if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
     };
     window.addEventListener('scroll', reposition, true);
@@ -150,7 +151,7 @@ const StatusPillSelect: React.FC<{
   const ref = useRef<HTMLButtonElement>(null);
 
   const place = () => {
-    const r = ref.current?.getBoundingClientRect();
+    const r = cssRect(ref.current);
     if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 140) });
   };
 

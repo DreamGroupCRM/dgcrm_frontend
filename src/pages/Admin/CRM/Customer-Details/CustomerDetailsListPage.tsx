@@ -40,6 +40,7 @@ import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
 import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
+import { cssRect, viewportWidth, viewportHeight } from '../../../../utils/appZoom';
 
 type Theme = AppTheme;
 
@@ -98,7 +99,7 @@ const SearchableSelect: React.FC<{
   // own SearchableSelect.
   const openDropdown = () => {
     if (disabled) return;
-    const r = ref.current?.getBoundingClientRect();
+    const r = cssRect(ref.current);
     if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
     setOpen(true);
   };
@@ -122,7 +123,7 @@ const SearchableSelect: React.FC<{
   useEffect(() => {
     if (!open) return;
     const reposition = () => {
-      const r = ref.current?.getBoundingClientRect();
+      const r = cssRect(ref.current);
       if (r) setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
     };
     window.addEventListener('scroll', reposition, true);
@@ -240,11 +241,11 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 const CUSTOMER_MENU_WIDTH = 186;
 const CUSTOMER_MENU_HEIGHT = 212; // up to 6 rows incl. borders/padding (V_23.0 added Cancel Booking)
 const computeCustomerMenuPos = (rect: DOMRect): { top: number; left: number } => {
-  const spaceRight = window.innerWidth - rect.right;
+  const spaceRight = viewportWidth() - rect.right;
   const left = spaceRight >= CUSTOMER_MENU_WIDTH + 8
     ? rect.right + 4
     : Math.max(8, rect.left - CUSTOMER_MENU_WIDTH - 4);
-  const top = Math.max(8, Math.min(rect.top, window.innerHeight - CUSTOMER_MENU_HEIGHT - 8));
+  const top = Math.max(8, Math.min(rect.top, viewportHeight() - CUSTOMER_MENU_HEIGHT - 8));
   return { top, left };
 };
 
@@ -1217,7 +1218,7 @@ const CustomerDetailsListPage: React.FC = () => {
                   <CustomerCard key={c.id} c={c} t={t} isDark={isDark}
                     onOpenMenu={(e) => {
                       if (openMenuId === c.id) { setOpenMenuId(null); setMenuPos(null); return; }
-                      const r = e.currentTarget.getBoundingClientRect();
+                      const r = cssRect(e.currentTarget)!;
                       setMenuPos(computeCustomerMenuPos(r));
                       setOpenMenuId(c.id);
                     }}
@@ -1282,7 +1283,7 @@ const CustomerDetailsListPage: React.FC = () => {
                             type="button"
                             onClick={(e) => {
                               if (openMenuId === c.id) { setOpenMenuId(null); setMenuPos(null); return; }
-                              const r = e.currentTarget.getBoundingClientRect();
+                              const r = cssRect(e.currentTarget)!;
                               setMenuPos(computeCustomerMenuPos(r));
                               setOpenMenuId(c.id);
                             }}
