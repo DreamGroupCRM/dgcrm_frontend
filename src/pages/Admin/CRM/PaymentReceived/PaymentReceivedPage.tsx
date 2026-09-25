@@ -19,7 +19,7 @@
 // Payment For, in 2 rows not 3), and a table whose shape matches Payment
 // Approvals' (checkbox + Actions first) with View Receipt/Download
 // Receipt/Delete instead of View/Approve/Delete.
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/utils/toast';
 import {
@@ -36,7 +36,7 @@ import { ROUTES } from '../../../../constants';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
-import PaginationFooter from '../../../../components/common/PaginationFooter';
+import { useInfiniteScroll } from '../../../../hooks/useInfiniteScroll';
 import { RowActionMenu, useRowActionMenu } from '../../../../components/common/RowActionMenu';
 import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
 import {
@@ -86,6 +86,9 @@ const paymentTypeLabel = (r: { payment_type: string; is_after_possession_emi: bo
 // Totals footer row background — a fixed dark shade (not the lighter
 // header gradient) so the bold white totals read clearly in every theme.
 const TOTALS_ROW_BG = '#0b3b3c';
+
+// Rows fetched per lazy-load batch (initial view and each scroll step).
+const PAYMENT_BATCH_SIZE = 100;
 
 const MODE_OF_PAYMENT_OPTIONS = ['Cash', 'Cheque', 'Online', 'Other'];
 
@@ -171,8 +174,7 @@ const PaymentReceivedPage: React.FC = () => {
   const [rows, setRows] = useState<PaymentListRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(50);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -333,21 +335,76 @@ const PaymentReceivedPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebouncedValue(searchQuery, 400);
   useEffect(() => {
-    setAppliedFilters((prev) => ({ ...prev, search: debouncedSearch.trim() || undefined }));
+    // Same object back when the search didn't change (e.g. on first load),
+    // so the list isn't fetched twice.
+    setAppliedFilters((prev) => {
+      const search = debouncedSearch.trim() || undefined;
+      return prev.search === search ? prev : { ...prev, search };
+    });
   }, [debouncedSearch]);
 
-  const fetchRows = useCallback(async () => {
-    setLoading(true);
+  // ── Lazy loading, no pagination: the first 100 matching rows load, then
+  // each scroll near the bottom fetches the next 100 from the server and
+  // appends them (useInfiniteScroll prefetches ~800px early). Only what's
+  // been scrolled to is ever fetched. `requestSeq` drops any response that
+  // arrives after the filters/view changed, so rows never mix. ──────────
+  const requestSeq = useRef(0);
+  const rowsRef = useRef<PaymentListRow[]>([]);
+  rowsRef.current = rows;
+  const listFilters = useMemo(() => ({ ...appliedFilters, approval: approvalParam(approvalView) }), [appliedFilters, approvalView]);
+
+  // Loads rows from the top. `count` is rounded up to whole batches so the
+  // next scroll batch lines up with the server's page/limit offsets.
+  const loadFromTop = useCallback(async (count: number, silent: boolean) => {
+    const seq = ++requestSeq.current;
+    const batches = Math.max(1, Math.ceil(count / PAYMENT_BATCH_SIZE));
+    if (!silent) setLoading(true);
+    setLoadingMore(false);
     try {
-      const res = await fetchPaymentList(page, limit, { ...appliedFilters, approval: approvalParam(approvalView) });
+      const res = await fetchPaymentList(1, batches * PAYMENT_BATCH_SIZE, listFilters);
+      if (seq !== requestSeq.current) return;
       if (res.success) { setRows(res.rows); setTotal(res.total); }
       else toast.error('Failed to fetch payments.');
     } catch {
-      toast.error('Failed to fetch payments. Please try again.');
+      if (seq === requestSeq.current) toast.error('Failed to fetch payments. Please try again.');
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) setLoading(false);
     }
-  }, [page, limit, appliedFilters, approvalView]);
+  }, [listFilters]);
+
+  // Filters/view changed → start again from the first 100, clear selection.
+  useEffect(() => {
+    setSelectedIds(new Set());
+    loadFromTop(PAYMENT_BATCH_SIZE, false);
+  }, [loadFromTop]);
+
+  // Refresh after approve/delete/refresh button — reloads as many rows as
+  // are already loaded, without blanking the table or losing scroll place.
+  const fetchRows = useCallback(() => loadFromTop(Math.max(PAYMENT_BATCH_SIZE, rowsRef.current.length), true), [loadFromTop]);
+
+  const hasMoreRows = rows.length < total;
+  const loadMoreRows = useCallback(async () => {
+    const loaded = rowsRef.current.length;
+    if (loadingMore || loaded === 0 || loaded % PAYMENT_BATCH_SIZE !== 0) return;
+    const seq = requestSeq.current;
+    setLoadingMore(true);
+    try {
+      const res = await fetchPaymentList(loaded / PAYMENT_BATCH_SIZE + 1, PAYMENT_BATCH_SIZE, listFilters);
+      if (seq !== requestSeq.current || !res.success) return;
+      setRows((prev) => {
+        const seen = new Set(prev.map((r) => r.id));
+        return [...prev, ...res.rows.filter((r) => !seen.has(r.id))];
+      });
+      setTotal(res.total);
+    } catch {
+      if (seq === requestSeq.current) toast.error('Failed to load more payments.');
+    } finally {
+      if (seq === requestSeq.current) setLoadingMore(false);
+    }
+  }, [loadingMore, listFilters]);
+  const lazyLoadSentinelRef = useInfiniteScroll({
+    hasMore: hasMoreRows, loading: loading || loadingMore, onLoadMore: loadMoreRows, itemCount: rows.length,
+  });
 
   // Counts shown inside the Approved/UnApproved buttons (All = their sum).
   // Same filters/search as the table, so the badges always describe what
@@ -378,12 +435,16 @@ const PaymentReceivedPage: React.FC = () => {
     }
   }, [appliedFilters, approvalView]);
 
-  useEffect(() => { fetchRows(); fetchCategorySummary(); }, [fetchRows, fetchCategorySummary]);
-  useEffect(() => { setPage(1); }, [appliedFilters, approvalView]);
-  // Selection is page-scoped — clear it whenever the visible rows change
-  // under it (new page, filter, refresh, or a delete removes rows) so a
-  // stale id can't be acted on by surprise.
-  useEffect(() => { setSelectedIds(new Set()); }, [rows]);
+  useEffect(() => { fetchCategorySummary(); }, [fetchCategorySummary]);
+  // Drop selected ids that are no longer in the list (deleted/filtered out).
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const ids = new Set(rows.map((r) => r.id));
+      const next = new Set(Array.from(prev).filter((id) => ids.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [rows]);
 
   const handleFilter = () => {
     const flat = flatsInScope.find((f) => f.flat_no === draftFlatNo);
@@ -530,17 +591,6 @@ const PaymentReceivedPage: React.FC = () => {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / limit));
-  const safePage = Math.min(page, totalPages);
-  const from = total === 0 ? 0 : (safePage - 1) * limit + 1;
-  const to = Math.min(safePage * limit, total);
-  const pageBtns = useMemo(() => {
-    const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
-    const end = Math.min(totalPages, start + 4);
-    const arr: number[] = [];
-    for (let i = start; i <= end; i++) arr.push(i);
-    return arr;
-  }, [safePage, totalPages]);
 
   const inputStyle: React.CSSProperties = { width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none' };
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 };
@@ -833,6 +883,10 @@ const PaymentReceivedPage: React.FC = () => {
                   </tr>
                 ))
               )}
+              {/* Invisible sentinel row — scrolling near it loads the next 100. */}
+              {!loading && hasMoreRows && (
+                <tr ref={lazyLoadSentinelRef} aria-hidden="true"><td colSpan={13} style={{ padding: 0, border: 'none' }} /></tr>
+              )}
             </tbody>
             {/* ── Totals row — per-category sums for every row matching the
                 current filters (all pages, not just this one), same query
@@ -860,7 +914,11 @@ const PaymentReceivedPage: React.FC = () => {
           </table>
         </div>
 
-        <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={total} pageBtns={() => pageBtns} />
+        {total > 0 && (
+          <div className="flex items-center justify-center px-4 py-3" style={{ borderTop: `1px solid ${t.divider}`, fontSize: 12, color: t.textSecondary }}>
+            {loadingMore ? 'Loading more…' : `Showing ${rows.length} of ${total}${hasMoreRows ? ' — scroll down to load more' : ''}`}
+          </div>
+        )}
       </div>
 
       {/* ── View Receipt popup ────────────────────────────────────────── */}

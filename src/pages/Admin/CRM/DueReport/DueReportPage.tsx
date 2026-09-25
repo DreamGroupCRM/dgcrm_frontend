@@ -24,7 +24,7 @@ import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
-import PaginationFooter from '../../../../components/common/PaginationFooter';
+import { useInfiniteScroll } from '../../../../hooks/useInfiniteScroll';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import StatCard from '../../../../components/masters/StatCard';
 import {
@@ -326,6 +326,9 @@ const formatTime = (iso: string): string => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 };
+
+// Rows rendered per lazy-load batch (initial view and each scroll step).
+const DUE_BATCH_SIZE = 100;
 
 // ── Row shape the table renders, built from a DueListDetailRow (overdue,
 // due today, or upcoming within its early-visibility window). ────────────
@@ -671,53 +674,20 @@ const DueReportPage: React.FC = () => {
     }
   };
 
-  // ── Pagination + scroll-triggered lazy loading over the filtered
-  // due-item list (item 11). A single "visibleCount" — how many of
-  // filteredDueRows are rendered, always from the top — drives BOTH the
-  // normal Prev/Next/page-number controls AND lazy loading, so there is
-  // one source of truth and structurally no way to duplicate a row between
-  // them: the table always renders exactly filteredDueRows.slice(0,
-  // visibleCount). Clicking a page number, Next, or scrolling to the
-  // bottom of the table all just move visibleCount by whole page-size
-  // increments; Prev shrinks it back down. Default page size is 50 (item
-  // 11.1); the page-size selector (PaginationFooter, unchanged) still
-  // controls that increment. ───────────────────────────────────────────────
-  const [limit, setLimitRaw] = useState(50);
-  const [visibleCount, setVisibleCount] = useState(50);
-  const setLimit = (n: number) => { setLimitRaw(n); setVisibleCount(n); };
-  useEffect(() => { setVisibleCount(limit); }, [apCustomerId, filterBuilding, filterEmployee, statusFilter, categoryFilter, globalSearch]);
-  const totalPages = Math.max(1, Math.ceil(filteredDueRows.length / limit));
-  const safePage = Math.min(Math.max(1, Math.ceil(visibleCount / limit)), totalPages);
-  const setPage = (p: number) => setVisibleCount(Math.min(filteredDueRows.length, Math.max(limit, p * limit)));
-  const from = filteredDueRows.length === 0 ? 0 : 1;
-  const to = Math.min(visibleCount, filteredDueRows.length);
+  // ── Lazy rendering over the filtered due-item list — no pagination.
+  // The table shows the first 100 rows; scrolling near the bottom renders
+  // the next 100 (see useInfiniteScroll), so a long list never renders all
+  // at once. Any filter/search change starts again from the top 100. ─────
+  const [visibleCount, setVisibleCount] = useState(DUE_BATCH_SIZE);
+  useEffect(() => { setVisibleCount(DUE_BATCH_SIZE); }, [apCustomerId, filterBuilding, filterEmployee, statusFilter, categoryFilter, globalSearch]);
   const pagedDueRows = useMemo(() => filteredDueRows.slice(0, Math.min(visibleCount, filteredDueRows.length)), [filteredDueRows, visibleCount]);
-  const hasMoreRows = to < filteredDueRows.length;
-  const loadNextPage = useCallback(() => {
-    setVisibleCount((v) => Math.min(filteredDueRows.length, v + limit));
-  }, [filteredDueRows.length, limit]);
-  const pageBtns = useCallback(() => {
-    const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
-    const end = Math.min(totalPages, start + 4);
-    const arr: number[] = [];
-    for (let i = start; i <= end; i++) arr.push(i);
-    return arr;
-  }, [safePage, totalPages]);
-
-  // Scroll-triggered lazy loading (item 11.2) — an IntersectionObserver on
-  // a sentinel row placed after the last data row inside the table's own
-  // scroll container; scrolling it into view loads the next page-size
-  // increment, same as clicking "Next" above.
-  const lazyLoadSentinelRef = useRef<HTMLTableRowElement>(null);
-  useEffect(() => {
-    const el = lazyLoadSentinelRef.current;
-    if (!el || !hasMoreRows) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting) loadNextPage();
-    }, { root: el.closest('.due-report-table-scroll'), rootMargin: '200px' });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hasMoreRows, loadNextPage]);
+  const hasMoreRows = pagedDueRows.length < filteredDueRows.length;
+  const loadNextBatch = useCallback(() => {
+    setVisibleCount((v) => Math.min(filteredDueRows.length, v + DUE_BATCH_SIZE));
+  }, [filteredDueRows.length]);
+  const lazyLoadSentinelRef = useInfiniteScroll({
+    hasMore: hasMoreRows, loading: false, onLoadMore: loadNextBatch, itemCount: pagedDueRows.length,
+  });
 
   // ── Add Payment Details ──────────────────────────────────────────────
   // (apCustomerSearch/apCustomerId are declared earlier — see the comment
@@ -1266,11 +1236,8 @@ const DueReportPage: React.FC = () => {
                   </tr>
                 ))
               )}
-              {/* Item 11.2 — invisible sentinel row; scrolling it into view
-                  inside .due-report-table-scroll loads the next page-size
-                  increment (see the IntersectionObserver above). Rendered
-                  only while there's more to load, so it never becomes an
-                  extra empty row at the true end of the list. */}
+              {/* Invisible sentinel row — scrolling near it renders the next
+                  100 rows. Only present while there is more to show. */}
               {hasMoreRows && (
                 <tr ref={lazyLoadSentinelRef} aria-hidden="true"><td colSpan={9} style={{ padding: 0, border: 'none' }} /></tr>
               )}
@@ -1278,7 +1245,9 @@ const DueReportPage: React.FC = () => {
           </table>
         </div>
         {filteredDueRows.length > 0 && (
-          <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={filteredDueRows.length} pageBtns={pageBtns} />
+          <div className="flex items-center justify-center px-4 py-3" style={{ borderTop: `1px solid ${t.divider}`, fontSize: 12, color: t.textSecondary }}>
+            Showing {pagedDueRows.length} of {filteredDueRows.length}{hasMoreRows ? ' — scroll down to load more' : ''}
+          </div>
         )}
       </div>
 
