@@ -132,7 +132,7 @@ const SearchableSelect: React.FC<{
 // ── Status filter dropdown — custom (not a native <select>) because native
 // <option> elements can't take a rounded, colored background in any
 // browser. Each status option renders as a pill in its fixed STATUS_COLORS
-// color (Overdue dark red, Due Today green, Upcoming dark yellow); "All Status" stays
+// color (Overdue dark red, Due Today green, Upcoming yellow); "All Status" stays
 // neutral. Portaled for the same toolbar-clipping reason as SearchableSelect.
 const STATUS_FILTER_OPTIONS: { value: DueStatusFilter; label: string }[] = [
   { value: 'all', label: 'All Status' },
@@ -176,7 +176,7 @@ const StatusPillSelect: React.FC<{
   const current = STATUS_FILTER_OPTIONS.find((o) => o.value === value) ?? STATUS_FILTER_OPTIONS[0];
   const pillStyle = (v: DueStatusFilter): React.CSSProperties => v === 'all'
     ? { background: 'transparent', color: t.inputText }
-    : { background: STATUS_COLORS[v], color: '#fff', fontWeight: 700 };
+    : { background: STATUS_COLORS[v], color: STATUS_TEXT_COLORS[v], fontWeight: 700 };
 
   return (
     <>
@@ -300,7 +300,14 @@ type DueStatusFilter = 'all' | 'overdue' | 'due_today' | 'upcoming';
 const STATUS_COLORS: Record<'overdue' | 'due_today' | 'upcoming', string> = {
   overdue: '#991b1b',   // Dark red
   due_today: '#16a34a', // Green
-  upcoming: '#a16207',  // Dark yellow
+  upcoming: '#FFFF00',  // Yellow
+};
+// Text drawn on each status color — dark on the bright yellow (white would
+// be unreadable there), white on the others.
+const STATUS_TEXT_COLORS: Record<'overdue' | 'due_today' | 'upcoming', string> = {
+  overdue: '#fff',
+  due_today: '#fff',
+  upcoming: '#1f2937',
 };
 
 // ── Row shape the table renders, built from a DueListDetailRow (overdue,
@@ -316,7 +323,7 @@ interface DisplayRow {
   amount: number;
   months_pending: number | null;
   per_month_amount: number | null;
-  statusLabel: string; statusColor: string;
+  statusLabel: string; statusColor: string; statusTextColor: string;
   detailText: string;
   dueRow?: DueListDetailRow;
 }
@@ -564,6 +571,7 @@ const DueReportPage: React.FC = () => {
     per_month_amount: r.per_month_amount,
     statusLabel: STATUS_LABEL[r.due_category],
     statusColor: STATUS_COLORS[r.due_category],
+    statusTextColor: STATUS_TEXT_COLORS[r.due_category],
     // due_date_from/to come pre-formatted (DD/MM/YYYY) from the backend.
     detailText: `(from: ${r.due_date_from}, to: ${r.due_date_to})`,
     dueRow: r,
@@ -1177,7 +1185,7 @@ const DueReportPage: React.FC = () => {
                           status color) and the EMI/installment amount below. */}
                       <span style={{
                         display: 'inline-block', padding: '3px 9px', borderRadius: 999,
-                        fontSize: 10.5, fontWeight: 700, color: '#fff', background: r.statusColor,
+                        fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor,
                       }}>
                         {getPaymentForDisplay(r).label}
                       </span>
@@ -1191,13 +1199,13 @@ const DueReportPage: React.FC = () => {
                       {r.months_pending ? (
                         <span style={{
                           display: 'inline-block', padding: '3px 9px', borderRadius: 999,
-                          fontSize: 10.5, fontWeight: 700, color: '#fff', background: r.statusColor,
+                          fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor,
                         }}>
                           {r.months_pending} Month{r.months_pending === 1 ? '' : 's'}
                         </span>
                       ) : null}
                       {r.detailText && (
-                        <div style={{ fontSize: 10.5, fontWeight: 600, color: r.statusColor, marginTop: r.months_pending ? 5 : 0, whiteSpace: 'normal', maxWidth: 220 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 600, color: r.statusColor === STATUS_COLORS.upcoming ? t.textPrimary : r.statusColor, marginTop: r.months_pending ? 5 : 0, whiteSpace: 'normal', maxWidth: 220 }}>
                           {r.detailText}
                         </div>
                       )}

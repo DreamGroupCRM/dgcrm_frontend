@@ -31,7 +31,7 @@ import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals
 const STATUS_META = {
   paid: { label: 'Paid', icon: MdCheckCircle, color: '#059669', bg: 'rgba(5,150,105,0.12)' },
   due: { label: 'Due', icon: MdErrorOutline, color: '#dc2626', bg: 'rgba(220,38,38,0.12)' },
-  upcoming: { label: 'Upcoming', icon: MdSchedule, color: '#b45309', bg: 'rgba(217,119,6,0.14)' },
+  upcoming: { label: 'Upcoming', icon: MdSchedule, color: '#1f2937', bg: '#FFFF00' },
 } as const;
 
 const SummaryTable: React.FC<{ heading: string; rows: CustomerSchemeSummaryRow[]; total: number; totalLabel: string }> = ({ heading, rows, total, totalLabel }) => (
