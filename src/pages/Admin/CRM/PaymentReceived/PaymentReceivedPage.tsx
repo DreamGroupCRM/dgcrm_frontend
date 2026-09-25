@@ -83,6 +83,10 @@ const paymentTypeLabel = (r: { payment_type: string; is_after_possession_emi: bo
   return PAYMENT_TYPE_LABEL[r.payment_type] || r.payment_type;
 };
 
+// Totals footer row background — a fixed dark shade (not the lighter
+// header gradient) so the bold white totals read clearly in every theme.
+const TOTALS_ROW_BG = '#0b3b3c';
+
 const MODE_OF_PAYMENT_OPTIONS = ['Cash', 'Cheque', 'Online', 'Other'];
 
 const DATE_RANGE_OPTIONS: { value: string; label: string }[] = [
@@ -837,7 +841,7 @@ const PaymentReceivedPage: React.FC = () => {
               <tfoot>
                 <tr>
                   {categorySummaryError ? (
-                    <td colSpan={13} style={{ padding: '5px 12px', background: 'var(--grad-table-header)', color: '#fff', fontSize: 11.5, fontWeight: 700 }}>
+                    <td colSpan={13} style={{ padding: '12px 12px', background: TOTALS_ROW_BG, color: '#fff', fontSize: 13, fontWeight: 800 }}>
                       Failed to load totals.{' '}
                       <button type="button" onClick={fetchCategorySummary} style={{ fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none', color: '#fff', fontSize: 11.5, padding: 0 }}>
                         Retry
@@ -845,8 +849,8 @@ const PaymentReceivedPage: React.FC = () => {
                     </td>
                   ) : totalsFooterCells.map((c) => (
                     <td key={c.key} colSpan={c.colSpan}
-                      style={{ padding: '5px 12px', background: 'var(--grad-table-header)', color: '#fff', fontSize: 11.5, fontWeight: 800, whiteSpace: 'nowrap', borderLeft: '1px solid rgba(255,255,255,0.25)', lineHeight: 1.3 }}>
-                      <span style={{ opacity: 0.85 }}>{c.label}:</span>{' '}
+                      style={{ padding: '12px 12px', background: TOTALS_ROW_BG, color: '#fff', fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', borderLeft: '1px solid rgba(255,255,255,0.3)', lineHeight: 1.3 }}>
+                      <span>{c.label}:</span>{' '}
                       <span>{categorySummary ? rupee(categorySummary[c.key]) : '…'}</span>
                     </td>
                   ))}
