@@ -17,7 +17,8 @@ import { IconType } from 'react-icons';
 import {
   MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
   MdReceiptLong, MdSchedule, MdVpnKey, MdAccountBalanceWallet, MdNoteAdd,
-  MdSearch, MdStars, MdWorkspacePremium, MdForum,
+  MdSearch, MdStars, MdWorkspacePremium, MdForum, MdEvent, MdPerson, MdAccessTime,
+  MdEventAvailable, MdAssignmentInd,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -342,6 +343,17 @@ const durationText = (from: string, to: string): string => {
     ? `(from: ${from}, to: ${ymdToDmy(todayYmd)})`
     : `(from: ${ymdToDmy(todayYmd)}, to: ${from})`;
 };
+
+// Follow-up History date colors, cycled per date group: solid for the date
+// badge and entry stripe, soft for lines/borders, tint for the entry cards
+// (translucent so it works on both light and dark themes).
+const HISTORY_DAY_TONES = [
+  { solid: '#2563eb', soft: 'rgba(37,99,235,0.28)', tint: 'rgba(37,99,235,0.07)' },
+  { solid: '#9333ea', soft: 'rgba(147,51,234,0.28)', tint: 'rgba(147,51,234,0.07)' },
+  { solid: '#ea580c', soft: 'rgba(234,88,12,0.28)', tint: 'rgba(234,88,12,0.07)' },
+  { solid: '#0d9488', soft: 'rgba(13,148,136,0.28)', tint: 'rgba(13,148,136,0.07)' },
+  { solid: '#db2777', soft: 'rgba(219,39,119,0.28)', tint: 'rgba(219,39,119,0.07)' },
+];
 
 // Rows rendered per lazy-load batch (initial view and each scroll step).
 const DUE_BATCH_SIZE = 100;
@@ -1234,7 +1246,9 @@ const DueReportPage: React.FC = () => {
                         const iconBtn: React.CSSProperties = { width: 30, height: 30, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' };
                         const isPast = !!scheduled?.due_date && scheduled.due_date.slice(0, 10) < serverTodayYmd();
                         return (
-                          <div className="flex items-center gap-1.5">
+                          // Two lines: both icons on top, the follow-up date below.
+                          <div className="flex flex-col items-start gap-1">
+                            <div className="flex items-center gap-1.5">
                             <button type="button" onClick={() => openFollowUp(target)}
                               title={scheduled ? 'Change follow-up' : 'Schedule a follow-up'}
                               className="flex items-center justify-center rounded-lg flex-shrink-0" style={iconBtn}>
@@ -1244,6 +1258,7 @@ const DueReportPage: React.FC = () => {
                               className="flex items-center justify-center rounded-lg flex-shrink-0" style={iconBtn}>
                               <MdForum size={15} />
                             </button>
+                            </div>
                             {scheduled?.due_date && (
                               <span style={{ fontSize: 11, fontWeight: 700, color: isPast ? '#dc2626' : 'var(--brand-ink)', whiteSpace: 'nowrap' }}>
                                 {formatDate(scheduled.due_date)}
@@ -1372,12 +1387,19 @@ const DueReportPage: React.FC = () => {
         <div className="due-report-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="due-report-modal rounded-2xl w-full" style={{ maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
             onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
-              <div>
-                <div style={{ fontSize: 14.5, fontWeight: 800, color: t.textPrimary }}>Follow-up History</div>
-                <div style={{ fontSize: 11, color: t.textSecondary }}>{historyTarget.customer_name} · {historyTarget.customer_code}</div>
+            {/* Light green header — fixed colors so it looks the same in
+                every theme. */}
+            <div className="flex items-center justify-between px-5 py-4 rounded-t-2xl" style={{ background: '#dcfce7', borderBottom: '1px solid #bbf7d0' }}>
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center rounded-xl" style={{ width: 34, height: 34, background: '#16a34a', color: '#fff' }}>
+                  <MdForum size={18} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 14.5, fontWeight: 800, color: '#14532d' }}>Follow-up History</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#166534' }}>{historyTarget.customer_name} · {historyTarget.customer_code}</div>
+                </div>
               </div>
-              <button type="button" onClick={() => setHistoryTarget(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary }}>
+              <button type="button" onClick={() => setHistoryTarget(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#14532d' }}>
                 <MdClose size={20} />
               </button>
             </div>
@@ -1386,36 +1408,50 @@ const DueReportPage: React.FC = () => {
                 <p style={{ color: t.textSecondary, fontSize: 12 }}>Loading history...</p>
               ) : historyTasks.length === 0 ? (
                 <p style={{ color: t.textSecondary, fontSize: 12 }}>No follow-ups yet for this customer.</p>
-              ) : groupByDay(historyTasks).map(([day, tasks]) => (
+              ) : groupByDay(historyTasks).map(([day, tasks], gi) => {
+                // Each date gets its own color (cycling), used for its date
+                // badge and for the stripe/tint of that day's entries.
+                const tone = HISTORY_DAY_TONES[gi % HISTORY_DAY_TONES.length];
+                return (
                 <div key={day} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {/* Date divider — the day the conversation was logged. */}
-                  <div className="flex items-center gap-2" style={{ fontSize: 11, fontWeight: 800, color: t.textSecondary }}>
-                    <span style={{ flex: 1, height: 1, background: t.divider }} />
-                    <span style={{ padding: '2px 10px', borderRadius: 999, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary }}>{day}</span>
-                    <span style={{ flex: 1, height: 1, background: t.divider }} />
+                  <div className="flex items-center gap-2" style={{ fontSize: 11.5, fontWeight: 800 }}>
+                    <span style={{ flex: 1, height: 2, borderRadius: 2, background: tone.soft }} />
+                    <span className="inline-flex items-center gap-1" style={{ padding: '3px 11px', borderRadius: 999, background: tone.solid, color: '#fff' }}>
+                      <MdEvent size={13} /> {day}
+                    </span>
+                    <span style={{ flex: 1, height: 2, borderRadius: 2, background: tone.soft }} />
                   </div>
                   {tasks.map((task) => {
                     const open = task.status === 'pending';
                     return (
-                      <div key={task.id} style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: '12px 12px 12px 4px', padding: '9px 12px' }}>
-                        <div className="flex items-center gap-2" style={{ fontSize: 10.5, color: t.textSecondary, marginBottom: 4 }}>
-                          <span style={{ fontWeight: 700, color: t.textPrimary }}>{task.assigned_by_name?.trim() || '—'}</span>
-                          <span>{formatTime(task.created_at)}</span>
-                          <span style={{ marginLeft: 'auto', padding: '1px 7px', borderRadius: 999, fontWeight: 700, color: '#fff', background: open ? '#16a34a' : '#6b7280' }}>
+                      <div key={task.id} style={{ background: tone.tint, border: `1px solid ${tone.soft}`, borderLeft: `4px solid ${tone.solid}`, borderRadius: 12, padding: '9px 12px' }}>
+                        <div className="flex items-center gap-2" style={{ fontSize: 10.5, marginBottom: 5 }}>
+                          <span className="inline-flex items-center gap-1" style={{ fontWeight: 800, color: tone.solid }}>
+                            <MdPerson size={13} /> {task.assigned_by_name?.trim() || '—'}
+                          </span>
+                          <span className="inline-flex items-center gap-1" style={{ color: t.textSecondary, fontWeight: 600 }}>
+                            <MdAccessTime size={12} /> {formatTime(task.created_at)}
+                          </span>
+                          <span style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 999, fontWeight: 700, color: '#fff', background: open ? '#16a34a' : task.status === 'superseded' ? '#6b7280' : '#475569' }}>
                             {open ? 'Open' : task.status === 'superseded' ? 'Replaced' : 'Closed'}
                           </span>
                         </div>
-                        <div style={{ fontSize: 12.5, color: t.textPrimary, whiteSpace: 'pre-wrap' }}>{task.description || <span style={{ color: t.textSecondary }}>(no note)</span>}</div>
-                        <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 6, fontSize: 10.5, color: t.textSecondary }}>
-                          <span style={{ fontWeight: 700, color: 'var(--brand-ink)' }}>Next follow-up: {task.due_date ? formatDate(task.due_date) : 'No date'}</span>
-                          <span>·</span>
-                          <span>Assigned to {task.assigned_to_name?.trim() || 'Unassigned'}</span>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: t.textPrimary, whiteSpace: 'pre-wrap' }}>{task.description || <span style={{ color: t.textSecondary, fontWeight: 500 }}>(no note)</span>}</div>
+                        <div className="flex items-center gap-1.5 flex-wrap" style={{ marginTop: 7, fontSize: 10.5, fontWeight: 700 }}>
+                          <span className="inline-flex items-center gap-1" style={{ padding: '2px 8px', borderRadius: 999, background: '#e0f2fe', color: '#0369a1' }}>
+                            <MdEventAvailable size={12} /> Next follow-up: {task.due_date ? formatDate(task.due_date) : 'No date'}
+                          </span>
+                          <span className="inline-flex items-center gap-1" style={{ padding: '2px 8px', borderRadius: 999, background: '#f3e8ff', color: '#7e22ce' }}>
+                            <MdAssignmentInd size={12} /> Assigned to {task.assigned_to_name?.trim() || 'Unassigned'}
+                          </span>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>,
