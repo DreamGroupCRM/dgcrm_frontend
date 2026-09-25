@@ -327,6 +327,22 @@ const formatTime = (iso: string): string => {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 };
 
+// Duration column's from/to range. Several pending installments: first to
+// last pending due date (as sent). A single due (the backend sends the same
+// date twice): an overdue one runs from its due date to today, an upcoming
+// one from today to its due date — "today" is the server's date. Dates are
+// dd/mm/yyyy.
+const dmyToYmd = (dmy: string): string => { const [d, m, y] = dmy.split('/'); return `${y}-${m}-${d}`; };
+const ymdToDmy = (ymd: string): string => { const [y, m, d] = ymd.split('-'); return `${d}/${m}/${y}`; };
+const durationText = (from: string, to: string): string => {
+  if (from !== to || !/^\d{2}\/\d{2}\/\d{4}$/.test(from)) return `(from: ${from}, to: ${to})`;
+  const todayYmd = serverTodayYmd();
+  const dueYmd = dmyToYmd(from);
+  return dueYmd <= todayYmd
+    ? `(from: ${from}, to: ${ymdToDmy(todayYmd)})`
+    : `(from: ${ymdToDmy(todayYmd)}, to: ${from})`;
+};
+
 // Rows rendered per lazy-load batch (initial view and each scroll step).
 const DUE_BATCH_SIZE = 100;
 
@@ -593,11 +609,7 @@ const DueReportPage: React.FC = () => {
     statusColor: STATUS_COLORS[r.due_category],
     statusTextColor: STATUS_TEXT_COLORS[r.due_category],
     // due_date_from/to come pre-formatted (DD/MM/YYYY) from the backend.
-    // A range only when several installments are pending; a single due
-    // (from === to) shows its one due date instead of the same date twice.
-    detailText: r.due_date_from === r.due_date_to
-      ? `(Due date: ${r.due_date_from})`
-      : `(from: ${r.due_date_from}, to: ${r.due_date_to})`,
+    detailText: durationText(r.due_date_from, r.due_date_to),
     dueRow: r,
   })), [dueRows]);
 
