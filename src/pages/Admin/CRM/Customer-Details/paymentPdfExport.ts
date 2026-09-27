@@ -14,7 +14,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CustomerSchemeData, CustomerPaymentRecord, Customer, PaymentReceipt } from '../../../../types/index';
 import { paymentForLabel } from '../../../../services/paymentService';
-import { numberToIndianWords } from '../../../../utils';
 
 const rupee = (n: number): string => `Rs. ${Math.round(n || 0).toLocaleString('en-IN')}`;
 
@@ -244,97 +243,66 @@ export function exportPaymentHistoryPdf(
   doc.save(`Payment-History-${customer.customer_code || customer.id}.pdf`);
 }
 
-// ── Payment Receipt PDF (matches the reference "PAYMENT RECEIPT" screenshot) ──
-// tx.company is the builder/company name selected when the payment was
-// collected (a free-text field on the transaction, not an FK) — that's the
-// brand this receipt is issued under, not "Dream Group CRM" (this app's own
-// name). GSTIN is omitted rather than fabricated: amount_transactions has
-// no GST column, and `company` is plain text with no reliable link back to
-// a Company master row to pull one from.
-export function exportPaymentReceiptPdf(data: PaymentReceipt): void {
-  const { transaction: tx, customer } = data;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a5' });
-  const marginX = 32;
-  const pageWidth = doc.internal.pageSize.getWidth();
-  let y = 34;
+// ── Payment Receipt PDF ───────────────────────────────────────────────────
+// Captures the exact same ReceiptSheet the View popup shows (the company's
+// printed receipt-book layout), so view and download always match —
+// including the ₹ sign and logo, which jsPDF's built-in fonts can't draw.
+// The sheet is rendered in a hidden, isolated iframe (no app zoom or page
+// styles to distort it), captured at 3x for sharp print, and placed on an
+// A5 landscape page.
+export async function exportPaymentReceiptPdf(data: PaymentReceipt): Promise<void> {
+  const [{ default: html2canvas }, { createRoot }, { createElement }, { ReceiptSheet, RECEIPT_SHEET_WIDTH, RECEIPT_LOGO_URL }] = await Promise.all([
+    import('html2canvas'),
+    import('react-dom/client'),
+    import('react'),
+    import('../../../../components/common/ReceiptSheet'),
+  ]);
 
-  // Badge — "PAYMENT RECEIPT", top-right.
-  const badgeText = 'PAYMENT RECEIPT';
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  const badgeWidth = doc.getTextWidth(badgeText) + 16;
-  doc.setFillColor(37, 99, 235);
-  doc.roundedRect(pageWidth - marginX - badgeWidth, y - 12, badgeWidth, 18, 3, 3, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.text(badgeText, pageWidth - marginX - badgeWidth / 2, y, { align: 'center' });
-  doc.setTextColor(0, 0, 0);
+  // The capture is drawn by the browser itself (foreignObject mode), which
+  // matches the on-screen popup exactly; that mode needs the logo embedded
+  // as a data URL rather than a file link.
+  const logoSrc = await fetch(RECEIPT_LOGO_URL)
+    .then((r) => r.blob())
+    .then((blob) => new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(String(reader.result));
+      reader.readAsDataURL(blob);
+    }))
+    .catch(() => RECEIPT_LOGO_URL);
 
-  // Brand name — the company this payment was collected for.
-  doc.setFontSize(17);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 64, 175);
-  doc.text(tx.company || 'Dream Group CRM', marginX, y + 20);
-  doc.setTextColor(0, 0, 0);
-  y += 42;
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.cssText = `position:fixed;left:-10000px;top:0;width:${RECEIPT_SHEET_WIDTH + 40}px;height:1200px;border:0;visibility:hidden;`;
+  document.body.appendChild(frame);
+  const frameDoc = frame.contentDocument!;
+  frameDoc.open();
+  frameDoc.write('<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;background:#fff"><div id="r"></div></body></html>');
+  frameDoc.close();
+  const mount = frameDoc.getElementById('r')!;
+  const root = createRoot(mount);
+  try {
+    // Wait for the logo so it is in the capture.
+    await new Promise<void>((resolve) => {
+      const timer = window.setTimeout(resolve, 4000);
+      root.render(createElement(ReceiptSheet, { data, logoSrc, onLogoLoad: () => { window.clearTimeout(timer); resolve(); } }));
+    });
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    const sheet = mount.firstElementChild as HTMLElement;
+    const canvas = await html2canvas(sheet, { scale: 3, backgroundColor: '#ffffff', useCORS: true, logging: false, foreignObjectRendering: true });
 
-  doc.setDrawColor(203, 213, 225);
-  doc.line(marginX, y, pageWidth - marginX, y);
-  y += 8;
-
-  // Building / Flat No. / Wing / EMI Month box, top-right style summarized
-  // as a small info line since a5 receipts have little width to spare.
-  const emiMonth = tx.inst_date ? new Date(tx.inst_date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '—';
-  autoTable(doc, {
-    startY: y,
-    body: [
-      ['BUILDING', customer.building_name || '—', 'FLAT NO.', customer.flat_no || '—'],
-      ['WING', customer.wing_name || '—', 'EMI MONTH', emiMonth],
-    ],
-    theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 4, lineColor: [203, 213, 225], lineWidth: 0.6 },
-    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60 }, 2: { fontStyle: 'bold', cellWidth: 60 } },
-    margin: { left: marginX, right: marginX },
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  y = (doc as any).lastAutoTable.finalY + 14;
-
-  doc.setFontSize(9);
-  const line = (label: string, value: string) => { doc.text(label, marginX, y); doc.setFont('helvetica', 'bold'); doc.text(value, marginX + 130, y); doc.setFont('helvetica', 'normal'); y += 15; };
-  // V_23.0 item 2 — null until an admin approves the payment; an admin can
-  // still open this PDF for an unapproved transaction (existing behavior —
-  // see payment.service.ts's getPaymentReceipt), so this has to degrade
-  // gracefully instead of printing the literal string "null".
-  line('RECEIPT NO :', tx.receipt_number || 'PENDING APPROVAL');
-  line('DATE :', formatDMY(tx.date || tx.created_at));
-  line('RECEIVED WITH THANKS FROM :', customer.customer_name || '—');
-
-  const total = tx.amount + (tx.maintenance || 0);
-  line('THE SUM OF RUPEES :', `${numberToIndianWords(tx.amount)}`);
-  if (tx.maintenance) line('MAINTENANCE :', rupee(tx.maintenance));
-  line('TOTAL :', rupee(total));
-  line('IN WORDS :', numberToIndianWords(total));
-  line('BY CASH / CHEQUE NO :', tx.cheque_number || '—');
-  line('DATED :', tx.clearance_date ? formatDMY(tx.clearance_date) : '—');
-  line('PAYMENT MODE :', tx.mode_of_payment || '—');
-  y += 10;
-
-  // Big amount box, bottom-left.
-  doc.setFontSize(15);
-  doc.setFont('helvetica', 'bold');
-  doc.setDrawColor(37, 99, 235);
-  const amountText = rupee(total);
-  const amountBoxWidth = doc.getTextWidth(amountText) + 24;
-  doc.rect(marginX, y, amountBoxWidth, 24);
-  doc.text(amountText, marginX + amountBoxWidth / 2, y + 16, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  y += 40;
-
-  doc.setFontSize(7.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text('Cheques are subject to realisation', marginX, y);
-  y += 12;
-  doc.text('This Receipt is Computer Generated, Does not Required Signature', marginX, y);
-  doc.setTextColor(0, 0, 0);
-
-  doc.save(`Receipt-${tx.receipt_number || `Pending-${tx.id}`}.pdf`);
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a5', compress: true });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 14;
+    const ratio = Math.min((pageW - margin * 2) / canvas.width, (pageH - margin * 2) / canvas.height);
+    const w = canvas.width * ratio;
+    const h = canvas.height * ratio;
+    // 'FAST' = compressed image stream (the raw 3x capture would make a
+    // ~13 MB PDF; compressed it's a few hundred KB, still sharp for print).
+    doc.addImage(canvas, 'PNG', (pageW - w) / 2, (pageH - h) / 2, w, h, undefined, 'FAST');
+    doc.save(`Receipt-${data.transaction.receipt_number || `Pending-${data.transaction.id}`}.pdf`);
+  } finally {
+    root.unmount();
+    frame.remove();
+  }
 }

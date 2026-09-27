@@ -41,6 +41,7 @@ import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 import { cssRect, viewportWidth, viewportHeight } from '../../../../utils/appZoom';
+import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
 
 type Theme = AppTheme;
 
@@ -1523,7 +1524,13 @@ const CustomerDetailsListPage: React.FC = () => {
           only this card's content visible when printed, matching how the
           rest of this app keeps one-off styling inline rather than in a
           new CSS file. ──────────────────────────────────────────────── */}
-      {receiptModal && (
+      {/* A loaded, approved receipt uses the shared receipt-book design —
+          the same one Payment Received and the customer portal show, and
+          the same one the PDF download produces. */}
+      {receiptModal?.data && !receiptModal.loading && !receiptModal.pendingApproval && (
+        <PaymentReceiptViewModal data={receiptModal.data} onClose={() => setReceiptModal(null)} onDownload={handleDownloadReceiptPdf} />
+      )}
+      {receiptModal && (receiptModal.loading || receiptModal.pendingApproval || !receiptModal.data) && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.55)' }}>
           <style>{`
             @media print {
@@ -1549,64 +1556,7 @@ const CustomerDetailsListPage: React.FC = () => {
                 </div>
               ) : receiptModal.loading || !receiptModal.data ? (
                 <p style={{ color: t.textSecondary, fontSize: 12 }}>{receiptModal.loading ? 'Loading receipt...' : 'Receipt not found.'}</p>
-              ) : (
-                <>
-                  <div className="text-center mb-4">
-                    <div style={{ fontSize: 15, fontWeight: 800, color: t.textPrimary }}>Dream Group CRM</div>
-                    <div style={{ fontSize: 10.5, color: t.textSecondary }}>Payment Receipt</div>
-                  </div>
-                  <div className="rounded-xl p-4 mb-4" style={{ background: t.insetBg }}>
-                    <div className="flex justify-between mb-1.5"><span style={{ fontSize: 11, color: t.textSecondary }}>Receipt No.</span><strong style={{ fontSize: 11.5, color: t.textPrimary }}>{receiptModal.data.transaction.receipt_number}</strong></div>
-                    <div className="flex justify-between mb-1.5"><span style={{ fontSize: 11, color: t.textSecondary }}>Date</span><strong style={{ fontSize: 11.5, color: t.textPrimary }}>{formatDate(receiptModal.data.transaction.date || receiptModal.data.transaction.created_at)}</strong></div>
-                    <div className="flex justify-between"><span style={{ fontSize: 11, color: t.textSecondary }}>Received By</span><strong style={{ fontSize: 11.5, color: t.textPrimary }}>{receiptModal.data.transaction.received_by || '—'}</strong></div>
-                  </div>
-
-                  <div className="mb-4">
-                    <div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Customer</div>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>{receiptModal.data.customer.customer_name || '—'}</div>
-                    <div style={{ fontSize: 11, color: t.textSecondary }}>{receiptModal.data.customer.customer_code}{receiptModal.data.customer.mobile_number ? ` · ${receiptModal.data.customer.mobile_number}` : ''}</div>
-                    {/* Prefers real building/wing/flat names (the backend now
-                        loads those relations — see paymentService.ts); falls
-                        back to the raw id only if a relation didn't resolve
-                        (e.g. a deleted building). */}
-                    {(receiptModal.data.customer.building_id || receiptModal.data.customer.wing_id || receiptModal.data.customer.flat_id) && (
-                      <div style={{ fontSize: 10, color: t.textSecondary }}>
-                        {receiptModal.data.customer.building_id ? `${receiptModal.data.customer.building_name || `Building #${receiptModal.data.customer.building_id}`} ` : ''}
-                        {receiptModal.data.customer.wing_id ? `· ${receiptModal.data.customer.wing_name ? `Wing ${receiptModal.data.customer.wing_name}` : `Wing #${receiptModal.data.customer.wing_id}`} ` : ''}
-                        {receiptModal.data.customer.flat_id ? `· ${receiptModal.data.customer.flat_no ? `Flat ${receiptModal.data.customer.flat_no}` : `Flat #${receiptModal.data.customer.flat_id}`}` : ''}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="rounded-xl p-4 mb-4" style={{ background: isDark ? 'rgba(22,163,74,0.1)' : '#f0fdf4', border: `1px solid ${isDark ? 'rgba(22,163,74,0.25)' : '#bbf7d0'}` }}>
-                    <div style={{ fontSize: 10.5, color: t.textSecondary, marginBottom: 2 }}>{paymentForLabel(receiptModal.data.transaction.payment_type)}</div>
-                    <div style={{ fontSize: 21, fontWeight: 800, color: '#16a34a' }}>₹ {receiptModal.data.transaction.amount.toLocaleString('en-IN')}</div>
-                    {receiptModal.data.transaction.payment_type === 'EMIAmount' && receiptModal.data.emi_number > 0 && (
-                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 4 }}>
-                        EMI #{receiptModal.data.emi_number} of {receiptModal.data.total_emis} total ({receiptModal.data.paid_emis} paid, {receiptModal.data.future_emis} future)
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-y-1.5 gap-x-4 mb-2">
-                    {receiptModal.data.transaction.mode_of_payment && (
-                      <div><span style={{ fontSize: 10, color: t.textSecondary }}>Mode of Payment</span><div style={{ fontSize: 11.5, color: t.textPrimary, fontWeight: 600 }}>{receiptModal.data.transaction.mode_of_payment}</div></div>
-                    )}
-                    {receiptModal.data.transaction.cheque_number && (
-                      <div><span style={{ fontSize: 10, color: t.textSecondary }}>Cheque Number</span><div style={{ fontSize: 11.5, color: t.textPrimary, fontWeight: 600 }}>{receiptModal.data.transaction.cheque_number}</div></div>
-                    )}
-                    {receiptModal.data.transaction.clearance_date && (
-                      <div><span style={{ fontSize: 10, color: t.textSecondary }}>Clearance Date</span><div style={{ fontSize: 11.5, color: t.textPrimary, fontWeight: 600 }}>{formatDate(receiptModal.data.transaction.clearance_date)}</div></div>
-                    )}
-                    {receiptModal.data.transaction.company && (
-                      <div><span style={{ fontSize: 10, color: t.textSecondary }}>Company</span><div style={{ fontSize: 11.5, color: t.textPrimary, fontWeight: 600 }}>{receiptModal.data.transaction.company}</div></div>
-                    )}
-                    {receiptModal.data.transaction.payment_tag && (
-                      <div><span style={{ fontSize: 10, color: t.textSecondary }}>Tag</span><div style={{ fontSize: 11.5, color: '#ea580c', fontWeight: 700 }}>{receiptModal.data.transaction.payment_tag}</div></div>
-                    )}
-                  </div>
-                </>
-              )}
+              ) : null}
             </div>
             <div className="flex items-center justify-end gap-3 p-5 receipt-no-print cust-divider-top">
               <button type="button" onClick={() => setReceiptModal(null)}
