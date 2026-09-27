@@ -1102,20 +1102,6 @@ export interface PaymentReceiptCustomer {
   flat_no      : string | null;
 }
 
-// V_24.0 — the Company Master row the customer's building belongs to;
-// fills the receipt header (name, GSTIN, address, mobile). null when the
-// building has no linked company.
-export interface PaymentReceiptIssuer {
-  name                    : string;
-  gst                     : string | null;
-  address                 : string | null;
-  city                    : string | null;
-  state                   : string | null;
-  pincode                 : string | null;
-  phone                   : string | null;
-  alternate_contact_number: string | null;
-}
-
 export interface PaymentReceipt {
   transaction: PaymentReceiptTransaction;
   customer   : PaymentReceiptCustomer;
@@ -1123,7 +1109,6 @@ export interface PaymentReceipt {
   future_emis: number;
   total_emis : number;
   emi_number : number; // only meaningful when transaction.payment_type === 'EMIAmount'
-  issuer?    : PaymentReceiptIssuer | null;
 }
 
 export interface PaymentReceiptResponse {

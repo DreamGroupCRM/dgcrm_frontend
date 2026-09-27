@@ -253,7 +253,6 @@ export const fetchPaymentReceipt = async (transactionId: string | number): Promi
       future_emis: d.future_emis,
       total_emis: d.total_emis,
       emi_number: d.emi_number,
-      issuer: d.issuer ?? null,
     },
   };
 };

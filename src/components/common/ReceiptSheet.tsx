@@ -1,11 +1,11 @@
 // ==========================================
 // DGCRM — PAYMENT RECEIPT SHEET (shared by View + Download)
 // ==========================================
-// The company's printed receipt book layout ("PAYMENT RECEIPT", company
-// name/GSTIN/address, Building/Flat/Wing/EMI box, Receipt No./Date,
-// Received with thanks from, Sum + GST = Total, In words, Cash/Cheque,
-// Dated, Bank, ₹ box, For <company> / Authorised Signatory), filled in with
-// the payment's real data.
+// A same-to-same copy of Dream Builders' printed receipt book: the header
+// (GSTIN, PAYMENT RECEIPT badge, DREAM BUILDERS, address/mobile, logo),
+// the Building / Flat No. / Wing / EMI Month / EMI No. box, and the body
+// lines are fixed exactly as printed on the book — only the blanks are
+// filled in with the payment's data.
 //
 // One component for both uses so they can never drift apart:
 //  - PaymentReceiptViewModal shows it on screen;
@@ -24,18 +24,22 @@ import { paymentForLabel } from '../../services/paymentService';
 export const RECEIPT_SHEET_WIDTH = 840;
 export const RECEIPT_LOGO_URL = logoUrl;
 
-// Header details printed on the physical receipt book — used for any field
-// the Company Master row doesn't have (or when no company is linked).
-const DEFAULT_ISSUER = {
-  name: 'DREAM BUILDERS',
-  gst: '27AAWFD9851G1ZQ',
-  address: 'A-01, Al- Fatah Apt., Sai Nagar, Opp. Police Station, Nalasopara (W), Dist. Palghar - 401 203.',
-  mobile: '+91 7414992571 / 8855996468',
+// Exactly as printed on the receipt book — never taken from the database.
+const PRINTED = {
+  gstin: '27AAWFD9851G1ZQ',
+  company: 'DREAM BUILDERS',
+  addressLine1: 'A-01, Al- Fatah Apt., Sai Nagar, Opp. Police Station, Nalasopara (W),',
+  addressLine2: 'Dist. Palghar - 401 203. Mob.: +91 7414992571 / 8855996468',
+  signFor: 'DREAMS BUILDERS',
 };
 
 const BLUE = '#1f3a93';      // receipt-book blue (borders, labels, title)
 const INK = '#0f172a';       // filled-in values
-const FONT = 'Arial, Helvetica, sans-serif';
+// Printed labels are a condensed bold face; the company name a rounded
+// geometric face. Each falls back to the closest common system font.
+const LABEL_FONT = '"Arial Narrow", "Roboto Condensed", "Helvetica Neue Condensed", Arial, sans-serif';
+const TITLE_FONT = '"Century Gothic", "Futura", "Avenir Next", "Trebuchet MS", Arial, sans-serif';
+const VALUE_FONT = 'Arial, Helvetica, sans-serif';
 
 const amountText = (n: number): string => Math.round(n || 0).toLocaleString('en-IN');
 const formatDMY = (iso: string | null | undefined): string => {
@@ -50,19 +54,9 @@ const monthYear = (iso: string | null | undefined): string => {
   return y && m ? `${names[Number(m) - 1]} ${y}` : '';
 };
 
-/** Everything printed on the receipt, derived from the API data. */
+/** The filled-in values for the receipt's blanks, from the API data. */
 export function receiptFields(data: PaymentReceipt) {
-  const { transaction: tx, customer, issuer } = data;
-  const isDefaultCompany = !issuer || /dream\s*builders?/i.test(issuer.name || '');
-  const pick = (value: string | null | undefined, fallback: string) =>
-    (value && value.trim()) || (isDefaultCompany ? fallback : '');
-  const addressFromMaster = issuer
-    ? [issuer.address, issuer.city && !String(issuer.address || '').includes(issuer.city) ? issuer.city : '', issuer.pincode ? `- ${issuer.pincode}` : '']
-        .filter(Boolean).join(', ').replace(', -', ' -')
-    : '';
-  const mobileFromMaster = issuer ? [issuer.phone, issuer.alternate_contact_number].filter(Boolean).join(' / ') : '';
-  const companyName = (issuer?.name || DEFAULT_ISSUER.name).toUpperCase();
-
+  const { transaction: tx, customer } = data;
   const total = tx.amount + (tx.maintenance || 0);
   const mode = (tx.mode_of_payment || '').trim();
   const isCheque = /cheque/i.test(mode);
@@ -70,10 +64,6 @@ export function receiptFields(data: PaymentReceipt) {
   const typeLabel = tx.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(tx.payment_type);
 
   return {
-    gstin: pick(issuer?.gst, DEFAULT_ISSUER.gst),
-    companyName,
-    address: pick(addressFromMaster, DEFAULT_ISSUER.address),
-    mobile: pick(mobileFromMaster, DEFAULT_ISSUER.mobile),
     building: customer.building_name || '',
     flatNo: customer.flat_no || '',
     wing: customer.wing_name || '',
@@ -95,65 +85,69 @@ export function receiptFields(data: PaymentReceipt) {
 }
 
 // ── Small layout pieces ──────────────────────────────────────────────────
-const Label: React.FC<{ children: React.ReactNode; style?: React.CSSProperties }> = ({ children, style }) => (
-  <span style={{ color: BLUE, fontWeight: 800, fontSize: 15, letterSpacing: 0.2, whiteSpace: 'nowrap', ...style }}>{children}</span>
+const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span style={{ color: BLUE, fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 17, letterSpacing: 0.1, whiteSpace: 'nowrap' }}>{children}</span>
 );
 // A filled-in blank: the value sits on the receipt's ruled line.
 const Blank: React.FC<{ value: string; flex?: number; big?: boolean }> = ({ value, flex = 1, big }) => (
   <span style={{
-    flex, minWidth: 0, borderBottom: `1.6px solid ${BLUE}`, padding: '0 6px 2px', color: INK,
+    flex, minWidth: 0, borderBottom: `1.8px solid ${BLUE}`, padding: '0 6px 2px', color: INK, fontFamily: VALUE_FONT,
     fontWeight: 700, fontSize: big ? 18 : 16, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
   }}>{value || ' '}</span>
 );
 const Row: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 20 }}>{children}</div>
+  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 24 }}>{children}</div>
 );
 
 export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => void; logoSrc?: string }> = ({ data, onLogoLoad, logoSrc }) => {
   const f = receiptFields(data);
-  // The company name gets the space left of the logo (~380px); longer
-  // names get a smaller font instead of being cut off.
-  const nameFontPx = Math.max(20, Math.min(42, Math.floor(380 / (Math.max(f.companyName.length, 1) * 0.7))));
   const infoRows: [string, string][] = [
     ['BUILDING', f.building], ['FLAT NO.', f.flatNo], ['WING', f.wing], ['EMI MONTH', f.emiMonth], ['EMI NO.', f.emiNo],
   ];
   return (
-    <div style={{ width: RECEIPT_SHEET_WIDTH, background: '#fff', padding: 14, fontFamily: FONT, boxSizing: 'border-box' }}>
+    <div style={{ width: RECEIPT_SHEET_WIDTH, background: '#fff', padding: 14, fontFamily: VALUE_FONT, boxSizing: 'border-box' }}>
       <div style={{ border: `2.5px solid ${BLUE}`, boxSizing: 'border-box' }}>
-        {/* ── Header: company block (left) + unit/EMI box (right) ── */}
+        {/* ── Header: printed company block (left) + unit/EMI box (right) ── */}
         <div style={{ display: 'flex', borderBottom: `2.5px solid ${BLUE}` }}>
-          <div style={{ flex: 1, minWidth: 0, padding: '10px 14px 8px', position: 'relative' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ color: BLUE, fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap' }}>GSTIN : {f.gstin || '—'}</span>
-              <span style={{ background: BLUE, color: '#fff', fontWeight: 800, fontSize: 14, padding: '6px 12px', borderRadius: '0 0 8px 8px', marginTop: -10, whiteSpace: 'nowrap' }}>
+          <div style={{ flex: 1, minWidth: 0, padding: '0 10px 8px 14px', position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <span style={{ color: BLUE, fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap', marginTop: 16 }}>
+                GSTIN : {PRINTED.gstin}
+              </span>
+              <span style={{ background: BLUE, color: '#fff', fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 15, padding: '9px 12px 7px', borderRadius: '0 0 9px 9px', whiteSpace: 'nowrap' }}>
                 PAYMENT RECEIPT
               </span>
             </div>
             <img src={logoSrc || logoUrl} alt="" onLoad={onLogoLoad} onError={onLogoLoad}
-              style={{ position: 'absolute', right: 10, top: 8, width: 92, height: 92, objectFit: 'contain' }} />
-            <div style={{ color: BLUE, fontWeight: 400, fontSize: nameFontPx, letterSpacing: 1, lineHeight: 1.1, marginTop: 18, paddingRight: 96, whiteSpace: 'nowrap' }}>
-              {f.companyName}
+              style={{ position: 'absolute', right: 8, top: 4, width: 84, height: 112, objectFit: 'contain' }} />
+            <div style={{ color: BLUE, fontFamily: TITLE_FONT, fontWeight: 400, fontSize: 38, letterSpacing: 1.5, lineHeight: 1, marginTop: 18, paddingRight: 92, whiteSpace: 'nowrap' }}>
+              {PRINTED.company}
             </div>
-            <div style={{ height: 3, background: '#1e293b', margin: '4px 96px 6px 0' }} />
-            <div style={{ color: '#1e293b', fontWeight: 700, fontSize: 12.5, lineHeight: 1.45 }}>
-              {f.address}{f.mobile ? ` Mob.: ${f.mobile}` : ''}
+            <div style={{ height: 3, background: '#1e293b', margin: '6px 92px 7px 0' }} />
+            <div style={{ color: '#1e293b', fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 12.5, lineHeight: 1.45, whiteSpace: 'nowrap' }}>
+              <div>{PRINTED.addressLine1}</div>
+              <div>{PRINTED.addressLine2}</div>
             </div>
           </div>
-          <div style={{ width: 300, borderLeft: `2.5px solid ${BLUE}`, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ width: 280, borderLeft: `2.5px solid ${BLUE}`, display: 'flex', flexDirection: 'column' }}>
             {infoRows.map(([label, value], i) => (
               <div key={label} style={{ flex: 1, display: 'flex', borderTop: i ? `1.8px solid ${BLUE}` : 'none', minHeight: 36 }}>
-                <div style={{ width: 118, borderRight: `1.8px solid ${BLUE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: BLUE, fontWeight: 800, fontSize: 13.5 }}>{label}</div>
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', padding: '0 10px', color: INK, fontWeight: 700, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
+                <div style={{ width: 118, borderRight: `1.8px solid ${BLUE}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ color: '#1e293b', fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>{label}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', padding: '0 10px' }}>
+                  <span style={{ color: INK, fontWeight: 700, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</span>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
         {/* ── Body ── */}
-        <div style={{ padding: '22px 28px 16px' }}>
+        <div style={{ padding: '24px 28px 14px' }}>
           <Row>
             <Label>RECEIPT NO.</Label>
-            <span style={{ flex: 1.2, color: INK, fontWeight: 700, fontSize: 24, fontFamily: 'Georgia, "Times New Roman", serif', padding: '0 8px' }}>{f.receiptNo}</span>
+            <span style={{ flex: 1.2, color: INK, fontWeight: 700, fontSize: 26, fontFamily: 'Georgia, "Times New Roman", serif', padding: '0 12px', lineHeight: 1 }}>{f.receiptNo}</span>
             <Label>DATE :</Label>
             <Blank value={f.date} flex={0.8} />
           </Row>
@@ -183,22 +177,23 @@ export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => v
           </Row>
 
           {/* ── Footer: ₹ box (left), signatory (right) ── */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: 4 }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'stretch', border: `2.5px solid ${BLUE}`, width: 320, height: 58 }}>
+              <div style={{ display: 'flex', alignItems: 'stretch', border: `2.5px solid ${BLUE}`, width: 320, height: 60 }}>
                 <div style={{ width: 62, background: BLUE, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, fontWeight: 700 }}>₹</div>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0 12px', color: INK, fontWeight: 800, fontSize: 24 }}>
                   {f.total}/-
                 </div>
               </div>
-              <div style={{ color: '#1e293b', fontWeight: 700, fontSize: 12.5, marginTop: 6, paddingLeft: 24 }}>Cheques are subject to realisation</div>
+              <div style={{ color: '#1e293b', fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 15, marginTop: 8, paddingLeft: 26 }}>Cheques are subject to realisation</div>
             </div>
-            <div style={{ textAlign: 'center', paddingRight: 8 }}>
-              <div style={{ color: BLUE, fontSize: 20, letterSpacing: 0.6 }}>
-                <span style={{ fontWeight: 800, fontSize: 14 }}>For </span>{f.companyName}
+            <div style={{ textAlign: 'center', paddingRight: 4, paddingTop: 0 }}>
+              <div style={{ color: BLUE, whiteSpace: 'nowrap' }}>
+                <span style={{ fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 16 }}>For </span>
+                <span style={{ fontFamily: TITLE_FONT, fontSize: 22, letterSpacing: 1 }}>{PRINTED.signFor}</span>
               </div>
-              <div style={{ height: 44 }} />
-              <div style={{ color: '#1e293b', fontWeight: 700, fontSize: 11.5, letterSpacing: 0.3 }}>AUTHORISED SIGNATORY</div>
+              <div style={{ height: 56 }} />
+              <div style={{ color: '#1e293b', fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 13, letterSpacing: 0.3 }}>AUTHORISED SIGNATORY</div>
             </div>
           </div>
         </div>
