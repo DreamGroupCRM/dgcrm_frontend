@@ -1126,9 +1126,10 @@ const DueReportPage: React.FC = () => {
             {/* In-app-only badge — every open customer follow-up across the
                 team; clicking it lists them with their follow-up dates. */}
             <button type="button" title="Take Follow Ups" onClick={() => setFollowUpListOpen(true)}
-              className="due-report-followup-badge flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold"
+              className="due-report-followup-badge flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold"
               style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
-              <MdNoteAdd size={15} style={{ color: '#fff' }} />
+              {/* Same size, padding and font as Export CSV next to it. */}
+              <MdNoteAdd size={16} style={{ color: '#fff' }} />
               <span className="due-report-followup-badge-text">Take Follow Ups ({followUpListTasks.length})</span>
             </button>
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}

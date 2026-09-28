@@ -43,8 +43,8 @@
 
   .due-report-export-btn { padding: 8px 12px !important; font-size: 12px !important; }
   .due-report-refresh-btn { width: 34px !important; height: 34px !important; }
-  .due-report-followup-badge { padding: 6px 10px !important; }
-  .due-report-followup-badge-text { font-size: 10.5px !important; }
+  .due-report-followup-badge { padding: 8px 12px !important; font-size: 12px !important; }
+  .due-report-followup-badge-text { font-size: 12px !important; }
 
   .due-report-table th { padding: 10px 10px !important; font-size: 10.5px !important; }
   .due-report-table td { padding: 10px 10px !important; font-size: 11px !important; }
@@ -70,9 +70,9 @@
   .due-report-filter-item { width: 128px !important; }
   .due-report-toolbar-actions { gap: 6px !important; }
 
-  .due-report-followup-badge { padding: 5px 8px !important; gap: 4px !important; }
-  .due-report-followup-badge svg { width: 12px !important; height: 12px !important; }
-  .due-report-followup-badge-text { font-size: 9.5px !important; }
+  .due-report-followup-badge { padding: 7px 10px !important; font-size: 11px !important; gap: 4px !important; }
+  .due-report-followup-badge svg { width: 13px !important; height: 13px !important; }
+  .due-report-followup-badge-text { font-size: 11px !important; }
 
   .due-report-export-btn { padding: 7px 10px !important; font-size: 11px !important; gap: 4px !important; }
   .due-report-export-btn svg { width: 13px !important; height: 13px !important; }
@@ -91,7 +91,8 @@
 /* ---------- xs (small phones): <=359px ---------- */
 @media (max-width: 359px) {
   .due-report-filter-item { width: 108px !important; }
-  .due-report-followup-badge-text { font-size: 8.5px !important; }
+  .due-report-followup-badge-text { font-size: 10px !important; }
+  .due-report-followup-badge { padding: 6px 8px !important; }
   .due-report-export-btn-text { display: inline; font-size: 10px !important; }
   .due-report-export-btn { padding: 6px 8px !important; }
 }
