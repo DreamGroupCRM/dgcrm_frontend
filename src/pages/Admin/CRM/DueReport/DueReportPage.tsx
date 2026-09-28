@@ -329,20 +329,41 @@ const formatTime = (iso: string): string => {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 };
 
-// Duration column's from/to range. Several pending installments: first to
-// last pending due date (as sent). A single due (the backend sends the same
-// date twice): an overdue one runs from its due date to today, an upcoming
-// one from today to its due date — "today" is the server's date. Dates are
-// dd/mm/yyyy.
-const dmyToYmd = (dmy: string): string => { const [d, m, y] = dmy.split('/'); return `${y}-${m}-${d}`; };
-const ymdToDmy = (ymd: string): string => { const [y, m, d] = ymd.split('-'); return `${d}/${m}/${y}`; };
+// Duration column's From/To range, counted month-wise. From = the first
+// unpaid due date. To = the latest monthly repeat of that date (same day of
+// the month) that has already arrived on the server's calendar — e.g. due
+// 10/07/26 and still unpaid on 28/09/26 → From 10/07/26, To 10/09/26
+// (2 months pending). If the backend's own last-pending date is later (an
+// EMI series), that is used. A due that hasn't arrived yet (upcoming) shows
+// its due date for both. Dates are shown as DD/MM/YY.
+const parseDmy = (dmy: string): [number, number, number] | null => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dmy);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+};
+const ymdNum = (y: number, m: number, d: number) => y * 10000 + m * 100 + d;
+const shortDmy = (d: number, m: number, y: number) => `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${String(y % 100).padStart(2, '0')}`;
+const durationRange = (from: string, to: string): { from: string; to: string } | null => {
+  const f = parseDmy(from);
+  if (!f) return null;
+  const t = parseDmy(to) ?? f;
+  const [ty, tm, td] = serverTodayYmd().split('-').map(Number);
+  const today = ymdNum(ty, tm, td);
+  let [endD, endM, endY] = t;
+  if (ymdNum(f[2], f[1], f[0]) <= today) {
+    // Latest monthly repeat of the From date on or before today (day
+    // clamped to the month's length, e.g. 31st → 30th).
+    let months = (ty - f[2]) * 12 + (tm - f[1]);
+    const dayIn = (y: number, m: number) => Math.min(f[0], new Date(y, m, 0).getDate());
+    const at = (k: number) => { const y = f[2] + Math.floor((f[1] - 1 + k) / 12); const m = ((f[1] - 1 + k) % 12) + 1; return [dayIn(y, m), m, y] as const; };
+    while (months > 0 && ymdNum(at(months)[2], at(months)[1], at(months)[0]) > today) months--;
+    const [ad, am, ay] = at(Math.max(0, months));
+    if (ymdNum(ay, am, ad) > ymdNum(endY, endM, endD)) [endD, endM, endY] = [ad, am, ay];
+  }
+  return { from: shortDmy(f[0], f[1], f[2]), to: shortDmy(endD, endM, endY) };
+};
 const durationText = (from: string, to: string): string => {
-  if (from !== to || !/^\d{2}\/\d{2}\/\d{4}$/.test(from)) return `(from: ${from}, to: ${to})`;
-  const todayYmd = serverTodayYmd();
-  const dueYmd = dmyToYmd(from);
-  return dueYmd <= todayYmd
-    ? `(from: ${from}, to: ${ymdToDmy(todayYmd)})`
-    : `(from: ${ymdToDmy(todayYmd)}, to: ${from})`;
+  const r = durationRange(from, to);
+  return r ? `From : ${r.from}, To : ${r.to}` : `From : ${from}, To : ${to}`;
 };
 
 // Follow-up History date colors, cycled per date group: solid for the date
@@ -1226,8 +1247,9 @@ const DueReportPage: React.FC = () => {
                         </span>
                       ) : null}
                       {r.detailText && (
-                        <div style={{ fontSize: 10.5, fontWeight: 600, color: r.statusColor === STATUS_COLORS.upcoming ? t.textPrimary : r.statusColor, marginTop: r.months_pending ? 5 : 0, whiteSpace: 'normal', maxWidth: 220 }}>
-                          {r.detailText}
+                        <div style={{ fontSize: 10.5, fontWeight: 600, color: r.statusColor === STATUS_COLORS.upcoming ? t.textPrimary : r.statusColor, marginTop: r.months_pending ? 5 : 0, whiteSpace: 'nowrap', lineHeight: 1.35 }}>
+                          {/* "From : …" and "To : …" on two lines keeps the column narrow. */}
+                          {r.detailText.split(', ').map((part) => <div key={part}>{part}</div>)}
                         </div>
                       )}
                       {!r.months_pending && !r.detailText && <span style={{ color: t.textSecondary, fontSize: 11.5 }}>—</span>}
