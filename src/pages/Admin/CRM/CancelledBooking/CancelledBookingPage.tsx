@@ -219,6 +219,9 @@ const CancelledBookingPage: React.FC = () => {
 
   // ── Refunds awaiting admin approval (admin only) ─────────────────────────
   const [pendingRefunds, setPendingRefunds] = useState<PendingRefundRow[]>([]);
+  // Both approval queues are collapsed by default so a long list never pushes
+  // the refund row and the table down; the heading shows the count.
+  const [approvalsOpen, setApprovalsOpen] = useState<{ refunds: boolean; cancellations: boolean }>({ refunds: false, cancellations: false });
   const [busyRefund, setBusyRefund] = useState<string | null>(null);
   const loadPendingRefunds = useCallback(async () => {
     if (!isAdmin) return;
@@ -451,10 +454,18 @@ const CancelledBookingPage: React.FC = () => {
       {/* ── Cancellation requests awaiting approval — admin only ───────── */}
       {isAdmin && requests.length > 0 && (
         <div className="rounded-2xl mb-5" style={{ background: t.surfaceBg, border: '1px solid #d97706', overflow: 'hidden' }}>
-          <div className="flex items-center gap-2 px-4 py-3" style={{ background: 'rgba(217,119,6,0.12)', fontSize: 13, fontWeight: 800, color: '#b45309' }}>
-            <MdPendingActions size={18} /> Cancellation Requests Awaiting Approval ({requests.length})
-          </div>
-          <div className="master-table-scroll">
+          <button type="button" aria-expanded={approvalsOpen.cancellations}
+            onClick={() => setApprovalsOpen((o) => ({ ...o, cancellations: !o.cancellations }))}
+            className="w-full flex items-center justify-between gap-2 px-4 py-2.5"
+            style={{ background: 'rgba(217,119,6,0.12)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 800, color: '#b45309', textAlign: 'left' }}>
+            <span className="flex items-center gap-2"><MdPendingActions size={18} /> Cancellation Requests Awaiting Approval ({requests.length})</span>
+            <span className="flex items-center gap-1" style={{ fontSize: 11.5, fontWeight: 700 }}>
+              {approvalsOpen.cancellations ? 'Hide' : 'Show'}
+              <MdExpandMore size={20} style={{ transform: approvalsOpen.cancellations ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }} />
+            </span>
+          </button>
+          {approvalsOpen.cancellations && (
+          <div className="master-table-scroll cb-approval-scroll">
             <table className="master-table" style={{ width: '100%', minWidth: 860 }}>
               <thead>
                 <tr className="master-table-header-gradient">
@@ -499,16 +510,28 @@ const CancelledBookingPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       )}
 
       {/* ── Refunds awaiting approval — admin only ───────────────────────── */}
       {isAdmin && pendingRefunds.length > 0 && (
         <div className="rounded-2xl mb-4" style={{ background: t.surfaceBg, border: '1px solid #059669', overflow: 'hidden' }}>
-          <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: '#059669', fontSize: 13, fontWeight: 800, color: '#fff' }}>
-            <MdPendingActions size={18} /> Refunds Awaiting Approval ({pendingRefunds.length})
-          </div>
-          <div className="master-table-scroll">
+          <button type="button" aria-expanded={approvalsOpen.refunds}
+            onClick={() => setApprovalsOpen((o) => ({ ...o, refunds: !o.refunds }))}
+            className="w-full flex items-center justify-between gap-2 px-4 py-2.5"
+            style={{ background: '#059669', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 800, color: '#fff', textAlign: 'left' }}>
+            <span className="flex items-center gap-2">
+              <MdPendingActions size={18} /> Refunds Awaiting Approval ({pendingRefunds.length})
+              <span style={{ fontSize: 11.5, fontWeight: 700, opacity: 0.92 }}>· {rupee(pendingRefunds.reduce((sum, r) => sum + r.refunded_amount, 0))}</span>
+            </span>
+            <span className="flex items-center gap-1" style={{ fontSize: 11.5, fontWeight: 700 }}>
+              {approvalsOpen.refunds ? 'Hide' : 'Show'}
+              <MdExpandMore size={20} style={{ transform: approvalsOpen.refunds ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }} />
+            </span>
+          </button>
+          {approvalsOpen.refunds && (
+          <div className="master-table-scroll cb-approval-scroll">
             <table className="master-table" style={{ width: '100%', minWidth: 900 }}>
               <thead>
                 <tr className="master-table-header-gradient">
@@ -550,6 +573,7 @@ const CancelledBookingPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       )}
 

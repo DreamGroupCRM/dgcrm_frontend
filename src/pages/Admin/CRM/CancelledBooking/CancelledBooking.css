@@ -40,3 +40,8 @@
 @media (min-width: 1024px) {
   .cb-popup-band { flex-wrap: nowrap; justify-content: space-between; }
 }
+
+/* Approval queues (accordions): when opened, a long list scrolls inside
+   the panel (sticky column headings) instead of pushing the page down. */
+.cb-approval-scroll { max-height: 280px; overflow-y: auto; }
+.cb-approval-scroll thead th { position: sticky; top: 0; z-index: 1; }
