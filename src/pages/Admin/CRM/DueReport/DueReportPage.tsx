@@ -884,6 +884,9 @@ const DueReportPage: React.FC = () => {
   // clearing apCustomerId undoes that same narrowing, but nothing else on
   // the toolbar (Search/Employee/Building/Status/category) is touched.
   const handleResetAddPaymentForm = resetAddPaymentForm;
+  // The X (clear) icon stays disabled until something is typed or selected.
+  const hasFormInput = Boolean(apCustomerSearch.trim() || apCustomerId || apInstDate || apPaymentDate
+    || apPaymentForKey || apAmount || apModeOfPayment);
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const setFieldRef = (key: string) => (el: HTMLDivElement | null) => { fieldRefs.current[key] = el; };
@@ -1094,10 +1097,10 @@ const DueReportPage: React.FC = () => {
               </button>
               {/* Clear — round X icon (same as Cancelled Booking's clear
                   filters); clears the form and the table filters. */}
-              <button type="button" onClick={handleResetAddPaymentForm} disabled={submitting}
+              <button type="button" onClick={handleResetAddPaymentForm} disabled={submitting || !hasFormInput}
                 title="Clear Filters" aria-label="Clear Filters"
                 className="due-report-clear-btn flex items-center justify-center rounded-full"
-                style={{ width: 36, height: 36, flex: '0 0 auto', alignSelf: 'center', background: 'var(--brand-gradient)', color: '#fff', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1 }}>
+                style={{ width: 36, height: 36, flex: '0 0 auto', alignSelf: 'center', background: 'var(--brand-gradient)', color: '#fff', border: 'none', cursor: submitting || !hasFormInput ? 'not-allowed' : 'pointer', opacity: submitting || !hasFormInput ? 0.45 : 1 }}>
                 <MdClose size={17} />
               </button>
             </div>
