@@ -956,12 +956,12 @@ const DueReportPage: React.FC = () => {
 
   return (
     <div className="due-report-page" style={{ fontFamily: t.fontFamily, ...cssVars }}>
-      <div className="due-report-header flex items-center gap-3 mb-5">
-        <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
-          <MdPayments size={22} style={{ color: '#4f46e5' }} />
+      <div className="due-report-header flex items-center gap-2 mb-3">
+        <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 30, height: 30, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff' }}>
+          <MdPayments size={17} style={{ color: '#4f46e5' }} />
         </div>
         <div>
-          <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Payment Dues</h1>
+          <h1 style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.2, color: t.textPrimary, margin: 0 }}>Payment Dues</h1>
           </div>
       </div>
 

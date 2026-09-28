@@ -17,7 +17,7 @@ import { toast } from '@/utils/toast';
 import {
   MdEventBusy, MdClose, MdSearch, MdRefresh, MdMoreVert, MdVisibility, MdDownload,
   MdLoyalty, MdCurrencyRupee, MdAssignmentReturn, MdAccountBalanceWallet, MdPendingActions,
-  MdCheckCircle, MdCancel, MdArrowBack, MdPhone, MdEmail,
+  MdCheckCircle, MdCancel, MdPhone, MdEmail,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -297,11 +297,6 @@ const CancelledBookingPage: React.FC = () => {
           </div>
           <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Cancelled Booking</h1>
         </div>
-        <button type="button" onClick={() => navigate(paths.customerDetails)}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
-          style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
-          <MdArrowBack size={16} /> Customer Details
-        </button>
       </div>
 
       {/* ── Summary boxes — admin only ─────────────────────────────────── */}
