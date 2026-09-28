@@ -329,41 +329,40 @@ const formatTime = (iso: string): string => {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 };
 
-// Duration column's From/To range, counted month-wise. From = the first
-// unpaid due date. To = the latest monthly repeat of that date (same day of
-// the month) that has already arrived on the server's calendar — e.g. due
-// 10/07/26 and still unpaid on 28/09/26 → From 10/07/26, To 10/09/26
-// (2 months pending). If the backend's own last-pending date is later (an
-// EMI series), that is used. A due that hasn't arrived yet (upcoming) shows
-// its due date for both. Dates are shown as DD/MM/YY.
+// Duration column: the period a due has been outstanding, month-wise.
+// From = the first unpaid due date. To = From + the number of months
+// pending, so a due always spans at least one month (From and To are never
+// the same day):
+//  - EMI rows use their own "N Months" count (the badge shown above it);
+//  - one-time dues (Booking, Remaining Booking, Possession, Boosters) count
+//    the full months since the due date on the server's calendar, minimum 1.
+// e.g. due 10/07/26, unpaid for 2 months → (From - 10/07/26, To - 10/09/26);
+// a 1-month EMI due 10/09/26 → (From - 10/09/26, To - 10/10/26).
+// Month steps keep the same day, clamped to shorter months (31st → 30th).
+// Shown as DD/MM/YY.
 const parseDmy = (dmy: string): [number, number, number] | null => {
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dmy);
   return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
 };
-const ymdNum = (y: number, m: number, d: number) => y * 10000 + m * 100 + d;
 const shortDmy = (d: number, m: number, y: number) => `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${String(y % 100).padStart(2, '0')}`;
-const durationRange = (from: string, to: string): { from: string; to: string } | null => {
-  const f = parseDmy(from);
-  if (!f) return null;
-  const t = parseDmy(to) ?? f;
-  const [ty, tm, td] = serverTodayYmd().split('-').map(Number);
-  const today = ymdNum(ty, tm, td);
-  let [endD, endM, endY] = t;
-  if (ymdNum(f[2], f[1], f[0]) <= today) {
-    // Latest monthly repeat of the From date on or before today (day
-    // clamped to the month's length, e.g. 31st → 30th).
-    let months = (ty - f[2]) * 12 + (tm - f[1]);
-    const dayIn = (y: number, m: number) => Math.min(f[0], new Date(y, m, 0).getDate());
-    const at = (k: number) => { const y = f[2] + Math.floor((f[1] - 1 + k) / 12); const m = ((f[1] - 1 + k) % 12) + 1; return [dayIn(y, m), m, y] as const; };
-    while (months > 0 && ymdNum(at(months)[2], at(months)[1], at(months)[0]) > today) months--;
-    const [ad, am, ay] = at(Math.max(0, months));
-    if (ymdNum(ay, am, ad) > ymdNum(endY, endM, endD)) [endD, endM, endY] = [ad, am, ay];
-  }
-  return { from: shortDmy(f[0], f[1], f[2]), to: shortDmy(endD, endM, endY) };
+const addMonthsDmy = ([d, m, y]: [number, number, number], k: number): [number, number, number] => {
+  const y2 = y + Math.floor((m - 1 + k) / 12);
+  const m2 = ((m - 1 + k) % 12) + 1;
+  return [Math.min(d, new Date(y2, m2, 0).getDate()), m2, y2];
 };
-const durationText = (from: string, to: string): string => {
-  const r = durationRange(from, to);
-  return r ? `From : ${r.from}, To : ${r.to}` : `From : ${from}, To : ${to}`;
+const durationText = (from: string, monthsPending: number | null): string => {
+  const f = parseDmy(from);
+  if (!f) return `(From - ${from})`;
+  let months = monthsPending && monthsPending > 0 ? monthsPending : 0;
+  if (!months) {
+    // Full months elapsed since the due date, on the server's calendar.
+    const [ty, tm, td] = serverTodayYmd().split('-').map(Number);
+    let elapsed = (ty - f[2]) * 12 + (tm - f[1]);
+    if (td < addMonthsDmy(f, elapsed)[0] && elapsed > 0) elapsed--;
+    months = Math.max(1, elapsed);
+  }
+  const t = addMonthsDmy(f, months);
+  return `(From - ${shortDmy(f[0], f[1], f[2])}, To - ${shortDmy(t[0], t[1], t[2])})`;
 };
 
 // Follow-up History date colors, cycled per date group: solid for the date
@@ -643,7 +642,7 @@ const DueReportPage: React.FC = () => {
     statusColor: STATUS_COLORS[r.due_category],
     statusTextColor: STATUS_TEXT_COLORS[r.due_category],
     // due_date_from/to come pre-formatted (DD/MM/YYYY) from the backend.
-    detailText: durationText(r.due_date_from, r.due_date_to),
+    detailText: durationText(r.due_date_from, r.months_pending),
     dueRow: r,
   })), [dueRows]);
 
