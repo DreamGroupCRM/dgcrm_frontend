@@ -22,6 +22,13 @@ import { numberToIndianWords } from '../../utils';
 import { paymentForLabel } from '../../services/paymentService';
 
 export const RECEIPT_SHEET_WIDTH = 840;
+
+/**
+ * 'payment' — money received from the customer (the printed book as is).
+ * 'cancelled' — a cancelled booking's refund (receipt no. C_FY_MM_n): the
+ * same sheet, badged CANCELLED RECEIPT and made out to the customer.
+ */
+export type ReceiptVariant = 'payment' | 'cancelled';
 export const RECEIPT_LOGO_URL = logoUrl;
 
 // Exactly as printed on the receipt book — never taken from the database.
@@ -55,7 +62,7 @@ const monthYear = (iso: string | null | undefined): string => {
 };
 
 /** The filled-in values for the receipt's blanks, from the API data. */
-export function receiptFields(data: PaymentReceipt) {
+export function receiptFields(data: PaymentReceipt, variant: ReceiptVariant = 'payment') {
   const { transaction: tx, customer } = data;
   const total = tx.amount + (tx.maintenance || 0);
   const mode = (tx.mode_of_payment || '').trim();
@@ -70,7 +77,8 @@ export function receiptFields(data: PaymentReceipt) {
     emiMonth: monthYear(tx.inst_date),
     // EMI payments show their EMI number (n / total); any other payment
     // shows what it was for (Booking Amount, Possession Amount, …).
-    emiNo: isEmi && data.emi_number ? `${data.emi_number}${data.total_emis ? ` / ${data.total_emis}` : ''}` : typeLabel,
+    emiNo: variant === 'cancelled' ? 'Refund'
+      : isEmi && data.emi_number ? `${data.emi_number}${data.total_emis ? ` / ${data.total_emis}` : ''}` : typeLabel,
     receiptNo: tx.receipt_number || 'Pending Approval',
     date: formatDMY(tx.payment_date || tx.date || tx.created_at),
     receivedFrom: `${customer.customer_name || ''}${customer.customer_code ? `  (${customer.customer_code})` : ''}`.trim(),
@@ -99,8 +107,9 @@ const Row: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 24 }}>{children}</div>
 );
 
-export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => void; logoSrc?: string }> = ({ data, onLogoLoad, logoSrc }) => {
-  const f = receiptFields(data);
+export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => void; logoSrc?: string; variant?: ReceiptVariant }> = ({ data, onLogoLoad, logoSrc, variant = 'payment' }) => {
+  const f = receiptFields(data, variant);
+  const cancelled = variant === 'cancelled';
   const infoRows: [string, string][] = [
     ['BUILDING', f.building], ['FLAT NO.', f.flatNo], ['WING', f.wing], ['EMI MONTH', f.emiMonth], ['EMI NO.', f.emiNo],
   ];
@@ -115,7 +124,7 @@ export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => v
                 GSTIN : {PRINTED.gstin}
               </span>
               <span style={{ background: BLUE, color: '#fff', fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 15, padding: '9px 12px 7px', borderRadius: '0 0 9px 9px', whiteSpace: 'nowrap' }}>
-                PAYMENT RECEIPT
+                {cancelled ? 'CANCELLED RECEIPT' : 'PAYMENT RECEIPT'}
               </span>
             </div>
             <img src={logoSrc || logoUrl} alt="" onLoad={onLogoLoad} onError={onLogoLoad}
@@ -152,7 +161,7 @@ export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => v
             <Blank value={f.date} flex={0.8} />
           </Row>
           <Row>
-            <Label>RECEIVED WITH THANKS FROM</Label>
+            <Label>{cancelled ? 'REFUNDED TO' : 'RECEIVED WITH THANKS FROM'}</Label>
             <Blank value={f.receivedFrom} big />
           </Row>
           <Row>

@@ -10,19 +10,20 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { MdClose, MdDownload } from 'react-icons/md';
 import { PaymentReceipt } from '../../types/index';
-import { ReceiptSheet, RECEIPT_SHEET_WIDTH } from './ReceiptSheet';
+import { ReceiptSheet, RECEIPT_SHEET_WIDTH, ReceiptVariant } from './ReceiptSheet';
 import { viewportHeight } from '../../utils/appZoom';
 
 interface PaymentReceiptViewModalProps {
   data: PaymentReceipt;
   onClose: () => void;
   onDownload: () => void;
+  variant?: ReceiptVariant;
 }
 
 const OUTER_PAD = 12;   // popup's distance from the screen edges (p-3)
 const FRAME_PAD = 12;   // space around the sheet inside the popup
 
-export const PaymentReceiptViewModal: React.FC<PaymentReceiptViewModalProps> = ({ data, onClose, onDownload }) => {
+export const PaymentReceiptViewModal: React.FC<PaymentReceiptViewModalProps> = ({ data, onClose, onDownload, variant = 'payment' }) => {
   const frameRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
@@ -55,7 +56,7 @@ export const PaymentReceiptViewModal: React.FC<PaymentReceiptViewModalProps> = (
       <div className="rounded-2xl w-full" style={{ maxWidth: RECEIPT_SHEET_WIDTH + FRAME_PAD * 2, background: '#fff', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
         <div ref={headRef} className="flex items-center justify-between px-4 pt-3 pb-1">
           <span style={{ fontSize: 14, fontWeight: 800, color: '#1f3a93' }}>
-            Payment Receipt{data.transaction.receipt_number ? ` — ${data.transaction.receipt_number}` : ''}
+            {variant === 'cancelled' ? 'Cancelled Receipt' : 'Payment Receipt'}{data.transaction.receipt_number ? ` — ${data.transaction.receipt_number}` : ''}
           </span>
           <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex' }}>
             <MdClose size={20} />
@@ -67,7 +68,7 @@ export const PaymentReceiptViewModal: React.FC<PaymentReceiptViewModalProps> = (
               as the visible receipt — no gap, no scroll. */}
           <div style={{ width: RECEIPT_SHEET_WIDTH * scale, height: sheetHeight ? sheetHeight * scale : undefined, margin: '0 auto', overflow: 'hidden' }}>
             <div ref={sheetRef} style={{ width: RECEIPT_SHEET_WIDTH, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-              <ReceiptSheet data={data} />
+              <ReceiptSheet data={data} variant={variant} />
             </div>
           </div>
         </div>

@@ -60,6 +60,7 @@ import {
   CustomerSchemeDetailResponse,
   CustomerFullDetail,
   CustomerFullDetailResponse,
+  PaymentReceipt,
 } from '../types/index';
 import { serverToday } from '../utils/serverTime';
 
@@ -600,6 +601,9 @@ export interface CancelledCustomerRow extends Customer {
   total_refunded: number;
   last_refund_date: string | null;
   last_refund_mode: string | null;
+  pending_refund: number;   // refunds entered, awaiting admin approval
+  /** Approved refunds' cancelled receipts (C_FY_MM_n), oldest first. */
+  cancelled_receipts: { refund_id: string; receipt_number: string }[];
 }
 
 type RawCancelledCustomer = BackendCustomer & {
@@ -615,6 +619,8 @@ type RawCancelledCustomer = BackendCustomer & {
   total_refunded: number | string | null;
   last_refund_date: string | null;
   last_refund_mode: string | null;
+  pending_refund?: number | string | null;
+  cancelled_receipts?: { refund_id: string; receipt_number: string }[] | null;
 };
 
 export interface CancelBookingPayload {
@@ -680,6 +686,8 @@ export const fetchCancelledCustomers = async (
       total_refunded: Number(c.total_refunded ?? 0),
       last_refund_date: c.last_refund_date,
       last_refund_mode: c.last_refund_mode,
+      pending_refund: Number(c.pending_refund ?? 0),
+      cancelled_receipts: c.cancelled_receipts ?? [],
     })),
   };
 };
@@ -705,11 +713,15 @@ export interface RefundEntry {
   notes: string | null;
   created_at: string;
   created_by_name: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  receipt_number: string | null; // cancelled receipt, set on admin approval
+  approved_at: string | null;
 }
 export interface RefundSummary {
   total_paid: number;
-  total_refunded: number;
-  remaining_refundable: number;
+  total_refunded: number;       // approved refunds only
+  pending_refund: number;       // awaiting admin approval
+  remaining_refundable: number; // paid - approved - pending
   refunds: RefundEntry[];
 }
 
@@ -726,6 +738,62 @@ export const createRefund = async (
 ): Promise<RefundSummary> => {
   const res = await axiosInstance.post(`/customers/${customerId}/refunds`, payload);
   return res.data.data;
+};
+
+// ── Refund approval (admin) + cancelled receipt ────────────────────────────
+export interface PendingRefundRow {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  customer_code: string | null;
+  building_name: string | null;
+  wing_name: string | null;
+  flat_no: string | null;
+  shop_no: string | null;
+  refunded_amount: number;
+  refund_date: string;
+  mode_of_payment: string | null;
+  notes: string | null;
+  created_at: string;
+  created_by_name: string | null;
+}
+
+/** GET /api/customers/refunds/pending — admin only. */
+export const fetchPendingRefunds = async (): Promise<PendingRefundRow[]> => {
+  const res = await axiosInstance.get('/customers/refunds/pending');
+  return res.data.data ?? [];
+};
+/** PUT /api/customers/refunds/:id/approve — admin only; assigns the cancelled receipt number. */
+export const approveRefund = async (refundId: string): Promise<RefundSummary> => {
+  const res = await axiosInstance.put(`/customers/refunds/${refundId}/approve`);
+  return res.data.data;
+};
+/** PUT /api/customers/refunds/:id/reject — admin only. */
+export const rejectRefund = async (refundId: string): Promise<RefundSummary> => {
+  const res = await axiosInstance.put(`/customers/refunds/${refundId}/reject`);
+  return res.data.data;
+};
+
+/**
+ * GET /api/customers/refunds/:id/receipt — an approved refund's cancelled
+ * receipt, shaped like a payment receipt so the same receipt sheet renders
+ * it (view + PDF).
+ */
+export const fetchCancelledReceipt = async (refundId: string): Promise<PaymentReceipt> => {
+  const res = await axiosInstance.get(`/customers/refunds/${refundId}/receipt`);
+  const { refund: r, customer } = res.data.data;
+  return {
+    transaction: {
+      id: String(r.id), receipt_number: r.receipt_number, payment_type: 'Refund' as PaymentReceipt['transaction']['payment_type'],
+      amount: Number(r.refunded_amount), company: null, mode_of_payment: r.mode_of_payment,
+      date: r.refund_date, inst_date: r.refund_date, payment_date: r.refund_date,
+      cheque_number: null, clearance_date: null, maintenance: null,
+      received_by: r.created_by_name, payment_tag: null, is_approved: true,
+      created_at: r.approved_at ?? r.refund_date, is_after_possession_emi: false,
+    },
+    customer,
+    paid_emis: 0, future_emis: 0, total_emis: 0, emi_number: 0,
+  };
 };
 
 // ── Assign one or more customers to an employee ─────────────────────────────

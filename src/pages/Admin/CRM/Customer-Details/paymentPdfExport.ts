@@ -250,7 +250,7 @@ export function exportPaymentHistoryPdf(
 // The sheet is rendered in a hidden, isolated iframe (no app zoom or page
 // styles to distort it), captured at 3x for sharp print, and placed on an
 // A5 landscape page.
-export async function exportPaymentReceiptPdf(data: PaymentReceipt): Promise<void> {
+export async function exportPaymentReceiptPdf(data: PaymentReceipt, variant: 'payment' | 'cancelled' = 'payment'): Promise<void> {
   const [{ default: html2canvas }, { createRoot }, { createElement }, { ReceiptSheet, RECEIPT_SHEET_WIDTH, RECEIPT_LOGO_URL }] = await Promise.all([
     import('html2canvas'),
     import('react-dom/client'),
@@ -284,7 +284,7 @@ export async function exportPaymentReceiptPdf(data: PaymentReceipt): Promise<voi
     // Wait for the logo so it is in the capture.
     await new Promise<void>((resolve) => {
       const timer = window.setTimeout(resolve, 4000);
-      root.render(createElement(ReceiptSheet, { data, logoSrc, onLogoLoad: () => { window.clearTimeout(timer); resolve(); } }));
+      root.render(createElement(ReceiptSheet, { data, logoSrc, variant, onLogoLoad: () => { window.clearTimeout(timer); resolve(); } }));
     });
     await new Promise((r) => requestAnimationFrame(() => r(null)));
     const sheet = mount.firstElementChild as HTMLElement;
@@ -300,7 +300,7 @@ export async function exportPaymentReceiptPdf(data: PaymentReceipt): Promise<voi
     // 'FAST' = compressed image stream (the raw 3x capture would make a
     // ~13 MB PDF; compressed it's a few hundred KB, still sharp for print).
     doc.addImage(canvas, 'PNG', (pageW - w) / 2, (pageH - h) / 2, w, h, undefined, 'FAST');
-    doc.save(`Receipt-${data.transaction.receipt_number || `Pending-${data.transaction.id}`}.pdf`);
+    doc.save(`${variant === 'cancelled' ? 'Cancelled-Receipt' : 'Receipt'}-${data.transaction.receipt_number || `Pending-${data.transaction.id}`}.pdf`);
   } finally {
     root.unmount();
     frame.remove();
