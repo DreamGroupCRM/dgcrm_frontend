@@ -28,7 +28,7 @@ export const isBackdatedPayment = (paymentDate: string | null | undefined, creat
 export const BackdatedDot: React.FC<{ paymentDate: string | null | undefined; createdAt: string | null | undefined }> = ({ paymentDate, createdAt }) => {
   if (!isBackdatedPayment(paymentDate, createdAt)) return null;
   const created = parse(createdAt) as Date;
-  const label = `Backdated entry — entered on ${dmy(created)}`;
+  const label = `Backdated Entry on ${dmy(created)}`;
   return (
     <span title={label} aria-label={label} role="img"
       style={{ width: 7, height: 7, borderRadius: '50%', background: '#9333ea', flexShrink: 0, display: 'inline-block', cursor: 'help' }} />

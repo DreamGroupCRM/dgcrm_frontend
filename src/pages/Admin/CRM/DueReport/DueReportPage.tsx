@@ -1232,13 +1232,13 @@ const DueReportPage: React.FC = () => {
                       {/* A long label may wrap inside its badge on a narrow
                           screen instead of widening the whole table. */}
                       <span style={{
-                        display: 'inline-block', padding: '3px 9px', borderRadius: 12,
+                        display: 'inline-block', padding: '1px 8px', borderRadius: 10,
                         fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor,
-                        whiteSpace: 'normal', lineHeight: 1.3,
+                        whiteSpace: 'normal', lineHeight: 1.25,
                       }}>
                         {getPaymentForDisplay(r).label}
                       </span>
-                      <div style={{ marginTop: 5, fontSize: 11.5, fontWeight: 700, color: t.textPrimary }}>
+                      <div style={{ marginTop: 1, fontSize: 11.5, fontWeight: 700, color: t.textPrimary, lineHeight: 1.2 }}>
                         {rupee(r.per_month_amount ?? r.amount)}
                       </div>
                     </td>
@@ -1247,14 +1247,14 @@ const DueReportPage: React.FC = () => {
                           pill) and the From/To date range. */}
                       {r.months_pending ? (
                         <span style={{
-                          display: 'inline-block', padding: '3px 9px', borderRadius: 999,
+                          display: 'inline-block', padding: '1px 8px', borderRadius: 999, lineHeight: 1.25,
                           fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor,
                         }}>
                           {r.months_pending} Month{r.months_pending === 1 ? '' : 's'}
                         </span>
                       ) : null}
                       {r.detailText && (
-                        <div style={{ fontSize: 10.5, fontWeight: 600, color: r.statusColor === STATUS_COLORS.upcoming ? t.textPrimary : r.statusColor, marginTop: r.months_pending ? 5 : 0, whiteSpace: 'nowrap', lineHeight: 1.35 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 600, color: r.statusColor === STATUS_COLORS.upcoming ? t.textPrimary : r.statusColor, marginTop: r.months_pending ? 2 : 0, whiteSpace: 'nowrap', lineHeight: 1.35 }}>
                           {r.detailText}
                         </div>
                       )}
@@ -1273,7 +1273,7 @@ const DueReportPage: React.FC = () => {
                       {(() => {
                         const scheduled = followUpByCustomer.get(String(r.customer_id));
                         const target: FollowUpTarget = { customer_id: r.customer_id, customer_name: r.customer_name, customer_code: r.customer_code };
-                        const iconBtn: React.CSSProperties = { width: 30, height: 30, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' };
+                        const iconBtn: React.CSSProperties = { width: 26, height: 26, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' };
                         const isPast = !!scheduled?.due_date && scheduled.due_date.slice(0, 10) < serverTodayYmd();
                         return (
                           // One line: both icons, then the follow-up date.
@@ -1282,11 +1282,11 @@ const DueReportPage: React.FC = () => {
                             <button type="button" onClick={() => openFollowUp(target)}
                               title={scheduled ? 'Change follow-up' : 'Schedule a follow-up'}
                               className="flex items-center justify-center rounded-lg flex-shrink-0" style={iconBtn}>
-                              <MdNoteAdd size={16} />
+                              <MdNoteAdd size={14} />
                             </button>
                             <button type="button" onClick={() => openFollowUpHistory(target)} title="Follow-up history"
                               className="flex items-center justify-center rounded-lg flex-shrink-0" style={iconBtn}>
-                              <MdForum size={15} />
+                              <MdForum size={13} />
                             </button>
                             </div>
                             {scheduled?.due_date && (
