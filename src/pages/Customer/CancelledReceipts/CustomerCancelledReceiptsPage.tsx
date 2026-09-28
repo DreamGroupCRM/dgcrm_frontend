@@ -69,7 +69,7 @@ const CustomerCancelledReceiptsPage: React.FC = () => {
                               color: approved ? '#059669' : '#b45309',
                             }}>
                               {approved ? <MdCheckCircle size={12} /> : <MdHourglassEmpty size={12} />}
-                              {approved ? 'Approved' : 'Pending Approval'}
+                              {approved ? 'Approved' : 'Refund Payment Pending for Approval'}
                             </span>
                           </td>
                           <td>

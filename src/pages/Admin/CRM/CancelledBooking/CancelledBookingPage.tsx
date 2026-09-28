@@ -202,7 +202,11 @@ const CancelledBookingPage: React.FC = () => {
         refund_date: isAdmin ? rDate : undefined,
         mode_of_payment: rMode,
       });
-      toast.success(`Refund of ${rupee(amountNum)} for ${selectedCustomer.customer_name} sent for admin approval.`);
+      // An admin's refund is approved on entry (cancelled receipt generated);
+      // an employee's waits for admin approval.
+      toast.success(isAdmin
+        ? `Refund of ${rupee(amountNum)} recorded for ${selectedCustomer.customer_name} — cancelled receipt generated.`
+        : `Refund of ${rupee(amountNum)} for ${selectedCustomer.customer_name} sent for admin approval.`);
       setRAmount(''); setRMode(''); setRDate(serverTodayYmd()); setRSubmitAttempted(false);
       if (refundFor?.id === selectedCustomer.id) setRefundSummary(updated);
       fetchRows(); loadSummary(); loadAllCancelled(); loadPendingRefunds();
@@ -722,7 +726,7 @@ const CancelledBookingPage: React.FC = () => {
                   <td style={td}>
                     <div style={{ fontWeight: 700, color: '#16a34a' }}>{rupee(c.total_refunded)}</div>
                     <div style={{ fontSize: 10.5, color: t.textSecondary }}>of {rupee(c.total_paid)} paid</div>
-                    {c.pending_refund > 0 && <div style={{ fontSize: 10.5, fontWeight: 700, color: '#b45309' }}>{rupee(c.pending_refund)} awaiting approval</div>}
+                    {c.pending_refund > 0 && <div style={{ fontSize: 10.5, fontWeight: 700, color: '#b45309' }}>{rupee(c.pending_refund)} refund payment pending for approval</div>}
                   </td>
                   <td style={td}>{c.last_refund_date ? formatDate(c.last_refund_date) : '—'}</td>
                   <td style={td}>{c.last_refund_mode || '—'}</td>
@@ -838,7 +842,7 @@ const CancelledBookingPage: React.FC = () => {
                   {/* ── Refund history ─────────────────────────────────────── */}
                   <Accordion t={t} open={openSection.refunds} onToggle={() => setOpenSection((o) => ({ ...o, refunds: !o.refunds }))}
                     icon={<MdHistory size={17} />} title="Refund History (After Cancellation)"
-                    meta={`Refunded ${rupee(refundSummary.total_refunded)}${refundSummary.pending_refund ? ` · Awaiting approval ${rupee(refundSummary.pending_refund)}` : ''} · Balance ${rupee(Math.max(0, refundSummary.total_paid - refundSummary.total_refunded))}`}>
+                    meta={`Refunded ${rupee(refundSummary.total_refunded)}${refundSummary.pending_refund ? ` · Pending approval ${rupee(refundSummary.pending_refund)}` : ''} · Balance ${rupee(Math.max(0, refundSummary.total_paid - refundSummary.total_refunded))}`}>
                     <div className="master-table-scroll">
                       <table className="master-table" style={{ width: '100%', minWidth: 860 }}>
                         <thead>
@@ -873,7 +877,7 @@ const CancelledBookingPage: React.FC = () => {
                                     color: r.status === 'approved' ? '#15803d' : r.status === 'pending' ? '#b45309' : '#b91c1c',
                                     background: r.status === 'approved' ? 'rgba(22,163,74,0.12)' : r.status === 'pending' ? 'rgba(217,119,6,0.14)' : 'rgba(220,38,38,0.12)',
                                   }}>
-                                    {r.status === 'approved' ? 'Approved' : r.status === 'pending' ? 'Pending Approval' : 'Rejected'}
+                                    {r.status === 'approved' ? 'Approved' : r.status === 'pending' ? 'Refund Payment Pending for Approval' : 'Rejected'}
                                   </span>
                                   {isAdmin && r.status === 'pending' && (
                                     <>
