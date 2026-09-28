@@ -117,6 +117,7 @@ export const ROUTES = {
     PAYMENT_RECEIPT: '/customer/payment-receipt',
     SCHEME: '/customer/emi-schedule',
     DOCUMENTS: '/customer/documents',
+    CANCELLED_RECEIPTS: '/customer/cancelled-receipts',
   },
 } as const;
 

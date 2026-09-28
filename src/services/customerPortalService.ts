@@ -8,6 +8,7 @@
 // checks), so no customer/user id is ever passed from here; axiosInstance
 // already attaches the bearer token.
 import axiosInstance from './axiosConfig';
+import { toCancelledReceipt } from './customerDetailsService';
 import { PaymentFor, PaymentReceipt, CustomerSchemeData } from '../types/index';
 import { DueGridRow } from './paymentService';
 
@@ -141,6 +142,38 @@ export const fetchMyBookingPayments = async (id: string | number): Promise<Porta
 export const fetchMyPaymentReceipt = async (transactionId: string | number): Promise<PaymentReceipt> => {
   const res = await axiosInstance.get(`/customer-portal/payments/${transactionId}/receipt`);
   return res.data.data;
+};
+
+// ── Cancelled bookings' refund receipts (C_FY_MM_n) ─────────────────────────
+export interface PortalCancelledRefund {
+  refund_id: string;
+  receipt_number: string | null; // set once an admin approves the refund
+  refunded_amount: number;
+  refund_date: string;
+  mode_of_payment: string | null;
+  status: 'pending' | 'approved';
+}
+export interface PortalCancelledBooking {
+  customer_id: string;
+  customer_code: string | null;
+  unit: string;
+  cancelled_at: string | null;
+  first_name: string | null;
+  middle_name: string | null;
+  last_name: string | null;
+  refunds: PortalCancelledRefund[];
+}
+
+/** GET /api/customer-portal/cancelled-receipts — this login's cancelled bookings and their refunds. */
+export const fetchMyCancelledReceipts = async (): Promise<PortalCancelledBooking[]> => {
+  const res = await axiosInstance.get('/customer-portal/cancelled-receipts');
+  return res.data.data ?? [];
+};
+
+/** GET /api/customer-portal/cancelled-receipts/:refundId/receipt — approved refunds only. */
+export const fetchMyCancelledReceipt = async (refundId: string): Promise<PaymentReceipt> => {
+  const res = await axiosInstance.get(`/customer-portal/cancelled-receipts/${refundId}/receipt`);
+  return toCancelledReceipt(res.data.data);
 };
 
 /** GET /api/customer-portal/bookings/:id/scheme */

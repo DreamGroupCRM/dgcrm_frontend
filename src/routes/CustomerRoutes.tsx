@@ -19,6 +19,7 @@ import CustomerPortalLayout from '../pages/Customer/CustomerPortalLayout';
 const CustomerHomePage = lazy(() => import('../pages/Customer/Home/CustomerHomePage'));
 const CustomerPaymentHistoryPage = lazy(() => import('../pages/Customer/PaymentHistory/CustomerPaymentHistoryPage'));
 const CustomerSchemePage = lazy(() => import('../pages/Customer/Scheme/CustomerSchemePage'));
+const CustomerCancelledReceiptsPage = lazy(() => import('../pages/Customer/CancelledReceipts/CustomerCancelledReceiptsPage'));
 
 const CustomerRoutes: React.FC = () => (
   <Routes>
@@ -36,6 +37,7 @@ const CustomerRoutes: React.FC = () => (
       }
     >
       <Route path="home" element={<CustomerHomePage />} />
+      <Route path="cancelled-receipts" element={<CustomerCancelledReceiptsPage />} />
       <Route path="payment-history" element={<CustomerPaymentHistoryPage />} />
       {/* V_24.0 — Payment Receipt was its own page/section; its "completed
           payments, each with View/Download" table is now the Approval

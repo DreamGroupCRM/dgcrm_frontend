@@ -16,11 +16,11 @@
 // `mobileOpen` slides in and a scrim closes. Sharing one flag between the
 // two made "collapsed on desktop" reopen as "drawer open" on rotate.
 import React, { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { CircularProgress } from '@mui/material';
 import {
   MdMenu, MdClose, MdLogout, MdLockOutline, MdHome, MdHistory,
-  MdEventNote, MdKeyboardArrowDown, MdApartment, MdLightMode, MdDarkMode,
+  MdEventNote, MdKeyboardArrowDown, MdApartment, MdLightMode, MdDarkMode, MdReceiptLong,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { logoutThunk } from '../../redux/thunks/authThunks';
@@ -134,7 +134,16 @@ const CustomerPortalShell: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, cssVars } = useAppearanceTokens();
-  const { loading, error, bookings, detail } = useCustomerPortal();
+  const { loading, error, bookings, detail, cancelled } = useCustomerPortal();
+  // Cancelled Receipts appears once the login has a cancelled booking; a
+  // login with only cancelled bookings sees just that page.
+  // A login with only cancelled bookings has no booking detail; its name
+  // comes from the cancelled booking instead.
+  const who = detail ?? (cancelled[0] ? { name: cancelled[0].first_name, middle_name: cancelled[0].middle_name, last_name: cancelled[0].last_name } : null);
+  const navItems: { to: string; label: string; icon: typeof MdHome }[] = [
+    ...(bookings.length > 0 ? NAV_ITEMS : []),
+    ...(cancelled.length > 0 ? [{ to: ROUTES.CUSTOMER.CANCELLED_RECEIPTS, label: 'Cancelled Receipts', icon: MdReceiptLong }] : []),
+  ];
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -202,7 +211,7 @@ const CustomerPortalShell: React.FC = () => {
         </div>
 
         <nav className="cp-nav">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+          {navItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to} to={to} title={label}
               className={({ isActive }) => `cp-nav-item${isActive ? ' cp-nav-item-active' : ''}`}
@@ -234,14 +243,14 @@ const CustomerPortalShell: React.FC = () => {
             <MdMenu size={21} />
           </button>
           <div className="cp-header-greet">
-            <span className="cp-header-greet-name">Welcome, {detail?.name || 'Customer'}</span>
+            <span className="cp-header-greet-name">Welcome, {who?.name || 'Customer'}</span>
             <BookingSwitcher />
           </div>
 
           <div className="cp-header-actions">
             <ThemeToggle />
-            <div className="cp-avatar" title={[detail?.name, detail?.middle_name, detail?.last_name].filter(Boolean).join(' ') || 'Customer'}>
-              {initialsOf(detail?.name, detail?.middle_name, detail?.last_name)}
+            <div className="cp-avatar" title={[who?.name, who?.middle_name, who?.last_name].filter(Boolean).join(' ') || 'Customer'}>
+              {initialsOf(who?.name, who?.middle_name, who?.last_name)}
             </div>
             <button
               type="button" className="cp-header-btn" onClick={() => setChangePwOpen(true)}
@@ -265,6 +274,10 @@ const CustomerPortalShell: React.FC = () => {
             <div className="cp-center"><CircularProgress size={30} /></div>
           ) : error ? (
             <div className="cp-empty cp-empty-error">{error}</div>
+          ) : bookings.length === 0 && cancelled.length > 0 ? (
+            // Only cancelled bookings: the Cancelled Receipts page is the
+            // one page with anything to show.
+            location.pathname === ROUTES.CUSTOMER.CANCELLED_RECEIPTS ? <Outlet /> : <Navigate to={ROUTES.CUSTOMER.CANCELLED_RECEIPTS} replace />
           ) : bookings.length === 0 ? (
             <div className="cp-empty">
               No property is linked to your account yet. Please contact our office.

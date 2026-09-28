@@ -781,7 +781,11 @@ export const rejectRefund = async (refundId: string): Promise<RefundSummary> => 
  */
 export const fetchCancelledReceipt = async (refundId: string): Promise<PaymentReceipt> => {
   const res = await axiosInstance.get(`/customers/refunds/${refundId}/receipt`);
-  const { refund: r, customer } = res.data.data;
+  return toCancelledReceipt(res.data.data);
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const toCancelledReceipt = ({ refund: r, customer }: { refund: any; customer: PaymentReceipt['customer'] }): PaymentReceipt => {
   return {
     transaction: {
       id: String(r.id), receipt_number: r.receipt_number, payment_type: 'Refund' as PaymentReceipt['transaction']['payment_type'],

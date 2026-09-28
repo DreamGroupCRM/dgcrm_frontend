@@ -18,8 +18,8 @@
 // customer was last looking at rather than resetting to the first one.
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
-  fetchMyBookings, fetchMyBookingDetail,
-  PortalBookingSummary, PortalBookingDetail,
+  fetchMyBookings, fetchMyBookingDetail, fetchMyCancelledReceipts,
+  PortalBookingSummary, PortalBookingDetail, PortalCancelledBooking,
 } from '../../services/customerPortalService';
 
 const SELECTED_BOOKING_KEY = 'dgcrm.portal.booking';
@@ -35,6 +35,8 @@ interface CustomerPortalValue {
   loading: boolean;
   error: string | null;
   selectBooking: (id: number) => void;
+  /** Cancelled bookings of this login, with their refund receipts. */
+  cancelled: PortalCancelledBooking[];
   /** Re-reads the booking list and the selected booking's detail. */
   reload: () => void;
 }
@@ -58,6 +60,7 @@ export const CustomerPortalProvider: React.FC<{ children: React.ReactNode }> = (
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [cancelledBookings, setCancelledBookings] = useState<PortalCancelledBooking[]>([]);
 
   const reload = useCallback(() => setReloadToken((n) => n + 1), []);
 
@@ -74,8 +77,13 @@ export const CustomerPortalProvider: React.FC<{ children: React.ReactNode }> = (
         // `b.id === storedNumericId` is always false and a remembered
         // booking silently loses to the first one on every reload.
         // Normalising here keeps the rest of the portal honestly numeric.
-        const rows = (await fetchMyBookings()).map((b) => ({ ...b, id: Number(b.id) }));
+        const [bookingRows, cancelledRows] = await Promise.all([
+          fetchMyBookings(),
+          fetchMyCancelledReceipts().catch(() => [] as PortalCancelledBooking[]),
+        ]);
+        const rows = bookingRows.map((b) => ({ ...b, id: Number(b.id) }));
         if (cancelled) return;
+        setCancelledBookings(cancelledRows);
         setBookings(rows);
 
         // A stored id is only honoured when it is still one of THIS login's
@@ -126,8 +134,9 @@ export const CustomerPortalProvider: React.FC<{ children: React.ReactNode }> = (
     loading,
     error,
     selectBooking,
+    cancelled: cancelledBookings,
     reload,
-  }), [bookings, selectedId, detail, loading, error, selectBooking, reload]);
+  }), [bookings, selectedId, detail, loading, error, selectBooking, cancelledBookings, reload]);
 
   return <CustomerPortalContext.Provider value={value}>{children}</CustomerPortalContext.Provider>;
 };

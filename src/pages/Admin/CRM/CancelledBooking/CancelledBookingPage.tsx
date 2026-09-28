@@ -803,7 +803,7 @@ const CancelledBookingPage: React.FC = () => {
                       <table className="master-table" style={{ width: '100%', minWidth: 900 }}>
                         <thead>
                           <tr className="master-table-header-gradient">
-                            {['#', 'Received Date', 'Payment For', 'Installment Month', 'Amount', 'Mode', 'Receipt No.', 'Entered By', 'Status'].map((h) => (
+                            {['#', 'Entered By Employee', 'Amount', 'Received Date', 'Mode', 'Payment For', 'Installment Month', 'Receipt No.', 'Status'].map((h) => (
                               <th key={h} style={popupTh}>{h}</th>
                             ))}
                           </tr>
@@ -816,13 +816,13 @@ const CancelledBookingPage: React.FC = () => {
                           ) : [...payHistory].sort((x, y) => String(x.paid_on).localeCompare(String(y.paid_on))).map((p, i) => (
                             <tr key={p.id}>
                               <td style={td}>{i + 1}</td>
+                              <td style={{ ...td, fontWeight: 700 }}>{p.received_by || '—'}</td>
+                              <td style={{ ...td, fontWeight: 700 }}>{rupee(p.amount)}</td>
                               <td style={td}>{p.paid_on ? formatDate(p.paid_on) : '—'}</td>
+                              <td style={td}>{p.mode || '—'}</td>
                               <td style={td}>{p.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(p.payment_type)}</td>
                               <td style={td}>{p.payment_tag === 'Extra Pay' || !p.inst_date ? '—' : monthYear(p.inst_date)}</td>
-                              <td style={{ ...td, fontWeight: 700 }}>{rupee(p.amount)}</td>
-                              <td style={td}>{p.mode || '—'}</td>
-                              <td style={td}>{p.receipt_number || '—'}</td>
-                              <td style={td}>{p.received_by || '—'}</td>
+                              <td style={{ ...td, fontWeight: 700, color: 'var(--brand-ink)' }}>{p.receipt_number || '—'}</td>
                               <td style={td}>
                                 <span style={{ padding: '1px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 700, color: p.is_approved ? '#15803d' : '#b45309', background: p.is_approved ? 'rgba(22,163,74,0.12)' : 'rgba(217,119,6,0.14)' }}>
                                   {p.is_approved ? 'Approved' : 'Pending'}
