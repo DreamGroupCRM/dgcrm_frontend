@@ -106,7 +106,7 @@ const flatText = (c: CancelledCustomerRow): string =>
 const CancelledBookingPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { t, isDark } = useAppearanceTokens();
+  const { t, isDark, cssVars } = useAppearanceTokens();
   const paths = useRoleBasePath();
   const isAdmin = paths.isAdmin;
   const canAssign = usePermission('customers', 'assign');
@@ -585,7 +585,7 @@ const CancelledBookingPage: React.FC = () => {
         <div className="cb-filter-grid grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <div className="cb-f-customer">
             <label style={labelStyle}>Customer Name / ID</label>
-            <SearchableSelect t={t} placeholder="Select or type name / ID" options={customerOptions} value={custText}
+            <SearchableSelect t={t} placeholder="Name or ID" options={customerOptions} value={custText}
               onChange={handleCustomerChange} clearLabel="Clear customer" />
           </div>
           <div className="cb-f-bwf">
@@ -600,7 +600,17 @@ const CancelledBookingPage: React.FC = () => {
             <input type="number" min={0} value={rAmount} disabled={refundLocked}
               placeholder={selectedCustomer ? `Max ${rupee(selectedBalance)}` : 'Amount'}
               title={selectedCustomer ? `Refund balance: ${rupee(selectedBalance)}` : 'Select a customer first'}
-              onChange={(e) => setRAmount(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitRefund(); }}
+              // Never more than the refund balance: a larger number is capped
+              // at the balance as it is typed (digits only, no minus/decimal).
+              max={selectedBalance}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/[^\d]/g, '');
+                if (!digits) { setRAmount(''); return; }
+                const n = Math.min(Number(digits), selectedBalance);
+                if (Number(digits) > selectedBalance) toast.error(`Refund amount cannot be more than the balance of ${rupee(selectedBalance)}.`, { toastId: 'refund-max', autoClose: 3000 });
+                setRAmount(String(n));
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitRefund(); }}
               style={refundLocked ? readOnlyStyle : { ...inputStyle, ...(rSubmitAttempted && amountError ? { borderColor: '#ef4444' } : {}) }} />
           </div>
           <div className="cb-f-date">
@@ -637,10 +647,12 @@ const CancelledBookingPage: React.FC = () => {
       </div>
 
       {/* ── Toolbar — Search Employee + Assign, Refresh ────────────────── */}
-      <div className="flex items-end justify-between gap-3 mb-2" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+      {/* One row on laptop/desktop; on phones and tablets the two groups
+          stack and stretch to the full width (CancelledBooking.css). */}
+      <div className="cb-toolbar flex items-end justify-between gap-3 mb-2">
         {canAssign ? (
-          <div className="flex items-end gap-3" style={{ flexShrink: 0 }}>
-            <div style={{ width: 260 }}>
+          <div className="cb-toolbar-group flex items-end gap-3">
+            <div className="cb-toolbar-field" style={{ width: 260 }}>
               <label style={labelStyle}>Employee to Assign</label>
               <input list="cancelled-assign-employees" value={employeeSearch} disabled={selected.size === 0}
                 placeholder={selected.size === 0 ? 'Select customers first' : 'Type to search employee'}
@@ -662,9 +674,9 @@ const CancelledBookingPage: React.FC = () => {
             </button>
           </div>
         ) : <div />}
-        <div className="flex items-end gap-2" style={{ flexShrink: 0 }}>
+        <div className="cb-toolbar-group flex items-end gap-2">
           {/* Filter the table by assigned employee; the X inside clears it. */}
-          <div style={{ width: 260 }}>
+          <div className="cb-toolbar-field" style={{ width: 260 }}>
             <label style={labelStyle}>Filter by Employee</label>
             <SearchableSelect t={t} placeholder="Search employee name" options={employees.map((e) => e.label)} value={empFilterText}
               onChange={handleEmployeeFilterChange} clearLabel="Clear employee filter" />
@@ -779,7 +791,10 @@ const CancelledBookingPage: React.FC = () => {
 
       {/* ── Payment Refund History popup ───────────────────────────────── */}
       {refundFor && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+        // The popup is portaled outside the page, so it carries the page's
+        // appearance variables itself — table headings and the three boxes
+        // then follow the chosen theme/appearance like the page does.
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ ...cssVars, background: 'rgba(0,0,0,0.5)' }}>
           <div className="rounded-2xl w-full" style={{ maxWidth: 1080, maxHeight: '90vh', overflowY: 'auto', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3.5" style={{ background: '#059669', borderRadius: '16px 16px 0 0' }}>
@@ -833,26 +848,25 @@ const CancelledBookingPage: React.FC = () => {
                       <table className="master-table" style={{ width: '100%', minWidth: 900 }}>
                         <thead>
                           <tr className="master-table-header-gradient">
-                            {['#', 'Entered By Employee', 'Amount', 'Received Date', 'Mode', 'Payment For', 'Installment Month', 'Receipt No.', 'Status'].map((h) => (
+                            {['Receipt No.', 'Entered By Employee', 'Amount', 'Received Date', 'Mode', 'Payment For', 'Installment Month', 'Status'].map((h) => (
                               <th key={h} style={popupTh}>{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {!payHistory ? (
-                            <tr><td colSpan={9} style={emptyCell}>Loading...</td></tr>
+                            <tr><td colSpan={8} style={emptyCell}>Loading...</td></tr>
                           ) : payHistory.length === 0 ? (
-                            <tr><td colSpan={9} style={emptyCell}>No payments recorded for this customer.</td></tr>
-                          ) : [...payHistory].sort((x, y) => String(x.paid_on).localeCompare(String(y.paid_on))).map((p, i) => (
+                            <tr><td colSpan={8} style={emptyCell}>No payments recorded for this customer.</td></tr>
+                          ) : [...payHistory].sort((x, y) => String(x.paid_on).localeCompare(String(y.paid_on))).map((p) => (
                             <tr key={p.id}>
-                              <td style={td}>{i + 1}</td>
+                              <td style={{ ...td, fontWeight: 700, color: 'var(--brand-ink)' }}>{p.receipt_number || '—'}</td>
                               <td style={{ ...td, fontWeight: 700 }}>{p.received_by || '—'}</td>
                               <td style={{ ...td, fontWeight: 700 }}>{rupee(p.amount)}</td>
                               <td style={td}>{p.paid_on ? formatDate(p.paid_on) : '—'}</td>
                               <td style={td}>{p.mode || '—'}</td>
                               <td style={td}>{p.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(p.payment_type)}</td>
                               <td style={td}>{p.payment_tag === 'Extra Pay' || !p.inst_date ? '—' : monthYear(p.inst_date)}</td>
-                              <td style={{ ...td, fontWeight: 700, color: 'var(--brand-ink)' }}>{p.receipt_number || '—'}</td>
                               <td style={td}>
                                 <span style={{ padding: '1px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 700, color: p.is_approved ? '#15803d' : '#b45309', background: p.is_approved ? 'rgba(22,163,74,0.12)' : 'rgba(217,119,6,0.14)' }}>
                                   {p.is_approved ? 'Approved' : 'Pending'}
@@ -873,21 +887,16 @@ const CancelledBookingPage: React.FC = () => {
                       <table className="master-table" style={{ width: '100%', minWidth: 860 }}>
                         <thead>
                           <tr className="master-table-header-gradient">
-                            {['#', 'Processed By Employee', 'Refunded Amount', 'Refund Date', 'Mode', 'Cancelled Receipt No.', 'Status', 'Balance After'].map((h) => (
+                            {['Cancelled Receipt No.', 'Processed By Employee', 'Refunded Amount', 'Refund Date', 'Mode', 'Status', 'Balance After'].map((h) => (
                               <th key={h} style={popupTh}>{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {refundSummary.refunds.length === 0 ? (
-                            <tr><td colSpan={8} style={emptyCell}>No refunds recorded yet.</td></tr>
-                          ) : refundHistoryRows(refundSummary).map((r, i) => (
+                            <tr><td colSpan={7} style={emptyCell}>No refunds recorded yet.</td></tr>
+                          ) : refundHistoryRows(refundSummary).map((r) => (
                             <tr key={r.id}>
-                              <td style={td}>{i + 1}</td>
-                              <td style={{ ...td, fontWeight: 700 }}>{r.created_by_name || '—'}</td>
-                              <td style={{ ...td, fontWeight: 700, color: r.status === 'rejected' ? t.textSecondary : '#16a34a', textDecoration: r.status === 'rejected' ? 'line-through' : 'none' }}>{rupee(r.refunded_amount)}</td>
-                              <td style={td}>{formatDate(r.refund_date)}</td>
-                              <td style={td}>{r.mode_of_payment || '—'}</td>
                               <td style={td}>
                                 {r.status === 'approved' && r.receipt_number ? (
                                   <span className="inline-flex items-center gap-1.5">
@@ -896,6 +905,10 @@ const CancelledBookingPage: React.FC = () => {
                                   </span>
                                 ) : <span style={{ color: t.textSecondary }}>{r.status === 'pending' ? 'After approval' : '—'}</span>}
                               </td>
+                              <td style={{ ...td, fontWeight: 700 }}>{r.created_by_name || '—'}</td>
+                              <td style={{ ...td, fontWeight: 700, color: r.status === 'rejected' ? t.textSecondary : '#16a34a', textDecoration: r.status === 'rejected' ? 'line-through' : 'none' }}>{rupee(r.refunded_amount)}</td>
+                              <td style={td}>{formatDate(r.refund_date)}</td>
+                              <td style={td}>{r.mode_of_payment || '—'}</td>
                               <td style={td}>
                                 <div className="flex items-center gap-1.5">
                                   <span style={{

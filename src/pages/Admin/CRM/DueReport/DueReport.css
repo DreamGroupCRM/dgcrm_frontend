@@ -162,3 +162,12 @@
     padding-right: 16px !important;
   }
 }
+
+/* Stat box labels wrap onto a second line instead of being cut with "…"
+   (Payment Due's 8 boxes share one row on desktop). */
+.due-report-stat-grid .master-stat-label {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  line-height: 1.2;
+}

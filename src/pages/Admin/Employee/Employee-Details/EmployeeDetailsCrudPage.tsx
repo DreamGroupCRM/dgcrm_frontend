@@ -1388,7 +1388,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
         {/* Row 1 of 3 (V_23.0 item 5) — Name + Date of Birth + Photo,
             Employee Photo placed right next to Date of Birth as asked. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="First Name" required error={errorFor('first_name')} fieldRef={setFieldRef('first_name') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter first name" value={form.first_name} readOnly={isView} disabled={isView}
               onChange={(e) => set('first_name', e.target.value)} className={fieldClass} />
@@ -1478,7 +1478,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         sectionRef={(el) => { sectionRefs.current.office = el; }}>
 
         {/* All 10 fields flow across exactly 2 rows on desktop (5 cols x 2) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
           <Field t={t} label="Employee Joining Date" required error={errorFor('joining_date')} fieldRef={setFieldRef('joining_date') as React.Ref<HTMLDivElement>}>
             <input type="date" value={form.joining_date} readOnly={isView} disabled={isView}
               onChange={(e) => set('joining_date', e.target.value)} onClick={openPicker} className={fieldClass} />

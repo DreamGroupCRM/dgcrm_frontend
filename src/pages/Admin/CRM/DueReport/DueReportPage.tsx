@@ -1001,7 +1001,7 @@ const DueReportPage: React.FC = () => {
               {/* Selecting a customer here also filters the table below to
                   that customer's own dues (see filteredDueRows) — Reset
                   clears both. */}
-              <SearchableSelect t={t} placeholder="Select or type customer name" options={customerOptions} value={apCustomerSearch} onChange={handleCustomerSearchChange} />
+              <SearchableSelect t={t} placeholder="Customer name or ID" options={customerOptions} value={apCustomerSearch} onChange={handleCustomerSearchChange} />
               {errorFor('customer') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('customer')}</p>}
             </div>
             {/* V_23.0 item 6 — Building/Wing/Flat combined into ONE
@@ -1080,7 +1080,7 @@ const DueReportPage: React.FC = () => {
             <div ref={setFieldRef('mode_of_payment')}>
               <label style={fieldLabelStyle}>Mode of Payment</label>
               <select value={apModeOfPayment} disabled={formLocked} onChange={(e) => setApModeOfPayment(e.target.value)} style={formLocked ? readOnlyInputStyle : fieldInputStyle(!!errorFor('mode_of_payment'))}>
-                <option value="">--Select Payment Method--</option>
+                <option value="">--Select--</option>
                 {MODE_OF_PAYMENT_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
               {errorFor('mode_of_payment') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('mode_of_payment')}</p>}
@@ -1126,14 +1126,14 @@ const DueReportPage: React.FC = () => {
                 click-to-filter above with a different control.) */}
             <div className="due-report-filter-item due-report-global-search relative" style={{ width: 160, flexShrink: 0 }}>
               <MdSearch size={15} style={{ position: 'absolute', left: 10, top: 11, color: t.textSecondary, pointerEvents: 'none' }} />
-              <input type="text" placeholder="Search across all data..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)}
+              <input type="text" placeholder="Search all..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)}
                 style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px 9px 30px', fontSize: 12, outline: 'none' }} />
             </div>
             <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
-              <SearchableSelect t={t} placeholder="Search by Employee Name" options={employeeNameOptions} value={filterEmployee} onChange={setFilterEmployee} />
+              <SearchableSelect t={t} placeholder="Employee name" options={employeeNameOptions} value={filterEmployee} onChange={setFilterEmployee} />
             </div>
             <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
-              <SearchableSelect t={t} placeholder="Search by Building Name" options={buildingNames} value={filterBuilding} onChange={setFilterBuilding} />
+              <SearchableSelect t={t} placeholder="Building name" options={buildingNames} value={filterBuilding} onChange={setFilterBuilding} />
             </div>
             <div className="due-report-filter-item" style={{ width: 120, flexShrink: 0 }}>
               <StatusPillSelect t={t} value={statusFilter} onChange={setStatusFilter} />

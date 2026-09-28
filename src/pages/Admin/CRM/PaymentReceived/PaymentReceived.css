@@ -112,3 +112,26 @@
 .pr-totals-grand {
   font-size: 1.08em;
 }
+
+/* Tablets (640-1023px): the one-line totals bar can't fit even at its
+   smallest font, so it becomes a grid — four per row, Total on its own row
+   — and nothing is cut. (Phones get two per row from mobile.css.) */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .pr-totals-row {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    row-gap: 6px;
+    white-space: normal !important;
+    padding: 8px 4px !important;
+  }
+  .pr-totals-row .pr-totals-item { border-left: none !important; padding: 0 8px !important; }
+  .pr-totals-row .pr-totals-grand { grid-column: 1 / -1; }
+}
+
+/* Stat box labels wrap instead of being cut with "…". */
+.pr-stat-grid .master-stat-label {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  line-height: 1.2;
+}

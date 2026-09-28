@@ -1084,11 +1084,11 @@ const CustomerDetailsListPage: React.FC = () => {
         <div className="cust-filter-row flex items-end gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 2 }}>
           <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Customer Name</label>
-            <SearchableSelect t={t} placeholder="Select or type customer name" options={customerNameOptions} value={customerNameFilter} onChange={handleCustomerNameFilterChange} />
+            <SearchableSelect t={t} placeholder="Customer name" options={customerNameOptions} value={customerNameFilter} onChange={handleCustomerNameFilterChange} />
           </div>
           <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Building</label>
-            <SearchableSelect t={t} placeholder="Select or type building name" options={buildingNameOptions} value={buildingFilter}
+            <SearchableSelect t={t} placeholder="Building name" options={buildingNameOptions} value={buildingFilter}
               onChange={setBuildingFilter} />
           </div>
           <div style={{ flex: '1 1 130px', minWidth: 115 }}>
@@ -1106,7 +1106,7 @@ const CustomerDetailsListPage: React.FC = () => {
           </div>
           <div style={{ flex: '1 1 130px', minWidth: 115 }}>
             <label className="cust-filter-label">Flat No</label>
-            <SearchableSelect t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNoFilter}
+            <SearchableSelect t={t} placeholder="Flat no." options={flatNoOptions} value={flatNoFilter}
               emptyMessage={selectedFloor ? 'No flats found for this floor.' : 'Select a Floor first to see its flats.'}
               onChange={setFlatNoFilter} labelFor={flatLabelFor} />
           </div>

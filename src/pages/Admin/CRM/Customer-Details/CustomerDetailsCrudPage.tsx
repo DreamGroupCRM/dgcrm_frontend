@@ -1772,7 +1772,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         <SubHeading t={t} title="Personal Details" />
 
         {/* Row 1 of 3 — Name + Photo */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="First Name" required error={errorFor('firstName')} fieldRef={setFieldRef('firstName') as React.Ref<HTMLDivElement>}>
             <input type="text" placeholder="Enter first name" value={firstName} readOnly={isView} disabled={isView}
               onChange={(e) => setFirstName(e.target.value)} className={fieldClass} />
@@ -1806,7 +1806,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             Address, Upload Aadhaar Card Photo, Upload PAN Card Photo.
             "Also on WhatsApp" is a checkbox on each number (V_22.0); there
             is no separate WhatsApp Number field. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="Mobile Number" required error={errorFor('mobileNumber')} fieldRef={setFieldRef('mobileNumber') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView} code={mobileCountryCode} onCodeChange={setMobileCountryCode} number={mobileNumber} onNumberChange={setMobileNumber} />
             <label className="flex items-center gap-1.5 mt-1.5" style={{ fontSize: 10.5, color: t.textSecondary, cursor: isView ? 'default' : 'pointer' }}>
@@ -1844,7 +1844,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             person: their own name plus number, deliberately separate from
             the customer's own Secondary Mobile Number in row 2 above),
             then BOTH ID numbers together (V_23.0 item 3). */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-4">
           <Field t={t} label="Date of Birth" required error={errorFor('dateOfBirth')} fieldRef={setFieldRef('dateOfBirth') as React.Ref<HTMLDivElement>}>
             <div className="flex items-center gap-2">
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -1918,17 +1918,17 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             which Projects/Buildings show up, matching the strict
             Company -> Project -> Building -> Unit hierarchy required
             app-wide; it never overrides effectiveCompanyName. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
           <Field t={t} label="Company" required error={errorFor('companyFilter')} fieldRef={setFieldRef('companyFilter') as React.Ref<HTMLDivElement>}>
             <SearchableSelect t={t} placeholder="Select company" options={companyFilterOptions} value={companyFilter} disabled={isView}
               onChange={handleCompanyFilterChange} />
           </Field>
           <Field t={t} label="Project Name" required error={errorFor('projectName')} fieldRef={setFieldRef('projectName') as React.Ref<HTMLDivElement>}>
-            <SearchableSelect t={t} placeholder={companyFilter ? 'Select project' : 'Select a Company first'} options={projectNameOptions} value={projectName} disabled={isView || !companyFilter}
+            <SearchableSelect t={t} placeholder={companyFilter ? 'Select project' : 'Select Company'} options={projectNameOptions} value={projectName} disabled={isView || !companyFilter}
               onChange={(v) => { setProjectName(v); setBuildingName(''); setWingName(''); setFloorLabel(''); setFlatNo(''); }} />
           </Field>
           <Field t={t} label="Building Name" required error={errorFor('buildingName')} fieldRef={setFieldRef('buildingName') as React.Ref<HTMLDivElement>}>
-            <SearchableSelect t={t} placeholder={projectName ? 'Select building' : 'Select a Project first'} options={buildingNameOptions} value={buildingName} disabled={isView || !projectName}
+            <SearchableSelect t={t} placeholder={projectName ? 'Select building' : 'Select Project'} options={buildingNameOptions} value={buildingName} disabled={isView || !projectName}
               onChange={(v) => { setBuildingName(v); setWingName(''); setFloorLabel(''); setFlatNo(''); setShopNo(''); }} />
           </Field>
           <Field t={t} label="Location">
@@ -1965,7 +1965,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             <>
               <Field t={t} label="Flat No" required error={errorFor('flatNo')} fieldRef={setFieldRef('flatNo') as React.Ref<HTMLDivElement>}>
                 <SearchableSelect
-                  t={t} placeholder="Select flat number" options={flatNoOptions} value={flatNo} disabled={isView || !selectedFloor}
+                  t={t} placeholder="Select flat" options={flatNoOptions} value={flatNo} disabled={isView || !selectedFloor}
                   onChange={setFlatNo}
                   labelFor={(no) => {
                     const fl = selectedFloor?.flats.find((f) => f.flat_no === no);
@@ -2079,7 +2079,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         {/* Row 1 of 3 — Remaining Booking Amount & Date spans 2 columns (its
             own amount+date pair was squeezing into the same 1/5-width slot
             as every other single field here, cramming both inputs). */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">
           <Field t={t} label={`Total Cost of ${unitLabel} (₹)`} required error={errorFor('totalCost')} fieldRef={setFieldRef('totalCost') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter total cost" value={totalCost} onChange={setTotalCost} />
           </Field>
@@ -2100,7 +2100,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               </div>
               <input type="date" value={remainingBookingDate} readOnly={isView} disabled={isView}
                 onClick={openPicker} onFocus={openPicker} onChange={(e) => setRemainingBookingDate(e.target.value)} className={fieldClass}
-                style={{ flexShrink: 0, width: 150 }} />
+                style={{ flex: '0 1 150px', minWidth: 124 }} />
             </div>
           </Field>
           <Field t={t} label="Possession Amount (₹)" required error={errorFor('possessionAmount')} fieldRef={setFieldRef('possessionAmount') as React.Ref<HTMLDivElement>}>
@@ -2145,7 +2145,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             Schedule Preview button right after Booster After Possession —
             the last field group in this section. 5 columns (was 4) to fit
             it in without pushing this to a 4th row. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           <Field t={t} label="Booster Amount Before Possession (₹)">
             <AmountField t={t} isView={isView} placeholder="Enter amount" value={boosterAmountBeforePossession} onChange={setBoosterAmountBeforePossession} maxDigits={MAX_BOOSTER_AMOUNT_DIGITS} />
           </Field>

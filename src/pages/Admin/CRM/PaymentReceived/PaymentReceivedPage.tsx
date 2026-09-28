@@ -702,10 +702,10 @@ const PaymentReceivedPage: React.FC = () => {
           <FilterSelect t={t} label="Company" value={draftCompany} onChange={handleCompanyChange}
             placeholder="--Select--" options={companyNameOptions.map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Project" value={draftProjectName} onChange={handleProjectChange}
-            placeholder={draftCompany ? '--Select--' : 'Select a Company first'} disabled={!draftCompany}
+            placeholder={draftCompany ? '--Select--' : 'Select Company'} disabled={!draftCompany}
             options={projectNameOptions.map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Building Name" value={draftBuildingName} onChange={handleBuildingChange}
-            placeholder={draftProjectName ? '--Select--' : 'Select a Project first'} disabled={!draftProjectName}
+            placeholder={draftProjectName ? '--Select--' : 'Select Project'} disabled={!draftProjectName}
             options={buildingOptionsForProject.map((b) => b.building_name).filter((v, i, arr) => arr.indexOf(v) === i).map((n) => ({ value: n, label: n }))} />
           <FilterSelect t={t} label="Wing" value={draftWingName} onChange={handleWingChange}
             placeholder="--Select--" options={wingOptions.map((n) => ({ value: n, label: n }))} disabled={!selectedBuilding} />
@@ -714,7 +714,7 @@ const PaymentReceivedPage: React.FC = () => {
         </div>
         <div className="pr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
           <FilterSelect t={t} label="ModeOfPayment" value={draftMode} onChange={setDraftMode}
-            placeholder="--Select Payment Method--" options={MODE_OF_PAYMENT_OPTIONS.map((m) => ({ value: m, label: m }))} />
+            placeholder="--Select--" options={MODE_OF_PAYMENT_OPTIONS.map((m) => ({ value: m, label: m }))} />
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
             <label style={labelStyle}>Received Date From</label>

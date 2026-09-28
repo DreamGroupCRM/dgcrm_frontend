@@ -33,10 +33,30 @@
   }
 }
 
+/* Toolbar (Employee to Assign + Assign, Filter by Employee + Refresh): one
+   row on laptop/desktop; below 768px the two groups stack, each stretched to
+   the full width with its input taking the room left by its button. */
+.cb-toolbar { flex-wrap: wrap; row-gap: 10px !important; }
+.cb-toolbar-group { flex-shrink: 0; }
+/* When the two groups wrap (768-1279px), the filter group stays right. */
+.cb-toolbar > .cb-toolbar-group:last-child { margin-left: auto; }
+@media (max-width: 767px) {
+  .cb-toolbar { flex-direction: column; align-items: stretch !important; gap: 10px !important; }
+  .cb-toolbar-group { width: 100%; margin-left: 0 !important; }
+  .cb-toolbar-field { flex: 1 1 auto; width: auto !important; min-width: 0; }
+  .cb-toolbar-group > button { flex-shrink: 0; }
+}
+@media (max-width: 380px) {
+  .cb-toolbar-group > button.px-5 { padding-left: 12px !important; padding-right: 12px !important; }
+}
+
 /* Refund popup's flat-details band: one line on laptop/desktop; wraps on
    phones/tablets so nothing is cut. */
 .cb-popup-band { flex-wrap: wrap; }
 .cb-popup-band > span { white-space: nowrap; }
+@media (max-width: 479px) {
+  .cb-popup-band > span { white-space: normal; }
+}
 @media (min-width: 1024px) {
   .cb-popup-band { flex-wrap: nowrap; justify-content: space-between; }
 }
