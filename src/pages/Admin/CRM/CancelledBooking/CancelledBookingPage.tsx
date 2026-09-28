@@ -41,6 +41,7 @@ import { exportPaymentHistoryPdf, exportPaymentSchedulePdf } from '../Customer-D
 import { Building } from '../../../../types';
 import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
 import { serverTodayYmd } from '../../../../utils/serverTime';
+import './CancelledBooking.css';
 
 const rupee = (n: number): string => `₹ ${(n || 0).toLocaleString('en-IN')}`;
 const MODE_OPTIONS = ['Cash', 'Cheque', 'Online', 'Other'];
@@ -290,12 +291,12 @@ const CancelledBookingPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: t.fontFamily }}>
-      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, background: 'rgba(220,38,38,0.1)' }}>
-            <MdEventBusy size={22} style={{ color: '#dc2626' }} />
+      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: 'rgba(220,38,38,0.1)' }}>
+            <MdEventBusy size={17} style={{ color: '#dc2626' }} />
           </div>
-          <h1 style={{ fontSize: 19.5, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Cancelled Booking</h1>
+          <h1 style={{ fontSize: 16, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Cancelled Booking</h1>
         </div>
       </div>
 
@@ -369,7 +370,9 @@ const CancelledBookingPage: React.FC = () => {
 
       {/* ── Search & filters ───────────────────────────────────────────── */}
       <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="cb-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 items-end">
+        {/* One row from 1024px up (CancelledBooking.css): each field takes the
+            width its content needs, the rest of the row is shared out. */}
+        <div className="cb-filter-grid grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <div>
             <label style={labelStyle}>Customer Name</label>
             <input type="text" value={draft.customer_name} placeholder="Name or Customer ID"
@@ -415,16 +418,9 @@ const CancelledBookingPage: React.FC = () => {
               {MODE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
-          <div>
-            <label style={labelStyle}>Employee</label>
-            <select value={draft.employee_id} onChange={(e) => setField('employee_id', e.target.value)} style={inputStyle}>
-              <option value="">--All--</option>
-              {employees.map((e) => <option key={e.id} value={e.id}>{e.label}</option>)}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
+          <div className="cb-filter-actions flex items-center gap-2">
             <button type="button" onClick={handleSearch}
-              className="flex items-center gap-1.5 px-4 rounded-xl text-sm font-bold text-white"
+              className="flex items-center gap-1.5 px-3.5 rounded-xl text-sm font-bold text-white"
               style={{ height: 38, background: 'var(--brand-gradient)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <MdSearch size={16} /> Search
             </button>
@@ -504,12 +500,12 @@ const CancelledBookingPage: React.FC = () => {
                       </button>
                       {rowMenu.openId === c.id && rowMenu.pos && (
                         <RowActionMenu t={t} pos={rowMenu.pos} actions={[
-                          { key: 'view', label: 'View', icon: <MdVisibility size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); navigate(`${paths.customerDetails}/view/${c.id}`); } },
+                          { key: 'view', label: 'View', icon: <MdVisibility size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); navigate(`${paths.cancelledBooking}/view/${c.id}`); } },
                           { key: 'history', label: 'Download History', icon: <MdDownload size={14} color="#7c3aed" />, onClick: () => { rowMenu.close(); handleDownloadHistory(c); } },
                           { key: 'scheme', label: 'Download Scheme', icon: <MdDownload size={14} color="#059669" />, onClick: () => { rowMenu.close(); handleDownloadScheme(c); } },
                         ]} />
                       )}
-                      <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => navigate(`${paths.customerDetails}/scheme/${c.id}`)}>
+                      <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => navigate(`${paths.cancelledBooking}/scheme/${c.id}`)}>
                         <MdLoyalty size={15} />
                       </button>
                       <button type="button" title="Show Payment Refund History" className="master-icon-btn" onClick={() => openRefunds(c)}>
@@ -518,7 +514,7 @@ const CancelledBookingPage: React.FC = () => {
                     </div>
                   </td>
                   <td style={td}>
-                    <button type="button" onClick={() => navigate(`${paths.customerDetails}/view/${c.id}`)}
+                    <button type="button" onClick={() => navigate(`${paths.cancelledBooking}/view/${c.id}`)}
                       style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, color: 'var(--brand-ink)' }}>
                       {c.customer_code || '—'}
                     </button>

@@ -52,7 +52,11 @@ import { serverToday } from '../../../../utils/serverTime';
 import { cssRect } from '../../../../utils/appZoom';
 
 type Mode = 'add' | 'edit' | 'view';
-interface Props { mode: Mode; }
+interface Props {
+  mode: Mode;
+  /** Opened from Cancelled Booking: Go Back returns there instead of the Customer Details list. */
+  from?: 'cancelled';
+}
 type Theme = AppTheme;
 
 // A file field can be: a freshly-picked File (about to be uploaded), an
@@ -774,7 +778,7 @@ const CustomerPreviewModal: React.FC<{ data: PreviewData; onClose: () => void }>
 );
 
 // ─────────────────────────────────────────────────────────────────────────
-const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
+const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   // Named routerLocation, not location — this page already has a `location`
@@ -785,6 +789,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // This page is mounted under /admin AND /employee, so its own "Back to
   // list" links must follow whichever tree the user is in.
   const paths = useRoleBasePath();
+  const backPath = from === 'cancelled' ? paths.cancelledBooking : paths.customerDetails;
   const isView = mode === 'view';
 
   // Quick View — which document the shared viewer is showing, if any. Kept
@@ -1597,7 +1602,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Page header ───────────────────────────────────────────────── */}
         <div className="cust-crud-header flex items-center justify-between flex-wrap gap-3 mb-6">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={() => navigate(paths.customerDetails)}
+            <button type="button" onClick={() => navigate(backPath)}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, padding: 6 }}>
               <MdArrowBack size={20} />
             </button>
@@ -1713,7 +1718,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* ── Sticky footer — Go Back only, same shared class every other
             CRUD page's footer uses. ────────────────────────────────────── */}
         <div className="master-crud-footer flex items-center justify-center gap-3 z-10" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
-          <button type="button" onClick={() => navigate(paths.customerDetails)}
+          <button type="button" onClick={() => navigate(backPath)}
             className="px-6 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
             Go Back
           </button>

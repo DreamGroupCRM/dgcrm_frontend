@@ -152,6 +152,9 @@ const AdminRoutes: React.FC = () => (
 
       <Route path="reports/executive-dashboard" element={<ExecutiveDashboardPage />} />
       <Route path="cancelled-booking" element={<CancelledBookingPage />} />
+      {/* View / Show Scheme opened from Cancelled Booking stay under it; Go Back returns here. */}
+      <Route path="cancelled-booking/view/:id" element={<CustomerDetailsCrudPage mode="view" from="cancelled" />} />
+      <Route path="cancelled-booking/scheme/:id" element={<CustomerSchemeViewPage from="cancelled" />} />
       <Route path="audit-history" element={<AuditHistoryPage />} />
       <Route path="pending-approvals" element={<PendingApprovalsPage />} />
       <Route path="change-requests" element={<ChangeRequestsPage />} />

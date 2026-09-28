@@ -175,7 +175,8 @@ const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; ro
 );
 
 // ─────────────────────────────────────────────────────────────────────────
-const CustomerSchemeViewPage: React.FC = () => {
+/** from='cancelled': opened from Cancelled Booking, so Go Back returns there. */
+const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isDark, t, accent } = useAppearanceTokens();
@@ -227,7 +228,7 @@ const CustomerSchemeViewPage: React.FC = () => {
     return () => { cancelled = true; };
   }, [id]);
 
-  const goBack = () => navigate(paths.customerDetails);
+  const goBack = () => navigate(from === 'cancelled' ? paths.cancelledBooking : paths.customerDetails);
 
   if (loading) {
     return (

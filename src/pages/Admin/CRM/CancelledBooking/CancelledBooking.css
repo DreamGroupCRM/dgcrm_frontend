@@ -1,0 +1,35 @@
+/* Cancelled Booking — all search filters on a single row from 1280px up.
+   Each field has a minimum width that fits its label, placeholder and
+   longest built-in value ("Select a Building first", "Mode of Payment", the
+   date picker), so nothing is cut; the spare width of the row is shared
+   out between them. Narrower screens keep the page's wrapping grid. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .cb-filter-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+@media (min-width: 1280px) {
+  .cb-filter-grid {
+    display: flex !important;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 6px !important;
+  }
+  .cb-filter-grid > * { flex: 1 1 104px; min-width: 104px; }
+  .cb-filter-grid > :nth-child(1) { flex-basis: 144px; min-width: 144px; } /* Customer Name */
+  .cb-filter-grid > :nth-child(2) { flex-basis: 95px;  min-width: 95px;  } /* Building */
+  .cb-filter-grid > :nth-child(3) { flex-basis: 158px; min-width: 158px; } /* Wing */
+  .cb-filter-grid > :nth-child(4) { flex-basis: 142px; min-width: 142px; } /* Flat */
+  .cb-filter-grid > :nth-child(5) { flex-basis: 112px; min-width: 112px; } /* Refund Amount */
+  .cb-filter-grid > :nth-child(6) { flex-basis: 128px; min-width: 128px; } /* Refund Date */
+  .cb-filter-grid > :nth-child(7) { flex-basis: 118px; min-width: 118px; } /* Mode of Payment */
+  .cb-filter-grid > .cb-filter-actions { flex: 0 0 auto; min-width: 0; }
+  .cb-filter-grid label { white-space: nowrap; }
+  .cb-filter-grid input,
+  .cb-filter-grid select {
+    height: 38px;
+    box-sizing: border-box;
+    padding-left: 8px !important;
+    padding-right: 6px !important;
+  }
+}

@@ -60,6 +60,9 @@ const EmployeeRoutes: React.FC = () => (
       {/* Scoped server-side to the employee's assigned customers; admin-only
           parts (summary boxes, approvals) are hidden and refused by the API. */}
       <Route path="cancelled-booking" element={<CancelledBookingPage />} />
+      {/* View / Show Scheme opened from Cancelled Booking stay under it; Go Back returns here. */}
+      <Route path="cancelled-booking/view/:id" element={<CustomerDetailsCrudPage mode="view" from="cancelled" />} />
+      <Route path="cancelled-booking/scheme/:id" element={<CustomerSchemeViewPage from="cancelled" />} />
       <Route path="leads" element={<LeadListPage />} />
       <Route path="leads/add" element={<LeadCrudPage mode="add" />} />
       <Route path="leads/view/:id" element={<LeadCrudPage mode="view" />} />
