@@ -1130,7 +1130,7 @@ const DueReportPage: React.FC = () => {
                 style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px 9px 30px', fontSize: 12, outline: 'none' }} />
             </div>
             <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
-              <SearchableSelect t={t} placeholder="Employee name" options={employeeNameOptions} value={filterEmployee} onChange={setFilterEmployee} />
+              <SearchableSelect t={t} placeholder="Employee" options={employeeNameOptions} value={filterEmployee} onChange={setFilterEmployee} />
             </div>
             <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Building name" options={buildingNames} value={filterBuilding} onChange={setFilterBuilding} />
