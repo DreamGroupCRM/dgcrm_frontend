@@ -1213,7 +1213,11 @@ const DueReportPage: React.FC = () => {
                       )}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary }}>
-                      <div>{r.email || '—'}</div>
+                      {/* A long email may continue after the "@" on a narrow
+                          screen instead of widening the whole table. */}
+                      <div style={{ whiteSpace: 'normal' }}>
+                        {r.email ? <>{r.email.split('@')[0]}@<wbr />{r.email.split('@').slice(1).join('@')}</> : '—'}
+                      </div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.mobile_number || '—'}</div>
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
@@ -1225,9 +1229,12 @@ const DueReportPage: React.FC = () => {
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                       {/* Payment Details: the payment-type badge (in the row's
                           status color) and the EMI/installment amount below. */}
+                      {/* A long label may wrap inside its badge on a narrow
+                          screen instead of widening the whole table. */}
                       <span style={{
-                        display: 'inline-block', padding: '3px 9px', borderRadius: 999,
+                        display: 'inline-block', padding: '3px 9px', borderRadius: 12,
                         fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor,
+                        whiteSpace: 'normal', lineHeight: 1.3,
                       }}>
                         {getPaymentForDisplay(r).label}
                       </span>
@@ -1248,8 +1255,7 @@ const DueReportPage: React.FC = () => {
                       ) : null}
                       {r.detailText && (
                         <div style={{ fontSize: 10.5, fontWeight: 600, color: r.statusColor === STATUS_COLORS.upcoming ? t.textPrimary : r.statusColor, marginTop: r.months_pending ? 5 : 0, whiteSpace: 'nowrap', lineHeight: 1.35 }}>
-                          {/* "From : …" and "To : …" on two lines keeps the column narrow. */}
-                          {r.detailText.split(', ').map((part) => <div key={part}>{part}</div>)}
+                          {r.detailText}
                         </div>
                       )}
                       {!r.months_pending && !r.detailText && <span style={{ color: t.textSecondary, fontSize: 11.5 }}>—</span>}
@@ -1270,8 +1276,8 @@ const DueReportPage: React.FC = () => {
                         const iconBtn: React.CSSProperties = { width: 30, height: 30, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' };
                         const isPast = !!scheduled?.due_date && scheduled.due_date.slice(0, 10) < serverTodayYmd();
                         return (
-                          // Two lines: both icons on top, the follow-up date below.
-                          <div className="flex flex-col items-start gap-1">
+                          // One line: both icons, then the follow-up date.
+                          <div className="flex items-center gap-1.5" style={{ whiteSpace: 'nowrap' }}>
                             <div className="flex items-center gap-1.5">
                             <button type="button" onClick={() => openFollowUp(target)}
                               title={scheduled ? 'Change follow-up' : 'Schedule a follow-up'}
