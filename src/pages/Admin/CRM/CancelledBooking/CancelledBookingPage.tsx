@@ -458,7 +458,8 @@ const CancelledBookingPage: React.FC = () => {
             onClick={() => setApprovalsOpen((o) => ({ ...o, cancellations: !o.cancellations }))}
             className="w-full flex items-center justify-between gap-2 px-4 py-2.5"
             style={{ background: 'rgba(217,119,6,0.12)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 800, color: '#b45309', textAlign: 'left' }}>
-            <span className="flex items-center gap-2"><MdPendingActions size={18} /> Cancellation Requests Awaiting Approval ({requests.length})</span>
+            <span className="flex items-center gap-2"><MdPendingActions size={18} /> Cancellation Requests Awaiting Approval
+              <span className="cb-count-badge" style={{ background: '#dc2626' }} title={`${requests.length} pending`}>{requests.length}</span></span>
             <span className="flex items-center gap-1" style={{ fontSize: 11.5, fontWeight: 700 }}>
               {approvalsOpen.cancellations ? 'Hide' : 'Show'}
               <MdExpandMore size={20} style={{ transform: approvalsOpen.cancellations ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }} />
@@ -522,8 +523,9 @@ const CancelledBookingPage: React.FC = () => {
             className="w-full flex items-center justify-between gap-2 px-4 py-2.5"
             style={{ background: '#059669', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 800, color: '#fff', textAlign: 'left' }}>
             <span className="flex items-center gap-2">
-              <MdPendingActions size={18} /> Refunds Awaiting Approval ({pendingRefunds.length})
-              <span style={{ fontSize: 11.5, fontWeight: 700, opacity: 0.92 }}>· {rupee(pendingRefunds.reduce((sum, r) => sum + r.refunded_amount, 0))}</span>
+              <MdPendingActions size={18} /> Refunds Awaiting Approval
+              <span className="cb-count-badge" style={{ background: '#dc2626' }} title={`${pendingRefunds.length} pending`}>{pendingRefunds.length}</span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, opacity: 0.92 }}>{rupee(pendingRefunds.reduce((sum, r) => sum + r.refunded_amount, 0))}</span>
             </span>
             <span className="flex items-center gap-1" style={{ fontSize: 11.5, fontWeight: 700 }}>
               {approvalsOpen.refunds ? 'Hide' : 'Show'}

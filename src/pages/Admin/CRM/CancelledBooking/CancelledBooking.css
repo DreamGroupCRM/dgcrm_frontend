@@ -45,3 +45,11 @@
    the panel (sticky column headings) instead of pushing the page down. */
 .cb-approval-scroll { max-height: 280px; overflow-y: auto; }
 .cb-approval-scroll thead th { position: sticky; top: 0; z-index: 1; }
+
+/* Pending-approval count on a collapsed accordion heading. */
+.cb-count-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px;
+  color: #fff; font-size: 12px; font-weight: 800; line-height: 1;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
