@@ -171,3 +171,18 @@
   text-overflow: clip !important;
   line-height: 1.2;
 }
+
+/* Toolbar filters (Search, Employee, Building, Status): on phones two per
+   row across the full width, on tablets a little wider, so no placeholder
+   or picked value is cut. */
+@media (max-width: 767px) {
+  .due-report-toolbar-filters {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .due-report-toolbar-filters > .due-report-filter-item { width: auto !important; min-width: 0; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .due-report-filter-item { width: 150px !important; }
+}

@@ -2104,7 +2104,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             </div>
           </Field>
           <Field t={t} label="Possession Amount (₹)" required error={errorFor('possessionAmount')} fieldRef={setFieldRef('possessionAmount') as React.Ref<HTMLDivElement>}>
-            <AmountField t={t} isView={isView} placeholder="Enter possession amount" value={possessionAmount} onChange={setPossessionAmount} />
+            <AmountField t={t} isView={isView} placeholder="Possession amount" value={possessionAmount} onChange={setPossessionAmount} />
           </Field>
         </div>
 

@@ -655,7 +655,7 @@ const CancelledBookingPage: React.FC = () => {
             <div className="cb-toolbar-field" style={{ width: 260 }}>
               <label style={labelStyle}>Employee to Assign</label>
               <input list="cancelled-assign-employees" value={employeeSearch} disabled={selected.size === 0}
-                placeholder={selected.size === 0 ? 'Select customers first' : 'Type to search employee'}
+                placeholder={selected.size === 0 ? 'Select customers' : 'Search employee'}
                 onChange={(e) => setEmployeeSearch(e.target.value)}
                 style={selected.size === 0 ? readOnlyStyle : inputStyle} />
               <datalist id="cancelled-assign-employees">

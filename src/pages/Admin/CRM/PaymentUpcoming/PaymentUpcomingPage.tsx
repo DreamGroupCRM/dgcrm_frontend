@@ -287,12 +287,12 @@ const PaymentUpcomingPage: React.FC = () => {
         <div className="payment-upcoming-search-row grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="payment-upcoming-search-field relative">
             <MdSearch size={15} style={{ position: 'absolute', left: 10, top: 11, color: t.textSecondary, pointerEvents: 'none' }} />
-            <input type="text" placeholder="Customer ID, name, mobile" value={searchCustomer} onChange={(e) => setSearchCustomer(e.target.value)}
+            <input type="text" placeholder="ID, name or mobile" value={searchCustomer} onChange={(e) => setSearchCustomer(e.target.value)}
               style={{ ...fieldInputStyle, paddingLeft: 30 }} disabled={!applied} />
           </div>
           <div className="payment-upcoming-search-field relative">
             <MdSearch size={15} style={{ position: 'absolute', left: 10, top: 11, color: t.textSecondary, pointerEvents: 'none' }} />
-            <input type="text" placeholder="Employee name or code" value={searchEmployee} onChange={(e) => setSearchEmployee(e.target.value)}
+            <input type="text" placeholder="Employee or code" value={searchEmployee} onChange={(e) => setSearchEmployee(e.target.value)}
               style={{ ...fieldInputStyle, paddingLeft: 30 }} disabled={!applied} />
           </div>
           <div className="payment-upcoming-search-field relative">

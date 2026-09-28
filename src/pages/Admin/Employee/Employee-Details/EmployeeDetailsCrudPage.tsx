@@ -1431,7 +1431,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               the form just no longer collects it. */}
           <Field t={t} label="Mobile Number" required error={errorFor('mobile_number')} fieldRef={setFieldRef('mobile_number') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView} code={form.mobile_country_code} onCodeChange={(v) => set('mobile_country_code', v)}
-              number={form.mobile_number} onNumberChange={(v) => set('mobile_number', v)} placeholder="Enter mobile number" />
+              number={form.mobile_number} onNumberChange={(v) => set('mobile_number', v)} placeholder="Mobile number" />
             <label className="flex items-center gap-1.5 mt-1.5" style={{ fontSize: 10.5, color: t.textSecondary, cursor: isView ? 'default' : 'pointer' }}>
               <input type="checkbox" checked={form.mobile_is_whatsapp} disabled={isView}
                 onChange={(e) => set('mobile_is_whatsapp', e.target.checked)} style={{ width: 13, height: 13, cursor: isView ? 'default' : 'pointer' }} />
@@ -1440,7 +1440,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </Field>
           <Field t={t} label="Alternate Number" error={errorFor('alternate_number')} fieldRef={setFieldRef('alternate_number') as React.Ref<HTMLDivElement>}>
             <PhoneInput theme={t} disabled={isView} code={form.alternate_country_code} onCodeChange={(v) => set('alternate_country_code', v)}
-              number={form.alternate_number} onNumberChange={(v) => set('alternate_number', v)} placeholder="Enter mobile number" />
+              number={form.alternate_number} onNumberChange={(v) => set('alternate_number', v)} placeholder="Mobile number" />
           </Field>
           <Field t={t} label="Address" required fieldRef={setFieldRef('address') as React.Ref<HTMLDivElement>}>
             <textarea

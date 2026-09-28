@@ -1084,11 +1084,11 @@ const CustomerDetailsListPage: React.FC = () => {
         <div className="cust-filter-row flex items-end gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 2 }}>
           <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Customer Name</label>
-            <SearchableSelect t={t} placeholder="Customer name" options={customerNameOptions} value={customerNameFilter} onChange={handleCustomerNameFilterChange} />
+            <SearchableSelect t={t} placeholder="Customer" options={customerNameOptions} value={customerNameFilter} onChange={handleCustomerNameFilterChange} />
           </div>
           <div style={{ flex: '1 1 150px', minWidth: 130 }}>
             <label className="cust-filter-label">Building</label>
-            <SearchableSelect t={t} placeholder="Building name" options={buildingNameOptions} value={buildingFilter}
+            <SearchableSelect t={t} placeholder="Building" options={buildingNameOptions} value={buildingFilter}
               onChange={setBuildingFilter} />
           </div>
           <div style={{ flex: '1 1 130px', minWidth: 115 }}>
