@@ -157,7 +157,7 @@
     flex: 0 0 auto;
     align-self: flex-end;
   }
-  .due-report-form-grid > .due-report-form-actions button {
+  .due-report-form-grid > .due-report-form-actions button:not(.due-report-clear-btn) {
     padding-left: 16px !important;
     padding-right: 16px !important;
   }

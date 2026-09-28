@@ -1092,12 +1092,13 @@ const DueReportPage: React.FC = () => {
                 style={{ background: (submitting || formLocked) ? '#6b7280' : 'var(--brand-gradient)', border: 'none', cursor: (submitting || formLocked) ? 'not-allowed' : 'pointer' }}>
                 {submitting ? 'Submitting...' : 'Submit'}
               </button>
-              {/* Reset as an X icon — clears the form and the table filters. */}
+              {/* Clear — round X icon (same as Cancelled Booking's clear
+                  filters); clears the form and the table filters. */}
               <button type="button" onClick={handleResetAddPaymentForm} disabled={submitting}
-                title="Reset" aria-label="Reset"
-                className="flex items-center justify-center rounded-xl"
-                style={{ width: 40, height: 40, flex: '0 0 auto', background: t.insetBg, color: t.textPrimary, border: `1px solid ${t.inputBorder}`, cursor: submitting ? 'not-allowed' : 'pointer' }}>
-                <MdClose size={20} />
+                title="Clear Filters" aria-label="Clear Filters"
+                className="due-report-clear-btn flex items-center justify-center rounded-full"
+                style={{ width: 36, height: 36, flex: '0 0 auto', alignSelf: 'center', background: 'var(--brand-gradient)', color: '#fff', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1 }}>
+                <MdClose size={17} />
               </button>
             </div>
           </div>
