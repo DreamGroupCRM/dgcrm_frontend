@@ -698,7 +698,7 @@ const CancelledBookingPage: React.FC = () => {
                 <th style={{ padding: '10px 12px', width: 40 }}>
                   {canAssign && <input type="checkbox" checked={allOnPage} onChange={toggleAll} disabled={rows.length === 0} title="Select all on this page" />}
                 </th>
-                {['Action', 'Customer ID', 'Customer Name', 'Contact Details', 'Company / Project', 'Building Details', 'Cancellation Date', 'Refund Amount', 'Refund Date', 'Mode of Payment', 'Cancelled Receipt No.', 'Assigned Employee'].map((h) => (
+                {['Action', 'Customer ID', 'Customer Name', 'Contact Details', 'Company / Project', 'Building Details', 'Cancellation Date', 'Refund Amount', 'Balance Amount', 'Refund Date', 'Mode of Payment', 'Assigned Employee'].map((h) => (
                   <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', ...(h === 'Action' ? { minWidth: 120 } : {}) }}>{h}</th>
                 ))}
               </tr>
@@ -766,20 +766,14 @@ const CancelledBookingPage: React.FC = () => {
                     <div style={{ fontSize: 10.5, color: t.textSecondary }}>of {rupee(c.total_paid)} paid</div>
                     {c.pending_refund > 0 && <div style={{ fontSize: 10.5, fontWeight: 700, color: '#b45309' }}>{rupee(c.pending_refund)} refund payment pending for approval</div>}
                   </td>
+                  {/* Still to be refunded out of what the customer paid
+                      (approved refunds only). */}
+                  <td style={td}>
+                    <div style={{ fontWeight: 700, color: '#ea580c' }}>{rupee(Math.max(0, c.total_paid - c.total_refunded))}</div>
+                    <div style={{ fontSize: 10.5, color: t.textSecondary }}>of {rupee(c.total_paid)} paid</div>
+                  </td>
                   <td style={td}>{c.last_refund_date ? formatDate(c.last_refund_date) : '—'}</td>
                   <td style={td}>{c.last_refund_mode || '—'}</td>
-                  <td style={td}>
-                    {c.cancelled_receipts.length === 0 ? '—' : (
-                      <div className="flex flex-col gap-1">
-                        {c.cancelled_receipts.map((cr) => (
-                          <div key={cr.refund_id} className="flex items-center gap-1.5">
-                            <span style={{ fontWeight: 700, color: 'var(--brand-ink)' }}>{cr.receipt_number}</span>
-                            {receiptIcons(cr.refund_id)}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </td>
                   <td style={td}>{c.assigned_employee_name || '—'}</td>
                 </tr>
               ))}
