@@ -61,3 +61,8 @@
   .payment-upcoming-table th { padding: 8px 8px !important; font-size: 10px !important; }
   .payment-upcoming-table td { padding: 8px 8px !important; font-size: 10.5px !important; }
 }
+
+/* Small phones (<400px): search fields one per row, full width. */
+@media (max-width: 399px) {
+  .payment-upcoming-search-row { grid-template-columns: 1fr !important; }
+}
