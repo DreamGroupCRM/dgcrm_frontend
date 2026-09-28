@@ -1092,10 +1092,12 @@ const DueReportPage: React.FC = () => {
                 style={{ background: (submitting || formLocked) ? '#6b7280' : 'var(--brand-gradient)', border: 'none', cursor: (submitting || formLocked) ? 'not-allowed' : 'pointer' }}>
                 {submitting ? 'Submitting...' : 'Submit'}
               </button>
+              {/* Reset as an X icon — clears the form and the table filters. */}
               <button type="button" onClick={handleResetAddPaymentForm} disabled={submitting}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: t.insetBg, color: t.textPrimary, border: `1px solid ${t.inputBorder}`, cursor: submitting ? 'not-allowed' : 'pointer' }}>
-                Reset
+                title="Reset" aria-label="Reset"
+                className="flex items-center justify-center rounded-xl"
+                style={{ width: 40, height: 40, flex: '0 0 auto', background: t.insetBg, color: t.textPrimary, border: `1px solid ${t.inputBorder}`, cursor: submitting ? 'not-allowed' : 'pointer' }}>
+                <MdClose size={20} />
               </button>
             </div>
           </div>
