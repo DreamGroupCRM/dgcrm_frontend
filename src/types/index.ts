@@ -791,6 +791,7 @@ export interface CustomerPaymentRecord {
   receipt_number?: string | null;
   company?       : string;
   maintenance?   : number;
+  received_by?   : string | null; // who entered the payment
 }
 
 export interface CustomerPaymentHistoryResponse {

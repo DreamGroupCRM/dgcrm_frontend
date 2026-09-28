@@ -169,6 +169,7 @@ interface BackendAmountTransaction {
   company: string | null;
   maintanance1: number | null;
   payment_tag: string | null;
+  received_by?: string | null; // who entered the payment (full name snapshot)
 }
 
 // V_24.0 — installment_date is the ONE anchor date picked at booking time
@@ -344,6 +345,7 @@ const mapTransactionToPaymentRecord = (t: BackendAmountTransaction): CustomerPay
   receipt_number: t.receipt_number || undefined,
   company: t.company ?? undefined,
   maintenance: t.maintanance1 ?? undefined,
+  received_by: t.received_by ?? null,
 });
 
 // Text-field renames from this app's form-field names to the backend's
@@ -648,6 +650,9 @@ export interface CancelledCustomerFilters {
   refund_date?: string;
   mode_of_payment?: string;
   employee_id?: string;
+  customer_id?: string;
+  /** Top-box filter: paid something / had a refund / still has a refund balance. */
+  box?: '' | 'paid' | 'refunded' | 'balance';
 }
 
 /** GET /api/customers/cancelled — scoped to assigned customers for an employee. */

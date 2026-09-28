@@ -15,9 +15,9 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/utils/toast';
 import {
-  MdEventBusy, MdClose, MdSearch, MdRefresh, MdMoreVert, MdVisibility, MdDownload,
+  MdEventBusy, MdClose, MdRefresh, MdMoreVert, MdVisibility, MdDownload,
   MdLoyalty, MdCurrencyRupee, MdAssignmentReturn, MdAccountBalanceWallet, MdPendingActions,
-  MdCheckCircle, MdCancel, MdPhone, MdEmail,
+  MdCheckCircle, MdCancel, MdPhone, MdEmail, MdExpandMore, MdPayments, MdHistory,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -35,10 +35,11 @@ import {
   fetchRefundSummary, createRefund, RefundSummary, assignCustomersToEmployee,
 } from '../../../../services/customerDetailsService';
 import { fetchChangeRequests, approveChangeRequest, rejectChangeRequest, ChangeRequestRow } from '../../../../services/changeRequestsService';
-import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import { exportPaymentHistoryPdf, exportPaymentSchedulePdf } from '../Customer-Details/paymentPdfExport.lazy';
-import { Building } from '../../../../types';
+import { CustomerPaymentRecord } from '../../../../types';
+import { paymentForLabel } from '../../../../services/paymentService';
+import { SearchableSelect } from '../../../../components/common/SearchableSelect';
 import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
 import { serverTodayYmd } from '../../../../utils/serverTime';
 import './CancelledBooking.css';
@@ -51,11 +52,49 @@ const errMessage = (e: unknown, fallback: string) =>
 const unitText = (c: CancelledCustomerRow): string =>
   c.unit_type === 'shop' ? `Shop ${c.shop_no || '—'}` : `${c.wing_name || '—'} Wing - Flat ${c.flat_no || '—'}`;
 
-type Draft = Required<CancelledCustomerFilters>;
-const EMPTY_FILTERS: Draft = {
-  customer_name: '', building_id: '', wing_id: '', flat_id: '',
-  refund_amount: '', refund_date: '', mode_of_payment: '', employee_id: '',
+// Filters the table: the customer picked in the refund row, the employee
+// picked beside Refresh, and the clicked top box.
+type Applied = Required<Pick<CancelledCustomerFilters, 'customer_id' | 'employee_id' | 'box'>>;
+const NO_FILTERS: Applied = { customer_id: '', employee_id: '', box: '' };
+
+// "Sep 2026" for an installment date.
+const monthYear = (d: string): string => {
+  const dt = new Date(String(d).slice(0, 10) + 'T00:00:00');
+  return Number.isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 };
+
+// Refunds oldest first, each with the balance still owed after it.
+const refundHistoryRows = (s: RefundSummary) => {
+  let left = s.total_paid;
+  return [...s.refunds]
+    .sort((a, b) => String(a.refund_date).localeCompare(String(b.refund_date)) || Number(a.id) - Number(b.id))
+    .map((r) => { left -= r.refunded_amount; return { ...r, balance_after: Math.max(0, left) }; });
+};
+
+// Collapsible section of the refund popup: a heading bar with a table inside.
+const Accordion: React.FC<{
+  t: ReturnType<typeof useAppearanceTokens>['t']; open: boolean; onToggle: () => void;
+  icon: React.ReactNode; title: string; meta?: string; children: React.ReactNode;
+}> = ({ t, open, onToggle, icon, title, meta, children }) => (
+  <div className="rounded-xl" style={{ border: `1px solid ${t.surfaceBorder}`, overflow: 'hidden' }}>
+    <button type="button" onClick={onToggle} aria-expanded={open}
+      className="w-full flex items-center justify-between gap-3 px-4 py-2.5"
+      style={{ background: t.insetBg, border: 'none', cursor: 'pointer', color: t.textPrimary, textAlign: 'left' }}>
+      <span className="flex items-center gap-2" style={{ fontSize: 13, fontWeight: 800 }}>{icon} {title}</span>
+      <span className="flex items-center gap-2" style={{ fontSize: 11.5, fontWeight: 600, color: t.textSecondary }}>
+        {meta}
+        <MdExpandMore size={20} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }} />
+      </span>
+    </button>
+    {open && <div>{children}</div>}
+  </div>
+);
+
+const customerLabel = (c: { customer_name: string; customer_code?: string | null }): string =>
+  `${c.customer_name}${c.customer_code ? ` (${c.customer_code})` : ''}`;
+const flatText = (c: CancelledCustomerRow): string =>
+  [c.building_name, c.unit_type === 'shop' ? `Shop ${c.shop_no || '—'}` : [c.wing_name ? `${c.wing_name} Wing` : '', c.flat_no ? `Flat ${c.flat_no}` : ''].filter(Boolean).join(' - ')]
+    .filter(Boolean).join(' - ');
 
 const CancelledBookingPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -86,18 +125,12 @@ const CancelledBookingPage: React.FC = () => {
     } catch { toast.error('Failed to load cancellation requests.'); }
   }, [isAdmin]);
 
-  // ── Filters: edited as a draft, applied on Search ────────────────────────
-  const [draft, setDraft] = useState<Draft>(EMPTY_FILTERS);
-  const [applied, setApplied] = useState<Draft>(EMPTY_FILTERS);
-  const setField = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }));
+  // ── Table filters ────────────────────────────────────────────────────────
+  const [applied, setApplied] = useState<Applied>(NO_FILTERS);
+  const setFilter = <K extends keyof Applied>(k: K, v: Applied[K]) => { setPage(1); setApplied((a) => ({ ...a, [k]: v })); };
 
-  const [buildings, setBuildings] = useState<Building[]>([]);
-  const [buildingDetail, setBuildingDetail] = useState<Building | null>(null);
   const [employees, setEmployees] = useState<{ id: string; label: string }[]>([]);
   useEffect(() => {
-    (async () => {
-      try { const res = await FetchBuildingList(1, 1000); if (res.success) setBuildings(res.rows ?? []); } catch { /* filter stays empty */ }
-    })();
     (async () => {
       try {
         const res = await FetchEmployeeDetails(1, 1000, undefined, true);
@@ -105,16 +138,81 @@ const CancelledBookingPage: React.FC = () => {
       } catch { /* employee filter/assign stay empty */ }
     })();
   }, []);
-  useEffect(() => {
-    if (!draft.building_id) { setBuildingDetail(null); return; }
-    let cancelled = false;
-    (async () => {
-      try { const res = await ViewBuilding(draft.building_id); if (!cancelled && res.success) setBuildingDetail(res.data); } catch { /* wing/flat stay empty */ }
-    })();
-    return () => { cancelled = true; };
-  }, [draft.building_id]);
-  const wings = buildingDetail?.wings ?? [];
-  const flats = useMemo(() => wings.find((w) => String(w.id) === draft.wing_id)?.floors.flatMap((f) => f.flats) ?? [], [wings, draft.wing_id]);
+
+  // Every cancelled customer this user can see — the Customer Name picker's
+  // list (and each one's paid / refunded figures for the refund row).
+  const [allCancelled, setAllCancelled] = useState<CancelledCustomerRow[]>([]);
+  const loadAllCancelled = useCallback(async () => {
+    try { const res = await fetchCancelledCustomers(1, 5000); if (res.success) setAllCancelled(res.rows); } catch { /* picker stays empty */ }
+  }, []);
+  useEffect(() => { loadAllCancelled(); }, [loadAllCancelled]);
+  const customerOptions = useMemo(() => allCancelled.map(customerLabel), [allCancelled]);
+
+  // ── Refund entry row: Customer, Building/Wing/Flat, Refund Amount, Refund
+  // Date, Mode of Payment, Submit, X ───────────────────────────────────────
+  const [custText, setCustText] = useState('');
+  const [rAmount, setRAmount] = useState('');
+  const [rDate, setRDate] = useState(() => serverTodayYmd());
+  const [rMode, setRMode] = useState('');
+  const [rSubmitAttempted, setRSubmitAttempted] = useState(false);
+  const [savingRefund, setSavingRefund] = useState(false);
+  const selectedCustomer = useMemo(() => allCancelled.find((c) => customerLabel(c) === custText) ?? null, [allCancelled, custText]);
+  const selectedBalance = selectedCustomer ? Math.max(0, selectedCustomer.total_paid - selectedCustomer.total_refunded) : 0;
+  const refundLocked = !selectedCustomer;
+
+  // Picking a customer filters the table to them; clearing (or typing a
+  // name that isn't picked yet) removes that filter — same as Payment Due.
+  const handleCustomerChange = (v: string) => {
+    setCustText(v);
+    const exact = allCancelled.find((c) => customerLabel(c) === v);
+    setFilter('customer_id', exact ? exact.id : '');
+    if (!exact) { setRAmount(''); setRMode(''); setRSubmitAttempted(false); }
+  };
+  const hasRefundInput = Boolean(custText.trim() || rAmount || rMode);
+  const clearRefundRow = () => {
+    setCustText(''); setRAmount(''); setRMode(''); setRDate(serverTodayYmd()); setRSubmitAttempted(false);
+    setFilter('customer_id', '');
+  };
+
+  const amountNum = Number(rAmount);
+  const amountError = !rAmount ? 'Enter the refund amount.'
+    : !(amountNum > 0) ? 'Enter a valid amount.'
+    : amountNum > selectedBalance ? `Max refundable is ${rupee(selectedBalance)}.` : '';
+  const modeError = rMode ? '' : 'Select the mode of payment.';
+  const dateError = isAdmin && !rDate ? 'Select the refund date.' : '';
+
+  const handleSubmitRefund = async () => {
+    if (!selectedCustomer) { toast.error('Select a customer first.'); return; }
+    setRSubmitAttempted(true);
+    const err = amountError || dateError || modeError;
+    if (err) { toast.error(err); return; }
+    setSavingRefund(true);
+    try {
+      const updated = await createRefund(selectedCustomer.id, {
+        refunded_amount: amountNum,
+        // Only an admin picks (and may backdate) the date; an employee's
+        // refund is dated today by the server regardless.
+        refund_date: isAdmin ? rDate : undefined,
+        mode_of_payment: rMode,
+      });
+      toast.success(`Refund of ${rupee(amountNum)} recorded for ${selectedCustomer.customer_name}.`);
+      setRAmount(''); setRMode(''); setRDate(serverTodayYmd()); setRSubmitAttempted(false);
+      if (refundFor?.id === selectedCustomer.id) setRefundSummary(updated);
+      fetchRows(); loadSummary(); loadAllCancelled();
+    } catch (e) {
+      toast.error(errMessage(e, 'Failed to record refund.'));
+    } finally {
+      setSavingRefund(false);
+    }
+  };
+
+  // ── Employee filter (beside Refresh) ─────────────────────────────────────
+  const [empFilterText, setEmpFilterText] = useState('');
+  const handleEmployeeFilterChange = (v: string) => {
+    setEmpFilterText(v);
+    const exact = employees.find((e) => e.label === v);
+    setFilter('employee_id', exact ? exact.id : '');
+  };
 
   // ── List ─────────────────────────────────────────────────────────────────
   const [rows, setRows] = useState<CancelledCustomerRow[]>([]);
@@ -139,10 +237,7 @@ const CancelledBookingPage: React.FC = () => {
   useEffect(() => { loadSummary(); loadRequests(); }, [loadSummary, loadRequests]);
   useEffect(() => { setSelected(new Set()); }, [rows]);
 
-  const refreshAll = () => { fetchRows(); loadSummary(); loadRequests(); };
-  const handleSearch = () => { setPage(1); setApplied({ ...draft }); };
-  const handleClear = () => { setDraft(EMPTY_FILTERS); setApplied(EMPTY_FILTERS); setPage(1); };
-  const anyFilter = Object.values(applied).some(Boolean) || Object.values(draft).some(Boolean);
+  const refreshAll = () => { fetchRows(); loadSummary(); loadRequests(); loadAllCancelled(); };
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
@@ -172,7 +267,7 @@ const CancelledBookingPage: React.FC = () => {
       toast.success('Customer(s) Assigned Successfully');
       setSelected(new Set());
       setEmployeeSearch('');
-      fetchRows();
+      fetchRows(); loadAllCancelled();
     } catch {
       toast.error('Failed to assign customer(s).');
     } finally {
@@ -236,43 +331,17 @@ const CancelledBookingPage: React.FC = () => {
   // ── Payment Refund History popup ─────────────────────────────────────────
   const [refundFor, setRefundFor] = useState<CancelledCustomerRow | null>(null);
   const [refundSummary, setRefundSummary] = useState<RefundSummary | null>(null);
-  const [refundAmount, setRefundAmount] = useState('');
-  const [refundDate, setRefundDate] = useState('');
-  const [refundMode, setRefundMode] = useState('');
-  const [refundNotes, setRefundNotes] = useState('');
-  const [submittingRefund, setSubmittingRefund] = useState(false);
+  const [payHistory, setPayHistory] = useState<CustomerPaymentRecord[] | null>(null);
+  const [openSection, setOpenSection] = useState<{ payments: boolean; refunds: boolean }>({ payments: true, refunds: true });
 
   const openRefunds = async (c: CancelledCustomerRow) => {
     setRefundFor(c);
     setRefundSummary(null);
-    setRefundAmount(''); setRefundDate(serverTodayYmd()); setRefundMode(''); setRefundNotes('');
-    try { setRefundSummary(await fetchRefundSummary(c.id)); } catch (e) { toast.error(errMessage(e, 'Failed to load refund details.')); }
-  };
-
-  const handleSubmitRefund = async () => {
-    if (!refundFor) return;
-    const amount = Number(refundAmount);
-    if (!amount || amount <= 0) { toast.error('Enter a valid refund amount.'); return; }
-    if (isAdmin && !refundDate) { toast.error('Select the refund date.'); return; }
-    setSubmittingRefund(true);
-    try {
-      const updated = await createRefund(refundFor.id, {
-        refunded_amount: amount,
-        // Only an admin picks (and may backdate) the date; an employee's
-        // refund is dated today by the server regardless.
-        refund_date: isAdmin ? refundDate : undefined,
-        mode_of_payment: refundMode || undefined,
-        notes: refundNotes.trim() || undefined,
-      });
-      setRefundSummary(updated);
-      setRefundAmount(''); setRefundMode(''); setRefundNotes(''); setRefundDate(serverTodayYmd());
-      toast.success('Refund recorded.');
-      fetchRows(); loadSummary();
-    } catch (e) {
-      toast.error(errMessage(e, 'Failed to record refund.'));
-    } finally {
-      setSubmittingRefund(false);
-    }
+    setPayHistory(null);
+    setOpenSection({ payments: true, refunds: true });
+    const [sumRes, histRes] = await Promise.allSettled([fetchRefundSummary(c.id), fetchCustomerPaymentHistory(c.id)]);
+    if (sumRes.status === 'fulfilled') setRefundSummary(sumRes.value); else toast.error(errMessage(sumRes.reason, 'Failed to load refund details.'));
+    if (histRes.status === 'fulfilled') setPayHistory(histRes.value.rows); else { setPayHistory([]); toast.error('Failed to load payment history.'); }
   };
 
   // ── Styles ───────────────────────────────────────────────────────────────
@@ -281,6 +350,9 @@ const CancelledBookingPage: React.FC = () => {
   const readOnlyStyle: React.CSSProperties = { ...inputStyle, background: t.insetBg, color: t.textSecondary, cursor: 'not-allowed' };
   const cellText = isDark ? '#ffffff' : '#000000';
   const td: React.CSSProperties = { padding: '10px 12px', fontSize: 11.5, color: cellText, whiteSpace: 'nowrap' };
+  const bandLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 };
+  const popupTh: React.CSSProperties = { padding: '9px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' };
+  const emptyCell: React.CSSProperties = { padding: 18, textAlign: 'center', color: t.textSecondary, fontSize: 12 };
 
   const docLinks = (r: { cancel_letter?: unknown; acceptance_letter?: unknown; cancel_documents?: unknown; returned_documents?: unknown }) =>
     ([['Cancel Letter', r.cancel_letter], ['Acceptance Letter', r.acceptance_letter], ['Cancel Documents', r.cancel_documents], ['Documents', r.returned_documents]] as [string, unknown][])
@@ -304,12 +376,16 @@ const CancelledBookingPage: React.FC = () => {
       {isAdmin && (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
           <StatCard label="Total Booking Cancelled" value={summary?.total_cancelled ?? 0} icon={MdEventBusy} color="#b91c1c" bg="" loading={!summary}
+            onClick={() => setFilter('box', '')}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
           <StatCard label="Total Cancelled Amount" value={rupee(summary?.total_cancelled_amount ?? 0)} icon={MdAccountBalanceWallet} color="#7c3aed" bg="" loading={!summary}
+            onClick={() => setFilter('box', applied.box === 'paid' ? '' : 'paid')} active={applied.box === 'paid'}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
           <StatCard label="Total Refund Amount Paid" value={rupee(summary?.total_refund_paid ?? 0)} icon={MdAssignmentReturn} color="#16a34a" bg="" loading={!summary}
+            onClick={() => setFilter('box', applied.box === 'refunded' ? '' : 'refunded')} active={applied.box === 'refunded'}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
           <StatCard label="Total Refund Amount Balance" value={rupee(summary?.total_refund_balance ?? 0)} icon={MdCurrencyRupee} color="#ea580c" bg="" loading={!summary}
+            onClick={() => setFilter('box', applied.box === 'balance' ? '' : 'balance')} active={applied.box === 'balance'}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         </div>
       )}
@@ -368,65 +444,57 @@ const CancelledBookingPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── Search & filters ───────────────────────────────────────────── */}
-      <div className="rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        {/* One row from 1024px up (CancelledBooking.css): each field takes the
-            width its content needs, the rest of the row is shared out. */}
+      {/* ── Refund entry: pick a cancelled customer (also filters the table),
+          record a refund, X clears. One row from 1280px up. ─────────── */}
+      <div className="rounded-2xl mb-4 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="cb-filter-grid grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-          <div>
-            <label style={labelStyle}>Customer Name</label>
-            <input type="text" value={draft.customer_name} placeholder="Name or Customer ID"
-              onChange={(e) => setField('customer_name', e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }} style={inputStyle} />
+          <div className="cb-f-customer">
+            <label style={labelStyle}>Customer Name / ID</label>
+            <SearchableSelect t={t} placeholder="Select or type name / ID" options={customerOptions} value={custText}
+              onChange={handleCustomerChange} clearLabel="Clear customer" />
           </div>
-          <div>
-            <label style={labelStyle}>Building</label>
-            <select value={draft.building_id} onChange={(e) => setDraft((d) => ({ ...d, building_id: e.target.value, wing_id: '', flat_id: '' }))} style={inputStyle}>
-              <option value="">--All--</option>
-              {buildings.filter((b) => b.is_active).map((b) => <option key={b.id} value={b.id}>{b.building_name}</option>)}
-            </select>
+          <div className="cb-f-bwf">
+            <label style={labelStyle}>Building / Wing / Flat</label>
+            <div aria-disabled="true" title={selectedCustomer ? flatText(selectedCustomer) : undefined}
+              style={{ ...readOnlyStyle, height: 38, display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {selectedCustomer ? flatText(selectedCustomer) : '—'}
+            </div>
           </div>
-          <div>
-            <label style={labelStyle}>Wing</label>
-            <select value={draft.wing_id} disabled={!draft.building_id} onChange={(e) => setDraft((d) => ({ ...d, wing_id: e.target.value, flat_id: '' }))}
-              style={draft.building_id ? inputStyle : readOnlyStyle}>
-              <option value="">{draft.building_id ? '--All--' : 'Select a Building first'}</option>
-              {wings.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Flat</label>
-            <select value={draft.flat_id} disabled={!draft.wing_id} onChange={(e) => setField('flat_id', e.target.value)}
-              style={draft.wing_id ? inputStyle : readOnlyStyle}>
-              <option value="">{draft.wing_id ? '--All--' : 'Select a Wing first'}</option>
-              {flats.map((f) => <option key={f.id} value={f.id}>{f.flat_no}</option>)}
-            </select>
-          </div>
-          <div>
+          <div className="cb-f-amount">
             <label style={labelStyle}>Refund Amount (₹)</label>
-            <input type="number" min={0} value={draft.refund_amount} placeholder="Exact amount"
-              onChange={(e) => setField('refund_amount', e.target.value)} style={inputStyle} />
+            <input type="number" min={0} value={rAmount} disabled={refundLocked}
+              placeholder={selectedCustomer ? `Max ${rupee(selectedBalance)}` : 'Amount'}
+              title={selectedCustomer ? `Refund balance: ${rupee(selectedBalance)}` : 'Select a customer first'}
+              onChange={(e) => setRAmount(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitRefund(); }}
+              style={refundLocked ? readOnlyStyle : { ...inputStyle, ...(rSubmitAttempted && amountError ? { borderColor: '#ef4444' } : {}) }} />
           </div>
-          <div>
+          <div className="cb-f-date">
             <label style={labelStyle}>Refund Date</label>
-            <input type="date" value={draft.refund_date} onChange={(e) => setField('refund_date', e.target.value)} style={inputStyle} />
+            {isAdmin ? (
+              <input type="date" value={rDate} max={serverTodayYmd()} disabled={refundLocked} onChange={(e) => setRDate(e.target.value)}
+                style={refundLocked ? readOnlyStyle : { ...inputStyle, ...(rSubmitAttempted && dateError ? { borderColor: '#ef4444' } : {}) }} />
+            ) : (
+              <input type="date" value={serverTodayYmd()} readOnly disabled title="Employees can only record today's date." style={readOnlyStyle} />
+            )}
           </div>
-          <div>
+          <div className="cb-f-mode">
             <label style={labelStyle}>Mode of Payment</label>
-            <select value={draft.mode_of_payment} onChange={(e) => setField('mode_of_payment', e.target.value)} style={inputStyle}>
-              <option value="">--All--</option>
+            <select value={rMode} disabled={refundLocked} onChange={(e) => setRMode(e.target.value)}
+              style={refundLocked ? readOnlyStyle : { ...inputStyle, ...(rSubmitAttempted && modeError ? { borderColor: '#ef4444' } : {}) }}>
+              <option value="">--Select--</option>
               {MODE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div className="cb-filter-actions flex items-center gap-2">
-            <button type="button" onClick={handleSearch}
-              className="flex items-center gap-1.5 px-3.5 rounded-xl text-sm font-bold text-white"
-              style={{ height: 38, background: 'var(--brand-gradient)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              <MdSearch size={16} /> Search
+            <button type="button" onClick={handleSubmitRefund} disabled={refundLocked || savingRefund || selectedBalance <= 0}
+              title={selectedCustomer && selectedBalance <= 0 ? 'Fully refunded' : undefined}
+              className="flex items-center justify-center px-4 rounded-xl text-sm font-bold text-white"
+              style={{ height: 38, background: refundLocked || savingRefund || selectedBalance <= 0 ? '#6b7280' : 'var(--brand-gradient)', border: 'none', cursor: refundLocked || savingRefund || selectedBalance <= 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+              {savingRefund ? 'Submitting...' : selectedCustomer && selectedBalance <= 0 ? 'Fully Refunded' : 'Submit'}
             </button>
-            <button type="button" onClick={handleClear} title="Clear Filters" aria-label="Clear Filters"
+            <button type="button" onClick={clearRefundRow} disabled={!hasRefundInput} title="Clear Filters" aria-label="Clear Filters"
               className="flex items-center justify-center rounded-full"
-              style={{ width: 36, height: 36, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0, opacity: anyFilter ? 1 : 0.5 }}>
+              style={{ width: 36, height: 36, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: hasRefundInput ? 'pointer' : 'not-allowed', flexShrink: 0, opacity: hasRefundInput ? 1 : 0.45 }}>
               <MdClose size={17} />
             </button>
           </div>
@@ -438,7 +506,7 @@ const CancelledBookingPage: React.FC = () => {
         {canAssign ? (
           <div className="flex items-end gap-3" style={{ flexShrink: 0 }}>
             <div style={{ width: 260 }}>
-              <label style={labelStyle}>Search Employee</label>
+              <label style={labelStyle}>Employee to Assign</label>
               <input list="cancelled-assign-employees" value={employeeSearch} disabled={selected.size === 0}
                 placeholder={selected.size === 0 ? 'Select customers first' : 'Type to search employee'}
                 onChange={(e) => setEmployeeSearch(e.target.value)}
@@ -459,11 +527,19 @@ const CancelledBookingPage: React.FC = () => {
             </button>
           </div>
         ) : <div />}
-        <button type="button" onClick={refreshAll} title="Refresh"
-          className="flex items-center justify-center rounded-xl"
-          style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
-          <MdRefresh size={18} />
-        </button>
+        <div className="flex items-end gap-2" style={{ flexShrink: 0 }}>
+          {/* Filter the table by assigned employee; the X inside clears it. */}
+          <div style={{ width: 260 }}>
+            <label style={labelStyle}>Filter by Employee</label>
+            <SearchableSelect t={t} placeholder="Search employee name" options={employees.map((e) => e.label)} value={empFilterText}
+              onChange={handleEmployeeFilterChange} clearLabel="Clear employee filter" />
+          </div>
+          <button type="button" onClick={refreshAll} title="Refresh"
+            className="flex items-center justify-center rounded-xl"
+            style={{ width: 40, height: 38, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
+            <MdRefresh size={18} />
+          </button>
+        </div>
       </div>
 
       {/* ── Cancelled bookings table ───────────────────────────────────── */}
@@ -551,7 +627,7 @@ const CancelledBookingPage: React.FC = () => {
       {/* ── Payment Refund History popup ───────────────────────────────── */}
       {refundFor && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="rounded-2xl w-full" style={{ maxWidth: 860, maxHeight: '90vh', overflowY: 'auto', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
+          <div className="rounded-2xl w-full" style={{ maxWidth: 1080, maxHeight: '90vh', overflowY: 'auto', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3.5" style={{ background: '#059669', borderRadius: '16px 16px 0 0' }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>
@@ -562,100 +638,112 @@ const CancelledBookingPage: React.FC = () => {
                 <MdClose size={20} />
               </button>
             </div>
-            <div className="p-5" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ fontSize: 12 }}>
-                <div><div style={labelStyle}>Flat Details</div><div style={{ color: t.textPrimary, fontWeight: 600 }}>{refundFor.building_name || '—'} - {unitText(refundFor)}</div></div>
-                <div><div style={labelStyle}>Cancellation Date</div><div style={{ color: t.textPrimary, fontWeight: 600 }}>{refundFor.cancelled_at ? formatDate(refundFor.cancelled_at) : '—'}</div></div>
-                <div><div style={labelStyle}>Original Documents Returned</div><div style={{ color: t.textPrimary, fontWeight: 600 }}>{refundFor.original_documents_returned ? 'Yes' : 'No'}</div></div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <div style={labelStyle}>Cancellation Reason</div>
-                  <div className="rounded-xl p-3" style={{ color: t.textPrimary, background: t.insetBg }}>{refundFor.cancellation_reason || '—'}</div>
-                </div>
-                {docLinks(refundFor).length > 0 && (
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <div style={labelStyle}>Cancellation Documents</div>
-                    <div className="flex items-center gap-4 flex-wrap">{docLinks(refundFor)}</div>
-                  </div>
-                )}
+            <div className="p-5" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Flat details — one row on a tinted band. */}
+              <div className="cb-popup-band flex items-center rounded-xl px-4 py-2.5" style={{ gap: '6px 22px', background: 'var(--brand-soft, rgba(5,150,105,0.10))', border: `1px solid ${t.surfaceBorder}`, fontSize: 12.5, color: t.textPrimary }}>
+                <span><span style={bandLabel}>Flat Details:</span> <b>{flatText(refundFor) || '—'}</b></span>
+                <span><span style={bandLabel}>Cancellation Date:</span> <b>{refundFor.cancelled_at ? formatDate(refundFor.cancelled_at) : '—'}</b></span>
+                <span><span style={bandLabel}>Original Documents Returned:</span> <b>{refundFor.original_documents_returned ? 'Yes' : 'No'}</b></span>
+                <span><span style={bandLabel}>Assigned Employee:</span> <b>{refundFor.assigned_employee_name || '—'}</b></span>
               </div>
+
+              {/* Cancellation reason — label and text on the same row. */}
+              <div className="flex items-baseline flex-wrap rounded-xl px-4 py-2.5" style={{ gap: '4px 10px', background: 'rgba(234,88,12,0.10)', border: '1px solid rgba(234,88,12,0.30)' }}>
+                <span style={{ ...bandLabel, color: '#c2410c' }}>Cancellation Reason →</span>
+                <span style={{ fontSize: 14, color: t.textPrimary, fontWeight: 600 }}>{refundFor.cancellation_reason || '—'}</span>
+              </div>
+
+              {docLinks(refundFor).length > 0 && (
+                <div className="flex items-center gap-4 flex-wrap" style={{ fontSize: 12 }}>
+                  <span style={bandLabel}>Cancellation Documents:</span>{docLinks(refundFor)}
+                </div>
+              )}
 
               {!refundSummary ? (
                 <p style={{ color: t.textSecondary, fontSize: 12 }}>Loading refund details...</p>
               ) : (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {[
-                      { label: 'Total Paid', value: refundSummary.total_paid, color: t.textPrimary },
-                      { label: 'Total Refunded', value: refundSummary.total_refunded, color: '#16a34a' },
-                      { label: 'Refund Balance', value: refundSummary.remaining_refundable, color: '#ea580c' },
-                    ].map((b) => (
-                      <div key={b.label} className="rounded-xl p-3" style={{ background: t.insetBg }}>
-                        <div style={labelStyle}>{b.label}</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: b.color }}>{rupee(b.value)}</div>
-                      </div>
-                    ))}
+                    <StatCard compact label="Total Paid" value={rupee(refundSummary.total_paid)} icon={MdAccountBalanceWallet} color="#7c3aed" bg=""
+                      surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+                    <StatCard compact label="Total Refunded" value={rupee(refundSummary.total_refunded)} icon={MdAssignmentReturn} color="#16a34a" bg=""
+                      surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+                    <StatCard compact label="Refund Balance" value={rupee(refundSummary.remaining_refundable)} icon={MdCurrencyRupee} color="#ea580c" bg=""
+                      surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-                    <div>
-                      <label style={labelStyle}>Refund Amount (₹)</label>
-                      <input type="number" min={0} value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} placeholder="Enter amount" style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Refund Date</label>
-                      {isAdmin ? (
-                        <input type="date" value={refundDate} max={serverTodayYmd()} onChange={(e) => setRefundDate(e.target.value)} style={inputStyle} />
-                      ) : (
-                        <input type="date" value={serverTodayYmd()} readOnly disabled title="Employees can only record today's date." style={readOnlyStyle} />
-                      )}
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Mode of Payment</label>
-                      <select value={refundMode} onChange={(e) => setRefundMode(e.target.value)} style={inputStyle}>
-                        <option value="">--Select--</option>
-                        {MODE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Notes (optional)</label>
-                      <input type="text" value={refundNotes} onChange={(e) => setRefundNotes(e.target.value)} placeholder="e.g. Bank transfer ref." style={inputStyle} />
-                    </div>
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <button type="button" onClick={handleSubmitRefund} disabled={submittingRefund || refundSummary.remaining_refundable <= 0}
-                        className="px-5 rounded-xl text-sm font-bold text-white"
-                        style={{ height: 38, background: submittingRefund || refundSummary.remaining_refundable <= 0 ? '#6b7280' : 'var(--brand-gradient)', border: 'none', cursor: submittingRefund || refundSummary.remaining_refundable <= 0 ? 'not-allowed' : 'pointer' }}>
-                        {submittingRefund ? 'Submitting...' : refundSummary.remaining_refundable <= 0 ? 'Fully Refunded' : 'Submit Refund'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>Refund History</div>
-                    <div className="master-table-scroll rounded-xl" style={{ border: `1px solid ${t.surfaceBorder}` }}>
-                      <table className="master-table" style={{ width: '100%', minWidth: 640 }}>
+                  {/* ── Payment history (before cancellation) ─────────────── */}
+                  <Accordion t={t} open={openSection.payments} onToggle={() => setOpenSection((o) => ({ ...o, payments: !o.payments }))}
+                    icon={<MdPayments size={17} />} title="Payment History (before cancellation)"
+                    meta={payHistory ? `${payHistory.length} payment${payHistory.length === 1 ? '' : 's'} · ${rupee(payHistory.reduce((sum, p) => sum + p.amount, 0))}` : 'Loading...'}>
+                    <div className="master-table-scroll">
+                      <table className="master-table" style={{ width: '100%', minWidth: 900 }}>
                         <thead>
                           <tr className="master-table-header-gradient">
-                            {['Refund Date', 'Mode', 'Refunded Amount', 'Processed By', 'Notes'].map((h) => (
-                              <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
+                            {['#', 'Received Date', 'Payment For', 'Installment Month', 'Amount', 'Mode', 'Receipt No.', 'Entered By', 'Status'].map((h) => (
+                              <th key={h} style={popupTh}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {!payHistory ? (
+                            <tr><td colSpan={9} style={emptyCell}>Loading...</td></tr>
+                          ) : payHistory.length === 0 ? (
+                            <tr><td colSpan={9} style={emptyCell}>No payments recorded for this customer.</td></tr>
+                          ) : [...payHistory].sort((x, y) => String(x.paid_on).localeCompare(String(y.paid_on))).map((p, i) => (
+                            <tr key={p.id}>
+                              <td style={td}>{i + 1}</td>
+                              <td style={td}>{p.paid_on ? formatDate(p.paid_on) : '—'}</td>
+                              <td style={td}>{p.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(p.payment_type)}</td>
+                              <td style={td}>{p.payment_tag === 'Extra Pay' || !p.inst_date ? '—' : monthYear(p.inst_date)}</td>
+                              <td style={{ ...td, fontWeight: 700 }}>{rupee(p.amount)}</td>
+                              <td style={td}>{p.mode || '—'}</td>
+                              <td style={td}>{p.receipt_number || '—'}</td>
+                              <td style={td}>{p.received_by || '—'}</td>
+                              <td style={td}>
+                                <span style={{ padding: '1px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 700, color: p.is_approved ? '#15803d' : '#b45309', background: p.is_approved ? 'rgba(22,163,74,0.12)' : 'rgba(217,119,6,0.14)' }}>
+                                  {p.is_approved ? 'Approved' : 'Pending'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Accordion>
+
+                  {/* ── Refund history ─────────────────────────────────────── */}
+                  <Accordion t={t} open={openSection.refunds} onToggle={() => setOpenSection((o) => ({ ...o, refunds: !o.refunds }))}
+                    icon={<MdHistory size={17} />} title="Refund History"
+                    meta={`Refunded ${rupee(refundSummary.total_refunded)} · Balance ${rupee(refundSummary.remaining_refundable)}`}>
+                    <div className="master-table-scroll">
+                      <table className="master-table" style={{ width: '100%', minWidth: 760 }}>
+                        <thead>
+                          <tr className="master-table-header-gradient">
+                            {['#', 'Refund Date', 'Refunded Amount', 'Mode', 'Processed By', 'Entered On', 'Balance After', 'Notes'].map((h) => (
+                              <th key={h} style={popupTh}>{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {refundSummary.refunds.length === 0 ? (
-                            <tr><td colSpan={5} style={{ padding: 18, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No refunds recorded yet.</td></tr>
-                          ) : refundSummary.refunds.map((r) => (
+                            <tr><td colSpan={8} style={emptyCell}>No refunds recorded yet.</td></tr>
+                          ) : refundHistoryRows(refundSummary).map((r, i) => (
                             <tr key={r.id}>
+                              <td style={td}>{i + 1}</td>
                               <td style={td}>{formatDate(r.refund_date)}</td>
-                              <td style={td}>{r.mode_of_payment || '—'}</td>
                               <td style={{ ...td, fontWeight: 700, color: '#16a34a' }}>{rupee(r.refunded_amount)}</td>
+                              <td style={td}>{r.mode_of_payment || '—'}</td>
                               <td style={td}>{r.created_by_name || '—'}</td>
+                              <td style={td}>{r.created_at ? formatDate(r.created_at) : '—'}</td>
+                              <td style={{ ...td, fontWeight: 700, color: '#ea580c' }}>{rupee(r.balance_after)}</td>
                               <td style={{ ...td, whiteSpace: 'normal' }}>{r.notes || '—'}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                  </div>
+                  </Accordion>
                 </>
               )}
             </div>
