@@ -1,216 +1,115 @@
 // ==========================================
-// DREAM GROUP CRM - 2D BUILDING VIEW: INTERACTIVE FLOOR PLAN
+// DREAM GROUP CRM - 2D BUILDING VIEW: FLOOR PLAN
 // ==========================================
-// One wing, one floor at a time, drawn straight from the building the page
-// already loaded (ViewBuilding → wings[] → floors[] → flats[]) — no second
-// dataset, no generated layout: only floors and flats that exist in Building
-// Master are shown, and a wing/floor with nothing configured shows an empty
-// state instead.
+// The selected floor of the selected wing drawn as a plan: outer walls, the
+// floor's flats as rooms on both sides of a common corridor, each with its
+// door onto the corridor and a balcony on the outside wall. The flats (count,
+// order, numbers, type, area, status) are exactly the ones configured in
+// Building Master for that floor; only the walls/corridor are drawing.
 //
-// Everything here is display-only. Clicking a flat SELECTS it (the page shows
-// its Unit Details); nothing in this view writes to the server or changes a
-// flat's status — status comes from flatStatus(), the same rule the rest of
-// the Building View uses.
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { MdAdd, MdRemove, MdCenterFocusStrong } from 'react-icons/md';
-import { BuildingWing } from '../../../types/index';
+// Display-only: clicking a flat selects it (the page shows Unit Details) —
+// nothing here writes to the server or changes a status.
+import React from 'react';
+import { BuildingFloor, BuildingWing } from '../../../types/index';
 import { AppTheme } from '../../../styles/theme';
-import { UnitStatus } from './types';
-import { STATUS_COLOR, STATUS_TEXT, STATUS_TEXT_COLOR, flatStatus } from './Building2DViewPage';
+import { STATUS_COLOR, STATUS_TEXT } from './Building2DViewPage';
+import { PlanFlat, toPlanFlat } from './FlatTooltip';
 
-export interface PlanFlat {
-  id: string;
-  no: string;
-  type: string | null;
-  areaSqft: number | null;
-  status: UnitStatus;
-  bookedById: string | null;
-  bookedByName: string | null;
-  floorLabel: string;
-}
+const ROOM_W = 118;
+const ROOM_H = 92;
+const CORR_H = 46;
+const BALCONY = 10;
+const PAD = 16;
+const CORE_W = 74;   // lift + staircase core at the end of the corridor
 
-// "Ground Floor" -> "G", "8th Floor" -> "8"; anything else keeps its label.
-export const shortFloorLabel = (label: string): string => {
-  if (/ground/i.test(label)) return 'G';
-  const n = label.match(/\d+/);
-  return n ? n[0] : label;
+// Status tint for a room fill (the status colour itself, lightened).
+const tint = (hex: string, alpha: number) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 };
+// Readable status text on a light tint.
+const STATUS_INK: Record<string, string> = { available: '#15803d', booked: '#a16207', blocked: '#7f1d1d' };
 
-const MIN_ZOOM = 0.4;
-const MAX_ZOOM = 2.2;
-const ZOOM_STEP = 0.2;
-
-interface FloorPlanViewProps {
+interface Props {
   t: AppTheme;
   wing: BuildingWing;
-  floorId: string | null;
-  onFloorChange: (floorId: string) => void;
+  floor: BuildingFloor | null;
   selectedFlatId: string | null;
   onSelectFlat: (flat: PlanFlat) => void;
+  onHover: (flat: PlanFlat | null, e?: React.MouseEvent) => void;
 }
 
-const FloorPlanView: React.FC<FloorPlanViewProps> = ({ t, wing, floorId, onFloorChange, selectedFlatId, onSelectFlat }) => {
-  // Top floor first, as a building reads.
-  const floors = useMemo(() => [...wing.floors].sort((a, b) => b.sort_order - a.sort_order), [wing]);
-  const floor = floors.find((f) => f.id === floorId) ?? null;
-
-  const flats: PlanFlat[] = useMemo(() => (floor?.flats ?? []).map((f) => ({
-    id: f.id, no: f.flat_no, type: f.flat_type || null, areaSqft: f.area_sqft, status: flatStatus(f),
-    bookedById: f.booked_by_customer_id ?? null, bookedByName: f.booked_by_customer_name ?? null,
-    floorLabel: floor?.label ?? '',
-  })), [floor]);
-
-  // Flats in their Building Master order, in balanced rows of up to 5
-  // (4 flats → one row of 4, 8 → 2 × 4, 10 → 2 × 5).
-  const rowsNeeded = Math.max(1, Math.ceil(flats.length / 5));
-  const cols = Math.max(1, Math.ceil(flats.length / rowsNeeded));
-
-  // ── Zoom / pan (transform only — nothing re-renders the plan) ──────────
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [dragging, setDragging] = useState(false);
-  const drag = useRef<{ x: number; y: number; px: number; py: number; moved: boolean } | null>(null);
-  // Reset = the whole floor fits the frame (never enlarged past 100%).
-  const planRef = useRef<HTMLDivElement>(null);
-  const fitZoom = () => {
-    const frame = frameRef.current; const plan = planRef.current;
-    if (!frame || !plan || !plan.offsetWidth) return 1;
-    const z = Math.min(1, (frame.clientWidth - 24) / plan.offsetWidth, (frame.clientHeight - 64) / plan.offsetHeight);
-    return Math.max(MIN_ZOOM, +z.toFixed(2));
-  };
-  const resetView = () => { setZoom(fitZoom()); setPan({ x: 0, y: 0 }); };
-  // A new floor or wing starts from the fitted view.
-  useEffect(() => { resetView(); }, [floorId, wing.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
-    drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y, moved: false };
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    const d = drag.current;
-    if (!d) return;
-    const dx = e.clientX - d.x; const dy = e.clientY - d.y;
-    if (!d.moved && Math.hypot(dx, dy) < 5) return; // still a click, not a drag
-    if (!d.moved) { d.moved = true; setDragging(true); (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); setHover(null); }
-    setPan({ x: d.px + dx, y: d.py + dy });
-  };
-  const endDrag = (e: React.PointerEvent) => {
-    const d = drag.current;
-    drag.current = null;
-    if (d?.moved) {
-      setDragging(false);
-      try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* not captured */ }
-    }
-  };
-  // A click that ended a drag must not select a flat.
-  const wasDrag = useRef(false);
-  const onPointerUpCapture = () => { wasDrag.current = !!drag.current?.moved; };
-
-  // ── Hover tooltip (desktop); a tap on touch selects straight away ──────
-  const frameRef = useRef<HTMLDivElement>(null);
-  const [hover, setHover] = useState<{ flat: PlanFlat; x: number; y: number } | null>(null);
-  const showTip = (flat: PlanFlat, e: React.MouseEvent) => {
-    if (dragging) return;
-    const r = frameRef.current?.getBoundingClientRect();
-    if (!r) return;
-    // The app zooms <html> at desktop widths; convert to the frame's own units.
-    const scale = r.width / (frameRef.current as HTMLElement).offsetWidth || 1;
-    setHover({ flat, x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale });
-  };
-
-  if (floors.length === 0) {
-    return (
-      <div className="fp-empty" style={{ color: t.textSecondary }}>
-        {wing.name} has no floors configured in Building Master yet.
-      </div>
-    );
+const FloorPlanView: React.FC<Props> = ({ t, wing, floor, selectedFlatId, onSelectFlat, onHover }) => {
+  if (wing.floors.length === 0) {
+    return <div className="bv-empty" style={{ color: t.textSecondary }}>{wing.name} has no floors configured in Building Master yet.</div>;
+  }
+  if (!floor) return <div className="bv-empty" style={{ color: t.textSecondary }}>Select a floor.</div>;
+  if (floor.flats.length === 0) {
+    return <div className="bv-empty" style={{ color: t.textSecondary }}>No flats are configured on {floor.label} of {wing.name} in Building Master.</div>;
   }
 
+  const flats = floor.flats.map((f) => toPlanFlat(f, floor, wing));
+  const topCount = Math.ceil(flats.length / 2);
+  const rows = [flats.slice(0, topCount), flats.slice(topCount)];
+  const cols = Math.max(rows[0].length, rows[1].length);
+  const roomsW = cols * ROOM_W;
+  const W = roomsW + CORE_W;
+  const H = ROOM_H * (rows[1].length ? 2 : 1) + CORR_H;
+  const corrY = PAD + BALCONY + ROOM_H;
+
   return (
-    <div className="fp-layout">
-      {/* ── Floor selector: only the floors that exist, top floor first ── */}
-      <div className="fp-floors" role="tablist" aria-label="Floors">
-        {floors.map((f) => {
-          const active = f.id === floorId;
-          return (
-            <button key={f.id} type="button" role="tab" aria-selected={active} title={f.label}
-              onClick={() => onFloorChange(f.id)}
-              className={`fp-floor-btn${active ? ' fp-floor-btn-active' : ''}`}
-              style={active ? undefined : { background: t.surfaceBg, color: t.textPrimary, borderColor: t.surfaceBorder }}>
-              {shortFloorLabel(f.label)}
-            </button>
-          );
-        })}
-      </div>
+    <svg key={floor.id} width={W + PAD * 2} height={H + PAD * 2 + BALCONY * 2} className="bv-plan" role="img" aria-label={`${floor.label} plan`}>
+      {/* Outer slab + walls */}
+      <rect x={PAD} y={PAD + BALCONY} width={W} height={H} fill="#f8fafc" stroke="#475569" strokeWidth={5} rx={2} />
+      {/* Lift + staircase core (drawing only) */}
+      {(() => {
+        const cx = PAD + roomsW; const top = PAD + BALCONY; const bottom = PAD + BALCONY + H;
+        const liftH = corrY - top; const stairY = corrY + CORR_H; const stairH = bottom - stairY;
+        return (
+          <g pointerEvents="none">
+            <line x1={cx} y1={top} x2={cx} y2={corrY} stroke="#64748b" strokeWidth={2.5} />
+            <line x1={cx} y1={stairY} x2={cx} y2={bottom} stroke="#64748b" strokeWidth={2.5} />
+            <rect x={cx + 12} y={top + 12} width={CORE_W - 26} height={Math.max(20, liftH - 24)} fill="#cbd5e1" stroke="#64748b" strokeWidth={1.5} />
+            <line x1={cx + 12} y1={top + 12} x2={cx + CORE_W - 14} y2={top + 12 + Math.max(20, liftH - 24)} stroke="#94a3b8" />
+            <line x1={cx + CORE_W - 14} y1={top + 12} x2={cx + 12} y2={top + 12 + Math.max(20, liftH - 24)} stroke="#94a3b8" />
+            <text x={cx + CORE_W / 2 - 1} y={top + liftH / 2 + 4} textAnchor="middle" fontSize={10} fontWeight={800} fill="#334155" style={{ paintOrder: 'stroke' }} stroke="#e2e8f0" strokeWidth={3}>LIFT</text>
+            {stairH > 0 && Array.from({ length: Math.max(3, Math.floor((stairH - 16) / 8)) }).map((_, i) => (
+              <line key={i} x1={cx + 10} x2={cx + CORE_W - 12} y1={stairY + 8 + i * 8} y2={stairY + 8 + i * 8} stroke="#94a3b8" strokeWidth={1} />
+            ))}
+            {stairH > 0 && <text x={cx + CORE_W / 2 - 1} y={stairY + stairH / 2 + 4} textAnchor="middle" fontSize={10} fontWeight={800} fill="#334155" style={{ paintOrder: 'stroke' }} stroke="#f8fafc" strokeWidth={4}>STAIRS</text>}
+          </g>
+        );
+      })()}
+      {/* Common corridor */}
+      <rect x={PAD + 3} y={corrY} width={W - 6} height={CORR_H} fill="#e5e7eb" />
+      <text x={PAD + roomsW / 2} y={corrY + CORR_H / 2 + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill="#6b7280" letterSpacing={2}>CORRIDOR</text>
 
-      {/* ── The plan ───────────────────────────────────────────────────── */}
-      <div ref={frameRef} className={`fp-frame${dragging ? ' fp-frame-dragging' : ''}`}
-        style={{ background: t.subtleBg, borderColor: t.surfaceBorder }}
-        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag}
-        onPointerUpCapture={onPointerUpCapture}
-        onMouseLeave={() => setHover(null)}>
-        {!floor ? (
-          <div className="fp-empty" style={{ color: t.textSecondary }}>Select a floor.</div>
-        ) : (
-          <div className="fp-stage" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
-            {/* key on the floor → a short fade/slide when the floor changes */}
-            <div key={floor.id} ref={planRef} className="fp-plan" style={{ borderColor: t.surfaceBorder, background: t.surfaceBg }}>
-              <div className="fp-plan-title" style={{ color: t.textPrimary }}>{floor.label} — {wing.name}</div>
-              {flats.length === 0 ? (
-                <div className="fp-empty-inline" style={{ color: t.textSecondary }}>No flats configured on this floor in Building Master.</div>
-              ) : (
-                <div className="fp-grid" style={{ gridTemplateColumns: `repeat(${cols}, var(--fp-cell))` }}>
-                  {flats.map((f) => {
-                    const selected = f.id === selectedFlatId;
-                    return (
-                      <button key={f.id} type="button"
-                        className={`fp-flat${selected ? ' fp-flat-selected' : ''}`}
-                        aria-pressed={selected}
-                        aria-label={`Flat ${f.no}, ${STATUS_TEXT[f.status]}`}
-                        style={{ background: STATUS_COLOR[f.status], color: STATUS_TEXT_COLOR[f.status] }}
-                        onMouseEnter={(e) => showTip(f, e)} onMouseMove={(e) => showTip(f, e)} onMouseLeave={() => setHover(null)}
-                        onClick={() => { if (wasDrag.current) { wasDrag.current = false; return; } onSelectFlat(f); }}>
-                        <span className="fp-flat-no">{f.no}</span>
-                        <span className="fp-flat-status">{STATUS_TEXT[f.status]}</span>
-                        {f.type && <span className="fp-flat-type">{f.type}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Tooltip — outside the zoomed stage so it stays the same size. */}
-        {hover && (
-          <div className="fp-tip" style={{ left: hover.x + 14, top: hover.y + 14, background: t.surfaceBg, color: t.textPrimary, borderColor: t.surfaceBorder }}>
-            <div className="fp-tip-head">
-              Flat {hover.flat.no}
-              <span className="fp-tip-status" style={{ background: STATUS_COLOR[hover.flat.status], color: STATUS_TEXT_COLOR[hover.flat.status] }}>
-                {STATUS_TEXT[hover.flat.status]}
-              </span>
-            </div>
-            <div className="fp-tip-row"><span>Unit Type</span><b>{hover.flat.type || '—'}</b></div>
-            <div className="fp-tip-row"><span>Area</span><b>{hover.flat.areaSqft != null ? `${hover.flat.areaSqft.toLocaleString('en-IN')} sq.ft` : '—'}</b></div>
-            <div className="fp-tip-row"><span>Price</span><b>—</b></div>
-          </div>
-        )}
-
-        {/* Zoom / pan controls */}
-        <div className="fp-controls" onPointerDown={(e) => e.stopPropagation()}>
-          <button type="button" title="Zoom in" aria-label="Zoom in" disabled={zoom >= MAX_ZOOM}
-            onClick={() => setZoom((z) => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)))}
-            style={{ background: t.surfaceBg, color: t.textPrimary, borderColor: t.surfaceBorder }}><MdAdd size={18} /></button>
-          <button type="button" title="Zoom out" aria-label="Zoom out" disabled={zoom <= MIN_ZOOM}
-            onClick={() => setZoom((z) => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)))}
-            style={{ background: t.surfaceBg, color: t.textPrimary, borderColor: t.surfaceBorder }}><MdRemove size={18} /></button>
-          <button type="button" title="Reset view" aria-label="Reset view" onClick={resetView}
-            style={{ background: t.surfaceBg, color: t.textPrimary, borderColor: t.surfaceBorder }}><MdCenterFocusStrong size={17} /></button>
-          <span className="fp-zoom-level" style={{ color: t.textSecondary }}>{Math.round(zoom * 100)}%</span>
-        </div>
-      </div>
-    </div>
+      {rows.map((row, ri) => row.map((f, ci) => {
+        const top = ri === 0;
+        const x = PAD + ci * ROOM_W;
+        const y = top ? PAD + BALCONY : corrY + CORR_H;
+        const sel = f.id === selectedFlatId;
+        const doorX = x + ROOM_W / 2 - 9;
+        const doorY = top ? y + ROOM_H : y;
+        return (
+          <g key={f.id} className={`bv-room${sel ? ' bv-room-selected' : ''}`}
+            onClick={() => onSelectFlat(f)}
+            onMouseEnter={(e) => onHover(f, e)} onMouseMove={(e) => onHover(f, e)} onMouseLeave={() => onHover(null)}>
+            {/* balcony on the outside wall */}
+            <rect x={x + 18} y={top ? y - BALCONY : y + ROOM_H} width={ROOM_W - 36} height={BALCONY} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={1.5} />
+            <rect className="bv-room-fill" x={x} y={y} width={ROOM_W} height={ROOM_H} fill={tint(STATUS_COLOR[f.status], 0.24)} stroke="#64748b" strokeWidth={2.5} />
+            {/* door opening onto the corridor + swing */}
+            <line x1={doorX} y1={doorY} x2={doorX + 18} y2={doorY} stroke="#f8fafc" strokeWidth={4} />
+            <path d={top ? `M ${doorX} ${doorY} A 18 18 0 0 0 ${doorX + 18} ${doorY - 18}` : `M ${doorX} ${doorY} A 18 18 0 0 1 ${doorX + 18} ${doorY + 18}`} fill="none" stroke="#94a3b8" strokeWidth={1.2} />
+            <line x1={doorX + 18} y1={doorY} x2={doorX + 18} y2={top ? doorY - 18 : doorY + 18} stroke="#94a3b8" strokeWidth={1.2} />
+            <text x={x + ROOM_W / 2} y={y + (top ? 34 : 44)} textAnchor="middle" fontSize={15} fontWeight={800} fill="#0f172a">{f.no}</text>
+            <text x={x + ROOM_W / 2} y={y + (top ? 51 : 61)} textAnchor="middle" fontSize={11} fontWeight={700} fill={STATUS_INK[f.status]}>{STATUS_TEXT[f.status]}</text>
+            {f.type && <text x={x + ROOM_W / 2} y={y + (top ? 65 : 75)} textAnchor="middle" fontSize={10} fontWeight={600} fill="#475569">{f.type}</text>}
+            {sel && <rect x={x + 3} y={y + 3} width={ROOM_W - 6} height={ROOM_H - 6} fill="none" stroke="#2563eb" strokeWidth={3.5} rx={2} className="bv-room-ring" />}
+          </g>
+        );
+      }))}
+    </svg>
   );
 };
 

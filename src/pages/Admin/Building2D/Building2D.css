@@ -166,100 +166,85 @@
 }
 
 /* ==========================================
-   INTERACTIVE FLOOR PLAN (FloorPlanView.tsx)
+   INTERACTIVE BUILDING VIEW (Floor Plan mode)
+   BuildingElevation.tsx · FloorPlanView.tsx · PanZoom.tsx · FlatTooltip.tsx
    ========================================== */
-.fp-layout { display: flex; gap: 12px; height: 100%; min-height: 0; }
-.fp-floors {
-  display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex-shrink: 0;
-  padding: 2px; max-height: 100%; scrollbar-width: thin;
-}
-.fp-floor-btn {
-  width: 44px; min-height: 32px; border-radius: 8px; border: 1px solid; font-size: 12.5px; font-weight: 700;
-  cursor: pointer; transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
-  flex-shrink: 0;
-}
-.fp-floor-btn:hover { box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25); }
-.fp-floor-btn-active { background: #2563eb; color: #fff; border-color: #2563eb; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35); }
-.fp-floor-btn:focus-visible, .fp-flat:focus-visible, .fp-controls button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.bv-layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 14px; align-items: start; }
+.bv-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.bv-card { border: 1px solid; border-radius: 16px; padding: 14px; box-sizing: border-box; }
+.bv-card-title { font-size: 14.5px; font-weight: 800; margin-bottom: 10px; text-align: center; }
 
-.fp-frame {
-  position: relative; flex: 1; min-width: 0; border: 1px solid; border-radius: 14px; overflow: hidden;
-  cursor: grab; touch-action: none; user-select: none;
+/* Building card: floor list + elevation + legend */
+.bv-building-card { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 600px auto; gap: 10px; }
+.bv-floor-list { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; padding: 2px; scrollbar-width: thin; }
+.bv-floor-btn {
+  width: 42px; min-height: 30px; border-radius: 8px; border: 1px solid; font-size: 12.5px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+  transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
 }
-.fp-frame-dragging { cursor: grabbing; }
-.fp-stage {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  transform-origin: center center; transition: transform 160ms ease-out; will-change: transform;
-}
-.fp-frame-dragging .fp-stage { transition: none; }
+.bv-floor-btn:hover { box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25); }
+.bv-floor-btn-active { background: #2563eb; color: #fff; border-color: #2563eb; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35); }
+.bv-legend { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; font-size: 12px; font-weight: 600; }
+.bv-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.bv-legend i { width: 11px; height: 11px; border-radius: 999px; display: inline-block; }
 
-.fp-plan {
-  border: 2px solid; border-radius: 14px; padding: 14px 16px 16px;
-  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.08);
-  animation: fp-floor-in 220ms ease-out;
-}
-@keyframes fp-floor-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.fp-plan-title { font-size: 13.5px; font-weight: 800; text-align: center; margin-bottom: 12px; }
-.fp-grid { display: grid; gap: 8px; --fp-cell: 112px; }
-@media (max-width: 479px) { .fp-grid { --fp-cell: 92px; } .fp-flat { height: 76px; } }
+/* Pan / zoom frame */
+.pz-frame { position: relative; overflow: hidden; border-radius: 12px; cursor: grab; touch-action: none; user-select: none; min-height: 0; height: 100%; }
+.pz-dragging { cursor: grabbing; }
+.pz-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transform-origin: center center; transition: transform 180ms ease-out; will-change: transform; }
+.pz-dragging .pz-stage { transition: none; }
+.pz-content { flex-shrink: 0; line-height: 0; }
+.pz-controls { position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 6px; z-index: 2; }
+.pz-controls button { width: 32px; height: 32px; border-radius: 9px; border: 1px solid; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+.pz-controls button:disabled { opacity: 0.45; cursor: not-allowed; }
+.pz-level { font-size: 11px; font-weight: 700; }
+.bv-sky { background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 55%, #f1f5f9 100%); }
 
-.fp-flat {
-  height: 84px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.7);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-  cursor: pointer; font-family: inherit; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
-}
-/* Hover: a subtle lift + brighten; the status colour itself never changes. */
-.fp-flat:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18); }
-.fp-flat-selected {
-  border-color: #1d4ed8;
-  box-shadow: 0 0 0 3px #3b82f6, 0 0 16px 4px rgba(59, 130, 246, 0.55);
-  animation: fp-select 260ms ease-out;
-}
-.fp-flat-selected:hover { box-shadow: 0 0 0 3px #3b82f6, 0 0 18px 5px rgba(59, 130, 246, 0.6); }
-@keyframes fp-select { from { transform: scale(0.94); } to { transform: scale(1); } }
-.fp-flat-no { font-size: 15px; font-weight: 800; line-height: 1.1; }
-.fp-flat-status { font-size: 10.5px; font-weight: 700; opacity: 0.95; }
-.fp-flat-type { font-size: 10px; font-weight: 600; opacity: 0.85; }
+/* Elevation interactions */
+.bv-storey { cursor: pointer; }
+.bv-storey:hover { fill: rgba(37, 99, 235, 0.06); }
+.bv-window { cursor: pointer; transition: opacity 120ms ease; }
+.bv-window:hover rect:first-child { filter: brightness(1.15) saturate(1.1); stroke: #fff; stroke-width: 1.5; }
+.bv-window-selected rect:last-child { filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.9)); }
+.bv-floor-band { animation: bv-band-in 220ms ease-out; }
+@keyframes bv-band-in { from { opacity: 0; } to { opacity: 1; } }
+.bv-wing-label { cursor: pointer; }
 
-.fp-tip {
-  position: absolute; z-index: 5; min-width: 180px; border: 1px solid; border-radius: 10px; padding: 8px 10px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18); pointer-events: none; font-size: 12px;
-  animation: fp-tip-in 120ms ease-out;
-}
-@keyframes fp-tip-in { from { opacity: 0; } to { opacity: 1; } }
-.fp-tip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 13px; margin-bottom: 6px; }
-.fp-tip-status { font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
-.fp-tip-row { display: flex; justify-content: space-between; gap: 12px; line-height: 1.6; }
-.fp-tip-row span { opacity: 0.7; }
+/* Floor plan */
+.bv-plan-box { height: 300px; border-radius: 12px; background: #f1f5f9; }
+.bv-plan { animation: bv-plan-in 220ms ease-out; }
+@keyframes bv-plan-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.bv-room { cursor: pointer; }
+.bv-room-fill { transition: filter 120ms ease; }
+.bv-room:hover .bv-room-fill { filter: brightness(0.94); stroke: #334155; }
+.bv-room-ring { filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.85)); animation: bv-ring-in 240ms ease-out; }
+@keyframes bv-ring-in { from { opacity: 0; } to { opacity: 1; } }
+.bv-empty { display: flex; align-items: center; justify-content: center; text-align: center; height: 100%; width: 100%; font-size: 13px; padding: 0 20px; line-height: 1.5; }
 
-.fp-controls { position: absolute; left: 10px; bottom: 10px; display: flex; align-items: center; gap: 6px; z-index: 4; }
-.fp-controls button {
-  width: 34px; height: 34px; border-radius: 9px; border: 1px solid; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-}
-.fp-controls button:disabled { opacity: 0.45; cursor: not-allowed; }
-.fp-zoom-level { font-size: 11px; font-weight: 700; margin-left: 2px; }
+/* Tooltip */
+.bv-tip { position: fixed; z-index: 90; min-width: 190px; border: 1px solid; border-radius: 10px; padding: 8px 10px; box-shadow: 0 10px 24px rgba(15,23,42,0.18); pointer-events: none; font-size: 12px; animation: bv-tip-in 120ms ease-out; }
+@keyframes bv-tip-in { from { opacity: 0; } to { opacity: 1; } }
+.bv-tip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 13px; margin-bottom: 6px; }
+.bv-tip-status { font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+.bv-tip-row { display: flex; justify-content: space-between; gap: 12px; line-height: 1.6; }
+.bv-tip-row span { opacity: 0.7; }
 
-.fp-empty { display: flex; align-items: center; justify-content: center; text-align: center; height: 100%; width: 100%; font-size: 13px; padding: 0 24px; }
-.fp-empty-inline { font-size: 12.5px; padding: 24px 12px; text-align: center; min-width: 260px; }
-
-/* Page layout: plan on the left, Unit Details on the right; stacked below 1024px. */
-.fp-page { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
-.fp-plan-box { height: 540px; border-radius: 16px; border: 1px solid; padding: 12px; box-sizing: border-box; }
-.fp-details { border-radius: 16px; border: 1px solid; padding: 16px; align-self: start; }
+/* Unit Details */
 .fp-details-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; line-height: 2; }
 .fp-details-row span:first-child { opacity: 0.65; }
 .fp-details-row span:last-child { font-weight: 700; text-align: right; }
-@media (max-width: 1023px) {
-  .fp-page { grid-template-columns: 1fr; }
+
+.bv-floor-btn:focus-visible, .pz-controls button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+@media (max-width: 1279px) {
+  .bv-layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 767px) {
-  .fp-plan-box { height: 460px; padding: 8px; }
-  .fp-floor-btn { width: 38px; }
+  .bv-building-card { grid-template-rows: 460px auto; padding: 10px; }
+  .bv-floor-btn { width: 36px; }
+  .bv-plan-box { height: 260px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fp-stage, .fp-flat, .fp-floor-btn { transition: none; }
-  .fp-plan, .fp-flat-selected, .fp-tip { animation: none; }
+  .pz-stage, .bv-window, .bv-room-fill, .bv-floor-btn { transition: none; }
+  .bv-plan, .bv-floor-band, .bv-room-ring, .bv-tip { animation: none; }
 }

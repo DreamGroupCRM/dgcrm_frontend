@@ -37,7 +37,11 @@ import { ROUTES } from '../../../constants';
 import { UnitVM, UnitStatus } from './types';
 import './Building2D.css';
 import { useRoleBasePath } from '../../../hooks/useRoleBasePath';
-import FloorPlanView, { PlanFlat } from './FloorPlanView';
+import FloorPlanView from './FloorPlanView';
+import BuildingElevation from './BuildingElevation';
+import PanZoom from './PanZoom';
+import FlatTooltip, { HoverState, PlanFlat } from './FlatTooltip';
+import { shortFloorLabel } from './floorLabels';
 
 // Exported — Building2DViewModal (the popup opened from Building Master's
 // row icon) reuses these instead of duplicating the status/color logic.
@@ -254,11 +258,24 @@ const Building2DViewPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildingDetail]);
   // A wing starts on its lowest floor that has flats (else its lowest floor).
+  // (A floor already chosen in this wing — e.g. by clicking a window on the
+  // elevation — is kept.)
   useEffect(() => {
     if (!selectedWing) { setSelectedFloorId(null); return; }
-    const asc = [...selectedWing.floors].sort((a, b) => a.sort_order - b.sort_order);
-    setSelectedFloorId((asc.find((f) => f.flats.length > 0) ?? asc[0])?.id ?? null);
+    setSelectedFloorId((cur) => {
+      if (cur && selectedWing.floors.some((f) => f.id === cur)) return cur;
+      const asc = [...selectedWing.floors].sort((a, b) => a.sort_order - b.sort_order);
+      return (asc.find((f) => f.flats.length > 0) ?? asc[0])?.id ?? null;
+    });
   }, [selectedWing]);
+  const selectedFloor = selectedWing?.floors.find((f) => f.id === selectedFloorId) ?? null;
+  const wingFloorsTopFirst = useMemo(() => [...(selectedWing?.floors ?? [])].sort((a, b) => b.sort_order - a.sort_order), [selectedWing]);
+  const [hover, setHover] = useState<HoverState | null>(null);
+  const onHoverFlat = (flat: PlanFlat | null, e?: React.MouseEvent) =>
+    setHover(flat && e ? { flat, clientX: e.clientX, clientY: e.clientY } : null);
+  const chooseFloor = (wingId: string, floorId: string) => {
+    setSelectedWingId(wingId); setSelectedFloorId(floorId); setSelectedUnit(null); setSelectedBookedById(null);
+  };
 
   // Counts for the selected wing's flats (same status rule as the picture).
   const wingCounts = useMemo(() => {
@@ -267,11 +284,13 @@ const Building2DViewPage: React.FC = () => {
     return c;
   }, [selectedWing]);
 
+  // Selecting a flat (on the elevation or the plan) also moves the wing and
+  // floor to it, so the floor plan always shows the selected flat.
   const handlePlanSelect = (f: PlanFlat) => {
-    if (!selectedWing) return;
+    setSelectedWingId(f.wingId); setSelectedFloorId(f.floorId);
     setSelectedUnit({
       kind: 'flat', id: f.id, no: f.no, typeLabel: f.type || '—', areaSqft: f.areaSqft,
-      status: f.status, bookedByName: f.bookedByName, wingName: selectedWing.name, floorLabel: f.floorLabel,
+      status: f.status, bookedByName: f.bookedByName, wingName: f.wingName, floorLabel: f.floorLabel,
     });
     setSelectedBookedById(f.bookedById);
   };
@@ -438,19 +457,56 @@ const Building2DViewPage: React.FC = () => {
 
       {/* ── Interactive floor plan + Unit Details ──────────────────────── */}
       {viewMode === 'plan' && buildingDetail && wings.length > 0 && (
-        <div className="fp-page">
-          <div className="fp-plan-box" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
-            {selectedWing ? (
-              <FloorPlanView t={t} wing={selectedWing} floorId={selectedFloorId}
-                onFloorChange={(id) => { setSelectedFloorId(id); setSelectedUnit(null); setSelectedBookedById(null); }}
+        <div className="bv-layout">
+          {/* ── Building elevation + floor list ─────────────────────────── */}
+          <div className="bv-card bv-building-card" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
+            <div className="bv-floor-list" role="tablist" aria-label={`Floors of ${selectedWing?.name ?? ''}`}>
+              {wingFloorsTopFirst.map((f) => {
+                const active = f.id === selectedFloorId;
+                return (
+                  <button key={f.id} type="button" role="tab" aria-selected={active} title={f.label}
+                    onClick={() => selectedWing && chooseFloor(selectedWing.id, f.id)}
+                    className={`bv-floor-btn${active ? ' bv-floor-btn-active' : ''}`}
+                    style={active ? undefined : { background: t.surfaceBg, color: t.textPrimary, borderColor: t.surfaceBorder }}>
+                    {shortFloorLabel(f.label)}
+                  </button>
+                );
+              })}
+            </div>
+            <PanZoom t={t} resetKey={`${buildingDetail.id}`} className="bv-sky" maxFit={1.6}>
+              <BuildingElevation wings={wings} selectedWingId={selectedWingId} selectedFloorId={selectedFloorId}
                 selectedFlatId={selectedUnit?.kind === 'flat' ? selectedUnit.id : null}
-                onSelectFlat={handlePlanSelect} />
-            ) : (
-              <div className="fp-empty" style={{ color: t.textSecondary }}>Select a wing.</div>
-            )}
+                onSelectFlat={handlePlanSelect} onSelectFloor={chooseFloor} onHover={onHoverFlat} />
+            </PanZoom>
+            <div className="bv-legend">
+              {(['available', 'booked', 'blocked'] as UnitStatus[]).map((st) => (
+                <span key={st}><i style={{ background: STATUS_COLOR[st] }} />{STATUS_TEXT[st]}</span>
+              ))}
+              <span><i style={{ background: 'transparent', border: '2px solid #2563eb' }} />Selected</span>
+            </div>
           </div>
 
-          <div className="fp-details" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder, color: t.textPrimary }}>
+          <div className="bv-side">
+            {/* ── Floor plan of the selected floor ─────────────────────── */}
+            <div className="bv-card" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder, color: t.textPrimary }}>
+              <div className="bv-card-title">{selectedFloor ? `${selectedFloor.label} — ${selectedWing?.name ?? ''}` : 'Floor Plan'}</div>
+              <div className="bv-plan-box">
+                {selectedWing && selectedFloor && selectedFloor.flats.length > 0 ? (
+                  <PanZoom t={t} resetKey={`${selectedWing.id}:${selectedFloor.id}`} maxFit={1.2} fitPadding={12}>
+                    <FloorPlanView t={t} wing={selectedWing} floor={selectedFloor}
+                      selectedFlatId={selectedUnit?.kind === 'flat' ? selectedUnit.id : null}
+                      onSelectFlat={handlePlanSelect} onHover={onHoverFlat} />
+                  </PanZoom>
+                ) : selectedWing ? (
+                  <FloorPlanView t={t} wing={selectedWing} floor={selectedFloor} selectedFlatId={null}
+                    onSelectFlat={handlePlanSelect} onHover={onHoverFlat} />
+                ) : (
+                  <div className="bv-empty" style={{ color: t.textSecondary }}>Select a wing.</div>
+                )}
+              </div>
+            </div>
+
+          <div className="bv-card fp-details" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder, color: t.textPrimary }}>
             <div style={{ fontSize: 14.5, fontWeight: 800, marginBottom: 8 }}>Unit Details</div>
             {!selectedUnit ? (
               <div style={{ fontSize: 12.5, color: t.textSecondary, padding: '12px 0' }}>
@@ -501,8 +557,10 @@ const Building2DViewPage: React.FC = () => {
               </>
             )}
           </div>
+          </div>
         </div>
       )}
+      <FlatTooltip t={t} hover={viewMode === 'plan' ? hover : null} />
 
       {/* Fixed width/height picture frame — identical size on every device
           and every building; a building too big to fit scrolls inside this
