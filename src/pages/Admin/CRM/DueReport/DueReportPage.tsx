@@ -350,9 +350,17 @@ const addMonthsDmy = ([d, m, y]: [number, number, number], k: number): [number, 
   const m2 = ((m - 1 + k) % 12) + 1;
   return [Math.min(d, new Date(y2, m2, 0).getDate()), m2, y2];
 };
-const durationText = (from: string, monthsPending: number | null): string => {
+const durationText = (from: string, monthsPending: number | null, to?: string | null, isEmi = true): string => {
   const f = parseDmy(from);
   if (!f) return `(From - ${from})`;
+  // Consolidated booster rows (several installments that are not a month
+  // apart): From = the first one, To = a month after the last one — for an
+  // EMI group that is the same date as From + months.
+  const last = !isEmi && monthsPending && monthsPending > 1 && to ? parseDmy(to) : null;
+  if (last) {
+    const t = addMonthsDmy(last, 1);
+    return `(From - ${shortDmy(f[0], f[1], f[2])}, To - ${shortDmy(t[0], t[1], t[2])})`;
+  }
   let months = monthsPending && monthsPending > 0 ? monthsPending : 0;
   if (!months) {
     // Full months elapsed since the due date, on the server's calendar.
@@ -642,7 +650,7 @@ const DueReportPage: React.FC = () => {
     statusColor: STATUS_COLORS[r.due_category],
     statusTextColor: STATUS_TEXT_COLORS[r.due_category],
     // due_date_from/to come pre-formatted (DD/MM/YYYY) from the backend.
-    detailText: durationText(r.due_date_from, r.months_pending),
+    detailText: durationText(r.due_date_from, r.months_pending, r.due_date_to, r.payment_for_key === 'EMIAmount'),
     dueRow: r,
   })), [dueRows]);
 
@@ -1243,9 +1251,14 @@ const DueReportPage: React.FC = () => {
                       }}>
                         {getPaymentForDisplay(r).label}
                       </span>
-                      <div style={{ marginTop: 1, fontSize: 11.5, fontWeight: 700, color: t.textPrimary, lineHeight: 1.2 }}>
-                        {rupee(r.per_month_amount ?? r.amount)}
-                      </div>
+                      {/* Booking / Remaining Booking are one amount, already in
+                          Total Amount; EMI and Booster keep their per-installment
+                          amount here. */}
+                      {r.payment_for_key !== 'BookingAmount' && r.payment_for_key !== 'PayAfterbooking' && (
+                        <div style={{ marginTop: 1, fontSize: 11.5, fontWeight: 700, color: t.textPrimary, lineHeight: 1.2 }}>
+                          {rupee(r.per_month_amount ?? r.amount)}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                       {/* Duration: number of months pending (status-colored
@@ -1265,14 +1278,12 @@ const DueReportPage: React.FC = () => {
                       )}
                       {!r.months_pending && !r.detailText && <span style={{ color: t.textSecondary, fontSize: 11.5 }}>—</span>}
                     </td>
-                    <td style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                      {/* Item 14 — show the multiplication behind a
-                          multi-month amount (e.g. "₹15,000 × 3 =
-                          ₹45,000"), falling back to a plain total for a
-                          one-time amount with no separate per-month figure. */}
-                      {r.months_pending && r.months_pending > 1 && r.per_month_amount != null
-                        ? `${rupee(r.per_month_amount)} × ${r.months_pending} = ${rupee(r.amount)}`
-                        : rupee(r.amount)}
+                    {/* Total Amount: the final amount only, in the same status
+                        color as the row's Payment Details badge and Duration
+                        dates (Upcoming's yellow reads as plain text, as in
+                        Duration). */}
+                    <td style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 700, color: r.statusColor === STATUS_COLORS.upcoming ? t.textPrimary : r.statusColor, whiteSpace: 'nowrap' }}>
+                      {rupee(r.amount)}
                     </td>
                     <td style={{ padding: '10px 12px' }}>
                       {(() => {
