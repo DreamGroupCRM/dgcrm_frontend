@@ -6,14 +6,15 @@
 // door onto the corridor and a balcony on the outside wall. The flats (count,
 // order, numbers, type, area, status) are exactly the ones configured in
 // Building Master for that floor; only the walls/corridor are drawing.
+// The 'shops' variant draws the building's shops the same way, as
+// shopfronts (full-width shutters) on both sides of a walkway.
 //
 // Display-only: clicking a flat selects it (the page shows Unit Details) —
 // nothing here writes to the server or changes a status.
 import React from 'react';
-import { BuildingFloor, BuildingWing } from '../../../types/index';
 import { AppTheme } from '../../../styles/theme';
 import { STATUS_COLOR, STATUS_TEXT } from './Building2DViewPage';
-import { PlanFlat, toPlanFlat } from './FlatTooltip';
+import { PlanFlat } from './FlatTooltip';
 
 const ROOM_W = 118;
 const ROOM_H = 92;
@@ -32,37 +33,38 @@ const STATUS_INK: Record<string, string> = { available: '#15803d', booked: '#a16
 
 interface Props {
   t: AppTheme;
-  wing: BuildingWing;
-  floor: BuildingFloor | null;
+  /** 'floor' = a wing's floor (flats, balconies, lift/stairs core);
+   *  'shops' = the building's shops (shopfronts onto a walkway). */
+  variant: 'floor' | 'shops';
+  /** The units to draw, in Building Master order; empty -> emptyText. */
+  units: PlanFlat[];
+  ariaLabel: string;
+  emptyText: string;
   selectedFlatId: string | null;
   onSelectFlat: (flat: PlanFlat) => void;
   onHover: (flat: PlanFlat | null, e?: React.MouseEvent) => void;
 }
 
-const FloorPlanView: React.FC<Props> = ({ t, wing, floor, selectedFlatId, onSelectFlat, onHover }) => {
-  if (wing.floors.length === 0) {
-    return <div className="bv-empty" style={{ color: t.textSecondary }}>{wing.name} has no floors configured in Building Master yet.</div>;
-  }
-  if (!floor) return <div className="bv-empty" style={{ color: t.textSecondary }}>Select a floor.</div>;
-  if (floor.flats.length === 0) {
-    return <div className="bv-empty" style={{ color: t.textSecondary }}>No flats are configured on {floor.label} of {wing.name} in Building Master.</div>;
-  }
+const FloorPlanView: React.FC<Props> = ({ t, variant, units, ariaLabel, emptyText, selectedFlatId, onSelectFlat, onHover }) => {
+  if (units.length === 0) return <div className="bv-empty" style={{ color: t.textSecondary }}>{emptyText}</div>;
 
-  const flats = floor.flats.map((f) => toPlanFlat(f, floor, wing));
+  const shopsPlan = variant === 'shops';
+  const flats = units;
+  const CORE = shopsPlan ? 0 : CORE_W;
   const topCount = Math.ceil(flats.length / 2);
   const rows = [flats.slice(0, topCount), flats.slice(topCount)];
   const cols = Math.max(rows[0].length, rows[1].length);
   const roomsW = cols * ROOM_W;
-  const W = roomsW + CORE_W;
+  const W = roomsW + CORE;
   const H = ROOM_H * (rows[1].length ? 2 : 1) + CORR_H;
   const corrY = PAD + BALCONY + ROOM_H;
 
   return (
-    <svg key={floor.id} width={W + PAD * 2} height={H + PAD * 2 + BALCONY * 2} className="bv-plan" role="img" aria-label={`${floor.label} plan`}>
+    <svg width={W + PAD * 2} height={H + PAD * 2 + BALCONY * 2} className="bv-plan" role="img" aria-label={ariaLabel}>
       {/* Outer slab + walls */}
       <rect x={PAD} y={PAD + BALCONY} width={W} height={H} fill="#f8fafc" stroke="#475569" strokeWidth={5} rx={2} />
       {/* Lift + staircase core (drawing only) */}
-      {(() => {
+      {!shopsPlan && (() => {
         const cx = PAD + roomsW; const top = PAD + BALCONY; const bottom = PAD + BALCONY + H;
         const liftH = corrY - top; const stairY = corrY + CORR_H; const stairH = bottom - stairY;
         return (
@@ -82,7 +84,7 @@ const FloorPlanView: React.FC<Props> = ({ t, wing, floor, selectedFlatId, onSele
       })()}
       {/* Common corridor */}
       <rect x={PAD + 3} y={corrY} width={W - 6} height={CORR_H} fill="#e5e7eb" />
-      <text x={PAD + roomsW / 2} y={corrY + CORR_H / 2 + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill="#6b7280" letterSpacing={2}>CORRIDOR</text>
+      <text x={PAD + roomsW / 2} y={corrY + CORR_H / 2 + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill="#6b7280" letterSpacing={2}>{shopsPlan ? 'WALKWAY' : 'CORRIDOR'}</text>
 
       {rows.map((row, ri) => row.map((f, ci) => {
         const top = ri === 0;
@@ -95,13 +97,17 @@ const FloorPlanView: React.FC<Props> = ({ t, wing, floor, selectedFlatId, onSele
           <g key={f.id} className={`bv-room${sel ? ' bv-room-selected' : ''}`}
             onClick={() => onSelectFlat(f)}
             onMouseEnter={(e) => onHover(f, e)} onMouseMove={(e) => onHover(f, e)} onMouseLeave={() => onHover(null)}>
-            {/* balcony on the outside wall */}
-            <rect x={x + 18} y={top ? y - BALCONY : y + ROOM_H} width={ROOM_W - 36} height={BALCONY} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={1.5} />
+            {/* balcony on the outside wall (flats only) */}
+            {!shopsPlan && <rect x={x + 18} y={top ? y - BALCONY : y + ROOM_H} width={ROOM_W - 36} height={BALCONY} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={1.5} />}
             <rect className="bv-room-fill" x={x} y={y} width={ROOM_W} height={ROOM_H} fill={tint(STATUS_COLOR[f.status], 0.24)} stroke="#64748b" strokeWidth={2.5} />
-            {/* door opening onto the corridor + swing */}
+            {/* door opening onto the corridor + swing; a shop gets a full-width shutter */}
+            {shopsPlan ? (
+              <line x1={x + 12} y1={doorY} x2={x + ROOM_W - 12} y2={doorY} stroke="#475569" strokeWidth={4} strokeDasharray="6 3" />
+            ) : (<>
             <line x1={doorX} y1={doorY} x2={doorX + 18} y2={doorY} stroke="#f8fafc" strokeWidth={4} />
             <path d={top ? `M ${doorX} ${doorY} A 18 18 0 0 0 ${doorX + 18} ${doorY - 18}` : `M ${doorX} ${doorY} A 18 18 0 0 1 ${doorX + 18} ${doorY + 18}`} fill="none" stroke="#94a3b8" strokeWidth={1.2} />
             <line x1={doorX + 18} y1={doorY} x2={doorX + 18} y2={top ? doorY - 18 : doorY + 18} stroke="#94a3b8" strokeWidth={1.2} />
+            </>)}
             <text x={x + ROOM_W / 2} y={y + (top ? 34 : 44)} textAnchor="middle" fontSize={15} fontWeight={800} fill="#0f172a">{f.no}</text>
             <text x={x + ROOM_W / 2} y={y + (top ? 51 : 61)} textAnchor="middle" fontSize={11} fontWeight={700} fill={STATUS_INK[f.status]}>{STATUS_TEXT[f.status]}</text>
             {f.type && <text x={x + ROOM_W / 2} y={y + (top ? 65 : 75)} textAnchor="middle" fontSize={10} fontWeight={600} fill="#475569">{f.type}</text>}

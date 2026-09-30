@@ -248,3 +248,5 @@
   .pz-stage, .bv-window, .bv-room-fill, .bv-floor-btn { transition: none; }
   .bv-plan, .bv-floor-band, .bv-room-ring, .bv-tip { animation: none; }
 }
+/* "Shops" level at the foot of the floor list */
+.bv-floor-btn-shops { font-size: 10.5px; margin-top: 6px; }

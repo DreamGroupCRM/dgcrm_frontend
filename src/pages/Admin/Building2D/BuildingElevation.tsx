@@ -11,10 +11,14 @@
 // A floor with fewer flats than the widest floor of its wing keeps the
 // remaining bays as plain glass (not clickable) so every storey stays the
 // same width, as a real facade does.
+//
+// The building's shops (Building Master's Building -> Shop list, which
+// belongs to no wing/floor) stand as a one-storey shopping arcade beside the
+// towers, one shopfront per shop in its status colour.
 import React, { useMemo } from 'react';
-import { BuildingWing } from '../../../types/index';
+import { BuildingShop, BuildingWing } from '../../../types/index';
 import { STATUS_COLOR } from './Building2DViewPage';
-import { PlanFlat, toPlanFlat } from './FlatTooltip';
+import { PlanFlat, toPlanFlat, toPlanShop } from './FlatTooltip';
 
 // Drawing units (SVG px).
 const BAY_W = 40;        // one flat / window bay
@@ -26,6 +30,8 @@ const TOWER_GAP = 70;    // space between towers
 const TOP_PAD = 70;      // room for the wing label + roof
 const GROUND_H = 90;     // landscaped plot under the towers
 const OUTER_PAD = 40;
+const SHOP_W = 46;       // one shopfront
+const SHOP_H = 54;       // arcade height (fascia + shopfronts)
 
 // Facade palette (neutral stone), independent of the app theme.
 const FACADE = '#eee5d6';
@@ -37,30 +43,36 @@ const SLAB = '#cdbfa6';
 
 interface Props {
   wings: BuildingWing[];
+  shops: BuildingShop[];
+  shopsSelected: boolean;
+  onSelectShops: () => void;
   selectedWingId: string;
   selectedFloorId: string | null;
   selectedFlatId: string | null;
+  selectedShopId: string | null;
   onSelectFlat: (flat: PlanFlat) => void;
   onSelectFloor: (wingId: string, floorId: string) => void;
   onHover: (flat: PlanFlat | null, e?: React.MouseEvent) => void;
 }
 
-const BuildingElevation: React.FC<Props> = ({ wings, selectedWingId, selectedFloorId, selectedFlatId, onSelectFlat, onSelectFloor, onHover }) => {
+const BuildingElevation: React.FC<Props> = ({ wings, shops, shopsSelected, onSelectShops, selectedWingId, selectedFloorId, selectedFlatId, selectedShopId, onSelectFlat, onSelectFloor, onHover }) => {
   const layout = useMemo(() => {
     const towers = wings.map((w) => {
       const floors = [...w.floors].sort((a, b) => a.sort_order - b.sort_order);
       const bays = Math.max(1, ...floors.map((f) => f.flats.length));
       return { wing: w, floors, bays, w: bays * BAY_W + SIDE_PAD * 2, h: Math.max(1, floors.length) * FLOOR_H };
     });
-    const maxH = Math.max(FLOOR_H, ...towers.map((t) => t.h));
+    const maxH = Math.max(towers.length ? FLOOR_H : SHOP_H, ...towers.map((t) => t.h));
     const baseline = OUTER_PAD + TOP_PAD + maxH;
     let x = OUTER_PAD;
     const placed = towers.map((t) => { const p = { ...t, x }; x += t.w + DEPTH + TOWER_GAP; return p; });
+    const arcade = shops.length ? { x, w: shops.length * SHOP_W + SIDE_PAD * 2 } : null;
+    if (arcade) x += arcade.w + DEPTH + TOWER_GAP;
     const width = x - TOWER_GAP + OUTER_PAD;
-    return { placed, baseline, width, height: baseline + GROUND_H };
-  }, [wings]);
+    return { placed, arcade, baseline, width, height: baseline + GROUND_H };
+  }, [wings, shops]);
 
-  const { placed, baseline, width, height } = layout;
+  const { placed, arcade, baseline, width, height } = layout;
 
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="bv-elevation" role="img" aria-label="Building elevation">
@@ -95,7 +107,7 @@ const BuildingElevation: React.FC<Props> = ({ wings, selectedWingId, selectedFlo
 
       {placed.map((tw) => {
         const top = baseline - tw.h;
-        const isSelWing = tw.wing.id === selectedWingId;
+        const isSelWing = !shopsSelected && tw.wing.id === selectedWingId;
         return (
           <g key={tw.wing.id} filter="url(#bvShadow)">
             {/* Side face (depth) */}
@@ -174,6 +186,54 @@ const BuildingElevation: React.FC<Props> = ({ wings, selectedWingId, selectedFlo
           </g>
         );
       })}
+      {arcade && (() => {
+        const ax = arcade.x; const aw = arcade.w; const top = baseline - SHOP_H;
+        return (
+          <g filter="url(#bvShadow)">
+            <polygon points={`${ax + aw},${top} ${ax + aw + DEPTH},${top - RISE} ${ax + aw + DEPTH},${baseline - RISE} ${ax + aw},${baseline}`} fill={SIDE} />
+            <polygon points={`${ax},${top} ${ax + DEPTH},${top - RISE} ${ax + aw + DEPTH},${top - RISE} ${ax + aw},${top}`} fill={ROOF} />
+            <rect x={ax} y={top} width={aw} height={SHOP_H} fill="url(#bvFacade)" />
+            {/* Fascia (signboard band) — clicking it opens the shops plan. */}
+            <rect x={ax - 3} y={top} width={aw + 6} height={14} fill="#334155" className="bv-storey" onClick={onSelectShops}>
+              <title>Shops — Ground Floor</title>
+            </rect>
+            <text x={ax + aw / 2} y={top + 10.5} textAnchor="middle" fontSize={9} fontWeight={800} letterSpacing={3} fill="#f8fafc" pointerEvents="none">SHOPS</text>
+            {shops.map((sh, j) => {
+              const bx = ax + SIDE_PAD + j * SHOP_W;
+              const pf = toPlanShop(sh);
+              const sel = sh.id === selectedShopId;
+              const fy = top + 22; const fh = SHOP_H - 26;
+              return (
+                <g key={sh.id} className={`bv-window bv-shop${sel ? ' bv-window-selected' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); onSelectFlat(pf); }}
+                  onMouseEnter={(e) => onHover(pf, e)} onMouseMove={(e) => onHover(pf, e)} onMouseLeave={() => onHover(null)}>
+                  {/* awning */}
+                  <polygon points={`${bx + 2},${top + 15} ${bx + SHOP_W - 2},${top + 15} ${bx + SHOP_W},${top + 21} ${bx},${top + 21}`} fill={STATUS_COLOR[pf.status]} opacity={0.85} />
+                  {/* shopfront glass / shutter */}
+                  <rect x={bx + 4} y={fy} width={SHOP_W - 8} height={fh} rx={1.5} fill={STATUS_COLOR[pf.status]} />
+                  {[0.25, 0.45, 0.65, 0.85].map((k) => (
+                    <line key={k} x1={bx + 5} x2={bx + SHOP_W - 5} y1={fy + fh * k} y2={fy + fh * k} stroke="rgba(255,255,255,0.35)" strokeWidth={1} />
+                  ))}
+                  <text x={bx + SHOP_W / 2} y={fy + fh / 2 + 3} textAnchor="middle" fontSize={8.5} fontWeight={800} fill="#fff" pointerEvents="none"
+                    style={{ paintOrder: 'stroke' }} stroke="rgba(15,23,42,0.45)" strokeWidth={2}>{sh.shop_no}</text>
+                  {sel && <rect x={bx + 1} y={top + 14} width={SHOP_W - 2} height={SHOP_H - 15} rx={3} fill="none" stroke="#1d4ed8" strokeWidth={3} />}
+                </g>
+              );
+            })}
+            {Array.from({ length: shops.length + 1 }).map((_, j) => (
+              <rect key={`sp${j}`} x={ax + SIDE_PAD + j * SHOP_W - 1.5} y={top + 14} width={3} height={SHOP_H - 14} fill="rgba(120,100,70,0.25)" pointerEvents="none" />
+            ))}
+            {shopsSelected && (
+              <rect x={ax - 4} y={top - 1} width={aw + 8} height={SHOP_H + 1} fill="rgba(37,99,235,0.10)" stroke="#2563eb" strokeWidth={2} rx={2} pointerEvents="none" className="bv-floor-band" />
+            )}
+            <g className="bv-wing-label" onClick={onSelectShops}>
+              <rect x={ax + aw / 2 - 38} y={top - 62} width={76} height={24} rx={6} fill={shopsSelected ? '#2563eb' : '#1f2937'} />
+              <polygon points={`${ax + aw / 2 - 6},${top - 38} ${ax + aw / 2 + 6},${top - 38} ${ax + aw / 2},${top - 32}`} fill={shopsSelected ? '#2563eb' : '#1f2937'} />
+              <text x={ax + aw / 2} y={top - 45} textAnchor="middle" fontSize={12.5} fontWeight={700} fill="#fff">Shops</text>
+            </g>
+          </g>
+        );
+      })()}
     </svg>
   );
 };
