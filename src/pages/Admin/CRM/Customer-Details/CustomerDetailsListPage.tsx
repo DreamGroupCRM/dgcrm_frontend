@@ -8,7 +8,7 @@ import { toast } from '@/utils/toast';
 import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh, MdVisibility,
   MdGroups, MdPersonAddAlt1, MdPersonOff, MdClose,
-  MdKeyboardArrowDown, MdMoreVert, MdReceiptLong, MdLoyalty, MdPhone, MdEmail,
+  MdKeyboardArrowDown, MdMoreVert, MdHistory, MdCalendarMonth, MdPhone, MdEmail,
   MdPayments, MdPrint, MdDescription,
   MdGridView, MdViewList, MdLocationOn, MdBadge, MdEventBusy,
 } from 'react-icons/md';
@@ -42,6 +42,7 @@ import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 import { cssRect, viewportWidth, viewportHeight } from '../../../../utils/appZoom';
 import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
+import DateInput from '../../../../components/common/DateInput';
 
 type Theme = AppTheme;
 
@@ -370,11 +371,11 @@ const CustomerCard: React.FC<{
         <div className="flex items-center" style={{ gap: 2, flexShrink: 0 }}>
           <button type="button" title="Show Payment History" onClick={onOpenPaymentHistory}
             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}>
-            <MdReceiptLong size={16} />
+            <MdHistory size={16} />
           </button>
           <button type="button" title="Show Scheme" onClick={onOpenScheme}
             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}>
-            <MdLoyalty size={16} />
+            <MdCalendarMonth size={16} />
           </button>
           <div style={{ position: 'relative' }}>
             <button type="button" onClick={onOpenMenu} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 2 }}>
@@ -1112,11 +1113,11 @@ const CustomerDetailsListPage: React.FC = () => {
           </div>
           <div style={{ flex: '1 1 125px', minWidth: 115 }}>
             <label className="cust-filter-label">From Date</label>
-            <input type="date" value={fromDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setFromDate(e.target.value)} className="cust-date-field" />
+            <DateInput t={t} value={fromDate} onChange={(v) => setFromDate(v)} className="cust-date-field" />
           </div>
           <div style={{ flex: '1 1 125px', minWidth: 115 }}>
             <label className="cust-filter-label">To Date</label>
-            <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} className="cust-date-field" />
+            <DateInput t={t} value={toDate} onChange={(v) => setToDate(v)} className="cust-date-field" />
           </div>
 
           {/* Always visible (not just when a filter is applied), per explicit
@@ -1303,10 +1304,10 @@ const CustomerDetailsListPage: React.FC = () => {
                           )}
                         </div>
                         <button type="button" title="Show Payment History" className="master-icon-btn" onClick={() => openPaymentHistory(c)}>
-                          <MdReceiptLong size={15} />
+                          <MdHistory size={15} />
                         </button>
                         <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => navigate(`${paths.customerDetails}/scheme/${c.id}`)}>
-                          <MdLoyalty size={15} />
+                          <MdCalendarMonth size={15} />
                         </button>
                       </div>
                     </td>
@@ -1450,7 +1451,7 @@ const CustomerDetailsListPage: React.FC = () => {
                       <table className="master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
                         <thead>
                           <tr className="master-table-header-gradient">
-                            {['Actions', 'Rec Number', 'Payment Date', 'Receipt Date', 'Mode Of Payment', 'Payment For', 'Maintenance', 'Amount', 'Company'].map((h) => (
+                            {['Actions', 'Rec Number', 'Payment Date', 'Receipt Date', 'Mode Of Payment', 'Payment For', 'Amount', 'Company', 'Status'].map((h) => (
                               <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{h}</th>
                             ))}
                           </tr>
@@ -1494,9 +1495,14 @@ const CustomerDetailsListPage: React.FC = () => {
                               </td>
                               <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.mode || '—'}</td>
                               <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(p.payment_type)}</td>
-                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: '#16a34a', fontWeight: 600 }}>{p.maintenance ? `₹ ${p.maintenance.toLocaleString('en-IN')}` : '0'}</td>
                               <td style={{ padding: '8px 12px', fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>₹ {p.amount.toLocaleString('en-IN')}</td>
                               <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.company || '—'}</td>
+                              {/* Approved and not-yet-approved payments are both listed. */}
+                              <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                                <span style={{ display: 'inline-block', padding: '2px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, color: '#fff', background: p.is_approved ? '#16a34a' : '#d97706' }}>
+                                  {p.is_approved ? 'Approved' : 'Pending Approval'}
+                                </span>
+                              </td>
                             </tr>
                           ))}
                         </tbody>

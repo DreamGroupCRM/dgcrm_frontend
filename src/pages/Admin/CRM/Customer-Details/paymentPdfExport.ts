@@ -205,7 +205,7 @@ export function exportPaymentHistoryPdf(
 
   autoTable(doc, {
     startY: y,
-    head: [['Rec Number', 'Installment Date', 'Received Date', 'Mode Of Payment', 'Payment For', 'Maintenance', 'Amount', 'Company']],
+    head: [['Rec Number', 'Installment Date', 'Received Date', 'Mode Of Payment', 'Payment For', 'Amount', 'Company', 'Status']],
     body: payments.map((p) => {
       // Extra Pay pre-pays a future EMI rather than settling the
       // installment its stored inst_date points at — showing that date
@@ -217,15 +217,15 @@ export function exportPaymentHistoryPdf(
         formatDMY(p.paid_on),
         p.mode || '—',
         isExtraPay ? 'Extra Pay' : paymentForLabel(p.payment_type),
-        p.maintenance ? rupee(p.maintenance) : '0',
         rupee(p.amount),
         p.company || '—',
+        p.is_approved ? 'Approved' : 'Pending Approval',
       ];
     }),
     theme: 'grid',
     headStyles: { fillColor: [109, 40, 217], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
     styles: { fontSize: 8.5, cellPadding: 5, lineColor: [203, 213, 225], lineWidth: 0.75 },
-    columnStyles: { 5: { textColor: [22, 163, 74] }, 6: { halign: 'right', textColor: [220, 38, 38], fontStyle: 'bold' } },
+    columnStyles: { 5: { halign: 'right', textColor: [220, 38, 38], fontStyle: 'bold' } },
     margin: { left: marginX, right: marginX },
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -52,6 +52,7 @@ const AuditHistoryPage = lazyPage(() => import('../pages/Admin/AuditHistory/Audi
 // Cancelled Booking (V_23.0) — admin-only, see Sidebar.tsx and
 // customer.routes.ts's own requireAdmin gate on the backing endpoints.
 const CancelledBookingPage = lazyPage(() => import('../pages/Admin/CRM/CancelledBooking/CancelledBookingPage'));
+const RefundDetailsPage = lazyPage(() => import('../pages/Admin/CRM/CancelledBooking/RefundDetailsPage'));
 // Payment Received — Payment Approval is merged into it (All/Approved/
 // UnApproved views + Approve Selected); the old payment-approvals route
 // redirects there. Payment Upcoming is its own
@@ -152,6 +153,7 @@ const AdminRoutes: React.FC = () => (
 
       <Route path="reports/executive-dashboard" element={<ExecutiveDashboardPage />} />
       <Route path="cancelled-booking" element={<CancelledBookingPage />} />
+      <Route path="cancelled-booking/refund-details" element={<RefundDetailsPage />} />
       {/* View / Show Scheme opened from Cancelled Booking stay under it; Go Back returns here. */}
       <Route path="cancelled-booking/view/:id" element={<CustomerDetailsCrudPage mode="view" from="cancelled" />} />
       <Route path="cancelled-booking/scheme/:id" element={<CustomerSchemeViewPage from="cancelled" />} />

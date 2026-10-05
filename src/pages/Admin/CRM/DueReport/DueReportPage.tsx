@@ -18,7 +18,7 @@ import {
   MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
   MdReceiptLong, MdSchedule, MdVpnKey, MdAccountBalanceWallet, MdNoteAdd,
   MdSearch, MdStars, MdWorkspacePremium, MdForum, MdEvent, MdPerson, MdAccessTime,
-  MdEventAvailable, MdAssignmentInd,
+  MdEventAvailable, MdAssignmentInd, MdUpcoming, MdExpandMore, MdChevronRight,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -38,10 +38,13 @@ import { FetchEmployeeDetails, Employee } from '../../../../services/employeeDet
 import { tasksService, Task } from '../../../../services/tasksService';
 import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../../types/index';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../../constants';
 import { formatDate } from '../../../../utils';
 import { serverTodayYmd, serverYmdPlusDays } from '../../../../utils/serverTime';
 import { cssRect } from '../../../../utils/appZoom';
 import './DueReport.css';
+import DateInput from '../../../../components/common/DateInput';
 
 type Theme = AppTheme;
 
@@ -339,12 +342,12 @@ const formatTime = (iso: string): string => {
 // e.g. due 10/07/26, unpaid for 2 months → (From - 10/07/26, To - 10/09/26);
 // a 1-month EMI due 10/09/26 → (From - 10/09/26, To - 10/10/26).
 // Month steps keep the same day, clamped to shorter months (31st → 30th).
-// Shown as DD/MM/YY.
+// Shown as DD/MM/YYYY.
 const parseDmy = (dmy: string): [number, number, number] | null => {
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dmy);
   return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
 };
-const shortDmy = (d: number, m: number, y: number) => `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${String(y % 100).padStart(2, '0')}`;
+const shortDmy = (d: number, m: number, y: number) => `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
 const addMonthsDmy = ([d, m, y]: [number, number, number], k: number): [number, number, number] => {
   const y2 = y + Math.floor((m - 1 + k) / 12);
   const m2 = ((m - 1 + k) % 12) + 1;
@@ -404,6 +407,31 @@ interface DisplayRow {
   detailText: string;
   dueRow?: DueListDetailRow;
 }
+
+// Payment Due is grouped by customer: one grid row per customer, with that
+// customer's dues (each with Payment Details / Duration / Total Amount)
+// shown when the row is expanded.
+interface CustomerGroup {
+  customer_id: number; customer_code: string; customer_name: string;
+  mobile_number: string | null;
+  assigned_employee_name: string | null; assigned_employee_code: string | null;
+  company_name: string | null; project_name: string | null; location: string | null;
+  building_name: string | null; wing_name: string | null; flat_no: string | null;
+  items: DisplayRow[];
+  total: number;
+  statusColor: string; statusTextColor: string;
+  extraBalance: number;
+}
+const STATUS_RANK: Record<string, number> = { overdue: 3, due_today: 2, upcoming: 1 };
+
+// Booking Amount and Booster show only their due date(s), no From/To range.
+const showsDueDateOnly = (k: PaymentFor) => k === 'BookingAmount' || k === 'AnnualAmount' || k === 'AnnualAmount1';
+const dueDateText = (r: DisplayRow): string => {
+  const from = r.dueRow?.due_date_from || '';
+  const to = r.dueRow?.due_date_to || '';
+  if (r.months_pending && r.months_pending > 1 && to && to !== from) return `Due Dates: ${from} – ${to} (${r.months_pending} installments)`;
+  return `Due Date: ${from || '—'}`;
+};
 
 const DueReportPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -489,6 +517,7 @@ const DueReportPage: React.FC = () => {
 
   const handleSubmitFollowUp = async () => {
     if (!followUpRow) return;
+    if (!followUpNote.trim()) { toast.error('Please enter the follow-up remarks.'); return; }
     if (!followUpDate) { toast.error('Please select a follow-up date.'); return; }
     setFollowUpSubmitting(true);
     try {
@@ -678,6 +707,40 @@ const DueReportPage: React.FC = () => {
     });
   }, [baseDisplayRows, apCustomerId, filterBuilding, filterEmployee, categoryFilter, globalSearch]);
 
+  // One row per customer — the filtered dues grouped by customer, in the
+  // order the customers first appear. The row's colour is its most urgent
+  // due's status (Overdue, then Due Today, then Upcoming).
+  const groupedRows: CustomerGroup[] = useMemo(() => {
+    const map = new Map<number, CustomerGroup>();
+    for (const r of filteredDueRows) {
+      let g = map.get(r.customer_id);
+      if (!g) {
+        g = {
+          customer_id: r.customer_id, customer_code: r.customer_code, customer_name: r.customer_name,
+          mobile_number: r.mobile_number,
+          assigned_employee_name: r.assigned_employee_name, assigned_employee_code: r.assigned_employee_code,
+          company_name: r.company_name, project_name: r.project_name, location: r.location,
+          building_name: r.building_name, wing_name: r.wing_name, flat_no: r.flat_no,
+          items: [], total: 0, statusColor: r.statusColor, statusTextColor: r.statusTextColor,
+          extraBalance: r.dueRow?.extra_payment_balance ?? 0,
+        };
+        map.set(r.customer_id, g);
+      }
+      g.items.push(r);
+      g.total += r.amount;
+      const cur = g.items.reduce((best, it) => Math.max(best, STATUS_RANK[it.dueRow?.due_category ?? 'upcoming'] ?? 0), 0);
+      const top = g.items.find((it) => (STATUS_RANK[it.dueRow?.due_category ?? 'upcoming'] ?? 0) === cur) ?? r;
+      g.statusColor = top.statusColor; g.statusTextColor = top.statusTextColor;
+    }
+    return Array.from(map.values());
+  }, [filteredDueRows]);
+  const [expandedCustomers, setExpandedCustomers] = useState<Set<number>>(new Set());
+  const toggleExpanded = (id: number) => setExpandedCustomers((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
   // ── Stat boxes — sums across the (unfiltered) full due-item list, one
   // per payment-for category, plus a grand Total. Always reflect current
   // Due/Overdue amounts regardless of the Status filter above — the boxes
@@ -688,18 +751,27 @@ const DueReportPage: React.FC = () => {
   // also safely covers any row using the older unphased label. ───────────
   const boxSums = useMemo(() => {
     const sums: Record<Exclude<PaymentFor, 'EMIAmount'>, number> = { BookingAmount: 0, PayAfterbooking: 0, PossessionAmount: 0, AnnualAmount: 0, AnnualAmount1: 0 };
+    const counts: Record<string, number> = {};
     let emiBefore = 0;
     let emiAfter = 0;
-    for (const r of dueRows) {
+    // With Status = Upcoming / Due Today / Overdue selected, the boxes show
+    // only those dues (amount and count); with All Status, every due.
+    const rowsForBoxes = statusFilter === 'all' ? dueRows : dueRows.filter((r) => r.due_category === statusFilter);
+    for (const r of rowsForBoxes) {
+      let key: string;
       if (r.payment_for_key === 'EMIAmount') {
-        if (r.payment_for === 'EMI After') emiAfter += r.amount; else emiBefore += r.amount;
+        key = r.payment_for === 'EMI After' ? 'EMI After' : 'EMI Before';
+        if (key === 'EMI After') emiAfter += r.amount; else emiBefore += r.amount;
       } else {
+        key = r.payment_for_key;
         sums[r.payment_for_key] += r.amount;
       }
+      counts[key] = (counts[key] ?? 0) + 1;
     }
+    counts.total = rowsForBoxes.length;
     const total = emiBefore + emiAfter + Object.values(sums).reduce((s, v) => s + v, 0);
-    return { ...sums, emiBefore, emiAfter, total };
-  }, [dueRows]);
+    return { ...sums, emiBefore, emiAfter, total, counts };
+  }, [dueRows, statusFilter]);
 
   const handleRefresh = () => fetchDueRows();
 
@@ -737,13 +809,13 @@ const DueReportPage: React.FC = () => {
   // at once. Any filter/search change starts again from the top 100. ─────
   const [visibleCount, setVisibleCount] = useState(DUE_BATCH_SIZE);
   useEffect(() => { setVisibleCount(DUE_BATCH_SIZE); }, [apCustomerId, filterBuilding, filterEmployee, statusFilter, categoryFilter, globalSearch]);
-  const pagedDueRows = useMemo(() => filteredDueRows.slice(0, Math.min(visibleCount, filteredDueRows.length)), [filteredDueRows, visibleCount]);
-  const hasMoreRows = pagedDueRows.length < filteredDueRows.length;
+  const pagedGroups = useMemo(() => groupedRows.slice(0, Math.min(visibleCount, groupedRows.length)), [groupedRows, visibleCount]);
+  const hasMoreRows = pagedGroups.length < groupedRows.length;
   const loadNextBatch = useCallback(() => {
-    setVisibleCount((v) => Math.min(filteredDueRows.length, v + DUE_BATCH_SIZE));
-  }, [filteredDueRows.length]);
+    setVisibleCount((v) => Math.min(groupedRows.length, v + DUE_BATCH_SIZE));
+  }, [groupedRows.length]);
   const lazyLoadSentinelRef = useInfiniteScroll({
-    hasMore: hasMoreRows, loading: false, onLoadMore: loadNextBatch, itemCount: pagedDueRows.length,
+    hasMore: hasMoreRows, loading: false, onLoadMore: loadNextBatch, itemCount: pagedGroups.length,
   });
 
   // ── Add Payment Details ──────────────────────────────────────────────
@@ -751,11 +823,13 @@ const DueReportPage: React.FC = () => {
   // by their declaration above.)
   // Receipt Date (payment_date) is admin-only — item 9.
   const { isAdmin } = useRoleBasePath();
+  const navigate = useNavigate();
   const [apInstDate, setApInstDate] = useState('');
   const [apPaymentDate, setApPaymentDate] = useState('');
   const [apPaymentForKey, setApPaymentForKey] = useState('');
   const [apAmount, setApAmount] = useState('');
   const [apModeOfPayment, setApModeOfPayment] = useState('');
+  const [apChequeNumber, setApChequeNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [apSuggestLoading, setApSuggestLoading] = useState(false);
 
@@ -764,24 +838,8 @@ const DueReportPage: React.FC = () => {
   // Every field after Customer Name stays disabled until a customer is picked.
   const formLocked = !apCustomerId;
 
-  // V_23.0 — the disabled Payment Date field now pre-fills from the
-  // customer's own saved installment date (customers.installment_date,
-  // mapped to monthly_installment_date on the frontend Customer type — see
-  // customerDetailsService.ts's mapCustomerRow) the moment a customer is
-  // picked, before Payment For is even chosen. No extra fetch: `customers`
-  // already carries this field from the same list the picker's own options
-  // came from. Only runs while no Payment For is selected yet — once one
-  // is, handlePaymentForChange's own fetchDefaultAmount lookup takes over
-  // (a type-specific suggested date, not just the customer's default).
-  useEffect(() => {
-    if (apPaymentForKey) return;
-    // .slice(0, 10): the backend column is a DATETIME, so this can arrive
-    // as a full ISO timestamp (e.g. "2026-09-15T00:00:00.000Z") — an
-    // <input type="date"> only accepts the bare YYYY-MM-DD portion, which
-    // this also happens to already be a no-op on if the value came back
-    // pre-trimmed.
-    setApInstDate(apSelectedCustomer?.monthly_installment_date?.slice(0, 10) || '');
-  }, [apSelectedCustomer, apPaymentForKey]);
+  // Payment Date appears (and is filled) only after Payment For is chosen —
+  // see handlePaymentForChange.
 
   const handleCustomerSearchChange = (v: string) => {
     setApCustomerSearch(v);
@@ -790,7 +848,7 @@ const DueReportPage: React.FC = () => {
     // Customer cleared/changed to no match: everything below it goes back to
     // empty (and disabled) rather than keeping the previous customer's values.
     if (!exact) {
-      setApPaymentForKey(''); setApAmount(''); setApInstDate(''); setApPaymentDate(''); setApModeOfPayment('');
+      setApPaymentForKey(''); setApAmount(''); setApInstDate(''); setApPaymentDate(''); setApModeOfPayment(''); setApChequeNumber('');
     }
   };
 
@@ -882,6 +940,7 @@ const DueReportPage: React.FC = () => {
     setApPaymentForKey('');
     setApAmount('');
     setApModeOfPayment('');
+    setApChequeNumber('');
     setSubmitAttempted(false);
   };
 
@@ -894,7 +953,7 @@ const DueReportPage: React.FC = () => {
   const handleResetAddPaymentForm = resetAddPaymentForm;
   // The X (clear) icon stays disabled until something is typed or selected.
   const hasFormInput = Boolean(apCustomerSearch.trim() || apCustomerId || apInstDate || apPaymentDate
-    || apPaymentForKey || apAmount || apModeOfPayment);
+    || apPaymentForKey || apAmount || apModeOfPayment || apChequeNumber);
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const setFieldRef = (key: string) => (el: HTMLDivElement | null) => { fieldRefs.current[key] = el; };
@@ -909,7 +968,8 @@ const DueReportPage: React.FC = () => {
     { field: 'payment_for', message: 'Payment type is required.', failed: () => !apPaymentForKey },
     { field: 'amount', message: 'Please enter a valid amount.', failed: () => !apAmount.trim() || Number(apAmount) <= 0 },
     { field: 'mode_of_payment', message: 'Payment method is required.', failed: () => !apModeOfPayment.trim() },
-  ], [apCustomerId, apPaymentForKey, apAmount, apModeOfPayment]);
+    { field: 'cheque_number', message: 'Cheque number is required.', failed: () => apModeOfPayment === 'Cheque' && !apChequeNumber.trim() },
+  ], [apCustomerId, apPaymentForKey, apAmount, apModeOfPayment, apChequeNumber]);
 
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const activeErrors = submitAttempted ? validationChecks.filter((c) => c.failed()) : [];
@@ -933,6 +993,7 @@ const DueReportPage: React.FC = () => {
         // sent for them; the server stamps "now" either way.
         payment_date: (isAdmin && apPaymentDate) ? apPaymentDate : undefined,
         mode_of_payment: apModeOfPayment,
+        cheque_number: apModeOfPayment === 'Cheque' ? apChequeNumber.trim() : undefined,
         is_advance_pay: apSelectedPaymentFor.isAdvance || undefined,
       };
       const res = await collectPayment(payload);
@@ -983,7 +1044,10 @@ const DueReportPage: React.FC = () => {
           clear it. ────────────────────────────────────────────────────── */}
       <div className="due-report-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3 mb-5">
         {statBoxSpecs.map((spec) => (
-          <StatCard key={spec.key} label={spec.label} value={rupee(spec.value)} icon={spec.icon} color={spec.color}
+          <StatCard key={spec.key}
+            // With a Status selected the boxes count/sum only those dues.
+            label={statusFilter === 'all' ? spec.label : `${spec.label} (${boxSums.counts[spec.key] ?? 0})`}
+            value={rupee(spec.value)} icon={spec.icon} color={spec.color}
             bg={isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff'} loading={loadingDueList} compact
             active={spec.key !== 'total' && categoryFilter === spec.key}
             onClick={() => (spec.key === 'total' ? setCategoryFilter(null) : toggleCategoryFilter(spec.key))}
@@ -1060,12 +1124,12 @@ const DueReportPage: React.FC = () => {
                 one installment — it has no Payment Date at all (takes
                 today's date via Received Date instead), so the field is
                 hidden rather than shown blank/disabled. */}
-            {!apSelectedPaymentFor?.isAdvance && (
+            {apSelectedPaymentFor && !apSelectedPaymentFor.isAdvance && (
               <div>
                 <label style={fieldLabelStyle}>Payment Date</label>
                 {/* Read-only — auto-filled from the suggested default date
                     for the selected Payment For. Not employee-editable. */}
-                <input type="date" readOnly value={apInstDate} style={readOnlyInputStyle} />
+                <DateInput t={t} readOnly value={apInstDate} style={readOnlyInputStyle} />
               </div>
             )}
             {/* V_23.0 item 6 — Received Date permissions: Employee can only
@@ -1080,9 +1144,9 @@ const DueReportPage: React.FC = () => {
             <div>
               <label style={fieldLabelStyle}>Received Date</label>
               {isAdmin ? (
-                <input type="date" value={apPaymentDate} max={serverTodayYmd()} disabled={formLocked} onChange={(e) => setApPaymentDate(e.target.value)} style={formLocked ? readOnlyInputStyle : fieldInputStyle()} />
+                <DateInput t={t} value={apPaymentDate} max={serverTodayYmd()} disabled={formLocked} onChange={(v) => setApPaymentDate(v)} style={formLocked ? readOnlyInputStyle : fieldInputStyle()} />
               ) : (
-                <input type="date" readOnly value={serverTodayYmd()} style={readOnlyInputStyle} title="Employees can only record today's date." />
+                <DateInput t={t} readOnly value={serverTodayYmd()} style={readOnlyInputStyle} title="Employees can only record today's date." />
               )}
             </div>
             <div ref={setFieldRef('mode_of_payment')}>
@@ -1093,6 +1157,15 @@ const DueReportPage: React.FC = () => {
               </select>
               {errorFor('mode_of_payment') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('mode_of_payment')}</p>}
             </div>
+            {apModeOfPayment === 'Cheque' && (
+              <div ref={setFieldRef('cheque_number')}>
+                <label style={fieldLabelStyle}>Cheque Number <span style={{ color: '#dc2626' }}>*</span></label>
+                <input type="text" value={apChequeNumber} disabled={formLocked} maxLength={30}
+                  onChange={(e) => setApChequeNumber(e.target.value)} placeholder="Cheque no."
+                  style={fieldInputStyle(!!errorFor('cheque_number'))} />
+                {errorFor('cheque_number') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('cheque_number')}</p>}
+              </div>
+            )}
             {/* V_23.0 item 6 — OK renamed to Submit; a new Reset button
                 clears every field/dropdown/date in this form AND the
                 table's own toolbar filters (including the customer filter
@@ -1157,6 +1230,14 @@ const DueReportPage: React.FC = () => {
             )}
           </div>
           <div className="due-report-toolbar-actions flex items-center gap-2" style={{ marginLeft: 'auto', flexShrink: 0 }}>
+            {/* Payment Upcoming lives here (moved from Payment Received). */}
+            {isAdmin && (
+              <button type="button" onClick={() => navigate(ROUTES.ADMIN.PAYMENT_UPCOMING)}
+                className="due-report-export-btn flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold"
+                style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <MdUpcoming size={16} /> <span className="due-report-export-btn-text">Payment Upcoming</span>
+              </button>
+            )}
             {/* In-app-only badge — every open customer follow-up across the
                 team; clicking it lists them with their follow-up dates. */}
             <button type="button" title="Take Follow Ups" onClick={() => setFollowUpListOpen(true)}
@@ -1186,148 +1267,157 @@ const DueReportPage: React.FC = () => {
           Follow Up. ────────────────────────────────────────────────────── */}
       <div className="due-report-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="due-report-table-scroll" style={{ overflowX: 'auto' }}>
-          <table className="due-report-table master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1150 }}>
+          <table className="due-report-table master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Customer Name', 'Company / Project / Location', 'Building Details', 'Contact Details', 'Assigned Employee', 'Payment Details', 'Duration', 'Total Amount', 'Follow Up'].map((h) => (
+                {['Details', 'Customer Name', 'Company / Project / Location', 'Building Details', 'Phone Number', 'Assigned Employee', 'Total Amount', 'Follow Up'].map((h) => (
                   <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loadingDueList ? (
-                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
-              ) : filteredDueRows.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
+                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
+              ) : groupedRows.length === 0 ? (
+                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
                   {baseDisplayRows.length === 0 ? 'No customers currently have a payment due.' : 'No dues match the selected filters.'}
                 </td></tr>
               ) : (
-                pagedDueRows.map((r) => (
-                  <tr key={r.key} className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
-                    <td style={{ padding: '10px 12px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                      <div style={{ fontWeight: 600 }}>{r.customer_name}</div>
-                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code}</div>
-                    </td>
-                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                      <div style={{ fontWeight: 600 }}>{r.company_name || '—'}</div>
-                      {(r.project_name || r.location) && (
-                        <div className="master-cell-truncate" title={`${r.project_name || ''}${r.project_name && r.location ? ' • ' : ''}${r.location || ''}`}
-                          style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
-                          {r.project_name || ''}{r.project_name && r.location ? ' • ' : ''}{r.location || ''}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                      <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
-                      {(r.wing_name || r.flat_no) && (
-                        <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
-                          {r.wing_name ? `${r.wing_name} Wing` : ''}{r.wing_name && r.flat_no ? ' - ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary }}>
-                      {/* A long email may continue after the "@" on a narrow
-                          screen instead of widening the whole table. */}
-                      <div style={{ whiteSpace: 'normal' }}>
-                        {r.email ? <>{r.email.split('@')[0]}@<wbr />{r.email.split('@').slice(1).join('@')}</> : '—'}
-                      </div>
-                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.mobile_number || '—'}</div>
-                    </td>
-                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                      <div style={{ fontWeight: 600 }}>{r.assigned_employee_name || '—'}</div>
-                      {r.assigned_employee_code && (
-                        <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.assigned_employee_code}</div>
-                      )}
-                    </td>
-                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                      {/* Payment Details: the payment-type badge (in the row's
-                          status color) and the EMI/installment amount below. */}
-                      {/* A long label may wrap inside its badge on a narrow
-                          screen instead of widening the whole table. */}
-                      <span style={{
-                        display: 'inline-block', padding: '1px 8px', borderRadius: 10,
-                        fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor,
-                        whiteSpace: 'normal', lineHeight: 1.25,
-                      }}>
-                        {getPaymentForDisplay(r).label}
-                      </span>
-                      {/* Booking / Remaining Booking are one amount, already in
-                          Total Amount; EMI and Booster keep their per-installment
-                          amount here. */}
-                      {r.payment_for_key !== 'BookingAmount' && r.payment_for_key !== 'PayAfterbooking' && (
-                        <div style={{ marginTop: 1, fontSize: 11.5, fontWeight: 700, color: t.textPrimary, lineHeight: 1.2 }}>
-                          {rupee(r.per_month_amount ?? r.amount)}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                      {/* Duration: number of months pending (status-colored
-                          pill) and the From/To date range. */}
-                      {r.months_pending ? (
-                        <span style={{
-                          display: 'inline-block', padding: '1px 8px', borderRadius: 999, lineHeight: 1.25,
-                          fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor,
-                        }}>
-                          {r.months_pending} Month{r.months_pending === 1 ? '' : 's'}
-                        </span>
-                      ) : null}
-                      {r.detailText && (
-                        <div style={{ fontSize: 10.5, fontWeight: 600, color: r.statusColor === STATUS_COLORS.upcoming ? t.textPrimary : r.statusColor, marginTop: r.months_pending ? 2 : 0, whiteSpace: 'nowrap', lineHeight: 1.35 }}>
-                          {r.detailText}
-                        </div>
-                      )}
-                      {!r.months_pending && !r.detailText && <span style={{ color: t.textSecondary, fontSize: 11.5 }}>—</span>}
-                    </td>
-                    {/* Total Amount: the final amount only, in the same status
-                        color as the row's Payment Details badge and Duration
-                        dates (Upcoming's yellow reads as plain text, as in
-                        Duration). */}
-                    <td style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 700, color: r.statusColor === STATUS_COLORS.upcoming ? t.textPrimary : r.statusColor, whiteSpace: 'nowrap' }}>
-                      {rupee(r.amount)}
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {(() => {
-                        const scheduled = followUpByCustomer.get(String(r.customer_id));
-                        const target: FollowUpTarget = { customer_id: r.customer_id, customer_name: r.customer_name, customer_code: r.customer_code };
-                        const iconBtn: React.CSSProperties = { width: 26, height: 26, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' };
-                        const isPast = !!scheduled?.due_date && scheduled.due_date.slice(0, 10) < serverTodayYmd();
-                        return (
-                          // One line: both icons, then the follow-up date.
-                          <div className="flex items-center gap-1.5" style={{ whiteSpace: 'nowrap' }}>
-                            <div className="flex items-center gap-1.5">
-                            <button type="button" onClick={() => openFollowUp(target)}
-                              title={scheduled ? 'Change follow-up' : 'Schedule a follow-up'}
-                              className="flex items-center justify-center rounded-lg flex-shrink-0" style={iconBtn}>
-                              <MdNoteAdd size={14} />
-                            </button>
-                            <button type="button" onClick={() => openFollowUpHistory(target)} title="Follow-up history"
-                              className="flex items-center justify-center rounded-lg flex-shrink-0" style={iconBtn}>
-                              <MdForum size={13} />
-                            </button>
+                pagedGroups.map((g) => {
+                  const open = expandedCustomers.has(g.customer_id);
+                  const amountColor = (c: string) => (c === STATUS_COLORS.upcoming ? t.textPrimary : c);
+                  return (
+                    <React.Fragment key={`cust-${g.customer_id}`}>
+                      <tr className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
+                        <td style={{ padding: '10px 12px' }}>
+                          <button type="button" onClick={() => toggleExpanded(g.customer_id)}
+                            title={open ? 'Hide details' : 'View details'} aria-label={open ? 'Hide details' : 'View details'} aria-expanded={open}
+                            className="flex items-center justify-center rounded-lg"
+                            style={{ width: 28, height: 28, background: open ? 'var(--brand-gradient)' : t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: open ? '#fff' : 'var(--brand-ink)', cursor: 'pointer' }}>
+                            {open ? <MdExpandMore size={18} /> : <MdChevronRight size={18} />}
+                          </button>
+                        </td>
+                        <td style={{ padding: '10px 12px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 600 }}>{g.customer_name}</div>
+                          <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{g.customer_code}</div>
+                        </td>
+                        <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 600 }}>{g.company_name || '—'}</div>
+                          {(g.project_name || g.location) && (
+                            <div className="master-cell-truncate" title={`${g.project_name || ''}${g.project_name && g.location ? ' • ' : ''}${g.location || ''}`}
+                              style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
+                              {g.project_name || ''}{g.project_name && g.location ? ' • ' : ''}{g.location || ''}
                             </div>
-                            {scheduled?.due_date && (
-                              <span style={{ fontSize: 11, fontWeight: 700, color: isPast ? '#dc2626' : 'var(--brand-ink)', whiteSpace: 'nowrap' }}>
-                                {formatDate(scheduled.due_date)}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </td>
-                  </tr>
-                ))
+                          )}
+                        </td>
+                        <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 600 }}>{g.building_name || '—'}</div>
+                          {(g.wing_name || g.flat_no) && (
+                            <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
+                              {g.wing_name ? `${g.wing_name} Wing` : ''}{g.wing_name && g.flat_no ? ' - ' : ''}{g.flat_no ? `Flat ${g.flat_no}` : ''}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{g.mobile_number || '—'}</td>
+                        <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 600 }}>{g.assigned_employee_name || '—'}</div>
+                          {g.assigned_employee_code && (
+                            <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{g.assigned_employee_code}</div>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 800, color: amountColor(g.statusColor) }}>{rupee(g.total)}</div>
+                          <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{g.items.length} due{g.items.length === 1 ? '' : 's'}</div>
+                          {g.extraBalance > 0 && (
+                            <div title="Unused Extra Payment" style={{ fontSize: 10.5, fontWeight: 700, color: '#0369a1', marginTop: 1 }}>Extra Payment: {rupee(g.extraBalance)}</div>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          {(() => {
+                            const scheduled = followUpByCustomer.get(String(g.customer_id));
+                            const target: FollowUpTarget = { customer_id: g.customer_id, customer_name: g.customer_name, customer_code: g.customer_code };
+                            const iconBtn: React.CSSProperties = { width: 26, height: 26, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' };
+                            const isPast = !!scheduled?.due_date && scheduled.due_date.slice(0, 10) < serverTodayYmd();
+                            return (
+                              <div className="flex items-center gap-1.5" style={{ whiteSpace: 'nowrap' }}>
+                                <button type="button" onClick={() => openFollowUp(target)}
+                                  title={scheduled ? 'Change follow-up' : 'Schedule a follow-up'}
+                                  className="flex items-center justify-center rounded-lg flex-shrink-0" style={iconBtn}>
+                                  <MdNoteAdd size={14} />
+                                </button>
+                                <button type="button" onClick={() => openFollowUpHistory(target)} title="Follow-up history"
+                                  className="flex items-center justify-center rounded-lg flex-shrink-0" style={iconBtn}>
+                                  <MdForum size={13} />
+                                </button>
+                                {scheduled?.due_date && (
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: isPast ? '#dc2626' : 'var(--brand-ink)', whiteSpace: 'nowrap' }}>
+                                    {formatDate(scheduled.due_date)}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </td>
+                      </tr>
+                      {open && (
+                        <tr style={{ background: t.insetBg }}>
+                          <td colSpan={8} className="due-report-cards-cell" style={{ padding: '10px 12px 12px 52px' }}>
+                            {/* Dues side by side (wrapping) so the list stays short. */}
+                            <div className="due-report-cards">
+                              {g.items.map((r) => (
+                                <div key={r.key} className="due-report-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderTop: `3px solid ${r.statusColor === STATUS_COLORS.upcoming ? '#eab308' : r.statusColor}` }}>
+                                  <div className="due-report-card-section">
+                                    <div className="due-report-card-label" style={{ color: t.textSecondary }}>Payment Details</div>
+                                    <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor, lineHeight: 1.35 }}>
+                                      {getPaymentForDisplay(r).label}
+                                    </span>
+                                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: t.textSecondary }}>{r.statusLabel}</span>
+                                    {r.payment_for_key !== 'BookingAmount' && r.payment_for_key !== 'PayAfterbooking' && (
+                                      <div style={{ marginTop: 3, fontSize: 11.5, fontWeight: 700, color: t.textPrimary }}>{rupee(r.per_month_amount ?? r.amount)}</div>
+                                    )}
+                                  </div>
+                                  <div className="due-report-card-section">
+                                    <div className="due-report-card-label" style={{ color: t.textSecondary }}>Duration</div>
+                                    {showsDueDateOnly(r.payment_for_key) ? (
+                                      <div style={{ fontSize: 11, fontWeight: 600, color: amountColor(r.statusColor) }}>{dueDateText(r)}</div>
+                                    ) : (
+                                      <>
+                                        {r.months_pending ? (
+                                          <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 999, lineHeight: 1.3, fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor }}>
+                                            {r.months_pending} Month{r.months_pending === 1 ? '' : 's'}
+                                          </span>
+                                        ) : null}
+                                        {r.detailText && (
+                                          <div style={{ fontSize: 11, fontWeight: 600, color: amountColor(r.statusColor), marginTop: r.months_pending ? 2 : 0 }}>{r.detailText}</div>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                  <div className="due-report-card-section">
+                                    <div className="due-report-card-label" style={{ color: t.textSecondary }}>Total Amount</div>
+                                    <div style={{ fontSize: 13, fontWeight: 800, color: amountColor(r.statusColor) }}>{rupee(r.amount)}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })
               )}
               {/* Invisible sentinel row — scrolling near it renders the next
-                  100 rows. Only present while there is more to show. */}
+                  100 customers. Only present while there is more to show. */}
               {hasMoreRows && (
-                <tr ref={lazyLoadSentinelRef} aria-hidden="true"><td colSpan={9} style={{ padding: 0, border: 'none' }} /></tr>
+                <tr ref={lazyLoadSentinelRef} aria-hidden="true"><td colSpan={8} style={{ padding: 0, border: 'none' }} /></tr>
               )}
             </tbody>
           </table>
         </div>
-        {filteredDueRows.length > 0 && (
+        {groupedRows.length > 0 && (
           <div className="flex items-center justify-center px-4 py-3" style={{ borderTop: `1px solid ${t.divider}`, fontSize: 12, color: t.textSecondary }}>
-            Showing {pagedDueRows.length} of {filteredDueRows.length}{hasMoreRows ? ' — scroll down to load more' : ''}
+            Showing {pagedGroups.length} of {groupedRows.length} customers{hasMoreRows ? ' — scroll down to load more' : ''}
           </div>
         )}
       </div>
@@ -1355,13 +1445,13 @@ const DueReportPage: React.FC = () => {
                     {followUpEditing.description}
                   </div>
                 )}
-                <label style={fieldLabelStyle}>Note</label>
+                <label style={fieldLabelStyle}>Remarks / Note <span style={{ color: '#dc2626' }}>*</span></label>
                 <textarea rows={3} value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)}
                   placeholder="What was discussed with the customer?" style={{ ...fieldInputStyle(), resize: 'vertical' }} />
               </div>
               <div>
                 <label style={fieldLabelStyle}>Follow-up Date</label>
-                <input type="date" value={followUpDate} min={serverTodayYmd()} onChange={(e) => setFollowUpDate(e.target.value)} style={fieldInputStyle()} />
+                <DateInput t={t} value={followUpDate} min={serverTodayYmd()} onChange={(v) => setFollowUpDate(v)} style={fieldInputStyle()} />
               </div>
               {/* Only an admin assigns follow-ups; an employee's own are
                   assigned to themselves server-side. */}
@@ -1376,9 +1466,10 @@ const DueReportPage: React.FC = () => {
                   </select>
                 </div>
               )}
-              <button type="button" onClick={handleSubmitFollowUp} disabled={followUpSubmitting}
+              <button type="button" onClick={handleSubmitFollowUp} disabled={followUpSubmitting || !followUpNote.trim()}
+                title={!followUpNote.trim() ? 'Enter the remarks first' : undefined}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
-                style={{ background: followUpSubmitting ? '#6b7280' : '#16a34a', border: 'none', cursor: followUpSubmitting ? 'not-allowed' : 'pointer' }}>
+                style={{ background: followUpSubmitting || !followUpNote.trim() ? '#6b7280' : '#16a34a', border: 'none', cursor: followUpSubmitting || !followUpNote.trim() ? 'not-allowed' : 'pointer' }}>
                 {followUpSubmitting ? 'Saving...' : followUpEditing ? 'Update Follow-up' : 'Schedule Follow-up'}
               </button>
             </div>

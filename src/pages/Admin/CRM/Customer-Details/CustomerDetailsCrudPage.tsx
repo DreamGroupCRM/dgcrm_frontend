@@ -8,7 +8,7 @@ import { toast } from '@/utils/toast';
 import {
   MdArrowBack, MdSave, MdPerson, MdApartment, MdClose, MdKeyboardArrowDown, MdAdd,
   MdDelete, MdInsertDriveFile, MdCloudUpload, MdOpenInNew,
-  MdPayments, MdDescription, MdVisibility, MdDownload, MdRadioButtonChecked, MdRadioButtonUnchecked,
+  MdPayments, MdDescription, MdVisibility, MdDownload, MdRadioButtonChecked, MdRadioButtonUnchecked, MdEventBusy,
 } from 'react-icons/md';
 import { FaWhatsapp } from 'react-icons/fa';
 
@@ -24,11 +24,11 @@ import {
   fetchTakenParkingNumbers,
 } from '../../../../services/customerDetailsService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
-import { Building, ParkingChoice } from '../../../../types/index';
+import { Building, ParkingChoice, CustomerFullDetail } from '../../../../types/index';
 // Type-only import — never pulls Building2DViewPage's actual module into
 // this page's bundle; only the shape of the payload it navigates back with.
 import type { SelectedUnitForCustomer } from '../../Building2D/Building2DViewPage';
-import { showAlert, resolveFileUrl } from '../../../../utils';
+import { showAlert, resolveFileUrl, formatDate } from '../../../../utils';
 import DocumentViewerModal from '../../../../components/common/DocumentViewerModal';
 import { previewKindFor, downloadDocument } from '../../../../services/documentService';
 import EmiSchemePreviewModal from '../../../../components/common/EmiSchemePreviewModal';
@@ -50,6 +50,7 @@ import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { serverToday } from '../../../../utils/serverTime';
 import { cssRect } from '../../../../utils/appZoom';
+import DateInput from '../../../../components/common/DateInput';
 
 type Mode = 'add' | 'edit' | 'view';
 interface Props {
@@ -1008,6 +1009,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
     })();
   }, [mode]);
 
+  // Set for a cancelled booking — shown on View Details (reason + documents).
+  const [cancellation, setCancellation] = useState<CustomerFullDetail['cancellation']>(null);
+
   useEffect(() => {
     if (mode === 'add' || !id) return;
     (async () => {
@@ -1017,6 +1021,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         if (res.success && res.data) {
           const c = res.data;
           setCustomerCode(c.customer_code || '');
+          setCancellation(c.cancellation ?? null);
           setFirstName(c.first_name || '');
           setMiddleName(c.middle_name || '');
           setLastName(c.last_name || '');
@@ -1715,6 +1720,24 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
           </div>
         </div>
 
+        {/* ── Cancelled booking: reason and the cancellation documents. ── */}
+        {cancellation && (
+          <div className="rounded-2xl p-5 sm:p-6 mb-5" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+            <SectionHeader t={t} icon={<MdEventBusy size={16} />} title="Cancellation Details" gradient="linear-gradient(135deg, #b91c1c, #ef4444)" />
+            <div className="cust-view-grid mb-4">
+              <ViewValue label="Cancellation Date" value={cancellation.cancelled_at ? formatDate(cancellation.cancelled_at) : ''} />
+              <ViewValue label="Cancellation Reason" value={cancellation.reason || ''} />
+              <ViewValue label="Return of Original Documents" value={cancellation.original_documents_returned ? 'Yes' : 'No'} />
+            </div>
+            <div className="cust-doc-grid">
+              <CustomerDocumentCard t={t} label="Cancel Letter" url={cancellation.cancel_letter} onQuickView={openPreview} />
+              <CustomerDocumentCard t={t} label="Acceptance Letter" url={cancellation.acceptance_letter} onQuickView={openPreview} />
+              <CustomerDocumentCard t={t} label="Cancel Documents" url={cancellation.cancel_documents} onQuickView={openPreview} />
+              <CustomerDocumentCard t={t} label="Returned Documents" url={cancellation.returned_documents} onQuickView={openPreview} />
+            </div>
+          </div>
+        )}
+
         {/* ── Sticky footer — Go Back only, same shared class every other
             CRUD page's footer uses. ────────────────────────────────────── */}
         <div className="master-crud-footer flex items-center justify-center gap-3 z-10" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
@@ -2084,8 +2107,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             <AmountField t={t} isView={isView} placeholder="Enter total cost" value={totalCost} onChange={setTotalCost} />
           </Field>
           <Field t={t} label="Booking Date" required error={errorFor('bookingDate')} fieldRef={setFieldRef('bookingDate') as React.Ref<HTMLDivElement>}>
-            <input type="date" value={bookingDate} readOnly={isView} disabled={isView}
-              onClick={openPicker} onFocus={openPicker} onChange={(e) => setBookingDate(e.target.value)} className={fieldClass} />
+            <DateInput t={t} value={bookingDate} readOnly={isView} disabled={isView} onChange={(v) => setBookingDate(v)} className={fieldClass} />
           </Field>
           <Field t={t} label="Booking Amount (₹)" required error={errorFor('bookingAmount')} fieldRef={setFieldRef('bookingAmount') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter booking amount" value={bookingAmount} onChange={setBookingAmount} />
@@ -2098,9 +2120,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               <div style={{ flex: '0 1 50%', minWidth: 0 }}>
                 <AmountField t={t} isView={isView} placeholder="Amount" value={remainingBookingAmount} onChange={setRemainingBookingAmount} />
               </div>
-              <input type="date" value={remainingBookingDate} readOnly={isView} disabled={isView}
-                onClick={openPicker} onFocus={openPicker} onChange={(e) => setRemainingBookingDate(e.target.value)} className={fieldClass}
-                style={{ flex: '0 1 150px', minWidth: 124 }} />
+              <DateInput t={t} value={remainingBookingDate} readOnly={isView} disabled={isView} onChange={(v) => setRemainingBookingDate(v)} className={fieldClass} style={{ flex: '0 1 150px', minWidth: 124 }} />
             </div>
           </Field>
           <Field t={t} label="Possession Amount (₹)" required error={errorFor('possessionAmount')} fieldRef={setFieldRef('possessionAmount') as React.Ref<HTMLDivElement>}>

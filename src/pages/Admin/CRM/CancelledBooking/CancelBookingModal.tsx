@@ -21,6 +21,9 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const ACCEPT = 'image/*,.pdf';
 
 type FileKey = 'cancel_letter' | 'acceptance_letter' | 'cancel_documents' | 'returned_documents';
+const FILE_LABELS: Record<FileKey, string> = {
+  cancel_letter: 'Cancel Letter', acceptance_letter: 'Acceptance Letter', cancel_documents: 'Cancel Documents', returned_documents: 'Documents',
+};
 
 const flatDetails = (c: Customer): string => {
   if (!c.building_name) return '—';
@@ -45,6 +48,7 @@ const CancelBookingModal: React.FC<{
   const [files, setFiles] = useState<Partial<Record<FileKey, File | null>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [reasonError, setReasonError] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,8 +73,15 @@ const CancelBookingModal: React.FC<{
     setFiles((prev) => ({ ...prev, [key]: file }));
   };
 
+  // Every document and the Return of Original Documents checkbox are
+  // required before a booking can be cancelled (the backend enforces it too).
+  const missingDocs = (Object.keys(FILE_LABELS) as FileKey[]).filter((k) => !files[k]);
+  const ready = !!reason.trim() && missingDocs.length === 0 && originalsReturned;
   const handleSubmit = async () => {
+    setSubmitAttempted(true);
     if (!reason.trim()) { setReasonError(true); toast.error('Enter the cancellation reason.'); return; }
+    if (missingDocs.length) { toast.error(`Upload: ${missingDocs.map((k) => FILE_LABELS[k]).join(', ')}.`); return; }
+    if (!originalsReturned) { toast.error('Tick "Return of Original Documents" to continue.'); return; }
     setSubmitting(true);
     try {
       const res = await cancelCustomerBooking(customer.id, {
@@ -94,8 +105,8 @@ const CancelBookingModal: React.FC<{
 
   const FileField: React.FC<{ k: FileKey; label: string }> = ({ k, label }) => (
     <div>
-      <label style={labelStyle}>{label}</label>
-      <label className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: t.inputBg, border: `1px dashed ${t.inputBorder}`, cursor: 'pointer', fontSize: 12, color: t.inputText, minHeight: 38 }}>
+      <label style={labelStyle}>{label} <span style={{ color: '#dc2626' }}>*</span></label>
+      <label className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: t.inputBg, border: `1px dashed ${submitAttempted && !files[k] ? '#ef4444' : t.inputBorder}`, cursor: 'pointer', fontSize: 12, color: t.inputText, minHeight: 38 }}>
         <MdUploadFile size={17} style={{ color: 'var(--brand-ink)', flexShrink: 0 }} />
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
           {files[k]?.name || 'Choose file (PDF or image, max 5 MB)'}
@@ -147,28 +158,36 @@ const CancelBookingModal: React.FC<{
           <div>
             <label style={labelStyle}>Payment History</label>
             <div className="master-table-scroll rounded-xl" style={{ border: `1px solid ${t.surfaceBorder}` }}>
-              <table className="master-table" style={{ width: '100%', minWidth: 560 }}>
+              <table className="master-table" style={{ width: '100%', minWidth: 760 }}>
                 <thead>
                   <tr className="master-table-header-gradient">
-                    {['Receipt No.', 'Receipt Date', 'Payment For', 'Mode', 'Amount'].map((h) => (
+                    {/* Same columns as Customer Details' Payment History. */}
+                    {['Rec Number', 'Payment Date', 'Receipt Date', 'Mode Of Payment', 'Payment For', 'Amount', 'Company', 'Status'].map((h) => (
                       <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loadingPayments ? (
-                    <tr><td colSpan={5} style={{ padding: 16, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>Loading...</td></tr>
+                    <tr><td colSpan={8} style={{ padding: 16, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>Loading...</td></tr>
                   ) : payments.length === 0 ? (
-                    <tr><td colSpan={5} style={{ padding: 16, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No payments recorded.</td></tr>
+                    <tr><td colSpan={8} style={{ padding: 16, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No payments recorded.</td></tr>
                   ) : payments.map((p) => (
                     <tr key={p.id}>
                       <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.receipt_number || '—'}</td>
+                      <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? '—' : (p.inst_date ? formatDate(p.inst_date) : '—')}</td>
                       <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                         <div className="flex items-center gap-1.5">{formatDate(p.paid_on)}<BackdatedDot paymentDate={p.payment_date} createdAt={p.created_at} /></div>
                       </td>
-                      <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(p.payment_type)}</td>
                       <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.mode || '—'}</td>
-                      <td style={{ padding: '7px 12px', fontSize: 12, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(p.amount)}</td>
+                      <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(p.payment_type)}</td>
+                      <td style={{ padding: '7px 12px', fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>{rupee(p.amount)}</td>
+                      <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.company || '—'}</td>
+                      <td style={{ padding: '7px 12px', whiteSpace: 'nowrap' }}>
+                        <span style={{ display: 'inline-block', padding: '2px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, color: '#fff', background: p.is_approved ? '#16a34a' : '#d97706' }}>
+                          {p.is_approved ? 'Approved' : 'Pending Approval'}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -195,21 +214,26 @@ const CancelBookingModal: React.FC<{
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
             <label className="flex items-center gap-2" style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary, cursor: 'pointer', minHeight: 38 }}>
-              <input type="checkbox" checked={originalsReturned} onChange={(e) => setOriginalsReturned(e.target.checked)} style={{ width: 16, height: 16 }} />
-              Return of Original Documents
+              <input type="checkbox" checked={originalsReturned} onChange={(e) => setOriginalsReturned(e.target.checked)} style={{ width: 16, height: 16, outline: submitAttempted && !originalsReturned ? '2px solid #ef4444' : 'none' }} />
+              Return of Original Documents <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <FileField k="returned_documents" label="Documents" />
           </div>
 
+          {!ready && (
+            <div style={{ fontSize: 11.5, color: '#b45309', textAlign: 'right' }}>
+              Required before submitting: {[!reason.trim() && 'reason', ...missingDocs.map((k) => FILE_LABELS[k]), !originalsReturned && 'tick Return of Original Documents'].filter(Boolean).join(', ')}.
+            </div>
+          )}
           <div className="flex items-center justify-end gap-2">
             <button type="button" onClick={onClose} disabled={submitting}
               className="px-5 py-2.5 rounded-xl text-sm font-semibold"
               style={{ background: t.insetBg, color: t.textPrimary, border: `1px solid ${t.inputBorder}`, cursor: submitting ? 'not-allowed' : 'pointer' }}>
               Close
             </button>
-            <button type="button" onClick={handleSubmit} disabled={submitting}
+            <button type="button" onClick={handleSubmit} disabled={submitting || !ready}
               className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-              style={{ background: submitting ? '#6b7280' : '#b91c1c', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer' }}>
+              style={{ background: submitting || !ready ? '#6b7280' : '#b91c1c', border: 'none', cursor: submitting || !ready ? 'not-allowed' : 'pointer' }}>
               {submitting ? 'Submitting...' : isAdmin ? 'Cancel Booking' : 'Submit for Approval'}
             </button>
           </div>

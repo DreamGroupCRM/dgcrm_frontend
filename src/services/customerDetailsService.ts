@@ -257,7 +257,21 @@ const mapCustomerRow = (bc: BackendCustomer): Customer => ({
 // Every field that has a clear backend counterpart is populated for real;
 // fields with no backend counterpart (see file header) are left null/''
 // exactly as this form has always defaulted them, not guessed at.
+// The cancellation fields come straight from the customers row.
+const mapCancellation = (bc: BackendCustomer): CustomerFullDetail['cancellation'] => {
+  const c = bc as unknown as Record<string, unknown>;
+  if (!c.is_customer_deleted) return null;
+  const str = (k: string) => (c[k] ? String(c[k]) : null);
+  return {
+    reason: str('cancellation_reason'), cancelled_at: str('cancelled_at'),
+    cancel_letter: str('cancel_letter'), acceptance_letter: str('acceptance_letter'),
+    cancel_documents: str('cancel_documents'), returned_documents: str('returned_documents'),
+    original_documents_returned: !!Number(c.original_documents_returned ?? 0) || c.original_documents_returned === true,
+  };
+};
+
 const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
+  cancellation: mapCancellation(bc),
   id: String(bc.id),
   customer_code: bc.customer_code,
   first_name: bc.name ?? '',
@@ -740,6 +754,12 @@ export const createRefund = async (
   return res.data.data;
 };
 
+/** POST /api/customers/:id/revert-cancellation — admin: undo a cancellation made by mistake. */
+export const revertCancellation = async (customerId: string): Promise<{ success: boolean; message: string }> => {
+  const res = await axiosInstance.post(`/customers/${customerId}/revert-cancellation`);
+  return res.data;
+};
+
 // ── Refund approval (admin) + cancelled receipt ────────────────────────────
 export interface PendingRefundRow {
   id: string;
@@ -762,6 +782,22 @@ export interface PendingRefundRow {
 export const fetchPendingRefunds = async (): Promise<PendingRefundRow[]> => {
   const res = await axiosInstance.get('/customers/refunds/pending');
   return res.data.data ?? [];
+};
+// ── Refund Details page — every refund given (approved), date-wise ──────
+export interface GivenRefundRow {
+  id: string; customer_id: string; refunded_amount: number; refund_date: string; receipt_number: string | null;
+  mode_of_payment: string | null; created_by_name: string | null; approved_by_name: string | null; approved_at: string | null;
+  customer_name: string; customer_code: string | null; mobile_number: string | null;
+  building_name: string | null; wing_name: string | null; flat_no: string | null; shop_no: string | null;
+}
+/** GET /api/customers/refunds/given — admin only. */
+export const fetchGivenRefunds = async (filters: { date_from?: string; date_to?: string; search?: string }): Promise<{ rows: GivenRefundRow[]; total_refunded: number }> => {
+  const params: Record<string, string> = {};
+  if (filters.date_from) params.date_from = filters.date_from;
+  if (filters.date_to) params.date_to = filters.date_to;
+  if (filters.search?.trim()) params.search = filters.search.trim();
+  const res = await axiosInstance.get('/customers/refunds/given', { params });
+  return { rows: res.data.data ?? [], total_refunded: Number(res.data.total_refunded ?? 0) };
 };
 /** PUT /api/customers/refunds/:id/approve — admin only; assigns the cancelled receipt number. */
 export const approveRefund = async (refundId: string): Promise<RefundSummary> => {

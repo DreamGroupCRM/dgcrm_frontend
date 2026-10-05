@@ -39,6 +39,7 @@ import StatCard from '../../../components/masters/StatCard';
 import { exportSchemePdf } from './schemePdfExport.lazy';
 import { LOAN_TENURE_YEARS, LOAN_INTEREST_RATE } from './bankLoanConstants';
 import { serverTodayYmd } from '../../../utils/serverTime';
+import DateInput from '../../../components/common/DateInput';
 
 type Theme = AppTheme;
 
@@ -253,10 +254,7 @@ const NarrowAmountDateField: React.FC<{
       {/* Fixed, compact width instead of flex:1 — a date value doesn't need
           (and shouldn't stretch to fill) the rest of the row. */}
       {!hideDate && (
-        <input
-          type="date" value={date} onClick={openPicker} onFocus={openPicker}
-          onChange={(e) => onDateChange(e.target.value)} style={{ ...getFieldStyle(t), width: 128, flexShrink: 0 }}
-        />
+        <DateInput t={t} value={date} onChange={(v) => onDateChange(v)} style={{ ...getFieldStyle(t), width: 128, flexShrink: 0 }} />
       )}
     </div>
   </FieldWrap>

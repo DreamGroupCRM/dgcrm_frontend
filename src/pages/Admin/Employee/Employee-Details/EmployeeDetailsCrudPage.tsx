@@ -38,6 +38,7 @@ import {
   DOCUMENT_MAX_MB, IMAGE_MAX_MB, validateFileSelection,
 } from '../../../../constants/uploads';
 import './EmployeeDetails.css';
+import DateInput from '../../../../components/common/DateInput';
 
 // Employee Status badge colors for View mode — same palette as
 // EmployeeDetailsListPage.tsx's STATUS_STYLES, kept as its own small local
@@ -1480,8 +1481,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* All 10 fields flow across exactly 2 rows on desktop (5 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
           <Field t={t} label="Employee Joining Date" required error={errorFor('joining_date')} fieldRef={setFieldRef('joining_date') as React.Ref<HTMLDivElement>}>
-            <input type="date" value={form.joining_date} readOnly={isView} disabled={isView}
-              onChange={(e) => set('joining_date', e.target.value)} onClick={openPicker} className={fieldClass} />
+            <DateInput t={t} value={form.joining_date} readOnly={isView} disabled={isView} onChange={(v) => set('joining_date', v)} className={fieldClass} />
           </Field>
           <Field t={t} label="Working Hours" required error={errorFor('working_hours')} fieldRef={setFieldRef('working_hours') as React.Ref<HTMLDivElement>}>
             <select value={form.working_hours} disabled={isView} onChange={(e) => setWorkingHoursAndAutoCheckOut(e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>

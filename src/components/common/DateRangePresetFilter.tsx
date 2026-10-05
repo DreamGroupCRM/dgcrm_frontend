@@ -10,6 +10,7 @@ import React from 'react';
 import { MdCalendarToday } from 'react-icons/md';
 import { AppTheme } from '../../styles/theme';
 import { serverToday, toYmd } from '../../utils/serverTime';
+import DateInput from './DateInput';
 
 export type DateRangePreset = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
 
@@ -77,11 +78,9 @@ const DateRangePresetFilter: React.FC<DateRangePresetFilterProps> = ({
     </div>
     {preset === 'custom' && (
       <div className="flex items-center gap-1.5">
-        <input type="date" value={customFrom} onChange={(e) => onCustomFromChange(e.target.value)}
-          style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 9, padding: '6px 9px', fontSize: 12, outline: 'none' }} />
+        <DateInput t={t} value={customFrom} onChange={(v) => onCustomFromChange(v)} style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 9, padding: '6px 9px', fontSize: 12, outline: 'none' }} />
         <span style={{ color: t.textSecondary, fontSize: 12 }}>to</span>
-        <input type="date" value={customTo} onChange={(e) => onCustomToChange(e.target.value)}
-          style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 9, padding: '6px 9px', fontSize: 12, outline: 'none' }} />
+        <DateInput t={t} value={customTo} onChange={(v) => onCustomToChange(v)} style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 9, padding: '6px 9px', fontSize: 12, outline: 'none' }} />
       </div>
     )}
   </div>
