@@ -1,7 +1,7 @@
 // ==========================================
 // DREAM GROUP CRM - CUSTOMER SCHEME VIEW PAGE
 // ==========================================
-// Reachable from the Customer Details list's "Show Scheme" (MdLoyalty)
+// Reachable from the Customer Details list's "Show Scheme" (MdCalendarMonth)
 // button. Unlike CustomizeSchemePage (a what-if calculator with no real
 // customer behind it), this fetches ONE real customer's own saved Payment
 // Details from the backend (GET /customers/:id/scheme — see backend

@@ -97,17 +97,10 @@
   .due-report-export-btn { padding: 6px 8px !important; }
 }
 
-/* ---------- Stat box hover-expand (xl: >=1280px, where the grid is
-   already one row of 8 via the JSX's xl:grid-cols-8) ----------
-   The label/value clip at 8-across because each box only gets ~1/8th of
-   the row's width (.master-stat-label truncates with an ellipsis, see
-   master.css). Rather than widen every box (which would force horizontal
-   scroll or shrink the rest of the page), the hovered box alone grows to
-   show its full label/value while its 7 siblings compress to make room —
-   all 8 stay in the one row the whole time, nothing wraps or scrolls.
-   Below xl the grid still wraps normally (2/4 per row) and this is
-   skipped entirely — flex-grow hover states don't make sense once boxes
-   are already wrapping onto multiple rows. */
+/* ---------- Stat boxes (xl: >=1280px, one row of 8) ----------
+   Every box keeps the same fixed width — nothing grows or shrinks on hover
+   (that flickered). Labels wrap to a second line instead (see below); a
+   hover only lifts the box slightly with a soft shadow. */
 @media (min-width: 1280px) {
   .due-report-stat-grid {
     display: flex !important;
@@ -116,17 +109,33 @@
   .due-report-stat-grid > * {
     flex: 1 1 0%;
     min-width: 0;
-    /* flex-grow (not the `flex` shorthand) is what's animated — every
-       browser interpolates a bare number smoothly, and transitioning the
-       shorthand risks the browser only tweening flex-basis instead. Fast
-       per explicit request — 110ms is about as quick as a transition
-       reads as "eased" rather than "instant/jarring". */
-    transition: flex-grow 110ms ease-out;
   }
-  .due-report-stat-grid > *:hover {
-    flex-grow: 5;
-    z-index: 1;
-  }
+}
+.due-report-stat-grid > * {
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.due-report-stat-grid > *:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.16);
+}
+@media (prefers-reduced-motion: reduce) {
+  .due-report-stat-grid > * { transition: none; }
+  .due-report-stat-grid > *:hover { transform: none; }
+}
+
+/* ── Expanded customer row: one card per due, side by side (wrapping), so
+   the list stays short. ─────────────────────────────────────────────── */
+.due-report-cards { display: flex; flex-wrap: wrap; gap: 10px; }
+.due-report-card {
+  display: grid; grid-template-columns: auto auto auto; gap: 14px; align-items: start;
+  border-radius: 12px; padding: 9px 12px; min-width: 0;
+}
+.due-report-card-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 3px; }
+.due-report-card-section { min-width: 0; white-space: nowrap; }
+@media (max-width: 767px) {
+  .due-report-cards-cell { padding-left: 12px !important; }
+  .due-report-card { grid-template-columns: 1fr; gap: 6px; width: 100%; }
+  .due-report-card-section { white-space: normal; }
 }
 
 /* ── Add Payment form: ONE row on laptop/desktop (>=1280px) ──────────────

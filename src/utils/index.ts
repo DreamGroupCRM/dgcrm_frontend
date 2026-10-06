@@ -124,6 +124,15 @@ export const resolveFileUrl = (url: string | null | undefined): string => {
   return base + (base.includes('?') ? '&' : '?') + 'fk=' + encodeURIComponent(fk);
 };
 
+/** Asks for one line of text (e.g. a customer name); null when cancelled. */
+export const promptText = async (title: string, placeholder: string, confirmText = 'Continue'): Promise<string | null> => {
+  const res = await Swal.fire({
+    title, input: 'text', inputPlaceholder: placeholder, showCancelButton: true, confirmButtonText: confirmText,
+    inputValidator: (v: string) => (!v || !v.trim() ? 'Please enter a name.' : undefined),
+  });
+  return res.isConfirmed && typeof res.value === 'string' ? res.value.trim() : null;
+};
+
 /**
  * SweetAlert2 notifications
  */
@@ -285,30 +294,14 @@ export const formatDate = (dateString: string): string => {
   return `${day}/${month}/${parsed.getFullYear()}`;
 };
 
-// Formats last_login_at from ISO string → "20th June 2026, 08:30:54 AM"
+// Formats last_login_at from ISO string → "20/06/2026, 08:30:54 AM"
+// (DD/MM/YYYY like every other date in the app).
 export const formatLastLogin = (isoString: string | null): string => {
   if (!isoString) return '-';
   const date = new Date(isoString);
   if (isNaN(date.getTime())) return '-';
-
-  // Get ordinal suffix: 1st, 2nd, 3rd, 4th...
-  const day = date.getDate();
-  const suffix =
-    day % 10 === 1 && day !== 11 ? 'st'
-    : day % 10 === 2 && day !== 12 ? 'nd'
-    : day % 10 === 3 && day !== 13 ? 'rd'
-    : 'th';
-
-  const month = date.toLocaleString('en-IN', { month: 'long' });
-  const year  = date.getFullYear();
-  const time  = date.toLocaleString('en-IN', {
-    hour  : '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  }).toUpperCase();
-
-  return `${day}${suffix} ${month} ${year}, ${time}`;
+  const time = date.toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).toUpperCase();
+  return `${formatDate(isoString)}, ${time}`;
 };
 
 

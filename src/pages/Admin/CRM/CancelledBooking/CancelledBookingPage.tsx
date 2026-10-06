@@ -16,8 +16,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@/utils/toast';
 import {
   MdEventBusy, MdClose, MdRefresh, MdMoreVert, MdVisibility, MdDownload,
-  MdLoyalty, MdCurrencyRupee, MdAssignmentReturn, MdAccountBalanceWallet, MdPendingActions,
-  MdCheckCircle, MdCancel, MdPhone, MdEmail, MdExpandMore, MdPayments, MdHistory, MdReceiptLong,
+  MdCalendarMonth, MdCurrencyRupee, MdAssignmentReturn, MdAccountBalanceWallet, MdPendingActions,
+  MdCheckCircle, MdCancel, MdHourglassEmpty, MdPhone, MdEmail, MdExpandMore, MdPayments, MdHistory, MdReceiptLong, MdUndo,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -34,6 +34,7 @@ import {
   fetchCustomerPaymentHistory, fetchCustomerFullDetails, fetchCustomerScheme,
   fetchRefundSummary, createRefund, RefundSummary, assignCustomersToEmployee,
   fetchPendingRefunds, approveRefund, rejectRefund, PendingRefundRow, fetchCancelledReceipt,
+  revertCancellation,
 } from '../../../../services/customerDetailsService';
 import { fetchChangeRequests, approveChangeRequest, rejectChangeRequest, ChangeRequestRow } from '../../../../services/changeRequestsService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
@@ -43,11 +44,9 @@ import { CustomerPaymentRecord, PaymentReceipt } from '../../../../types';
 import { paymentForLabel } from '../../../../services/paymentService';
 import { SearchableSelect } from '../../../../components/common/SearchableSelect';
 import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
-import { serverTodayYmd } from '../../../../utils/serverTime';
 import './CancelledBooking.css';
 
 const rupee = (n: number): string => `₹ ${(n || 0).toLocaleString('en-IN')}`;
-const MODE_OPTIONS = ['Cash', 'Cheque', 'Online', 'Other'];
 const errMessage = (e: unknown, fallback: string) =>
   (e as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
 
@@ -155,12 +154,11 @@ const CancelledBookingPage: React.FC = () => {
   useEffect(() => { loadAllCancelled(); }, [loadAllCancelled]);
   const customerOptions = useMemo(() => allCancelled.map(customerLabel), [allCancelled]);
 
-  // ── Refund entry row: Customer, Building/Wing/Flat, Refund Amount, Refund
-  // Date, Mode of Payment, Submit, X ───────────────────────────────────────
+  // ── Refund entry row: Customer, Building/Wing/Flat, Refund Amount, Submit,
+  // X. No Refund Date / Mode of Payment: a refund is dated today by the
+  // server and has no mode. ────────────────────────────────────────────────
   const [custText, setCustText] = useState('');
   const [rAmount, setRAmount] = useState('');
-  const [rDate, setRDate] = useState(() => serverTodayYmd());
-  const [rMode, setRMode] = useState('');
   const [rSubmitAttempted, setRSubmitAttempted] = useState(false);
   const [savingRefund, setSavingRefund] = useState(false);
   const selectedCustomer = useMemo(() => allCancelled.find((c) => customerLabel(c) === custText) ?? null, [allCancelled, custText]);
@@ -173,11 +171,11 @@ const CancelledBookingPage: React.FC = () => {
     setCustText(v);
     const exact = allCancelled.find((c) => customerLabel(c) === v);
     setFilter('customer_id', exact ? exact.id : '');
-    if (!exact) { setRAmount(''); setRMode(''); setRSubmitAttempted(false); }
+    if (!exact) { setRAmount(''); setRSubmitAttempted(false); }
   };
-  const hasRefundInput = Boolean(custText.trim() || rAmount || rMode);
+  const hasRefundInput = Boolean(custText.trim() || rAmount);
   const clearRefundRow = () => {
-    setCustText(''); setRAmount(''); setRMode(''); setRDate(serverTodayYmd()); setRSubmitAttempted(false);
+    setCustText(''); setRAmount(''); setRSubmitAttempted(false);
     setFilter('customer_id', '');
   };
 
@@ -185,29 +183,22 @@ const CancelledBookingPage: React.FC = () => {
   const amountError = !rAmount ? 'Enter the refund amount.'
     : !(amountNum > 0) ? 'Enter a valid amount.'
     : amountNum > selectedBalance ? `Max refundable is ${rupee(selectedBalance)}.` : '';
-  const modeError = rMode ? '' : 'Select the mode of payment.';
-  const dateError = isAdmin && !rDate ? 'Select the refund date.' : '';
 
   const handleSubmitRefund = async () => {
     if (!selectedCustomer) { toast.error('Select a customer first.'); return; }
     setRSubmitAttempted(true);
-    const err = amountError || dateError || modeError;
+    const err = amountError;
     if (err) { toast.error(err); return; }
     setSavingRefund(true);
     try {
-      const updated = await createRefund(selectedCustomer.id, {
-        refunded_amount: amountNum,
-        // Only an admin picks (and may backdate) the date; an employee's
-        // refund is dated today by the server regardless.
-        refund_date: isAdmin ? rDate : undefined,
-        mode_of_payment: rMode,
-      });
+      // Dated today by the server; no mode of payment.
+      const updated = await createRefund(selectedCustomer.id, { refunded_amount: amountNum });
       // An admin's refund is approved on entry (cancelled receipt generated);
       // an employee's waits for admin approval.
       toast.success(isAdmin
         ? `Refund of ${rupee(amountNum)} recorded for ${selectedCustomer.customer_name} — cancelled receipt generated.`
         : `Refund of ${rupee(amountNum)} for ${selectedCustomer.customer_name} sent for admin approval.`);
-      setRAmount(''); setRMode(''); setRDate(serverTodayYmd()); setRSubmitAttempted(false);
+      setRAmount(''); setRSubmitAttempted(false);
       if (refundFor?.id === selectedCustomer.id) setRefundSummary(updated);
       fetchRows(); loadSummary(); loadAllCancelled(); loadPendingRefunds();
     } catch (e) {
@@ -245,6 +236,23 @@ const CancelledBookingPage: React.FC = () => {
       toast.error(errMessage(e, approve ? 'Failed to approve refund.' : 'Failed to reject refund.'));
     } finally {
       setBusyRefund(null);
+    }
+  };
+
+  // ── Cancel Revert (admin) — a cancellation made by mistake. Refused by
+  // the server once a refund is recorded or the unit is booked again. ─────
+  const handleRevert = async (c: CancelledCustomerRow) => {
+    const res = await showAlert.confirm(
+      `${c.customer_name}'s booking will be active again, with all its payments.`,
+      'Revert Cancellation?',
+    );
+    if (!res.isConfirmed) return;
+    try {
+      const out = await revertCancellation(c.id);
+      toast.success(out.message || 'Cancellation reverted.');
+      fetchRows(); loadSummary(); loadAllCancelled();
+    } catch (e) {
+      toast.error(errMessage(e, 'Failed to revert the cancellation.'));
     }
   };
 
@@ -431,6 +439,14 @@ const CancelledBookingPage: React.FC = () => {
           </div>
           <h1 style={{ fontSize: 16, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Cancelled Booking</h1>
         </div>
+        {/* All refunds given, date-wise (admin). */}
+        {isAdmin && (
+          <button type="button" onClick={() => navigate(`${paths.cancelledBooking}/refund-details`)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold"
+            style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <MdAssignmentReturn size={16} /> Refund Details
+          </button>
+        )}
       </div>
 
       {/* ── Summary boxes — admin only ─────────────────────────────────── */}
@@ -613,23 +629,6 @@ const CancelledBookingPage: React.FC = () => {
               onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitRefund(); }}
               style={refundLocked ? readOnlyStyle : { ...inputStyle, ...(rSubmitAttempted && amountError ? { borderColor: '#ef4444' } : {}) }} />
           </div>
-          <div className="cb-f-date">
-            <label style={labelStyle}>Refund Date</label>
-            {isAdmin ? (
-              <input type="date" value={rDate} max={serverTodayYmd()} disabled={refundLocked} onChange={(e) => setRDate(e.target.value)}
-                style={refundLocked ? readOnlyStyle : { ...inputStyle, ...(rSubmitAttempted && dateError ? { borderColor: '#ef4444' } : {}) }} />
-            ) : (
-              <input type="date" value={serverTodayYmd()} readOnly disabled title="Employees can only record today's date." style={readOnlyStyle} />
-            )}
-          </div>
-          <div className="cb-f-mode">
-            <label style={labelStyle}>Mode of Payment</label>
-            <select value={rMode} disabled={refundLocked} onChange={(e) => setRMode(e.target.value)}
-              style={refundLocked ? readOnlyStyle : { ...inputStyle, ...(rSubmitAttempted && modeError ? { borderColor: '#ef4444' } : {}) }}>
-              <option value="">--Select--</option>
-              {MODE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
           <div className="cb-filter-actions flex items-center gap-2">
             <button type="button" onClick={handleSubmitRefund} disabled={refundLocked || savingRefund || selectedBalance <= 0}
               title={selectedCustomer && selectedBalance <= 0 ? 'Fully refunded' : undefined}
@@ -717,7 +716,7 @@ const CancelledBookingPage: React.FC = () => {
                     <div className="flex items-center gap-1.5">
                       <button type="button" title="Actions"
                         ref={rowMenu.openId === c.id ? rowMenu.buttonRef : undefined}
-                        onClick={rowMenu.toggle(c.id, c.cancelled_receipts.length ? 5 : 3)}
+                        onClick={rowMenu.toggle(c.id, (c.cancelled_receipts.length ? 5 : 3) + (isAdmin ? 1 : 0))}
                         style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textSecondary, padding: 4 }}>
                         <MdMoreVert size={18} />
                       </button>
@@ -731,13 +730,17 @@ const CancelledBookingPage: React.FC = () => {
                             { key: 'cr-view', label: 'View Cancelled Receipt', icon: <MdReceiptLong size={14} color="#0369a1" />, onClick: () => { rowMenu.close(); viewCancelledReceipt(c.cancelled_receipts[c.cancelled_receipts.length - 1].refund_id); } },
                             { key: 'cr-download', label: 'Download Cancelled Receipt', icon: <MdDownload size={14} color="#0369a1" />, onClick: () => { rowMenu.close(); downloadCancelledReceipt(c.cancelled_receipts[c.cancelled_receipts.length - 1].refund_id); } },
                           ] : []),
+                          // Admin: undo a cancellation made by mistake.
+                          ...(isAdmin ? [
+                            { key: 'revert', label: 'Cancel Revert', icon: <MdUndo size={14} color="#b45309" />, onClick: () => { rowMenu.close(); handleRevert(c); } },
+                          ] : []),
                         ]} />
                       )}
                       <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => navigate(`${paths.cancelledBooking}/scheme/${c.id}`)}>
-                        <MdLoyalty size={15} />
+                        <MdCalendarMonth size={15} />
                       </button>
                       <button type="button" title="Show Payment Refund History" className="master-icon-btn" onClick={() => openRefunds(c)}>
-                        <MdCurrencyRupee size={15} />
+                        <MdHistory size={15} />
                       </button>
                     </div>
                   </td>
@@ -897,7 +900,16 @@ const CancelledBookingPage: React.FC = () => {
                                     <span style={{ fontWeight: 700, color: 'var(--brand-ink)' }}>{r.receipt_number}</span>
                                     {receiptIcons(r.id)}
                                   </span>
-                                ) : <span style={{ color: t.textSecondary }}>{r.status === 'pending' ? 'After approval' : '—'}</span>}
+                                ) : (
+                                  // No cancelled receipt until an admin approves the refund.
+                                  <span className="inline-flex items-center gap-1.5" title="Available after admin approval">
+                                    <span style={{ color: t.textSecondary }}>{r.status === 'pending' ? 'After approval' : '—'}</span>
+                                    <span className="inline-flex items-center gap-1" style={{ opacity: 0.4 }}>
+                                      <button type="button" className="master-icon-btn" disabled aria-label="View Cancelled Receipt (after approval)" style={{ cursor: 'not-allowed' }}><MdVisibility size={14} /></button>
+                                      <button type="button" className="master-icon-btn" disabled aria-label="Download Cancelled Receipt (after approval)" style={{ cursor: 'not-allowed' }}><MdDownload size={14} /></button>
+                                    </span>
+                                  </span>
+                                )}
                               </td>
                               <td style={{ ...td, fontWeight: 700 }}>{r.created_by_name || '—'}</td>
                               <td style={{ ...td, fontWeight: 700, color: r.status === 'rejected' ? t.textSecondary : '#16a34a', textDecoration: r.status === 'rejected' ? 'line-through' : 'none' }}>{rupee(r.refunded_amount)}</td>
@@ -905,12 +917,13 @@ const CancelledBookingPage: React.FC = () => {
                               <td style={td}>{r.mode_of_payment || '—'}</td>
                               <td style={td}>
                                 <div className="flex items-center gap-1.5">
-                                  <span style={{
-                                    padding: '1px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 700,
-                                    color: r.status === 'approved' ? '#15803d' : r.status === 'pending' ? '#b45309' : '#b91c1c',
-                                    background: r.status === 'approved' ? 'rgba(22,163,74,0.12)' : r.status === 'pending' ? 'rgba(217,119,6,0.14)' : 'rgba(220,38,38,0.12)',
-                                  }}>
-                                    {r.status === 'approved' ? 'Approved' : r.status === 'pending' ? 'Refund Payment Pending for Approval' : 'Rejected'}
+                                  {/* Same Approved / UnApproved pill as the payment history. */}
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{
+                                    fontSize: 10.5, whiteSpace: 'nowrap', color: '#fff',
+                                    background: r.status === 'approved' ? '#16a34a' : r.status === 'pending' ? '#d97706' : '#b91c1c',
+                                  }} title={r.status === 'pending' ? 'Refund payment pending for admin approval' : undefined}>
+                                    {r.status === 'approved' ? <MdCheckCircle size={12} /> : r.status === 'pending' ? <MdHourglassEmpty size={12} /> : <MdCancel size={12} />}
+                                    {r.status === 'approved' ? 'Approved' : r.status === 'pending' ? 'UnApproved' : 'Rejected'}
                                   </span>
                                   {isAdmin && r.status === 'pending' && (
                                     <>

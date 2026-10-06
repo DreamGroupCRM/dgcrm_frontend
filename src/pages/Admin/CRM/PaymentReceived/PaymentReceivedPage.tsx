@@ -20,19 +20,17 @@
 // Approvals' (checkbox + Actions first) with View Receipt/Download
 // Receipt/Delete instead of View/Approve/Delete.
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from '@/utils/toast';
 import {
   MdPayments, MdRefresh, MdSearch, MdDownload, MdClose, MdKeyboardArrowDown,
   MdFilterAlt, MdVisibility, MdDelete,
-  MdCheckCircle, MdUpcoming, MdMoreVert, MdHourglassEmpty,
+  MdCheckCircle, MdMoreVert, MdHourglassEmpty, MdEventBusy,
   MdHomeWork, MdPendingActions,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
-import { ROUTES } from '../../../../constants';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
@@ -55,6 +53,7 @@ import './PaymentReceived.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { serverToday, toYmd } from '../../../../utils/serverTime';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
+import DateInput from '../../../../components/common/DateInput';
 
 type Theme = AppTheme;
 
@@ -202,7 +201,6 @@ const TotalsBar: React.FC<{ items: { key: string; label: string; value: string; 
 
 const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const { isDark, t, cssVars } = useAppearanceTokens();
   const paths = useRoleBasePath();
   const [approvalView, setApprovalView] = useState<ApprovalView>('all');
@@ -718,11 +716,11 @@ const PaymentReceivedPage: React.FC = () => {
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
             <label style={labelStyle}>Received Date From</label>
-            <input type="date" value={draftFromDate} onChange={(e) => { setDraftFromDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
+            <DateInput t={t} value={draftFromDate} onChange={(v) => { setDraftFromDate(v); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>Received Date To</label>
-            <input type="date" value={draftToDate} onChange={(e) => { setDraftToDate(e.target.value); setDraftDateRange(''); }} style={inputStyle} />
+            <DateInput t={t} value={draftToDate} onChange={(v) => { setDraftToDate(v); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           <div className="pr-filter-actions flex items-center gap-2 flex-wrap" style={{ gridColumn: 'span 2 / span 2' }}>
             <button type="button" onClick={handleFilter}
@@ -784,13 +782,6 @@ const PaymentReceivedPage: React.FC = () => {
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
                 style={{ background: '#16a34a', border: 'none', color: '#fff', cursor: bulkApproving ? 'not-allowed' : 'pointer', opacity: bulkApproving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 <MdCheckCircle size={16} /> {bulkApproving ? 'Approving…' : `Approve Selected (${selectedPendingIds.length})`}
-              </button>
-            )}
-            {paths.isAdmin && (
-              <button type="button" onClick={() => navigate(ROUTES.ADMIN.PAYMENT_UPCOMING)}
-                className="pr-upcoming-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
-                style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                <MdUpcoming size={16} /> <span className="pr-export-btn-text">Payment Upcoming</span>
               </button>
             )}
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
@@ -881,7 +872,17 @@ const PaymentReceivedPage: React.FC = () => {
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number || '—'}</td>
                     <td style={{ padding: '10px 12px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                      <div style={{ fontWeight: 600 }}>{r.customer_name || '—'}</div>
+                      <div className="flex items-center gap-1.5" style={{ fontWeight: 600 }}>
+                        {r.customer_name || '—'}
+                        {/* Cancelled customer — not counted in the header totals. */}
+                        {r.customer_cancelled && (
+                          <span title="Booking cancelled — not counted in the totals above" aria-label="Booking cancelled"
+                            className="inline-flex items-center gap-0.5"
+                            style={{ fontSize: 9.5, fontWeight: 800, color: '#fff', background: '#b91c1c', borderRadius: 999, padding: '1px 6px' }}>
+                            <MdEventBusy size={11} /> Cancelled
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{r.customer_code || '—'}</div>
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>

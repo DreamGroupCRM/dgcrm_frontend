@@ -29,7 +29,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from '@/utils/toast';
-import { MdArrowBack, MdCheckCircle, MdKeyboardArrowDown } from 'react-icons/md';
+import { MdArrowBack, MdCheckCircle, MdKeyboardArrowDown, MdOpenInNew } from 'react-icons/md';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { FetchBuildingList, ViewBuilding } from '../../../services/buildingService';
 import { Building, BuildingFlat, BuildingShop, BuildingWing } from '../../../types/index';
@@ -37,6 +37,11 @@ import { ROUTES } from '../../../constants';
 import { UnitVM, UnitStatus } from './types';
 import './Building2D.css';
 import { useRoleBasePath } from '../../../hooks/useRoleBasePath';
+import FloorPlanView from './FloorPlanView';
+import BuildingElevation from './BuildingElevation';
+import PanZoom from './PanZoom';
+import FlatTooltip, { HoverState, PlanFlat, toPlanFlat, toPlanShop } from './FlatTooltip';
+import { shortFloorLabel } from './floorLabels';
 
 // Exported — Building2DViewModal (the popup opened from Building Master's
 // row icon) reuses these instead of duplicating the status/color logic.
@@ -201,6 +206,12 @@ const Building2DViewPage: React.FC = () => {
   const [loadingDetail, setLoadingDetail] = useState(false);
 
   const [selectedUnit, setSelectedUnit] = useState<UnitVM | null>(null);
+  // Interactive floor plan (default) or the existing whole-building picture.
+  const [viewMode, setViewMode] = useState<'plan' | 'overview'>('plan');
+  const [selectedWingId, setSelectedWingId] = useState<string>('');
+  const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
+  // Customer id behind a selected booked flat, for "View Details".
+  const [selectedBookedById, setSelectedBookedById] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -225,6 +236,7 @@ const Building2DViewPage: React.FC = () => {
     let cancelled = false;
     setLoadingDetail(true);
     setSelectedUnit(null);
+    setSelectedBookedById(null);
     (async () => {
       try {
         const res = await ViewBuilding(selectedBuildingId);
@@ -238,12 +250,91 @@ const Building2DViewPage: React.FC = () => {
   const wings = buildingDetail?.wings ?? [];
   const shops = buildingDetail?.shops ?? [];
 
+  // ── Floor plan: wing + floor come from the loaded building only ────────
+  const selectedWing = wings.find((w) => w.id === selectedWingId) ?? null;
+  // A newly loaded building starts on its first wing.
+  useEffect(() => {
+    setSelectedWingId(wings[0]?.id ?? '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildingDetail]);
+  // A wing starts on its lowest floor that has flats (else its lowest floor).
+  // (A floor already chosen in this wing — e.g. by clicking a window on the
+  // elevation — is kept.)
+  useEffect(() => {
+    if (!selectedWing) { setSelectedFloorId(null); return; }
+    setSelectedFloorId((cur) => {
+      if (cur && selectedWing.floors.some((f) => f.id === cur)) return cur;
+      const asc = [...selectedWing.floors].sort((a, b) => a.sort_order - b.sort_order);
+      return (asc.find((f) => f.flats.length > 0) ?? asc[0])?.id ?? null;
+    });
+  }, [selectedWing]);
+  const selectedFloor = selectedWing?.floors.find((f) => f.id === selectedFloorId) ?? null;
+  const wingFloorsTopFirst = useMemo(() => [...(selectedWing?.floors ?? [])].sort((a, b) => b.sort_order - a.sort_order), [selectedWing]);
+  const [hover, setHover] = useState<HoverState | null>(null);
+  // The "Shops" level (Building -> Shop list) instead of a wing floor.
+  const [shopsSelected, setShopsSelected] = useState(false);
+  // A building with shops but no wings opens straight on its shops.
+  useEffect(() => { setShopsSelected(wings.length === 0 && shops.length > 0); }, [buildingDetail]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shopUnits = useMemo(() => shops.map(toPlanShop), [shops]);
+  const chooseShops = () => { setShopsSelected(true); setSelectedUnit(null); setSelectedBookedById(null); };
+  const onHoverFlat = (flat: PlanFlat | null, e?: React.MouseEvent) =>
+    setHover(flat && e ? { flat, clientX: e.clientX, clientY: e.clientY } : null);
+  const chooseFloor = (wingId: string, floorId: string) => {
+    setShopsSelected(false); setSelectedWingId(wingId); setSelectedFloorId(floorId); setSelectedUnit(null); setSelectedBookedById(null);
+  };
+
+  // Counts for the selected wing's flats (same status rule as the picture).
+  const wingCounts = useMemo(() => {
+    const c = { total: 0, available: 0, booked: 0, blocked: 0 };
+    if (shopsSelected) { for (const sh of shopUnits) { c.total++; c[sh.status]++; } return c; }
+    for (const f of selectedWing?.floors ?? []) for (const fl of f.flats) { c.total++; c[flatStatus(fl)]++; }
+    return c;
+  }, [selectedWing, shopsSelected, shopUnits]);
+
+  // Selecting a flat (on the elevation or the plan) also moves the wing and
+  // floor to it, so the floor plan always shows the selected flat.
+  const handlePlanSelect = (f: PlanFlat) => {
+    if (f.kind === 'shop') setShopsSelected(true);
+    else { setShopsSelected(false); setSelectedWingId(f.wingId); setSelectedFloorId(f.floorId); }
+    setSelectedUnit({
+      kind: f.kind, id: f.id, no: f.no, typeLabel: f.type || '—', areaSqft: f.areaSqft,
+      status: f.status, bookedByName: f.bookedByName, wingName: f.kind === 'shop' ? null : f.wingName, floorLabel: f.floorLabel,
+    });
+    setSelectedBookedById(f.bookedById);
+  };
+
+  // "Select Flat": inside Customer Create's picker flow it confirms the
+  // selection (existing hand-off); otherwise an admin can start a new
+  // customer booking with this flat prefilled — the same selectedUnit
+  // hand-off Customer Create already reads.
+  const canStartBooking = paths.isAdmin && !pickerMode;
+  const handleSelectFlatAction = () => {
+    if (!selectedUnit || selectedUnit.status !== 'available' || !buildingDetail) return;
+    if (pickerMode) { handleConfirmSelect(); return; }
+    if (!canStartBooking) return;
+    const payload: SelectedUnitForCustomer = {
+      unitType: selectedUnit.kind,
+      companyName: buildingDetail.business_company_name || '',
+      projectName: buildingDetail.project_name || '',
+      buildingName: buildingDetail.building_name || '',
+      wingName: selectedUnit.wingName || '',
+      floorLabel: selectedUnit.floorLabel || '',
+      no: selectedUnit.no,
+    };
+    navigate(`${paths.customerDetails}/add`, { state: { selectedUnit: payload } });
+  };
+  // "View Details": a booked flat opens its customer's existing record.
+  const handleViewDetails = () => {
+    if (selectedBookedById) navigate(`${paths.customerDetails}/view/${selectedBookedById}`);
+  };
+
   // Heading name comes from the buildings list (available the instant a
   // building is picked) rather than buildingDetail (which only resolves
   // once its own fetch finishes) — same as Building2DViewModal's header.
   const selectedBuildingName = buildings.find((b) => b.id === selectedBuildingId)?.building_name || '';
 
   const handleSelectFlat = (w: BuildingWing, unit: { id: string; no: string; status: UnitStatus; floorLabel: string; areaSqft: number | null; bookedByName: string | null }) => {
+    setSelectedBookedById(null);
     setSelectedUnit({
       kind: 'flat', id: unit.id, no: unit.no, typeLabel: '—', areaSqft: unit.areaSqft,
       status: unit.status, bookedByName: unit.bookedByName, wingName: w.name, floorLabel: unit.floorLabel,
@@ -251,6 +342,7 @@ const Building2DViewPage: React.FC = () => {
   };
 
   const handleSelectShop = (s: BuildingShop) => {
+    setSelectedBookedById(null);
     setSelectedUnit({
       kind: 'shop', id: s.id, no: s.shop_no, typeLabel: 'Shop', areaSqft: s.area_sqft,
       status: shopStatus(s), bookedByName: s.booked_by_customer_name ?? null, wingName: null, floorLabel: null,
@@ -328,9 +420,195 @@ const Building2DViewPage: React.FC = () => {
         </div>
       </div>
 
+      {/* ── View switch + wing tabs + the selected wing's counts ─────────── */}
+      {buildingDetail && (wings.length > 0 || shops.length > 0) && (
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+          <div className="flex items-center flex-wrap gap-2">
+            <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.surfaceBorder}` }} role="tablist" aria-label="View">
+              {([['plan', 'Floor Plan'], ['overview', 'Building Overview']] as const).map(([k, label]) => (
+                <button key={k} type="button" role="tab" aria-selected={viewMode === k} onClick={() => setViewMode(k)}
+                  style={{ padding: '7px 14px', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer',
+                    background: viewMode === k ? '#2563eb' : t.surfaceBg, color: viewMode === k ? '#fff' : t.textPrimary }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {viewMode === 'plan' && (wings.length > 1 || (wings.length > 0 && shops.length > 0)) && (
+              <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Wings">
+                {wings.map((w) => {
+                  const on = !shopsSelected && w.id === selectedWingId;
+                  return (
+                    <button key={w.id} type="button" role="tab" aria-selected={on}
+                      onClick={() => { setShopsSelected(false); setSelectedWingId(w.id); setSelectedUnit(null); setSelectedBookedById(null); }}
+                      style={{ padding: '6px 12px', fontSize: 12.5, fontWeight: 700, borderRadius: 999, cursor: 'pointer',
+                        border: `1px solid ${on ? '#2563eb' : t.surfaceBorder}`,
+                        background: on ? 'rgba(37,99,235,0.12)' : t.surfaceBg,
+                        color: on ? '#2563eb' : t.textPrimary }}>
+                      {w.name}
+                    </button>
+                  );
+                })}
+                {shops.length > 0 && (
+                  <button type="button" role="tab" aria-selected={shopsSelected} onClick={chooseShops}
+                    style={{ padding: '6px 12px', fontSize: 12.5, fontWeight: 700, borderRadius: 999, cursor: 'pointer',
+                      border: `1px solid ${shopsSelected ? '#2563eb' : t.surfaceBorder}`,
+                      background: shopsSelected ? 'rgba(37,99,235,0.12)' : t.surfaceBg,
+                      color: shopsSelected ? '#2563eb' : t.textPrimary }}>
+                    Shops
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          {viewMode === 'plan' && (selectedWing || shopsSelected) && (
+            <div className="flex flex-wrap gap-2">
+              {([[shopsSelected ? 'Total Shops' : 'Total Units', wingCounts.total, t.textPrimary], [STATUS_TEXT.available, wingCounts.available, STATUS_COLOR.available],
+                 [STATUS_TEXT.booked, wingCounts.booked, STATUS_COLOR.booked], [STATUS_TEXT.blocked, wingCounts.blocked, STATUS_COLOR.blocked]] as const).map(([label, n, c]) => (
+                <div key={label} className="flex items-center gap-2 rounded-xl" style={{ padding: '6px 12px', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+                  {!label.startsWith('Total') && <span style={{ width: 10, height: 10, borderRadius: 999, background: c }} />}
+                  <span style={{ fontSize: 11.5, color: t.textSecondary, fontWeight: 600 }}>{label}</span>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: t.textPrimary }}>{n}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Interactive floor plan + Unit Details ──────────────────────── */}
+      {viewMode === 'plan' && buildingDetail && (wings.length > 0 || shops.length > 0) && (
+        <div className="bv-layout">
+          {/* ── Building elevation + floor list ─────────────────────────── */}
+          <div className="bv-card bv-building-card" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
+            <div className="bv-floor-list" role="tablist" aria-label={`Floors of ${selectedWing?.name ?? ''}`}>
+              {wingFloorsTopFirst.map((f) => {
+                const active = !shopsSelected && f.id === selectedFloorId;
+                return (
+                  <button key={f.id} type="button" role="tab" aria-selected={active} title={f.label}
+                    onClick={() => selectedWing && chooseFloor(selectedWing.id, f.id)}
+                    className={`bv-floor-btn${active ? ' bv-floor-btn-active' : ''}`}
+                    style={active ? undefined : { background: t.surfaceBg, color: t.textPrimary, borderColor: t.surfaceBorder }}>
+                    {shortFloorLabel(f.label)}
+                  </button>
+                );
+              })}
+              {shops.length > 0 && (
+                <button type="button" role="tab" aria-selected={shopsSelected} title="Shops (Ground Floor)" onClick={chooseShops}
+                  className={`bv-floor-btn bv-floor-btn-shops${shopsSelected ? ' bv-floor-btn-active' : ''}`}
+                  style={shopsSelected ? undefined : { background: t.surfaceBg, color: t.textPrimary, borderColor: t.surfaceBorder }}>
+                  Shops
+                </button>
+              )}
+            </div>
+            <PanZoom t={t} resetKey={`${buildingDetail.id}`} className="bv-sky" maxFit={1.6}>
+              <BuildingElevation wings={wings} shops={shops} shopsSelected={shopsSelected} onSelectShops={chooseShops} selectedWingId={selectedWingId} selectedFloorId={selectedFloorId}
+                selectedFlatId={selectedUnit?.kind === 'flat' ? selectedUnit.id : null}
+                selectedShopId={selectedUnit?.kind === 'shop' ? selectedUnit.id : null}
+                onSelectFlat={handlePlanSelect} onSelectFloor={chooseFloor} onHover={onHoverFlat} />
+            </PanZoom>
+            <div className="bv-legend">
+              {(['available', 'booked', 'blocked'] as UnitStatus[]).map((st) => (
+                <span key={st}><i style={{ background: STATUS_COLOR[st] }} />{STATUS_TEXT[st]}</span>
+              ))}
+              <span><i style={{ background: 'transparent', border: '2px solid #2563eb' }} />Selected</span>
+            </div>
+          </div>
+
+          <div className="bv-side">
+            {/* ── Floor plan of the selected floor ─────────────────────── */}
+            <div className="bv-card" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder, color: t.textPrimary }}>
+              <div className="bv-card-title">
+                {shopsSelected ? 'Shops — Ground Floor' : selectedFloor ? `${selectedFloor.label} — ${selectedWing?.name ?? ''}` : 'Floor Plan'}
+              </div>
+              <div className="bv-plan-box">
+                {shopsSelected ? (
+                  <PanZoom t={t} resetKey={`${buildingDetail.id}:shops`} maxFit={1.2} fitPadding={12}>
+                    <FloorPlanView key="shops" t={t} variant="shops" units={shopUnits} ariaLabel="Shops plan"
+                      emptyText="No shops are configured for this building in Building Master."
+                      selectedFlatId={selectedUnit?.kind === 'shop' ? selectedUnit.id : null}
+                      onSelectFlat={handlePlanSelect} onHover={onHoverFlat} />
+                  </PanZoom>
+                ) : !selectedWing ? (
+                  <div className="bv-empty" style={{ color: t.textSecondary }}>
+                    {wings.length === 0 ? 'This building has no wings in Building Master — select Shops to see its shops.' : 'Select a wing.'}
+                  </div>
+                ) : selectedWing.floors.length === 0 ? (
+                  <div className="bv-empty" style={{ color: t.textSecondary }}>{selectedWing.name} has no floors configured in Building Master yet.</div>
+                ) : !selectedFloor ? (
+                  <div className="bv-empty" style={{ color: t.textSecondary }}>Select a floor.</div>
+                ) : selectedFloor.flats.length === 0 ? (
+                  <div className="bv-empty" style={{ color: t.textSecondary }}>No flats are configured on {selectedFloor.label} of {selectedWing.name} in Building Master.</div>
+                ) : (
+                  <PanZoom t={t} resetKey={`${selectedWing.id}:${selectedFloor.id}`} maxFit={1.2} fitPadding={12}>
+                    <FloorPlanView key={selectedFloor.id} t={t} variant="floor" ariaLabel={`${selectedFloor.label} plan`} emptyText=""
+                      units={selectedFloor.flats.map((f) => toPlanFlat(f, selectedFloor, selectedWing))}
+                      selectedFlatId={selectedUnit?.kind === 'flat' ? selectedUnit.id : null}
+                      onSelectFlat={handlePlanSelect} onHover={onHoverFlat} />
+                  </PanZoom>
+                )}
+              </div>
+            </div>
+
+          <div className="bv-card fp-details" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder, color: t.textPrimary }}>
+            <div style={{ fontSize: 14.5, fontWeight: 800, marginBottom: 8 }}>Unit Details</div>
+            {!selectedUnit ? (
+              <div style={{ fontSize: 12.5, color: t.textSecondary, padding: '12px 0' }}>
+                Click a {shopsSelected ? 'shop' : 'flat'} on the building or the plan to see its details.
+              </div>
+            ) : (
+              <>
+                {([
+                  [selectedUnit.kind === 'shop' ? 'Shop Number' : 'Flat Number', selectedUnit.no],
+                  ['Building', buildingDetail.building_name],
+                  ['Wing', selectedUnit.kind === 'shop' ? '— (Shops)' : selectedUnit.wingName || '—'],
+                  ['Floor', selectedUnit.floorLabel || '—'],
+                  ['Unit Type', selectedUnit.typeLabel || '—'],
+                  ['Area', selectedUnit.areaSqft != null ? `${selectedUnit.areaSqft.toLocaleString('en-IN')} sq.ft` : '—'],
+                  ['Price', '—'],
+                ] as const).map(([k, v]) => (
+                  <div key={k} className="fp-details-row"><span>{k}</span><span>{v}</span></div>
+                ))}
+                <div className="fp-details-row">
+                  <span>Status</span>
+                  <span className="flex items-center gap-1.5" style={{ color: STATUS_COLOR[selectedUnit.status] === STATUS_COLOR.booked ? '#a16207' : STATUS_COLOR[selectedUnit.status] }}>
+                    <span style={{ width: 9, height: 9, borderRadius: 999, background: STATUS_COLOR[selectedUnit.status] }} />
+                    {STATUS_TEXT[selectedUnit.status]}
+                  </span>
+                </div>
+                {selectedUnit.status === 'booked' && selectedUnit.bookedByName && (
+                  <div className="fp-details-row"><span>Booked By</span><span>{selectedUnit.bookedByName}</span></div>
+                )}
+                <div className="flex gap-2 mt-3">
+                  <button type="button" onClick={handleSelectFlatAction}
+                    disabled={selectedUnit.status !== 'available' || (!pickerMode && !canStartBooking)}
+                    title={selectedUnit.status !== 'available' ? `This ${selectedUnit.kind} is ${STATUS_TEXT[selectedUnit.status]}` : pickerMode ? `Use this ${selectedUnit.kind} for the customer` : `Start a customer booking with this ${selectedUnit.kind}`}
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl"
+                    style={{ height: 38, fontSize: 13, fontWeight: 700, border: 'none', color: '#fff',
+                      background: selectedUnit.status === 'available' && (pickerMode || canStartBooking) ? '#2563eb' : '#94a3b8',
+                      cursor: selectedUnit.status === 'available' && (pickerMode || canStartBooking) ? 'pointer' : 'not-allowed' }}>
+                    <MdCheckCircle size={15} /> {selectedUnit.kind === 'shop' ? 'Select Shop' : 'Select Flat'}
+                  </button>
+                  <button type="button" onClick={handleViewDetails} disabled={!selectedBookedById}
+                    title={selectedBookedById ? 'Open the booking customer' : `Only a booked ${selectedUnit.kind} has customer details`}
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl"
+                    style={{ height: 38, fontSize: 13, fontWeight: 700, background: t.surfaceBg,
+                      border: `1px solid ${selectedBookedById ? '#2563eb' : t.surfaceBorder}`, color: selectedBookedById ? '#2563eb' : t.textSecondary,
+                      cursor: selectedBookedById ? 'pointer' : 'not-allowed' }}>
+                    <MdOpenInNew size={14} /> View Details
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          </div>
+        </div>
+      )}
+      <FlatTooltip t={t} hover={viewMode === 'plan' ? hover : null} />
+
       {/* Fixed width/height picture frame — identical size on every device
           and every building; a building too big to fit scrolls inside this
           box (both axes) instead of growing it or the page around it. */}
+      {(viewMode === 'overview' || !buildingDetail || (wings.length === 0 && shops.length === 0)) && (
       <div className="building-2d-box rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         {!buildingDetail ? (
           <div className="building-2d-canvas" style={{ color: t.textSecondary, fontSize: 13 }}>
@@ -391,11 +669,12 @@ const Building2DViewPage: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Slim confirm bar — only appears mid-picker-flow with an available
           unit selected, so Customer Create's "Select Flat" hand-off still
           works without a permanent side panel taking up the page. */}
-      {pickerMode && selectedUnit && selectedUnit.status === 'available' && (
+      {viewMode === 'overview' && pickerMode && selectedUnit && selectedUnit.status === 'available' && (
         <div
           className="flex items-center justify-center gap-3"
           style={{

@@ -30,6 +30,7 @@ import { formatDate, formatLastLogin } from '../../../../utils';
 import './AttendancePage.css';
 import { StatusChip } from '../../../../components/common/MasterListUI';
 import { serverTodayYmd } from '../../../../utils/serverTime';
+import DateInput from '../../../../components/common/DateInput';
 
 type Tab = 'attendance' | 'leave';
 
@@ -309,7 +310,7 @@ const AttendancePage: React.FC = () => {
                     </select>
                   </FormField>
                   <FormField label="Date *" t={t}>
-                    <input required type="date" value={attForm.attendance_date} max={serverTodayYmd()} onChange={(e) => setAttForm((f) => ({ ...f, attendance_date: e.target.value }))} style={getFormInputStyle(t)} />
+                    <DateInput t={t} required value={attForm.attendance_date} max={serverTodayYmd()} onChange={(v) => setAttForm((f) => ({ ...f, attendance_date: v }))} style={getFormInputStyle(t)} />
                   </FormField>
                   <FormField label="Status *" t={t}>
                     <select value={attForm.status} onChange={(e) => setAttForm((f) => ({ ...f, status: e.target.value as AttendanceStatus }))} style={getFormInputStyle(t)}>

@@ -200,6 +200,8 @@ export interface DueListDetailRow {
   // Per-installment EMI amount (amount = per_month_amount * months_pending);
   // null alongside months_pending for one-time dues.
   per_month_amount: number | null;
+  // Unused part of the customer's Extra Payment(s) (same on every row of that customer).
+  extra_payment_balance?: number;
 }
 /** GET /api/payments/due-list-detailed */
 export const fetchDueListDetailed = async (): Promise<{ success: boolean; rows: DueListDetailRow[]; total: number }> => {
@@ -241,20 +243,22 @@ export const fetchCustomerRemaining = async (customerId: string | number): Promi
 // ── One transaction's receipt data (transactionId is the same id as
 // CustomerPaymentRecord.id from the existing payment-history list) ──────
 /** GET /api/payments/:id/receipt */
+// The receipt payload (GET /payments/:id/receipt, and the customer
+// portal's own receipt endpoint, which returns the same shape) -> the
+// PaymentReceipt the receipt sheet renders.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const mapPaymentReceiptData = (d: any): PaymentReceiptResponse['data'] => ({
+  transaction: mapReceiptTransaction(d.transaction as BackendAmountTransaction),
+  customer: mapReceiptCustomer(d.customer as BackendReceiptCustomer),
+  paid_emis: d.paid_emis,
+  future_emis: d.future_emis,
+  total_emis: d.total_emis,
+  emi_number: d.emi_number,
+});
+
 export const fetchPaymentReceipt = async (transactionId: string | number): Promise<PaymentReceiptResponse> => {
   const res = await axiosInstance.get(`/payments/${transactionId}/receipt`);
-  const d = res.data.data;
-  return {
-    success: res.data.success,
-    data: {
-      transaction: mapReceiptTransaction(d.transaction as BackendAmountTransaction),
-      customer: mapReceiptCustomer(d.customer as BackendReceiptCustomer),
-      paid_emis: d.paid_emis,
-      future_emis: d.future_emis,
-      total_emis: d.total_emis,
-      emi_number: d.emi_number,
-    },
-  };
+  return { success: res.data.success, data: mapPaymentReceiptData(res.data.data) };
 };
 
 // ── Monthly receipt — every approved payment one customer made in a given
@@ -337,6 +341,7 @@ export interface PaymentListRow {
   // After" split DueReportPage's own boxes use. Only meaningful when
   // payment_type === 'EMIAmount'.
   is_after_possession_emi: boolean;
+  customer_cancelled?: boolean; // the customer's booking has been cancelled
 }
 export interface PaymentListFilters {
   approval?: 'approved' | 'pending';

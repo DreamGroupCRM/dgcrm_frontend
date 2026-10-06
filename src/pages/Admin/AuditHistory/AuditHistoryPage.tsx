@@ -23,6 +23,7 @@ import { RowActionMenu, useRowActionMenu } from '../../../components/common/RowA
 import { fetchAuditLogList, fetchAuditEntityTypes, AuditLogEntry } from '../../../services/auditService';
 import { formatLastLogin } from '../../../utils';
 import './AuditHistoryPage.css';
+import DateInput from '../../../components/common/DateInput';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 const FILTER_LABEL_STYLE: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 };
@@ -207,12 +208,12 @@ const AuditHistoryPage: React.FC = () => {
           </div>
           <div>
             <label style={{ ...FILTER_LABEL_STYLE, color: t.textSecondary }}>From Date</label>
-            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={dateFieldStyle(t)} />
+            <DateInput t={t} value={fromDate} onChange={(v) => setFromDate(v)} style={dateFieldStyle(t)} />
           </div>
           <div className="flex items-end gap-2">
             <div className="flex-1">
               <label style={{ ...FILTER_LABEL_STYLE, color: t.textSecondary }}>To Date</label>
-              <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={dateFieldStyle(t)} />
+              <DateInput t={t} value={toDate} onChange={(v) => setToDate(v)} style={dateFieldStyle(t)} />
             </div>
             <button type="button" onClick={clearFilters}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap"

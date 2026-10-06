@@ -19,6 +19,7 @@ import { formatDate } from '../../../utils';
 import './LeavePage.css';
 import { StatusChip } from '../../../components/common/MasterListUI';
 import { serverTodayYmd } from '../../../utils/serverTime';
+import DateInput from '../../../components/common/DateInput';
 
 const STATUS_LABEL: Record<LeaveStatus, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
 // Colors from styles/statusColors.ts — identical in light and dark theme.
@@ -90,8 +91,8 @@ const LeavePage: React.FC = () => {
         <div style={headerStyle}><span style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary }}>Request Leave</span></div>
         <form onSubmit={handleSubmit} className="p-4" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormField label="From *" t={t}><input required type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={getFormInputStyle(t)} /></FormField>
-            <FormField label="To *" t={t}><input required type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="From *" t={t}><DateInput t={t} required value={fromDate} onChange={(v) => setFromDate(v)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="To *" t={t}><DateInput t={t} required value={toDate} onChange={(v) => setToDate(v)} style={getFormInputStyle(t)} /></FormField>
           </div>
           <FormField label="Leave Type *" t={t}>
             <select value={leaveType} onChange={(e) => setLeaveType(e.target.value as LeaveType)} style={getFormInputStyle(t)}>

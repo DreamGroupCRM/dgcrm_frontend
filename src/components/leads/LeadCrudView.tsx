@@ -22,6 +22,7 @@ import { FetchEmployeeDetails } from '../../services/employeeDetailsService';
 import { Lead, LeadActivity, LeadStatus, LEAD_STATUSES, LEAD_STATUS_LABELS, CreateLeadPayload } from '../../types/index';
 import { formatDate } from '../../utils';
 import LeadStatusBadge from './LeadStatusBadge';
+import DateInput from '../common/DateInput';
 
 export type LeadCrudMode = 'add' | 'edit' | 'view';
 
@@ -339,7 +340,7 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
             <FormField label="Purpose of Buying" t={t}><input disabled={isView} value={form.purpose_buying ?? ''} onChange={(e) => set('purpose_buying', e.target.value)} style={getFormInputStyle(t)} placeholder="Self-use / Investment" /></FormField>
             <FormField label="How Did You Know" t={t}><input disabled={isView} value={form.how_did_you_know ?? ''} onChange={(e) => set('how_did_you_know', e.target.value)} style={getFormInputStyle(t)} /></FormField>
             <FormField label="Preferred Call Time" t={t}><input disabled={isView} value={form.preferred_call_time ?? ''} onChange={(e) => set('preferred_call_time', e.target.value)} style={getFormInputStyle(t)} /></FormField>
-            <FormField label="Next Call / Site Visit Date" t={t}><input type="date" disabled={isView} value={toDateOnly(form.next_call_scheduled_at)} onChange={(e) => set('next_call_scheduled_at', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="Next Call / Site Visit Date" t={t}><DateInput t={t} disabled={isView} value={toDateOnly(form.next_call_scheduled_at)} onChange={(v) => set('next_call_scheduled_at', v)} style={getFormInputStyle(t)} /></FormField>
           </div>
         </div>
 
@@ -348,7 +349,7 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
           <div style={gridStyle}>
             <FormField label="CP Firm Name" t={t}><input disabled={isView} value={form.cp_firm_name ?? ''} onChange={(e) => set('cp_firm_name', e.target.value)} style={getFormInputStyle(t)} /></FormField>
             <FormField label="CP Name" t={t}><input disabled={isView} value={form.cp_name ?? ''} onChange={(e) => set('cp_name', e.target.value)} style={getFormInputStyle(t)} /></FormField>
-            <FormField label="CP Validity" t={t}><input type="date" disabled={isView} value={toDateOnly(form.cp_validity)} onChange={(e) => set('cp_validity', e.target.value)} style={getFormInputStyle(t)} /></FormField>
+            <FormField label="CP Validity" t={t}><DateInput t={t} disabled={isView} value={toDateOnly(form.cp_validity)} onChange={(v) => set('cp_validity', v)} style={getFormInputStyle(t)} /></FormField>
           </div>
         </div>
 

@@ -680,6 +680,11 @@ html.dark .master-row-icon {
   }
 }
 
+/* Shown only on paper (e.g. the customer name on Customize Scheme's print). */
+@media screen {
+  .print-only { display: none !important; }
+}
+
 /* Generic "print only this" utility. `.print-hide` alone only hides
    elements explicitly marked inside the page — it does nothing about the
    DashboardLayout's Sidebar/Header, which live outside the page component

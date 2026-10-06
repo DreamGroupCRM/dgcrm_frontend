@@ -30,6 +30,7 @@ import { fetchLeaves, submitLeaveRequest, LeaveRecord, LeaveStatus, LeaveType, L
 import { getCurrentLocation } from '../../../utils/geolocation';
 import { formatDate } from '../../../utils';
 import { serverTodayYmd } from '../../../utils/serverTime';
+import DateInput from '../../../components/common/DateInput';
 
 const ATT_STATUS_LABEL: Record<AttendanceStatus, string> = {
   present: 'Present', absent: 'Absent', half_day: 'Half Day', leave: 'Leave',
@@ -344,7 +345,7 @@ const AttendancePage: React.FC = () => {
             </div>
             <form onSubmit={submitQuickAction} className="p-5" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <FormField label="Date (today, or any past/future date)" t={t}>
-                <input type="date" required value={quickDate} onChange={(e) => setQuickDate(e.target.value)} style={getFormInputStyle(t)} />
+                <DateInput t={t} required value={quickDate} onChange={(v) => setQuickDate(v)} style={getFormInputStyle(t)} />
               </FormField>
               {quickAction === 'half_day' && (
                 <FormField label="Session" t={t}>

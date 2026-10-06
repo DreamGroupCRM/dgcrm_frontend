@@ -20,7 +20,7 @@ import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-route
 import { CircularProgress } from '@mui/material';
 import {
   MdMenu, MdClose, MdLogout, MdLockOutline, MdHome, MdHistory,
-  MdEventNote, MdKeyboardArrowDown, MdApartment, MdLightMode, MdDarkMode, MdReceiptLong,
+  MdEventNote, MdLightMode, MdDarkMode, MdFolderOpen, MdCheckCircle,
 } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { logoutThunk } from '../../redux/thunks/authThunks';
@@ -38,10 +38,14 @@ import './CustomerPortal.css';
 // My Documents moved onto Home. Old links to either still resolve (see
 // CustomerRoutes.tsx's redirects) — they just no longer have their own
 // nav entry.
+// My Documents has its own page again (it is no longer shown on Home).
+// Cancelled receipts now live inside Payment History (an accordion), so
+// they have no sidebar entry of their own.
 const NAV_ITEMS = [
   { to: ROUTES.CUSTOMER.HOME, label: 'Home', icon: MdHome },
   { to: ROUTES.CUSTOMER.PAYMENT_HISTORY, label: 'Payment History & Receipt', icon: MdHistory },
   { to: ROUTES.CUSTOMER.SCHEME, label: 'EMI Scheme & Schedule', icon: MdEventNote },
+  { to: ROUTES.CUSTOMER.DOCUMENTS, label: 'My Documents', icon: MdFolderOpen },
 ] as const;
 
 // First initial + (middle initial, else last initial) — "Muzammil F Khan"
@@ -72,59 +76,31 @@ const ThemeToggle: React.FC = () => {
   );
 };
 
-// ── Booking switcher ──────────────────────────────────────────────────────
-// Only rendered when the login actually has more than one booking — a
-// single-booking customer (the common case) gets a plain label instead of a
-// control that can only ever pick the one thing already selected.
-const BookingSwitcher: React.FC = () => {
-  const { bookings, selectedId, selected, selectBooking } = useCustomerPortal();
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest?.('[data-booking-switcher]')) setOpen(false);
-    };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [open]);
-
+// ── Booking boxes ─────────────────────────────────────────────────────────
+// One small box per booking (customer name + customer ID) in the header.
+// Clicking a box selects that booking; the selected box is highlighted, and
+// Home and every sidebar page show that booking's details.
+const BookingBoxes: React.FC = () => {
+  const { bookings, selectedId, selectBooking } = useCustomerPortal();
   if (bookings.length === 0) return null;
-
-  if (bookings.length === 1) {
-    return (
-      <div className="cp-booking-single" title={bookingLabel(bookings[0])}>
-        Customer ID: {bookings[0].customer_code}
-      </div>
-    );
-  }
-
   return (
-    <div className="cp-booking-switcher" data-booking-switcher>
-      <button
-        type="button" className="cp-booking-trigger" onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox" aria-expanded={open}
-        title={selected ? bookingLabel(selected) : 'Select a property'}
-      >
-        <MdApartment size={13} />
-        <span>Customer ID: {selected?.customer_code ?? 'Select a property'}</span>
-        <MdKeyboardArrowDown size={15} className={open ? 'cp-rotate' : undefined} />
-      </button>
-      {open && (
-        <div className="cp-booking-menu" role="listbox">
-          <div className="cp-booking-menu-head">My Properties ({bookings.length})</div>
-          {bookings.map((b) => (
-            <button
-              key={b.id} type="button" role="option" aria-selected={b.id === selectedId}
-              className={`cp-booking-option${b.id === selectedId ? ' cp-booking-option-active' : ''}`}
-              onClick={() => { selectBooking(b.id); setOpen(false); }}
-            >
-              <span className="cp-booking-option-code">{b.customer_code}</span>
-              <span className="cp-booking-option-label">{bookingLabel(b)}</span>
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="cp-booking-boxes" role="tablist" aria-label="My bookings">
+      {bookings.map((b) => {
+        const active = b.id === selectedId;
+        return (
+          <button
+            key={b.id} type="button" role="tab" aria-selected={active}
+            className={`cp-booking-box${active ? ' cp-booking-box-active' : ''}`}
+            onClick={() => selectBooking(b.id)} title={bookingLabel(b)}
+          >
+            {active && <MdCheckCircle size={14} className="cp-booking-box-tick" />}
+            <span className="cp-booking-box-text">
+              <span className="cp-booking-box-name">{b.customer_name || 'Customer'}</span>
+              <span className="cp-booking-box-code">ID: {b.customer_code}</span>
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 };
@@ -135,15 +111,13 @@ const CustomerPortalShell: React.FC = () => {
   const location = useLocation();
   const { t, cssVars } = useAppearanceTokens();
   const { loading, error, bookings, detail, cancelled } = useCustomerPortal();
-  // Cancelled Receipts appears once the login has a cancelled booking; a
-  // login with only cancelled bookings sees just that page.
   // A login with only cancelled bookings has no booking detail; its name
-  // comes from the cancelled booking instead.
+  // comes from the cancelled booking instead, and it sees just Payment
+  // History (where its cancelled receipts are).
   const who = detail ?? (cancelled[0] ? { name: cancelled[0].first_name, middle_name: cancelled[0].middle_name, last_name: cancelled[0].last_name } : null);
-  const navItems: { to: string; label: string; icon: typeof MdHome }[] = [
-    ...(bookings.length > 0 ? NAV_ITEMS : []),
-    ...(cancelled.length > 0 ? [{ to: ROUTES.CUSTOMER.CANCELLED_RECEIPTS, label: 'Cancelled Receipts', icon: MdReceiptLong }] : []),
-  ];
+  const navItems: { to: string; label: string; icon: typeof MdHome }[] = bookings.length > 0
+    ? [...NAV_ITEMS]
+    : cancelled.length > 0 ? NAV_ITEMS.filter((n) => n.to === ROUTES.CUSTOMER.PAYMENT_HISTORY) : [];
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -242,10 +216,7 @@ const CustomerPortalShell: React.FC = () => {
           >
             <MdMenu size={21} />
           </button>
-          <div className="cp-header-greet">
-            <span className="cp-header-greet-name">Welcome, {who?.name || 'Customer'}</span>
-            <BookingSwitcher />
-          </div>
+          <BookingBoxes />
 
           <div className="cp-header-actions">
             <ThemeToggle />
@@ -275,9 +246,9 @@ const CustomerPortalShell: React.FC = () => {
           ) : error ? (
             <div className="cp-empty cp-empty-error">{error}</div>
           ) : bookings.length === 0 && cancelled.length > 0 ? (
-            // Only cancelled bookings: the Cancelled Receipts page is the
-            // one page with anything to show.
-            location.pathname === ROUTES.CUSTOMER.CANCELLED_RECEIPTS ? <Outlet /> : <Navigate to={ROUTES.CUSTOMER.CANCELLED_RECEIPTS} replace />
+            // Only cancelled bookings: Payment History (with its cancelled
+            // receipts) is the one page with anything to show.
+            location.pathname === ROUTES.CUSTOMER.PAYMENT_HISTORY ? <Outlet /> : <Navigate to={ROUTES.CUSTOMER.PAYMENT_HISTORY} replace />
           ) : bookings.length === 0 ? (
             <div className="cp-empty">
               No property is linked to your account yet. Please contact our office.

@@ -10,11 +10,12 @@
 import axiosInstance from './axiosConfig';
 import { toCancelledReceipt } from './customerDetailsService';
 import { PaymentFor, PaymentReceipt, CustomerSchemeData } from '../types/index';
-import { DueGridRow } from './paymentService';
+import { DueGridRow, mapPaymentReceiptData } from './paymentService';
 
 export interface PortalBookingSummary {
   id: number;
   customer_code: string;
+  customer_name?: string; // shown on the header's booking boxes
   building_name: string | null;
   wing_name: string | null;
   flat_no: string | null;
@@ -95,6 +96,10 @@ export interface PortalBookingDetail {
 
 export interface PortalPaymentRow {
   id: number;
+  payment_date?: string | null;
+  received_by?: string | null;
+  payment_tag?: string | null;
+  is_after_possession_emi?: boolean;
   // V_23.0 item 2 — null until an admin approves the payment.
   receipt_number: string | null;
   payment_type: PaymentFor;
@@ -139,9 +144,12 @@ export const fetchMyBookingPayments = async (id: string | number): Promise<Porta
  * modal renders — ownership-scoped server-side to the caller's own
  * transactions, and only available once the payment has been approved.
  */
+// Mapped exactly like the office's receipt — the raw payload has no
+// combined `amount` and no joined customer name/building, which is why the
+// portal's receipt showed an amount of 0 and a blank name.
 export const fetchMyPaymentReceipt = async (transactionId: string | number): Promise<PaymentReceipt> => {
   const res = await axiosInstance.get(`/customer-portal/payments/${transactionId}/receipt`);
-  return res.data.data;
+  return mapPaymentReceiptData(res.data.data) as PaymentReceipt;
 };
 
 // ── Cancelled bookings' refund receipts (C_FY_MM_n) ─────────────────────────
