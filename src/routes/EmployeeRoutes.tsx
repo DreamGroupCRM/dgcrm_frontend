@@ -38,6 +38,11 @@ const LeadCrudPage = lazyPage(() => import('../pages/Employee/Leads/LeadCrudPage
 const AttendancePage = lazyPage(() => import('../pages/Employee/Attendance/AttendancePage'));
 // Leave — first real frontend for the leave module, self-scoped (V_21.0).
 const LeavePage = lazyPage(() => import('../pages/Employee/Leaves/LeavePage'));
+// V_25.0 — HR pages (same components as the admin ones; add/edit goes to
+// Admin approval server-side, admin-only actions are hidden).
+const EmployeeDetailsListPage = lazyPage(() => import('../pages/Admin/Employee/Employee-Details/EmployeeDetailsListPage'));
+const EmployeeDetailsCrudPage = lazyPage(() => import('../pages/Admin/Employee/Employee-Details/EmployeeDetailsCrudPage'));
+const TeamAttendancePage = lazyPage(() => import('../pages/Admin/Employee/Attendance/AttendancePage'));
 
 const EmployeeRoutes: React.FC = () => (
   <Routes>
@@ -56,6 +61,8 @@ const EmployeeRoutes: React.FC = () => (
           the only two detail routes it can link to — no menu entry leads
           to a route that does not exist here. */}
       <Route path="customer-details/view/:id" element={<CustomerDetailsCrudPage mode="view" />} />
+      {/* V_25.0 — a Head with "Can Add Customer" (goes to Admin approval). */}
+      <Route path="customer-details/add" element={<CustomerDetailsCrudPage mode="add" />} />
       <Route path="customer-details/scheme/:id" element={<CustomerSchemeViewPage />} />
       {/* Scoped server-side to the employee's assigned customers; admin-only
           parts (summary boxes, approvals) are hidden and refused by the API. */}
@@ -73,6 +80,11 @@ const EmployeeRoutes: React.FC = () => (
       <Route path="building-2d-view" element={<Building2DViewPage />} />
       <Route path="attendance" element={<AttendancePage />} />
       <Route path="leaves" element={<LeavePage />} />
+      <Route path="employee-details" element={<EmployeeDetailsListPage />} />
+      <Route path="employee-details/add" element={<EmployeeDetailsCrudPage mode="add" />} />
+      <Route path="employee-details/view/:id" element={<EmployeeDetailsCrudPage mode="view" />} />
+      <Route path="employee-details/edit/:id" element={<EmployeeDetailsCrudPage mode="edit" />} />
+      <Route path="team-attendance" element={<TeamAttendancePage />} />
     </Route>
   </Routes>
 );

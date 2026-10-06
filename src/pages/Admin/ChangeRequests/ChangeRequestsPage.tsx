@@ -30,8 +30,10 @@ const errMessage = (e: unknown, fallback: string) => (e as ErrLike)?.response?.d
 // APPLY_HANDLERS in the backend's changeRequests.service.ts) — currently
 // only Lead create.
 const MODULE_LABEL: Record<ChangeRequestModule, string> = {
-  lead: 'Lead',
   customer: 'Customer',
+  lead: 'Lead',
+  // V_25.0 — HR's employee add/edit.
+  employee: 'Employee',
 };
 const MODULES = Object.keys(MODULE_LABEL) as ChangeRequestModule[];
 
@@ -42,7 +44,10 @@ const ACTION_LABEL: Record<ChangeRequestRow['action'], string> = { create: 'Crea
 // through a few common identity-ish keys, then the request id.
 function summarize(row: ChangeRequestRow): string {
   const v = row.new_values || {};
-  const candidate = (v.customer_name || v.name || v.title || v.mobile_number || v.email) as string | undefined;
+  const personName = [v.first_name, v.last_name].filter(Boolean).join(' ');
+  const old = row.old_values || {};
+  const oldName = [old.first_name, old.last_name].filter(Boolean).join(' ');
+  const candidate = (v.customer_name || v.name || personName || old.customer_name || oldName || v.title || v.mobile_number || v.email) as string | undefined;
   return candidate ? String(candidate) : `Request #${row.id}`;
 }
 
@@ -50,7 +55,8 @@ function fieldLabel(key: string): string {
   return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-const ChangeRequestsPage: React.FC = () => {
+// `embedded` — shown as a tab inside Pending Admin Approval (V_25.0).
+const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const dispatch = useAppDispatch();
   const { isDark, t, cssVars } = useAppearanceTokens();
 
@@ -61,7 +67,7 @@ const ChangeRequestsPage: React.FC = () => {
   const [detailsRow, setDetailsRow] = useState<ChangeRequestRow | null>(null);
   const rowMenu = useRowActionMenu<string>();
 
-  useEffect(() => { dispatch(setPageTitle('Change Requests')); }, [dispatch]);
+  useEffect(() => { if (!embedded) dispatch(setPageTitle('Change Requests')); }, [dispatch, embedded]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,7 +86,9 @@ const ChangeRequestsPage: React.FC = () => {
     const result = await showAlert.confirm(
       row.action === 'cancel_booking'
         ? `This will cancel ${summarize(row)}'s booking and move them to Cancelled Booking.`
-        : `This will create the proposed ${MODULE_LABEL[row.module]} record ("${summarize(row)}").`,
+        : row.action === 'edit'
+          ? `This will apply the proposed changes to ${MODULE_LABEL[row.module]} "${summarize(row)}".`
+          : `This will create the proposed ${MODULE_LABEL[row.module]} record ("${summarize(row)}").`,
       'Approve Request?'
     );
     if (!result.isConfirmed) return;
@@ -144,16 +152,16 @@ const ChangeRequestsPage: React.FC = () => {
           <table className="cr-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Action', 'Record', 'Requested By', 'Requested At', 'Actions'].map((h) => (
+                {['Action', 'Record', 'Requested By', 'Department', 'Designation', 'Requested At', 'Actions'].map((h) => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} style={{ padding: 28, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>Loading change requests...</td></tr>
+                <tr><td colSpan={7} style={{ padding: 28, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>Loading change requests...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: 28, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No {MODULE_LABEL[activeModule]} requests are waiting for review.</td></tr>
+                <tr><td colSpan={7} style={{ padding: 28, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No {MODULE_LABEL[activeModule]} requests are waiting for review.</td></tr>
               ) : (
                 rows.map((row) => {
                   const busy = busyKey === row.id;
@@ -167,8 +175,13 @@ const ChangeRequestsPage: React.FC = () => {
                         </button>
                       </td>
                       <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary }}>
-                        {row.requested_by_name || row.requested_by_email || (row.requested_by ? `User #${row.requested_by}` : '—')}
+                        <div style={{ fontWeight: 600, color: isDark ? '#fff' : '#000' }}>
+                          {row.requested_by_name || row.requested_by_email || (row.requested_by ? `User #${row.requested_by}` : '—')}
+                        </div>
+                        {row.requested_by_code && <div style={{ fontSize: 10.5 }}>{row.requested_by_code}</div>}
                       </td>
+                      <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary }}>{row.requested_by_departments || '—'}</td>
+                      <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary }}>{row.requested_by_designations || '—'}</td>
                       <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatLastLogin(row.requested_at)}</td>
                       <td style={{ padding: '12px 14px' }}>
                         <div className="flex items-center justify-center">

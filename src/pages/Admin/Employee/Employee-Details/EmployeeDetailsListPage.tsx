@@ -11,6 +11,7 @@ import {
   MdToggleOn, MdToggleOff,
 } from 'react-icons/md';
 
+import { employeeDetailsBasePath } from '../../../../hooks/useRoleBasePath';
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
@@ -143,7 +144,7 @@ const EmployeeCard: React.FC<{
             </div>
             <button
               type="button"
-              onClick={() => navigate(`/admin/employee/employee-details/view/${emp.id}`)}
+              onClick={() => navigate(`${employeeDetailsBasePath()}/view/${emp.id}`)}
               style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#4f46e5', fontSize: 11, fontWeight: 600 }}
             >
               {emp.employee_code}
@@ -391,12 +392,15 @@ const EmployeeDetailsListPage: React.FC = () => {
   // container, and opens toward whichever side actually has room. ────────
   const renderActionMenu = (emp: Employee) => {
     const actions: RowMenuAction[] = [
-      { key: 'view', label: 'View', icon: <MdVisibility size={14} color="var(--brand-gradient)" />, onClick: () => { rowMenu.close(); navigate(`/admin/employee/employee-details/view/${emp.id}`); } },
-      { key: 'edit', label: 'Edit', icon: <MdEdit size={13} color="#7c3aed" />, onClick: () => { rowMenu.close(); navigate(`/admin/employee/employee-details/edit/${emp.id}`); } },
-      { key: 'delete', label: 'Delete', icon: <MdDelete size={14} />, danger: true, onClick: () => handleDelete(emp) },
-      emp.is_active
-        ? { key: 'deactivate', label: 'Deactivate', icon: <MdToggleOff size={14} color="#ea580c" />, onClick: () => handleToggleActive(emp) }
-        : { key: 'activate', label: 'Activate', icon: <MdToggleOn size={14} color="#16a34a" />, onClick: () => handleToggleActive(emp) },
+      { key: 'view', label: 'View', icon: <MdVisibility size={14} color="var(--brand-gradient)" />, onClick: () => { rowMenu.close(); navigate(`${employeeDetailsBasePath()}/view/${emp.id}`); } },
+      { key: 'edit', label: 'Edit', icon: <MdEdit size={13} color="#7c3aed" />, onClick: () => { rowMenu.close(); navigate(`${employeeDetailsBasePath()}/edit/${emp.id}`); } },
+      // Delete / Activate stay Admin-only (HR only adds/edits, via approval).
+      ...(canDeleteImmediately ? [
+        { key: 'delete', label: 'Delete', icon: <MdDelete size={14} />, danger: true, onClick: () => handleDelete(emp) },
+        emp.is_active
+          ? { key: 'deactivate', label: 'Deactivate', icon: <MdToggleOff size={14} color="#ea580c" />, onClick: () => handleToggleActive(emp) }
+          : { key: 'activate', label: 'Activate', icon: <MdToggleOn size={14} color="#16a34a" />, onClick: () => handleToggleActive(emp) },
+      ] : []),
     ];
     return (
       <div style={{ position: 'relative' }}>
@@ -459,7 +463,7 @@ const EmployeeDetailsListPage: React.FC = () => {
             style={{ background: 'var(--brand-gradient)', border: '1px solid var(--brand-gradient)', color: '#fff' }}>
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
           </button>
-          <button type="button" onClick={() => navigate('/admin/employee/employee-details/add')} className="master-btn-primary">
+          <button type="button" onClick={() => navigate(`${employeeDetailsBasePath()}/add`)} className="master-btn-primary">
             <MdAdd size={18} /> Add Employee
           </button>
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv} title="Export CSV" className="master-btn-icon"
@@ -536,7 +540,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                           <div className="flex items-center justify-center">{renderActionMenu(emp)}</div>
                         </td>
                         <td>
-                          <button type="button" onClick={() => navigate(`/admin/employee/employee-details/view/${emp.id}`)}
+                          <button type="button" onClick={() => navigate(`${employeeDetailsBasePath()}/view/${emp.id}`)}
                             style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand-ink)', fontWeight: 600 }}>
                             {emp.employee_code}
                           </button>

@@ -82,6 +82,10 @@ export interface Employee {
   department_ids                                  : number[];
   designation_names                                : string[];
   designation_ids                                  : number[];
+  // V_25.0 — { department_id: Reporting Head employee id } and the Head's
+  // "Can Add Customer" (only present on single-employee responses).
+  department_heads?                                : Record<string, number>;
+  can_add_customer?                                : boolean;
   module_keys                                       : string[];
   // Single primary department/designation name, straight from the list
   // query's JOIN (department_id/designation_id) — always present on list
@@ -166,6 +170,8 @@ export interface EmployeeSingleResponse {
   success : boolean;
   message?: string;
   data    : Employee;
+  /** V_25.0 — true when the add/edit went to Admin approval (HR). */
+  pending?: boolean;
 }
 
 export interface EmployeeDeleteResponse {
@@ -225,6 +231,9 @@ export interface EmployeeFormValues {
   department_ids                                                             : number[];
   designation_ids                                                             : number[];
   module_action_ids                                                           : number[];
+  // V_25.0 — Reporting Head per department (Executives), sent as JSON.
+  department_heads                                                            : Record<string, number | null>;
+  can_add_customer                                                            : boolean;
 
   // Real backend column as of V_13.0 (active/inactive/on_leave) — separate
   // from is_active, which stays the plain enabled/disabled flag used for
@@ -265,6 +274,8 @@ const buildEmployeeFormData = async (values: EmployeeFormValues, files: Employee
       // as a single empty-string placeholder, which would fail the
       // schema's z.coerce.number() element validation.
       value.forEach((v) => fd.append(key, String(v)));
+    } else if (value !== null && typeof value === 'object') {
+      fd.append(key, JSON.stringify(value));
     } else {
       fd.append(key, String(value));
     }
@@ -408,6 +419,8 @@ export const createEmployee = async (
   const res = await axiosInstance.post('/employees', toBackendEmployeeFormData(await buildEmployeeFormData(values, files)), {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+  // V_25.0 — HR's request goes to Admin approval (202, no employee yet).
+  if (res.data.pending) return { success: res.data.success, message: res.data.message, pending: true } as EmployeeSingleResponse;
   return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
 };
 
@@ -421,6 +434,7 @@ export const EditEmployee = async (
   const res = await axiosInstance.put(`/employees/${id}`, toBackendEmployeeFormData(await buildEmployeeFormData(values, files)), {
     headers: { 'Content-Type': 'multipart/form-data', [API_NAME_HEADER]: 'EditEmployee' },
   });
+  if (res.data.pending) return { success: res.data.success, message: res.data.message, pending: true } as EmployeeSingleResponse;
   return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
 };
 

@@ -16,6 +16,7 @@ import { MdPendingActions, MdCheckCircle, MdCancel, MdRefresh, MdMoreVert } from
 
 import { useAppDispatch } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
+import ChangeRequestsPage from '../ChangeRequests/ChangeRequestsPage';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { RowActionMenu, useRowActionMenu } from '../../../components/common/RowActionMenu';
@@ -45,7 +46,7 @@ const MODULE_LABEL: Record<PendingApprovalEntityType, string> = {
 
 const rowKey = (r: PendingApprovalRow) => `${r.entity_type}:${r.id}`;
 
-const PendingApprovalsPage: React.FC = () => {
+const DeleteRequestsTab: React.FC = () => {
   const dispatch = useAppDispatch();
   const { isDark, t, cssVars } = useAppearanceTokens();
 
@@ -175,6 +176,37 @@ const PendingApprovalsPage: React.FC = () => {
           </table>
         </div>
       </div>
+    </div>
+  );
+};
+
+// V_25.0 — one place for everything waiting on an Admin: employees' and
+// Heads' customer / employee / lead add & edit requests and Cancel Booking
+// requests (the change-request queue, which had no menu entry before),
+// next to the existing delete requests.
+const PendingApprovalsPage: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const { t } = useAppearanceTokens();
+  useEffect(() => { dispatch(setPageTitle('Pending Approvals')); }, [dispatch]);
+  const [tab, setTab] = useState<'changes' | 'deletes'>('changes');
+  const tabBtn = (key: 'changes' | 'deletes', label: string) => (
+    <button key={key} type="button" onClick={() => setTab(key)} className="rounded-lg"
+      style={{
+        padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+        border: `1px solid ${tab === key ? 'transparent' : t.surfaceBorder}`,
+        background: tab === key ? 'var(--brand-gradient)' : t.surfaceBg,
+        color: tab === key ? '#fff' : t.textPrimary,
+      }}>
+      {label}
+    </button>
+  );
+  return (
+    <div>
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        {tabBtn('changes', 'Add / Edit / Cancel Requests')}
+        {tabBtn('deletes', 'Delete Requests')}
+      </div>
+      {tab === 'changes' ? <ChangeRequestsPage embedded /> : <DeleteRequestsTab />}
     </div>
   );
 };

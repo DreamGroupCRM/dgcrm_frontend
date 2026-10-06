@@ -9,7 +9,7 @@
 // superadmin only, enforced server-side.
 import axiosInstance from './axiosConfig';
 
-export type ChangeRequestModule = 'lead' | 'customer';
+export type ChangeRequestModule = 'lead' | 'customer' | 'employee';
 
 export type ChangeRequestStatus = 'pending' | 'approved' | 'rejected';
 
@@ -25,6 +25,10 @@ export interface ChangeRequestRow {
   requested_by: string | null;
   requested_by_name: string | null;
   requested_by_email: string | null;
+  // V_25.0 — the requester's employee code, departments, designations.
+  requested_by_code?: string | null;
+  requested_by_departments?: string | null;
+  requested_by_designations?: string | null;
   requested_at: string;
   reviewed_by: string | null;
   reviewed_by_name: string | null;

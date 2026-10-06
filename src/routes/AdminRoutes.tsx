@@ -77,6 +77,7 @@ const PendingApprovalsPage = lazyPage(() => import('../pages/Admin/PendingApprov
 // Change Requests — Create/Edit proposal review queue (see changeRequests
 // module in dgcrm_backend). Admin/superadmin, same as Pending Approvals.
 const ChangeRequestsPage = lazyPage(() => import('../pages/Admin/ChangeRequests/ChangeRequestsPage'));
+const DepartmentSetupPage = lazyPage(() => import('../pages/Admin/DepartmentSetup/DepartmentSetupPage'));
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const AdminDashboard = lazyPage(() => import('../pages/Admin/Dashboard/AdminDashboard'));
@@ -160,6 +161,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="audit-history" element={<AuditHistoryPage />} />
       <Route path="pending-approvals" element={<PendingApprovalsPage />} />
       <Route path="change-requests" element={<ChangeRequestsPage />} />
+      <Route path="department-setup" element={<DepartmentSetupPage />} />
       <Route path="customize-scheme" element={<CustomizeSchemePage />} />
       <Route path="building-2d-view" element={<Building2DViewPage />} />
 

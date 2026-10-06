@@ -16,6 +16,7 @@ import {
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { usePermission } from '../../../../hooks/usePermission';
+import { useAccessProfile } from '../../../../hooks/useAccessProfile';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
@@ -427,6 +428,13 @@ const CustomerDetailsListPage: React.FC = () => {
   // hardcoded '/admin/...' here would bounce an employee off
   // ProtectedRoute. See hooks/useRoleBasePath.
   const paths = useRoleBasePath();
+  // V_25.0 — a Head assigns only to the Executives reporting to them, and
+  // only a Head with "Can Add Customer" gets the Add button (the customer
+  // still goes to Admin approval).
+  const access = useAccessProfile();
+  const legacyAssignPermission = usePermission('customers', 'assign');
+  const headTeam = !paths.isAdmin && !legacyAssignPermission ? (access.profile?.customer_team ?? []) : [];
+  const canAddCustomer = paths.isAdmin || Boolean(access.profile && !access.profile.legacy && access.profile.can_add_customer);
   const isAdmin = isAdminRole(role);
 
   // allCustomers now holds ONLY the current server page (see fetchCustomers
@@ -679,7 +687,16 @@ const CustomerDetailsListPage: React.FC = () => {
   };
 
   const customerNameOptions = useMemo(() => Array.from(new Set(customerDirectory.map((c) => c.customer_name))), [customerDirectory]);
-  const employeeOptions = useMemo(() => employees.map((e) => e.label), [employees]);
+  // A Head picks from their own team; Admin (and holders of the existing
+  // assign permission) from every active employee.
+  const assignableEmployees = useMemo(
+    () => (headTeam.length > 0
+      ? headTeam.map((m) => ({ id: String(m.id), label: `${m.name}${m.employee_code ? ` (${m.employee_code})` : ''}` }))
+      : employees),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [employees, headTeam.map((m) => m.id).join(',')],
+  );
+  const employeeOptions = useMemo(() => assignableEmployees.map((e) => e.label), [assignableEmployees]);
 
   const clearAllFilters = () => {
     setCustomerNameFilter(''); setBuildingFilter(''); setWingFilter(''); setFloorFilter(''); setFlatNoFilter('');
@@ -749,7 +766,7 @@ const CustomerDetailsListPage: React.FC = () => {
   // permission (admin/superadmin always do, per usePermission's own
   // bypass) — previously any authenticated role could reassign, matching
   // the backend's own now-tightened /customers/assign-employees route.
-  const canAssignCustomers = usePermission('customers', 'assign');
+  const canAssignCustomers = legacyAssignPermission || headTeam.length > 0;
 
   // Self-healing retry: if the mount-time fetch above ever failed (or is
   // still in flight when the user checks a customer), pick it back up the
@@ -768,7 +785,7 @@ const CustomerDetailsListPage: React.FC = () => {
   }, [assignmentEnabled, employees.length, loadingEmployees, fetchEmployeesForAssignment]);
 
   const handleAssign = async () => {
-    const employee = employees.find((e) => e.label === employeeSearch);
+    const employee = assignableEmployees.find((e) => e.label === employeeSearch);
     if (!employee) {
       toast.error('Select an employee to assign to.');
       return;
@@ -780,8 +797,8 @@ const CustomerDetailsListPage: React.FC = () => {
       setSelectedIds(new Set());
       setEmployeeSearch('');
       fetchCustomers();
-    } catch {
-      toast.error('Failed to assign customer(s).');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to assign customer(s).');
     } finally {
       setAssigning(false);
     }
@@ -1188,7 +1205,7 @@ const CustomerDetailsListPage: React.FC = () => {
               from their own list the moment it saved — and assigning is
               itself an admin action. Nothing is taken away from anyone:
               this page was a placeholder on the employee side until now. */}
-          {paths.isAdmin && (
+          {canAddCustomer && (
             <button type="button" onClick={() => navigate(`${paths.customerDetails}/add`)}
               className="cust-add-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
               style={{ background: 'var(--brand-gradient)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>

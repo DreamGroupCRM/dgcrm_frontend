@@ -16,7 +16,7 @@ import {
   MdAdd, MdRefresh, MdHourglassEmpty, MdMoreVert,
 } from 'react-icons/md';
 
-import { useAppDispatch } from '../../../../hooks';
+import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { getFormInputStyle, FormField } from '../../../../components/common/MasterListUI';
@@ -59,6 +59,9 @@ const todayISO = () => serverTodayYmd();
 const emptyAttForm = { employee_id: '', attendance_date: todayISO(), status: 'present' as AttendanceStatus, check_in_time: '', check_out_time: '', remarks: '' };
 
 const AttendancePage: React.FC = () => {
+  // V_25.0 — HR (Team Attendance) views only; marking and leave approval stay Admin.
+  const viewerRole = useAppSelector((st) => st.auth.role);
+  const isAdminViewer = viewerRole === 'admin' || viewerRole === 'superadmin';
   const dispatch = useAppDispatch();
   const { t, cssVars } = useAppearanceTokens();
 
@@ -237,9 +240,12 @@ const AttendancePage: React.FC = () => {
               <DateRangePresetFilter t={t} preset={attPreset} onPresetChange={setAttPreset}
                 customFrom={attCustomFrom} customTo={attCustomTo} onCustomFromChange={setAttCustomFrom} onCustomToChange={setAttCustomTo} />
               <div className="att-admin-toolbar-actions flex items-center gap-2.5">
-                <button type="button" onClick={openAttModal} className="att-admin-mark-btn master-btn-primary">
-                  <MdAdd size={16} /> <span className="att-admin-mark-btn-text">Mark Attendance</span>
-                </button>
+                {/* Admin only — HR opens this page as Team Attendance, view-only. */}
+                {isAdminViewer && (
+                  <button type="button" onClick={openAttModal} className="att-admin-mark-btn master-btn-primary">
+                    <MdAdd size={16} /> <span className="att-admin-mark-btn-text">Mark Attendance</span>
+                  </button>
+                )}
                 <button type="button" onClick={loadAttendance} title="Refresh"
                   className="att-admin-refresh-btn flex items-center justify-center rounded-xl"
                   style={{ width: 38, height: 38, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
@@ -404,7 +410,7 @@ const AttendancePage: React.FC = () => {
                         <td style={{ padding: '12px 14px' }}><LvStatusBadge status={r.status} /></td>
                         <td style={{ padding: '12px 14px', fontSize: 11, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatLastLogin(r.created_at)}</td>
                         <td style={{ padding: '12px 14px' }}>
-                          {r.status === 'pending' ? (
+                          {r.status === 'pending' && isAdminViewer ? (
                             <div className="flex items-center justify-center">
                               <button type="button" title="Actions" className="master-icon-btn"
                                 ref={lvRowMenu.openId === r.id ? lvRowMenu.buttonRef : undefined}
