@@ -122,6 +122,9 @@ interface BackendCustomer {
   assigned_employee_code: string | null;
   assigned_employee_name: string | null;
   assigned_employee_photo_url: string | null;
+  /** V_25.0 — Admin's assignee (Head) and the Head's sub-assignee (Executive). */
+  assigned_head?: { id: number; name: string; code: string | null } | null;
+  assigned_sub?: { id: number; name: string; code: string | null } | null;
   cancellation_pending?: boolean;
   customer_image: string | null;
   aadhar_card_no: string;
@@ -245,6 +248,8 @@ const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   assigned_employee_id: bc.assigned_employee_id != null ? String(bc.assigned_employee_id) : undefined,
   assigned_employee_code: bc.assigned_employee_code ?? undefined,
   assigned_employee_name: bc.assigned_employee_name ?? undefined,
+  assigned_head: bc.assigned_head ?? null,
+  assigned_sub: bc.assigned_sub ?? null,
   assigned_employee_photo_url: bc.assigned_employee_photo_url,
   cancellation_pending: !!bc.cancellation_pending,
   status: bc.is_active ? 'active' : 'inactive',

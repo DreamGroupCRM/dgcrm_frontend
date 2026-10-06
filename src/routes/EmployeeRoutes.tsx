@@ -63,6 +63,8 @@ const EmployeeRoutes: React.FC = () => (
       <Route path="customer-details/view/:id" element={<CustomerDetailsCrudPage mode="view" />} />
       {/* V_25.0 — a Head with "Can Add Customer" (goes to Admin approval). */}
       <Route path="customer-details/add" element={<CustomerDetailsCrudPage mode="add" />} />
+      {/* V_25.0 — a Head's edit goes to Admin approval (enforced server-side). */}
+      <Route path="customer-details/edit/:id" element={<CustomerDetailsCrudPage mode="edit" />} />
       <Route path="customer-details/scheme/:id" element={<CustomerSchemeViewPage />} />
       {/* Scoped server-side to the employee's assigned customers; admin-only
           parts (summary boxes, approvals) are hidden and refused by the API. */}

@@ -34,15 +34,22 @@ const MODULE_LABEL: Record<ChangeRequestModule, string> = {
   lead: 'Lead',
   // V_25.0 — HR's employee add/edit.
   employee: 'Employee',
+  // V_25.0 — a Head's request to delete a team payment.
+  payment: 'Payment',
 };
 const MODULES = Object.keys(MODULE_LABEL) as ChangeRequestModule[];
 
-const ACTION_LABEL: Record<ChangeRequestRow['action'], string> = { create: 'Create', edit: 'Edit', cancel_booking: 'Cancel Booking' };
+const ACTION_LABEL: Record<ChangeRequestRow['action'], string> = { create: 'Create', edit: 'Edit', cancel_booking: 'Cancel Booking', delete: 'Delete' };
 
 // Best-effort human label for a proposed row without inventing business
 // rules about which field "is" the display name per module — falls back
 // through a few common identity-ish keys, then the request id.
 function summarize(row: ChangeRequestRow): string {
+  if (row.module === 'payment') {
+    const o = row.old_values || {};
+    const amt = o.amount != null ? `₹${Number(o.amount).toLocaleString('en-IN')}` : 'Payment';
+    return `${amt}${o.receipt_number ? ` (Receipt ${o.receipt_number})` : ''}`;
+  }
   const v = row.new_values || {};
   const personName = [v.first_name, v.last_name].filter(Boolean).join(' ');
   const old = row.old_values || {};
@@ -84,7 +91,9 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
 
   const handleApprove = async (row: ChangeRequestRow) => {
     const result = await showAlert.confirm(
-      row.action === 'cancel_booking'
+      row.action === 'delete'
+        ? `This will permanently delete the payment ${summarize(row)}.`
+        : row.action === 'cancel_booking'
         ? `This will cancel ${summarize(row)}'s booking and move them to Cancelled Booking.`
         : row.action === 'edit'
           ? `This will apply the proposed changes to ${MODULE_LABEL[row.module]} "${summarize(row)}".`
@@ -220,7 +229,8 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
               </button>
             </div>
             <div className="p-4" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {Object.entries(detailsRow.new_values).filter(([, v]) => v !== null && v !== '').map(([key, value]) => (
+              {/* A delete request shows the payment being deleted. */}
+              {Object.entries(detailsRow.action === 'delete' ? (detailsRow.old_values ?? {}) : detailsRow.new_values).filter(([, v]) => v !== null && v !== '').map(([key, value]) => (
                 <div key={key} className="flex items-start justify-between gap-3" style={{ fontSize: 12 }}>
                   <span style={{ color: t.textSecondary, fontWeight: 600 }}>{fieldLabel(key)}</span>
                   <span style={{ color: t.textPrimary, textAlign: 'right' }}>{String(value)}</span>

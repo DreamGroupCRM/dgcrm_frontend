@@ -436,6 +436,15 @@ const CustomerDetailsListPage: React.FC = () => {
   const headTeam = !paths.isAdmin && !legacyAssignPermission ? (access.profile?.customer_team ?? []) : [];
   const canAddCustomer = paths.isAdmin || Boolean(access.profile && !access.profile.legacy && access.profile.can_add_customer);
   const isAdmin = isAdminRole(role);
+  // V_25.0 — once the employee's department is set up: an Executive only
+  // views (View / Payment History / Download Schedule); a Head may also
+  // Edit and Cancel Booking (both go to Admin approval). The top boxes
+  // become All / Assigned by Head / Assigned by Admin.
+  const setUpEmployee = !paths.isAdmin && Boolean(access.profile && !access.profile.legacy);
+  const isHead = Boolean(access.profile && access.profile.head_of.length > 0);
+  const viewOnly = setUpEmployee && !isHead;
+  const canEditCustomer = paths.isAdmin || (setUpEmployee && isHead);
+  const showSplitAssign = paths.isAdmin || isHead;
 
   // allCustomers now holds ONLY the current server page (see fetchCustomers
   // below) — previously this held up to 1000 rows fetched once, with
@@ -485,6 +494,7 @@ const CustomerDetailsListPage: React.FC = () => {
   // Item 13: the assign/unassign area doubles as an Assigned/Unassigned
   // filter on the table below it.
   const [assignmentStatusFilter, setAssignmentStatusFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
+  const [assignedKindFilter, setAssignedKindFilter] = useState<'all' | 'by_head' | 'by_admin'>('all');
 
   // ── selection + assignment ──────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -654,6 +664,7 @@ const CustomerDetailsListPage: React.FC = () => {
     from_date: fromDate,
     to_date: toDate,
     assignment_status: assignmentStatusFilter === 'all' ? undefined : assignmentStatusFilter,
+    assigned_kind: assignedKindFilter === 'all' ? undefined : assignedKindFilter,
   });
 
   // Real server pagination + filtering (see customer.repository.ts's
@@ -673,7 +684,7 @@ const CustomerDetailsListPage: React.FC = () => {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, limit, debouncedCustomerNameFilter, selectedBuilding?.id, selectedWing?.id, flatNoFilter, selectedFloor, fromDate, toDate, assignmentStatusFilter]);
+  }, [page, limit, debouncedCustomerNameFilter, selectedBuilding?.id, selectedWing?.id, flatNoFilter, selectedFloor, fromDate, toDate, assignmentStatusFilter, assignedKindFilter]);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
   const flatNoOptions = useMemo(() => Array.from(new Set(flatsInScope.map((fl) => fl.flat_no))), [flatsInScope]);
@@ -723,7 +734,7 @@ const CustomerDetailsListPage: React.FC = () => {
   // do here. Resetting to page 1 on filter change still matters — a
   // filter narrowing the result set out from under an already-deep page
   // number would otherwise land on an empty or out-of-range page.
-  useEffect(() => { setPage(1); }, [debouncedCustomerNameFilter, buildingFilter, wingFilter, floorFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter]);
+  useEffect(() => { setPage(1); }, [debouncedCustomerNameFilter, buildingFilter, wingFilter, floorFilter, flatNoFilter, fromDate, toDate, assignmentStatusFilter, assignedKindFilter]);
 
   const pageRows = allCustomers;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -767,6 +778,9 @@ const CustomerDetailsListPage: React.FC = () => {
   // bypass) — previously any authenticated role could reassign, matching
   // the backend's own now-tightened /customers/assign-employees route.
   const canAssignCustomers = legacyAssignPermission || headTeam.length > 0;
+  // Executives (and anyone who can't assign) get no selection checkboxes.
+  const showCheckboxes = paths.isAdmin || canAssignCustomers;
+  const tableCols = 11 + (showCheckboxes ? 1 : 0) + (showSplitAssign ? 1 : 0);
 
   // Self-healing retry: if the mount-time fetch above ever failed (or is
   // still in flight when the user checks a customer), pick it back up the
@@ -1073,7 +1087,16 @@ const CustomerDetailsListPage: React.FC = () => {
           comment) and duplicated the separate Assigned/Unassigned toggle
           that used to sit further down this page. ─────────────────────── */}
       <div className="cust-stat-grid grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-        {([
+        {setUpEmployee ? ([
+          { filterKey: 'all', label: 'All Customers', value: summary.total_customers, icon: MdGroups, color: '#7c3aed' },
+          { filterKey: 'by_head', label: 'Assigned by Head', value: summary.assigned_by_head ?? 0, icon: MdPersonAddAlt1, color: '#16a34a' },
+          { filterKey: 'by_admin', label: 'Assigned by Admin', value: summary.assigned_by_admin ?? 0, icon: MdPersonAddAlt1, color: '#0369a1' },
+        ] as const).map(({ filterKey, ...card }) => (
+          <StatCard key={filterKey} {...card} bg="" loading={loading} compact
+            active={assignedKindFilter === filterKey}
+            onClick={() => setAssignedKindFilter(filterKey)}
+            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        )) : ([
           { filterKey: 'all', label: 'All Customers', value: summary.total_customers, icon: MdGroups, color: '#7c3aed' },
           { filterKey: 'assigned', label: 'Assigned Customers', value: summary.assigned_customers, icon: MdPersonAddAlt1, color: '#16a34a' },
           { filterKey: 'unassigned', label: 'Un Assigned Customers', value: summary.unassigned_customers, icon: MdPersonOff, color: '#ea580c' },
@@ -1212,11 +1235,14 @@ const CustomerDetailsListPage: React.FC = () => {
               <MdAdd size={18} /> <span className="cust-add-btn-text">Add Customer</span>
             </button>
           )}
+          {/* V_25.0 — Export CSV is Admin-only. */}
+          {paths.isAdmin && (
           <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
             className="cust-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
             style={{ background: 'var(--brand-gradient)', border: 'none', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1 }}>
             <MdDownload size={17} /> <span className="cust-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
           </button>
+          )}
           <button type="button" onClick={fetchCustomers} title="Refresh"
             className="cust-refresh-btn flex items-center justify-center rounded-xl"
             style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer' }}>
@@ -1244,8 +1270,8 @@ const CustomerDetailsListPage: React.FC = () => {
                     }}
                     menuOpen={openMenuId === c.id} menuPos={menuPos}
                     onView={() => { setOpenMenuId(null); navigate(`${paths.customerDetails}/view/${c.id}`); }}
-                    onEdit={paths.isAdmin ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
-                    onCancelBooking={c.cancellation_pending ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
+                    onEdit={canEditCustomer ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
+                    onCancelBooking={c.cancellation_pending || viewOnly ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
                     onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                     onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                     onOpenPaymentHistory={() => openPaymentHistory(c)}
@@ -1260,11 +1286,13 @@ const CustomerDetailsListPage: React.FC = () => {
           <table className="cust-list-table master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1150 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
+                {showCheckboxes && (
                 <th style={{ padding: '10px 12px', width: 40 }}>
                   <input type="checkbox" title="Select all active customers on this page"
                     checked={activePageRows.length > 0 && activePageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
-                {['Action', 'Customer ID', 'Customer Name', 'Employee Name', 'Contact Details', 'Company / Project', 'Building Details', 'Unit Type / Area', 'Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
+                )}
+                {['Action', 'Customer ID', 'Customer Name', ...(showSplitAssign ? ['Assigned (Head)', 'Sub-assigned (Executive)'] : ['Employee Name']), 'Contact Details', 'Company / Project', 'Building Details', 'Unit Type / Area', 'Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
                   <th key={h}
                     style={h === 'Action'
                       // V_24.0 fix — this column holds 3 separate controls
@@ -1286,16 +1314,18 @@ const CustomerDetailsListPage: React.FC = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={12} className="cust-empty-state">Loading customers...</td></tr>
+                <tr><td colSpan={tableCols} className="cust-empty-state">Loading customers...</td></tr>
               ) : pageRows.length === 0 ? (
-                <tr><td colSpan={12} className="cust-empty-state">No customers found.</td></tr>
+                <tr><td colSpan={tableCols} className="cust-empty-state">No customers found.</td></tr>
               ) : (
                 pageRows.map((c) => (
                   <tr key={c.id} className="cust-divider-top master-table-row-hover">
+                    {showCheckboxes && (
                     <td style={{ padding: '10px 12px' }}>
                       <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)}
                         disabled={c.status !== 'active'} title={c.status !== 'active' ? "Inactive customers can't be assigned" : undefined} />
                     </td>
+                    )}
                     <td style={{ padding: '10px 12px', minWidth: 120, whiteSpace: 'nowrap' }}>
                       <div className="flex items-center gap-1.5" ref={openMenuId === c.id ? menuRef : undefined}>
                         <div style={{ position: 'relative' }}>
@@ -1314,8 +1344,8 @@ const CustomerDetailsListPage: React.FC = () => {
                             <RowActionMenu
                               t={t} pos={menuPos}
                               onView={() => { setOpenMenuId(null); navigate(`${paths.customerDetails}/view/${c.id}`); }}
-                              onEdit={paths.isAdmin ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
-                              onCancelBooking={c.cancellation_pending ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
+                              onEdit={canEditCustomer ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
+                              onCancelBooking={c.cancellation_pending || viewOnly ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
                               onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                               onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                             />
@@ -1360,6 +1390,12 @@ const CustomerDetailsListPage: React.FC = () => {
                         </span>
                       </div>
                     </td>
+                    {showSplitAssign ? [c.assigned_head, c.assigned_sub].map((a, idx) => (
+                      <td key={idx} style={{ padding: '10px 12px', fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 600 }}>{a?.name || '—'}</div>
+                        {a?.code && <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{a.code}</div>}
+                      </td>
+                    )) : (
                     <td style={{ padding: '10px 12px' }}>
                       <div className="flex items-center gap-2">
                         {c.assigned_employee_photo_url ? (
@@ -1372,6 +1408,7 @@ const CustomerDetailsListPage: React.FC = () => {
                         <span style={{ fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{c.assigned_employee_name || '—'}</span>
                       </div>
                     </td>
+                    )}
                     <td style={{ padding: '10px 12px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
                       <div className="flex items-center gap-1.5"><MdPhone size={13} /> {c.mobile_number}</div>
                       <div className="flex items-center gap-1.5 mt-0.5"><MdEmail size={13} /> {c.email}</div>

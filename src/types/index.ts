@@ -673,6 +673,9 @@ export interface Customer {
   assigned_employee_id?                    : string;
   assigned_employee_code?                   : string;
   assigned_employee_name?                    : string;
+  /** V_25.0 — Admin's assignee (Head) and the Head's sub-assignee (Executive). */
+  assigned_head?: { id: number; name: string; code: string | null } | null;
+  assigned_sub?: { id: number; name: string; code: string | null } | null;
   assigned_employee_photo_url?                : string | null;
 
   // An employee's Cancel Booking request is waiting for admin approval.
@@ -691,9 +694,14 @@ export interface CustomerListSummary {
   new_this_month       : number;
   assigned_customers   : number;
   unassigned_customers : number;
+  /** V_25.0 — employee view only: customers Admin vs a Head assigned. */
+  assigned_by_admin?   : number;
+  assigned_by_head?    : number;
 }
 
 export interface CustomerListFilters {
+  /** V_25.0 — employee view: 'by_admin' | 'by_head'. */
+  assigned_kind?: string;
   customer_name?: string;
   building_name? : string;
   wing?          : string;

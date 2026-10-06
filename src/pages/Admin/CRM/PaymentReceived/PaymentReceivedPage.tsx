@@ -54,6 +54,7 @@ import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { serverToday, toYmd } from '../../../../utils/serverTime';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 import DateInput from '../../../../components/common/DateInput';
+import { useAccessProfile } from '../../../../hooks/useAccessProfile';
 
 type Theme = AppTheme;
 
@@ -203,6 +204,9 @@ const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { isDark, t, cssVars } = useAppearanceTokens();
   const paths = useRoleBasePath();
+  // V_25.0 — a Head (set-up department) may request deleting a team payment.
+  const { profile: access } = useAccessProfile();
+  const canRequestDelete = !paths.isAdmin && Boolean(access && !access.legacy && access.head_of.length > 0);
   const [approvalView, setApprovalView] = useState<ApprovalView>('all');
   const [approvalCounts, setApprovalCounts] = useState<{ approved: number; pending: number } | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -610,19 +614,22 @@ const PaymentReceivedPage: React.FC = () => {
     }
   };
 
+  // Admin deletes; a Head's delete is a request Admin approves (V_25.0).
   const handleDelete = async (row: PaymentListRow) => {
+    const what = `the ₹${row.amount.toLocaleString('en-IN')} payment${row.receipt_number ? ` (Receipt ${row.receipt_number})` : ''} for ${row.customer_name}`;
     const result = await showAlert.confirm(
-      `This will permanently delete the ₹${row.amount.toLocaleString('en-IN')} payment${row.receipt_number ? ` (Receipt ${row.receipt_number})` : ''} for ${row.customer_name}.`,
-      'Delete Payment?'
+      paths.isAdmin ? `This will permanently delete ${what}.` : `This sends a request to Admin to delete ${what}. It is deleted only after Admin approves.`,
+      paths.isAdmin ? 'Delete Payment?' : 'Request Payment Delete?'
     );
     if (!result.isConfirmed) return;
     setDeletingId(row.id);
     try {
-      await deletePayment(row.id);
-      toast.success('Payment deleted.');
+      const res = await deletePayment(row.id) as { pending?: boolean };
+      toast.success(res?.pending ? 'Delete request sent for admin approval.' : 'Payment deleted.');
       refreshAll();
-    } catch {
-      toast.error('Failed to delete payment.');
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg || 'Failed to delete payment.');
     } finally {
       setDeletingId(null);
     }
@@ -784,11 +791,14 @@ const PaymentReceivedPage: React.FC = () => {
                 <MdCheckCircle size={16} /> {bulkApproving ? 'Approving…' : `Approve Selected (${selectedPendingIds.length})`}
               </button>
             )}
+            {/* V_25.0 — Export CSV is Admin-only. */}
+            {paths.isAdmin && (
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
               className="pr-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
               style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
               <MdDownload size={16} /> <span className="pr-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
             </button>
+            )}
             <button type="button" onClick={refreshAll} title="Refresh"
               className="pr-refresh-btn flex items-center justify-center rounded-xl"
               style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
@@ -834,7 +844,7 @@ const PaymentReceivedPage: React.FC = () => {
                           .master-table-scroll's overflow:auto. */}
                       <button type="button" title="Actions"
                         ref={rowMenu.openId === r.id ? rowMenu.buttonRef : undefined}
-                        onClick={rowMenu.toggle(r.id, (r.is_approved ? 2 : 1) + (paths.isAdmin ? (r.is_approved ? 1 : 2) : 0))}
+                        onClick={rowMenu.toggle(r.id, (r.is_approved ? 2 : 1) + (paths.isAdmin ? (r.is_approved ? 1 : 2) : canRequestDelete ? 1 : 0))}
                         className="flex items-center justify-center rounded-lg"
                         style={{ width: 28, height: 28, background: 'transparent', border: 'none', color: t.textSecondary, cursor: 'pointer' }}>
                         <MdMoreVert size={18} />
@@ -854,7 +864,9 @@ const PaymentReceivedPage: React.FC = () => {
                           // route (DELETE /payments/:id) already enforces
                           // this via requireAdmin, so this is UI-side only —
                           // an employee must not even see the option.
-                          ...(paths.isAdmin ? [{ key: 'delete', label: 'Delete', icon: <MdDelete size={14} />, danger: true, disabled: deletingId === r.id, onClick: () => { rowMenu.close(); handleDelete(r); } }] : []),
+                          // V_25.0 — a Head may REQUEST a delete (Admin approves);
+                          // Executives still never see it.
+                          ...(paths.isAdmin || canRequestDelete ? [{ key: 'delete', label: paths.isAdmin ? 'Delete' : 'Request Delete', icon: <MdDelete size={14} />, danger: true, disabled: deletingId === r.id, onClick: () => { rowMenu.close(); handleDelete(r); } }] : []),
                         ]} />
                       )}
                     </td>

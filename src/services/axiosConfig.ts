@@ -3,6 +3,7 @@
 // ==========================================
 import axios from 'axios';
 import { STORAGE_KEYS } from '../constants';
+import { getDataScope } from '../utils/dataScope';
 
 // Uploads carry files (up to 10 MB), so they get their own, much longer
 // budget than ordinary JSON calls — see the request interceptor below.
@@ -24,6 +25,8 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // A Head's "My Data" switch (see utils/dataScope.ts).
+    if (getDataScope() === 'mine') config.headers['X-Data-Scope'] = 'mine';
     // Let the browser set the multipart boundary itself for file uploads,
     // and give them room to finish: the 10s default above is fine for JSON
     // but aborts a multi-megabyte document on a slow connection long

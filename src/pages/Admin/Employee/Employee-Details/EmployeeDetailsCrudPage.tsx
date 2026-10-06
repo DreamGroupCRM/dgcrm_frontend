@@ -40,7 +40,7 @@ import {
 import './EmployeeDetails.css';
 import { employeeDetailsBasePath } from '../../../../hooks/useRoleBasePath';
 import { useAppSelector } from '../../../../hooks';
-import { fetchAccessConfig, fetchDepartmentHeads, ConfigDepartment, TeamMember } from '../../../../services/accessService';
+import { fetchAccessConfig, fetchDepartmentHeads, ConfigDepartment, TeamMember, ACCESS_AREA_LABELS, DesignationLevel } from '../../../../services/accessService';
 import DateInput from '../../../../components/common/DateInput';
 
 // Employee Status badge colors for View mode — same palette as
@@ -618,6 +618,55 @@ const DocumentCard: React.FC<{
 // ─────────────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────
+// V_25.0 — read-only "what this employee will get", derived from the
+// Department Setup of each selected Department + Designation. Nothing here
+// is editable: it only explains what the choices above mean.
+const AccessSummary: React.FC<{
+  t: Theme;
+  roles: { deptId: number; deptName: string; desigId: number | null; level: DesignationLevel }[];
+  config: ConfigDepartment[];
+  canAddCustomer: boolean;
+}> = ({ t, roles, config, canAddCustomer }) => {
+  const ready = roles.filter((r) => r.desigId != null || config.find((d) => d.id === r.deptId)?.designation_required === false);
+  if (ready.length === 0) return null;
+  return (
+    <div className="mt-4" style={{ padding: '10px 12px', borderRadius: 10, border: `1px dashed ${t.surfaceBorder}`, background: t.insetBg }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginBottom: 6 }}>Access summary (from Department Setup)</div>
+      <div className="flex flex-col gap-2">
+        {ready.map((r) => {
+          const areas = config.find((d) => d.id === r.deptId)?.access_areas;
+          const rules: string[] = [];
+          if (r.level === 'head') {
+            rules.push("Sees own and team's data (My Data / Team Data switch)");
+            rules.push('Assigns customers / leads to their team');
+            if (!areas || areas.includes('customers')) rules.push('Edit customer and Cancel booking — via Admin approval');
+            if (!areas || areas.includes('payment_received')) rules.push('Delete payment — via Admin approval');
+            if (canAddCustomer) rules.push('Add customer — via Admin approval');
+          } else if (r.level === 'executive') {
+            rules.push('Sees only own data');
+            if (!areas || areas.includes('customers')) rules.push('Customer Details: View, Payment History, Download Schedule only');
+          }
+          if (r.level && (!areas || areas.includes('payment_dues'))) rules.push('Received Date: up to 3 days back, same month');
+          rules.push('Export CSV: Admin only');
+          return (
+            <div key={r.deptId} style={{ fontSize: 11.5, color: t.textSecondary, lineHeight: 1.5 }}>
+              <span style={{ fontWeight: 700, color: t.textPrimary }}>{r.deptName}</span>
+              {r.level && <> · {r.level === 'head' ? 'Head' : 'Executive'}</>}
+              <div>
+                <span style={{ fontWeight: 600 }}>Pages: </span>
+                {areas == null ? 'Not set up yet — same access as before' : areas.length ? areas.map((a) => ACCESS_AREA_LABELS[a]).join(', ') : 'None'}
+              </div>
+              <ul style={{ margin: '2px 0 0 16px', padding: 0, listStyle: 'disc' }}>
+                {rules.map((x) => <li key={x}>{x}</li>)}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -915,19 +964,22 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       };
     });
   }, [form.department_ids, form.designation_ids, designationOptions, departmentOptions, accessConfig]);
-  const executiveDeptIds = deptRoles.filter((r) => r.level === 'executive').map((r) => r.deptId);
+  // V_25.0 — an Executive or a Head may have a Reporting Head (a Head of
+  // the same department; Head → Head makes a multi-level hierarchy). It is
+  // optional: none means they report to Admin directly.
+  const reportingDeptIds = deptRoles.filter((r) => r.level === 'executive' || r.level === 'head').map((r) => r.deptId);
   const isHeadAnywhere = deptRoles.some((r) => r.level === 'head');
 
   // Reporting Head choices — only Heads of that SAME department.
   useEffect(() => {
-    executiveDeptIds.filter((deptId) => !(deptId in headsByDept)).forEach((deptId) => {
+    reportingDeptIds.filter((deptId) => !(deptId in headsByDept)).forEach((deptId) => {
       setHeadsByDept((prev) => ({ ...prev, [deptId]: [] }));
       fetchDepartmentHeads(deptId)
         .then((heads) => setHeadsByDept((prev) => ({ ...prev, [deptId]: heads.filter((h) => !(id && String(h.id) === id)) })))
         .catch(() => toast.error('Failed to load Reporting Heads.'));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [executiveDeptIds.join(','), id]);
+  }, [reportingDeptIds.join(','), id]);
 
   const setDepartmentHead = (deptId: number, headId: string) =>
     setForm((prev) => ({ ...prev, department_heads: { ...prev.department_heads, [String(deptId)]: headId ? Number(headId) : null } }));
@@ -1139,11 +1191,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       const missing = deptRoles.find((r) => r.designationRequired && r.hasDesignations && r.desigId == null);
       return { field: 'designation_ids', section: 'assign' as SectionKey, message: `Please select a Designation for ${missing?.deptName ?? 'each department'}.`, failed: () => Boolean(missing) };
     })(),
-    // An Executive must report to a Head of the same department.
-    (() => {
-      const missing = deptRoles.find((r) => r.level === 'executive' && !form.department_heads[String(r.deptId)]);
-      return { field: 'department_heads', section: 'assign' as SectionKey, message: `Please select the Reporting Head for ${missing?.deptName ?? 'the department'}.`, failed: () => Boolean(missing) };
-    })(),
     // One designation per department (older records may still have two).
     { field: 'designation_ids', section: 'assign', message: 'Only one designation can be selected per department.', failed: () => {
       const depts = form.designation_ids.map((id) => designationOptions.find((d) => d.value === id)?.departmentId ?? null).filter((d) => d != null);
@@ -1191,7 +1238,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       // Customer" only for a Head.
       const payload: typeof form = {
         ...form,
-        department_heads: Object.fromEntries(executiveDeptIds.map((d) => [String(d), form.department_heads[String(d)] ?? null])),
+        department_heads: Object.fromEntries(reportingDeptIds.map((d) => [String(d), form.department_heads[String(d)] ?? null])),
         can_add_customer: isHeadAnywhere && form.can_add_customer,
       };
       let pending = false;
@@ -1414,7 +1461,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                     return (
                       <span key={r.deptId} className="emp-view-chip">
                         {r.deptName}: {r.level === 'head' ? 'Head' : 'Executive'}
-                        {r.level === 'executive' && ` · reports to ${head ? head.name : headId ? `#${headId}` : '—'}`}
+                        {` · reports to ${head ? head.name : headId ? `#${headId}` : 'Admin'}`}
                       </span>
                     );
                   })
@@ -1740,17 +1787,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                       : (!r.designationRequired || !r.hasDesignations ? 'No designation needed' : 'Select a designation above')}
                   </div>
                   <div>
-                    {r.level === 'executive' && (
+                    {r.level && (
                       <select value={form.department_heads[String(r.deptId)] ?? ''} disabled={isView}
                         onChange={(e) => setDepartmentHead(r.deptId, e.target.value)} className={fieldClass} aria-label={`Reporting Head for ${r.deptName}`}>
-                        <option value="">Reporting Head *</option>
+                        <option value="">No Reporting Head (reports to Admin)</option>
                         {(headsByDept[r.deptId] ?? []).map((h) => (
                           <option key={h.id} value={h.id}>{h.name}{h.employee_code ? ` (${h.employee_code})` : ''}</option>
                         ))}
                       </select>
-                    )}
-                    {r.level === 'executive' && (headsByDept[r.deptId] ?? []).length === 0 && (
-                      <div style={{ fontSize: 10.5, color: '#b45309', marginTop: 3 }}>No {r.deptName} Head yet — add the Head first.</div>
                     )}
                   </div>
                 </div>
@@ -1765,6 +1809,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 <span style={{ fontWeight: 500, fontSize: 11, color: t.textSecondary }}>(added customers still need Admin approval)</span>
               </label>
             )}
+            <AccessSummary t={t} roles={deptRoles} config={accessConfig ?? []} canAddCustomer={isHeadAnywhere && form.can_add_customer} />
           </div>
         )}
 

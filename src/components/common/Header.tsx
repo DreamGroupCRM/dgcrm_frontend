@@ -28,6 +28,8 @@ import { useNavigate } from 'react-router-dom';
 // the hamburger and the desktop Collapse button can never both be visible,
 // and can never both be absent.
 import { useIsDesktopSidebar } from './Sidebar';
+import { useAccessProfile } from '../../hooks/useAccessProfile';
+import { DataScope, getDataScope, setDataScope } from '../../utils/dataScope';
 
 interface HeaderProps {
   onMobileMenuToggle: () => void;
@@ -81,6 +83,17 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
 
   // Authoritative desktop/mobile switch shared with Sidebar.tsx.
   const isDesktop = useIsDesktopSidebar();
+
+  // V_25.0 — "My Data / Team Data" for a Head (see utils/dataScope.ts).
+  // Switching reloads the page so every list refetches with the new scope.
+  const { profile: access } = useAccessProfile();
+  const isHead = Boolean(access && !access.full && access.head_of.length > 0);
+  const dataScope = getDataScope();
+  const switchScope = (next: DataScope) => {
+    if (next === dataScope) return;
+    setDataScope(next);
+    window.location.reload();
+  };
 
   // ── Settings: master visibility persisted in localStorage ─────────────
   const [masterEnabled, setMasterEnabled] = useState<boolean>(() => {
@@ -272,6 +285,39 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
 
       {/* ── RIGHT: controls ───────────────────────────────────────────── */}
       <div className="flex items-center gap-0.5 flex-shrink-0">
+
+        {isHead && (
+          <div
+            role="radiogroup"
+            aria-label="Show data"
+            title="My Data: only your own records. Team Data: yours and your team's."
+            style={{
+              display: 'inline-flex', padding: 2, borderRadius: 999, marginRight: 6,
+              border: `1px solid ${t.headerBorder}`, background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+            }}
+          >
+            {([['mine', 'My Data'], ['team', 'Team Data']] as const).map(([key, label]) => {
+              const on = dataScope === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => switchScope(key)}
+                  style={{
+                    border: 'none', cursor: 'pointer', borderRadius: 999, padding: '4px 10px',
+                    fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', fontFamily: t.fontFamily,
+                    background: on ? 'var(--brand-gradient)' : 'transparent',
+                    color: on ? '#fff' : t.textPrimary,
+                  }}
+                >
+                  {isDesktop ? label : key === 'mine' ? 'Mine' : 'Team'}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* ── DESKTOP controls — mounted only when isDesktop is true ── */}
         {isDesktop && (
