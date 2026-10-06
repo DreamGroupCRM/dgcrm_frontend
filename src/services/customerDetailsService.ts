@@ -361,6 +361,7 @@ const mapTransactionToPaymentRecord = (t: BackendAmountTransaction): CustomerPay
   company: t.company ?? undefined,
   maintenance: t.maintanance1 ?? undefined,
   received_by: t.received_by ?? null,
+  is_after_possession_emi: !!(t as { is_after_possession_emi?: boolean | number }).is_after_possession_emi,
 });
 
 // Text-field renames from this app's form-field names to the backend's

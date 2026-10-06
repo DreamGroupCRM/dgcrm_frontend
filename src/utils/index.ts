@@ -124,6 +124,15 @@ export const resolveFileUrl = (url: string | null | undefined): string => {
   return base + (base.includes('?') ? '&' : '?') + 'fk=' + encodeURIComponent(fk);
 };
 
+/** Asks for one line of text (e.g. a customer name); null when cancelled. */
+export const promptText = async (title: string, placeholder: string, confirmText = 'Continue'): Promise<string | null> => {
+  const res = await Swal.fire({
+    title, input: 'text', inputPlaceholder: placeholder, showCancelButton: true, confirmButtonText: confirmText,
+    inputValidator: (v: string) => (!v || !v.trim() ? 'Please enter a name.' : undefined),
+  });
+  return res.isConfirmed && typeof res.value === 'string' ? res.value.trim() : null;
+};
+
 /**
  * SweetAlert2 notifications
  */

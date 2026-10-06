@@ -1,6 +1,8 @@
-// EMI Schedule & Scheme — the two tables the office sees on Customize
-// Scheme, shown to the customer as two accordions, plus the three money
-// tiles above them.
+// EMI Scheme & Schedule — the two tables the office sees on Customize
+// Scheme, shown side by side on a laptop (stacked on a phone), plus the
+// three money tiles above them. Compact label / amount rows rather than
+// wide tables, so nothing scrolls sideways on a phone, with the Before /
+// After Possession totals in colour bands.
 //
 // Both come from GET /customer-portal/bookings/:id/scheme, which runs the
 // SAME getCustomerScheme the staff pages use rather than recomputing
@@ -23,7 +25,7 @@ import { AccordionSection } from '../../../components/common/Accordion';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { fetchMyBookingScheme, fetchMyBookingDueGrid } from '../../../services/customerPortalService';
 import { DueGridRow } from '../../../services/paymentService';
-import { CustomerSchemeData, CustomerSchemeSummaryRow, CustomerScheduleRow } from '../../../types/index';
+import { CustomerSchemeData, CustomerSchemeSummaryRow } from '../../../types/index';
 import { exportPaymentSchedulePdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport.lazy';
 import { useCustomerPortal } from '../CustomerPortalContext';
 import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
@@ -34,120 +36,112 @@ const STATUS_META = {
   upcoming: { label: 'Upcoming', icon: MdSchedule, color: '#1f2937', bg: '#FFFF00' },
 } as const;
 
-const SummaryTable: React.FC<{ heading: string; rows: CustomerSchemeSummaryRow[]; total: number; totalLabel: string }> = ({ heading, rows, total, totalLabel }) => (
-  <div style={{ marginBottom: 16 }}>
-    <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 7 }}>{heading}</div>
-    <div className="cp-table-wrap">
-      <table className="cp-table">
-        <thead>
-          <tr>
-            <th style={{ width: 44 }}>#</th>
-            <th>Payment Details</th>
-            <th className="cp-num">Amount (Rs.)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i}>
-              <td>{i + 1}</td>
-              <td>{r.label}</td>
-              <td className="cp-num">{rupee(r.amount)}</td>
-            </tr>
-          ))}
-          <tr>
-            <td colSpan={2} style={{ fontWeight: 800 }}>{totalLabel}</td>
-            <td className="cp-num" style={{ fontWeight: 800 }}>{rupee(total)}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+// Before / After Possession totals each get their own colour band so they
+// stand out at a glance (same colours as the downloaded PDF).
+const TOTAL_TONES = {
+  A: { bg: 'rgba(37,99,235,0.12)', ink: '#1e40af' },
+  B: { bg: 'rgba(22,163,74,0.13)', ink: '#166534' },
+  grand: { bg: 'rgba(217,119,6,0.15)', ink: '#92400e' },
+} as const;
+
+const TotalBand: React.FC<{ label: string; value: number; tone: keyof typeof TOTAL_TONES }> = ({ label, value, tone }) => (
+  <div className="cp-total-band" style={{ background: TOTAL_TONES[tone].bg, color: TOTAL_TONES[tone].ink }}>
+    <span>{label}</span>
+    <span className="cp-num">{rupee(value)}</span>
   </div>
 );
 
-// One continuous numbered table across BOTH phases (rather than two
-// separate A/B tables) — matches the reference screenshot, and reads more
-// like a real payment calendar than two disconnected lists. Collapsed to
-// a short preview by default (a customer with a 71-installment schedule
-// does not need every row rendered on page load) with a "View all N
-// installments" toggle beneath it.
+// One phase of the EMI Scheme — compact label / amount rows, then its
+// coloured total.
+const SchemeSection: React.FC<{ heading: string; rows: CustomerSchemeSummaryRow[]; total: number; totalLabel: string; tone: 'A' | 'B' }> = ({ heading, rows, total, totalLabel, tone }) => (
+  <div className="cp-scheme-section">
+    <div className="cp-scheme-heading" style={{ color: TOTAL_TONES[tone].ink }}>{heading}</div>
+    {rows.map((r, i) => (
+      <div key={i} className="cp-scheme-row">
+        <span className="cp-scheme-idx">{i + 1}</span>
+        <span className="cp-scheme-label">{r.label}</span>
+        <span className="cp-num cp-scheme-amt">{rupee(r.amount)}</span>
+      </div>
+    ))}
+    <TotalBand label={totalLabel} value={total} tone={tone} />
+  </div>
+);
+
+// The full schedule: one continuous numbered list, with the "Before
+// Possession" / "After Possession" heading shown ONCE where each phase
+// starts and that phase's coloured total where it ends. Collapsed to a
+// short preview by default (a 70+ installment schedule does not need every
+// row on page load), with a "View all" toggle.
 const SCHEDULE_PREVIEW_ROWS = 8;
 
-const ScheduleTable: React.FC<{
-  rows: CustomerScheduleRow[]; gridRows: DueGridRow[]; grandTotal: number;
-}> = ({ rows, gridRows, grandTotal }) => {
+const ScheduleList: React.FC<{ scheme: CustomerSchemeData; gridRows: DueGridRow[] }> = ({ scheme, gridRows }) => {
   const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? rows : rows.slice(0, SCHEDULE_PREVIEW_ROWS);
+  const all = useMemo(() => [
+    ...scheme.scheduleA.map((r) => ({ ...r, phase: 'A' as const })),
+    ...scheme.scheduleB.map((r) => ({ ...r, sr: scheme.scheduleA.length + r.sr, phase: 'B' as const })),
+  ], [scheme]);
+  const visibleCount = expanded ? all.length : Math.min(all.length, SCHEDULE_PREVIEW_ROWS);
+  const lastA = scheme.scheduleA.length - 1;
 
+  if (all.length === 0) return <div className="cp-empty">No installments scheduled.</div>;
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div className="cp-table-wrap">
-        <table className="cp-table">
-          <thead>
-            <tr>
-              <th style={{ width: 56 }}>Sr No</th>
-              <th>Installment Date</th>
-              <th>Payment Description</th>
-              <th className="cp-num">Amount</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 18 }}>No installments scheduled.</td></tr>
-            ) : visible.map((r, i) => {
-              const grid = gridRows[i];
-              const settled = !!grid?.settled_via_extra_pay;
-              const status = STATUS_META[(grid?.status ?? 'upcoming') as keyof typeof STATUS_META] ?? STATUS_META.upcoming;
-              const Icon = status.icon;
-              // Part-paid: some of this installment is covered by leftover
-              // advance credit, so the full scheduled amount is no longer
-              // what is owed.
-              const partial = !settled && typeof grid?.due_amount === 'number'
-                && grid.due_amount > 0 && grid.due_amount < r.amount;
-              return (
-                <tr key={r.sr}>
-                  <td style={{ textDecoration: settled ? 'line-through' : undefined }}>{r.sr}</td>
-                  <td className="cp-nowrap" style={{ textDecoration: settled ? 'line-through' : undefined }}>
-                    {r.date ? formatDate(r.date) : '—'}
-                  </td>
-                  <td style={{ textDecoration: settled ? 'line-through' : undefined }}>{r.label}</td>
+    <>
+      <table className="cp-sched">
+        <thead>
+          <tr><th>#</th><th>Date</th><th>Payment</th><th className="cp-num">Amount</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {all.slice(0, visibleCount).map((r, i) => {
+            const grid = gridRows[i];
+            const settled = !!grid?.settled_via_extra_pay;
+            const status = STATUS_META[(grid?.status ?? 'upcoming') as keyof typeof STATUS_META] ?? STATUS_META.upcoming;
+            const Icon = status.icon;
+            const partial = !settled && typeof grid?.due_amount === 'number' && grid.due_amount > 0 && grid.due_amount < r.amount;
+            const strike = settled ? { textDecoration: 'line-through' as const } : undefined;
+            return (
+              <React.Fragment key={r.sr}>
+                {(i === 0 || i === lastA + 1) && (
+                  <tr className="cp-sched-phase">
+                    <td colSpan={5} style={{ color: TOTAL_TONES[r.phase].ink }}>{r.phase === 'A' ? 'A) Before Possession' : 'B) After Possession'}</td>
+                  </tr>
+                )}
+                <tr>
+                  <td style={strike}>{r.sr}</td>
+                  <td className="cp-nowrap" style={strike}>{r.date ? formatDate(r.date) : '—'}</td>
+                  <td style={strike}>{r.label}</td>
                   <td className="cp-num" style={{ fontWeight: 600 }}>
                     {rupee(r.amount)}
-                    {partial && (
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626' }}>
-                        {rupee(grid!.due_amount)} due
-                      </div>
-                    )}
+                    {partial && <div style={{ fontSize: 10, fontWeight: 700, color: '#dc2626' }}>{rupee(grid!.due_amount)} due</div>}
                   </td>
                   <td>
                     <span className="cp-chip" style={{ background: status.bg, color: status.color }}>
-                      <Icon size={12} />{settled ? 'Paid (Advance)' : status.label}
+                      <Icon size={11} />{settled ? 'Paid (Adv.)' : status.label}
                     </span>
                   </td>
                 </tr>
-              );
-            })}
-            {rows.length > 0 && (
-              <tr>
-                <td colSpan={3} style={{ fontWeight: 800 }}>Grand Total (A + B)</td>
-                <td className="cp-num" style={{ fontWeight: 800 }}>{rupee(grandTotal)}</td>
-                <td />
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      {rows.length > SCHEDULE_PREVIEW_ROWS && (
+                {i === lastA && (
+                  <tr className="cp-sched-total"><td colSpan={5}><TotalBand label="Total (A) — Before Possession" value={scheme.totalA} tone="A" /></td></tr>
+                )}
+                {i === all.length - 1 && scheme.scheduleB.length > 0 && (
+                  <tr className="cp-sched-total"><td colSpan={5}><TotalBand label="Total (B) — After Possession" value={scheme.totalB} tone="B" /></td></tr>
+                )}
+                {i === all.length - 1 && (
+                  <tr className="cp-sched-total"><td colSpan={5}><TotalBand label="Grand Total (A + B)" value={scheme.grandTotal} tone="grand" /></td></tr>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+      {all.length > SCHEDULE_PREVIEW_ROWS && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, flexWrap: 'wrap', gap: 8 }}>
-          <span style={{ fontSize: 11.5, color: 'var(--cp-text-secondary, #6b7280)' }}>
-            Showing {visible.length} of {rows.length} installments
-          </span>
+          <span style={{ fontSize: 11.5, color: 'var(--cp-text-secondary, #6b7280)' }}>Showing {visibleCount} of {all.length} installments</span>
           <button type="button" className="cp-btn" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? 'Show less' : `View all ${rows.length} installments`}
+            {expanded ? 'Show less' : `View all ${all.length} installments`}
           </button>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
@@ -186,17 +180,6 @@ const CustomerSchemePage: React.FC = () => {
     return () => { cancelled = true; };
   }, [selectedId]);
 
-  // One continuous numbered list across both phases — B's Sr No continues
-  // where A's ends, matching gridRows, which is already one flat list
-  // covering both phases in the same order.
-  const allScheduleRows = useMemo(() => {
-    if (!scheme) return [];
-    return [
-      ...scheme.scheduleA,
-      ...scheme.scheduleB.map((r) => ({ ...r, sr: scheme.scheduleA.length + r.sr })),
-    ];
-  }, [scheme]);
-
   if (loading) return <div className="cp-center"><CircularProgress size={28} /></div>;
   if (error || !scheme) return <div className="cp-empty cp-empty-error">We could not load your EMI scheme. Please try again.</div>;
 
@@ -216,24 +199,24 @@ const CustomerSchemePage: React.FC = () => {
         </button>
       </div>
 
-      <AccordionSection
-        theme={t} icon={<MdListAlt size={16} />} title="EMI Scheme" gradient="var(--brand-gradient)"
-        open={openScheme} onToggle={() => setOpenScheme((v) => !v)}
-      >
-        <SummaryTable heading="A) Mode of Payment (Before Possession)" rows={scheme.summaryA} total={scheme.totalA} totalLabel="Total (A) — Before Possession" />
-        <SummaryTable heading="B) After Possession" rows={scheme.summaryB} total={scheme.totalB} totalLabel="Total (B) — After Possession" />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 800 }}>
-          <span>Grand Total (A + B)</span>
-          <span>{rupee(scheme.grandTotal)}</span>
-        </div>
-      </AccordionSection>
+      {/* Scheme and Schedule side by side on a laptop, stacked on a phone. */}
+      <div className="cp-scheme-layout">
+        <AccordionSection
+          theme={t} icon={<MdListAlt size={16} />} title="EMI Scheme" gradient="var(--brand-gradient)"
+          open={openScheme} onToggle={() => setOpenScheme((v) => !v)}
+        >
+          <SchemeSection heading="A) Before Possession" rows={scheme.summaryA} total={scheme.totalA} totalLabel="Total (A) — Before Possession" tone="A" />
+          <SchemeSection heading="B) After Possession" rows={scheme.summaryB} total={scheme.totalB} totalLabel="Total (B) — After Possession" tone="B" />
+          <TotalBand label="Grand Total (A + B)" value={scheme.grandTotal} tone="grand" />
+        </AccordionSection>
 
-      <AccordionSection
-        theme={t} icon={<MdEventNote size={16} />} title={`EMI Schedule (${allScheduleRows.length})`} gradient="var(--brand-gradient)"
-        open={openSchedule} onToggle={() => setOpenSchedule((v) => !v)}
-      >
-        <ScheduleTable rows={allScheduleRows} gridRows={gridRows} grandTotal={scheme.grandTotal} />
-      </AccordionSection>
+        <AccordionSection
+          theme={t} icon={<MdEventNote size={16} />} title={`EMI Schedule (${scheme.scheduleA.length + scheme.scheduleB.length})`} gradient="var(--brand-gradient)"
+          open={openSchedule} onToggle={() => setOpenSchedule((v) => !v)}
+        >
+          <ScheduleList scheme={scheme} gridRows={gridRows} />
+        </AccordionSection>
+      </div>
     </>
   );
 };

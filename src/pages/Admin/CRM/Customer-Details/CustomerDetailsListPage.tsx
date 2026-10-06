@@ -30,6 +30,7 @@ import {
   collectPayment, fetchPaymentReceipt, deletePayment, paymentForLabel,
 } from '../../../../services/paymentService';
 import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceiptPdf } from './paymentPdfExport.lazy';
+import PaymentHistoryTable from '../../../../components/common/PaymentHistoryTable';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
@@ -1447,67 +1448,35 @@ const CustomerDetailsListPage: React.FC = () => {
                   {(infoModal.payments || []).length === 0 ? (
                     <p style={{ color: t.textSecondary, fontSize: 12 }}>No payment history found.</p>
                   ) : (
-                    <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
-                      <table className="master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
-                        <thead>
-                          <tr className="master-table-header-gradient">
-                            {['Actions', 'Rec Number', 'Payment Date', 'Receipt Date', 'Mode Of Payment', 'Payment For', 'Amount', 'Company', 'Status'].map((h) => (
-                              <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {infoModal.payments!.map((p) => (
-                            <tr key={p.id} style={{ borderTop: `1px solid ${t.divider}` }}>
-                              <td style={{ padding: '8px 12px' }}>
+                    // Same columns as Payment Received: Actions, Status,
+                    // Receipt No., Payment Type, ... (shared table).
+                    <PaymentHistoryTable t={t} isDark={isDark}
+                      rows={infoModal.payments!.map((p) => ({
+                        id: p.id, receipt_number: p.receipt_number, payment_type: p.payment_type, payment_tag: p.payment_tag,
+                        is_after_possession_emi: p.is_after_possession_emi, mode: p.mode, amount: p.amount, inst_date: p.inst_date,
+                        payment_date: p.paid_on, created_at: p.created_at, company: p.company, received_by: p.received_by, is_approved: p.is_approved,
+                      }))}
+                      renderActions={(row) => (
                                 <div className="flex items-center gap-1.5">
-                                  <button type="button" title="Download Receipt" onClick={() => handleDownloadReceiptForTransaction(p.id)}
+                                  <button type="button" title="Download Receipt" onClick={() => handleDownloadReceiptForTransaction(String(row.id))}
                                     className="flex items-center justify-center rounded-lg"
                                     style={{ width: 26, height: 26, background: isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', border: 'none', color: '#16a34a', cursor: 'pointer' }}>
                                     <MdDownload size={13} />
                                   </button>
-                                  <button type="button" title="View Receipt" onClick={() => openReceipt(p.id)}
+                                  <button type="button" title="View Receipt" onClick={() => openReceipt(String(row.id))}
                                     className="flex items-center justify-center rounded-lg"
                                     style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-ink)', cursor: 'pointer' }}>
                                     <MdVisibility size={13} />
                                   </button>
                                   {isAdmin && (
-                                    <button type="button" title="Delete Payment" onClick={() => handleDeletePayment(p, infoModal.customer)}
+                                    <button type="button" title="Delete Payment" onClick={() => handleDeletePayment(infoModal.payments!.find((x) => x.id === String(row.id))!, infoModal.customer)}
                                       className="flex items-center justify-center rounded-lg"
                                       style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
                                       <MdDelete size={13} />
                                     </button>
                                   )}
                                 </div>
-                              </td>
-                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.receipt_number || '—'}</td>
-                              {/* Extra Pay is a pre-payment against a future EMI, not a
-                                  settlement of that installment — its stored inst_date
-                                  points at whichever EMI it'll eventually apply to, which
-                                  would misleadingly read as "this installment is paid" if
-                                  shown here, so it stays blank instead. */}
-                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? '—' : (p.inst_date ? formatDate(p.inst_date) : '—')}</td>
-                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                                <div className="flex items-center gap-1.5">
-                                  {formatDate(p.paid_on)}
-                                  <BackdatedDot paymentDate={p.payment_date} createdAt={p.created_at} />
-                                </div>
-                              </td>
-                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.mode || '—'}</td>
-                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(p.payment_type)}</td>
-                              <td style={{ padding: '8px 12px', fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>₹ {p.amount.toLocaleString('en-IN')}</td>
-                              <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.company || '—'}</td>
-                              {/* Approved and not-yet-approved payments are both listed. */}
-                              <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
-                                <span style={{ display: 'inline-block', padding: '2px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, color: '#fff', background: p.is_approved ? '#16a34a' : '#d97706' }}>
-                                  {p.is_approved ? 'Approved' : 'Pending Approval'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                      )} />
                   )}
 
                   {(infoModal.payments || []).length > 0 && (

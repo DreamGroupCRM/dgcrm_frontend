@@ -179,6 +179,31 @@
   color: var(--cp-text-primary, #111827);
 }
 
+/* ── Booking boxes — one per booking (name + customer ID); the selected
+   one is filled with the brand colour. Scrolls sideways on a narrow
+   phone rather than pushing the header actions off-screen. */
+.cp-booking-boxes {
+  display: flex; gap: 6px; min-width: 0; flex: 1 1 auto;
+  overflow-x: auto; scrollbar-width: none; padding: 2px 0;
+}
+.cp-booking-boxes::-webkit-scrollbar { display: none; }
+.cp-booking-box {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  padding: 5px 10px; border-radius: 10px; cursor: pointer; text-align: left;
+  background: var(--cp-inset-bg, #f3f4f6); border: 1.5px solid var(--cp-surface-border, #e5e7eb);
+  color: var(--cp-text-primary, #111827); font-family: inherit;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+.cp-booking-box:hover { border-color: var(--brand-ink, #7c3aed); }
+.cp-booking-box-active {
+  background: var(--brand-gradient, linear-gradient(135deg, #7c3aed, #db2777)); color: #fff;
+  border-color: transparent; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+}
+.cp-booking-box-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.cp-booking-box-name { font-size: 12px; font-weight: 800; white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.cp-booking-box-code { font-size: 10.5px; font-weight: 600; opacity: 0.85; white-space: nowrap; }
+.cp-booking-box-tick { flex-shrink: 0; }
+
 .cp-header-actions { margin-left: auto; display: flex; align-items: center; gap: 7px; min-width: 0; flex-shrink: 0; }
 
 /* ── Avatar — initials circle next to the greeting, same brand gradient
@@ -386,6 +411,18 @@
 .cp-person-name { font-size: 14.5px; font-weight: 800; color: var(--cp-text-primary, #111827); }
 .cp-person-sub { font-size: 11px; color: var(--cp-text-secondary, #6b7280); line-height: 1.6; margin-top: 2px; }
 
+/* Home — identity block on the left, every detail in a dense grid beside it. */
+.cp-detail-wrap { display: flex; flex-direction: column; gap: 14px; }
+.cp-detail-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.cp-avatar-empty { display: flex; align-items: center; justify-content: center; background: var(--cp-inset-bg, #f3f4f6); color: var(--cp-text-secondary, #6b7280); }
+.cp-grid-dense { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; flex: 1; min-width: 0; }
+.cp-grid-span { grid-column: 1 / -1; }
+@media (min-width: 768px) {
+  .cp-detail-wrap { flex-direction: row; align-items: flex-start; }
+  .cp-detail-id { flex: 0 0 190px; flex-direction: column; align-items: flex-start; }
+  .cp-grid-dense { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .cp-grid-property { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+}
 .cp-rm-contact { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 .cp-rm-contact-item { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--cp-text-primary, #111827); }
 
@@ -445,6 +482,58 @@
 }
 
 /* Summary stat tiles. */
+/* ── My Documents — large previews side by side ─────────────────────── */
+.cp-docs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+.cp-doc-card {
+  display: flex; flex-direction: column; border-radius: 14px; overflow: hidden;
+  background: var(--cp-surface-bg, #fff); border: 1px solid var(--cp-surface-border, #e5e7eb);
+}
+.cp-doc-card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px;
+  font-size: 13px; font-weight: 800; color: #fff; background: var(--brand-gradient, linear-gradient(135deg, #7c3aed, #db2777));
+}
+.cp-doc-card-missing { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,0.25); }
+.cp-doc-card-preview {
+  height: 230px; display: flex; align-items: center; justify-content: center; padding: 8px; border: none; cursor: zoom-in;
+  background: var(--cp-inset-bg, #f3f4f6);
+}
+.cp-doc-card-preview:disabled { cursor: default; }
+.cp-doc-card-preview img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+.cp-doc-card-pdf { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #dc2626; font-size: 12px; font-weight: 700; }
+.cp-doc-card-actions { display: flex; gap: 8px; padding: 10px 12px; }
+.cp-doc-card-actions .cp-btn { flex: 1; justify-content: center; }
+
+/* ── EMI Scheme & Schedule — compact, no sideways scroll on a phone ───── */
+.cp-scheme-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 16px; align-items: start; }
+@media (min-width: 1200px) { .cp-scheme-layout { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+.cp-scheme-section { margin-bottom: 12px; }
+.cp-scheme-heading { font-size: 12.5px; font-weight: 800; margin-bottom: 6px; }
+.cp-scheme-row {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: baseline;
+  padding: 6px 2px; border-bottom: 1px dashed var(--cp-divider, #e5e7eb); font-size: 12px;
+  color: var(--cp-text-primary, #111827);
+}
+.cp-scheme-idx { color: var(--cp-text-secondary, #6b7280); font-weight: 700; }
+.cp-scheme-label { word-break: break-word; }
+.cp-scheme-amt { font-weight: 700; }
+.cp-total-band {
+  display: flex; justify-content: space-between; gap: 10px; align-items: center;
+  margin-top: 8px; padding: 8px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 800;
+}
+.cp-sched { width: 100%; border-collapse: collapse; table-layout: auto; font-size: 11.5px; }
+.cp-sched thead th {
+  text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+  color: var(--cp-text-secondary, #6b7280); padding: 6px 6px; border-bottom: 1px solid var(--cp-surface-border, #e5e7eb);
+}
+.cp-sched tbody td { padding: 6px 6px; border-bottom: 1px solid var(--cp-divider, #f1f5f9); color: var(--cp-text-primary, #111827); vertical-align: top; }
+.cp-sched-phase td { font-size: 12px; font-weight: 800; padding-top: 10px !important; border-bottom: none !important; }
+.cp-sched-total td { padding: 2px 0 6px !important; border-bottom: none !important; }
+.cp-sched .cp-chip { font-size: 10px; padding: 2px 6px; }
+@media (max-width: 575px) {
+  .cp-sched { font-size: 10.5px; }
+  .cp-sched thead th, .cp-sched tbody td { padding: 5px 3px; }
+}
+
 .cp-stats { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px; }
 .cp-stat {
   padding: 14px;
@@ -605,7 +694,7 @@
   .cp-doc-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   /* Personal Details next to Relationship Manager — see .cp-row-2's own
      comment for why this matches the sidebar's own drawer->rail point. */
-  .cp-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cp-row-2 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 }
 
 /* ── xl ≥ 1200 ───────────────────────────────────────────────────────── */

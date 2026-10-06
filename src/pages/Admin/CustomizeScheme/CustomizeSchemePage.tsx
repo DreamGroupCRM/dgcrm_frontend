@@ -40,6 +40,9 @@ import { exportSchemePdf } from './schemePdfExport.lazy';
 import { LOAN_TENURE_YEARS, LOAN_INTEREST_RATE } from './bankLoanConstants';
 import { serverTodayYmd } from '../../../utils/serverTime';
 import DateInput from '../../../components/common/DateInput';
+import { promptText } from '../../../utils';
+import { exportPaymentSchedulePdf } from '../CRM/Customer-Details/paymentPdfExport.lazy';
+import { CustomerSchemeData } from '../../../types/index';
 
 type Theme = AppTheme;
 
@@ -607,7 +610,49 @@ const CustomizeSchemePage: React.FC = () => {
   const costMismatch = totalCost > 0 && Math.round(computed.grandTotal) !== Math.round(totalCost);
   const remaining = Math.max(0, totalCost - computed.totalA);
 
-  const handlePrint = () => window.print();
+  // Print Scheme and Generate Scheme PDF both ask for the customer's name
+  // first; it is printed on the scheme (the page itself has no customer).
+  const [printName, setPrintName] = useState('');
+  const handlePrint = async () => {
+    const name = await promptText('Customer Name', 'Enter the customer name to print on the scheme', 'Print');
+    if (!name) return;
+    setPrintName(name);
+    // Let the name render before the print dialog captures the page.
+    window.setTimeout(() => window.print(), 60);
+  };
+
+  // Generate Scheme PDF — the same EMI Scheme + Schedule PDF the customer
+  // downloads from their portal, built from this page's numbers.
+  const [generatingSchemePdf, setGeneratingSchemePdf] = useState(false);
+  const handleGenerateSchemePdf = async () => {
+    if (!totalCost || totalCost <= 0 || !Number.isFinite(totalCost)) {
+      toast.error('Enter a valid Flat Cost (Total Cost of Flat) before generating the PDF.');
+      return;
+    }
+    const name = await promptText('Customer Name', 'Enter the customer name for the PDF', 'Generate PDF');
+    if (!name) return;
+    const ymd = (d: Date | null) => (d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : null);
+    const data: CustomerSchemeData = {
+      customer: {
+        id: '', customer_code: name.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'Customer',
+        name, middle_name: null, last_name: null, email: null, mobile_number: null, whatsapp_number: null, address: null,
+        customer_image: null, building_name: null, wing_name: null, flat_no: null, flat_type: null, area_sqft: null,
+        booking_date: bookingDate || null, flat_amount: totalCost,
+      },
+      summaryA: computed.summaryA, summaryB: computed.summaryB,
+      totalA: computed.totalA, totalB: computed.totalB, grandTotal: computed.grandTotal,
+      scheduleA: computed.beforeRows.map((r) => ({ sr: r.sr, date: ymd(r.date), label: r.label, amount: r.amount })),
+      scheduleB: computed.afterRows.map((r) => ({ sr: r.sr, date: ymd(r.date), label: r.label, amount: r.amount })),
+    };
+    setGeneratingSchemePdf(true);
+    try {
+      await exportPaymentSchedulePdf(data);
+    } catch {
+      toast.error('Failed to generate the PDF. Please try again.');
+    } finally {
+      setGeneratingSchemePdf(false);
+    }
+  };
 
   // ── Generate Scheme PDF — "Traditional Bank Loan VS. Our Interest-Free
   // Model" comparison, built purely from the Flat Cost already entered
@@ -642,13 +687,24 @@ const CustomizeSchemePage: React.FC = () => {
 
       {/* ── Page header + Print action (Generate PDF now lives in the Bank
           Loan sidebar card below, next to the comparison it produces) ──── */}
-      <div className="flex items-center justify-end mb-3 print-hide">
+      <div className="flex items-center justify-end gap-2 mb-3 print-hide">
+        <button type="button" onClick={handleGenerateSchemePdf} disabled={generatingSchemePdf}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white"
+          style={{ background: '#dc2626', border: 'none', cursor: generatingSchemePdf ? 'not-allowed' : 'pointer', opacity: generatingSchemePdf ? 0.6 : 1 }}>
+          <MdPictureAsPdf size={15} /> {generatingSchemePdf ? 'Generating...' : 'Generate Scheme PDF'}
+        </button>
         <button type="button" onClick={handlePrint}
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold"
           style={{ background: t.btnSecondaryBg, color: t.btnSecondaryText, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}>
           <MdPrint size={15} /> Print Scheme
         </button>
       </div>
+      {/* Printed only: the customer's name, asked for on Print Scheme. */}
+      {printName && (
+        <div className="print-only" style={{ fontSize: 16, fontWeight: 800, color: '#111827', marginBottom: 10 }}>
+          Customer Name: {printName}
+        </div>
+      )}
 
       {/* ── Top summary row — Remaining shown here ONLY (moved out of the
           Payment Details panel below), alongside 5 more gradient KPI boxes ── */}

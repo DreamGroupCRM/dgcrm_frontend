@@ -19,7 +19,7 @@ import CustomerPortalLayout from '../pages/Customer/CustomerPortalLayout';
 const CustomerHomePage = lazy(() => import('../pages/Customer/Home/CustomerHomePage'));
 const CustomerPaymentHistoryPage = lazy(() => import('../pages/Customer/PaymentHistory/CustomerPaymentHistoryPage'));
 const CustomerSchemePage = lazy(() => import('../pages/Customer/Scheme/CustomerSchemePage'));
-const CustomerCancelledReceiptsPage = lazy(() => import('../pages/Customer/CancelledReceipts/CustomerCancelledReceiptsPage'));
+const CustomerDocumentsPage = lazy(() => import('../pages/Customer/Documents/CustomerDocumentsPage'));
 
 const CustomerRoutes: React.FC = () => (
   <Routes>
@@ -37,7 +37,8 @@ const CustomerRoutes: React.FC = () => (
       }
     >
       <Route path="home" element={<CustomerHomePage />} />
-      <Route path="cancelled-receipts" element={<CustomerCancelledReceiptsPage />} />
+      {/* Cancelled receipts now live inside Payment History. */}
+      <Route path="cancelled-receipts" element={<Navigate to={ROUTES.CUSTOMER.PAYMENT_HISTORY} replace />} />
       <Route path="payment-history" element={<CustomerPaymentHistoryPage />} />
       {/* V_24.0 — Payment Receipt was its own page/section; its "completed
           payments, each with View/Download" table is now the Approval
@@ -47,7 +48,7 @@ const CustomerRoutes: React.FC = () => (
       <Route path="payment-receipt" element={<Navigate to={ROUTES.CUSTOMER.PAYMENT_HISTORY} replace />} />
       <Route path="emi-schedule" element={<CustomerSchemePage />} />
       {/* V_24.0 — My Documents moved onto Home instead of its own page. */}
-      <Route path="documents" element={<Navigate to={ROUTES.CUSTOMER.HOME} replace />} />
+      <Route path="documents" element={<CustomerDocumentsPage />} />
     </Route>
 
     {/* Anything else under /customer goes to Home rather than a blank screen. */}

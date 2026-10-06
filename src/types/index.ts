@@ -792,6 +792,7 @@ export interface CustomerPaymentRecord {
   company?       : string;
   maintenance?   : number;
   received_by?   : string | null; // who entered the payment
+  is_after_possession_emi?: boolean; // EMI After (true) vs EMI Before
 }
 
 export interface CustomerPaymentHistoryResponse {
