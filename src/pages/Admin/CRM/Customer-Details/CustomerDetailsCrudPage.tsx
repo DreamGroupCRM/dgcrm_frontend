@@ -1214,6 +1214,29 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
     return parkingNo && !base.includes(parkingNo) ? [...base, parkingNo] : base;
   }, [buildingDetail?.parking_count, parkingNo]);
 
+  // The selected building has no parking at all (Building Master's "Do you
+  // have parking?" is No, or 0 slots) — so the Purchase Parking? Yes / No
+  // radio is hidden and the booking is saved as "No". Only once that
+  // building's detail has actually loaded, and never for a customer who
+  // already holds a parking number on file (Edit), so an existing slot is
+  // never silently wiped.
+  const buildingHasNoParking = !!selectedBuilding && !loadingBuildingDetail
+    && buildingDetail?.id === selectedBuilding.id
+    && (!buildingDetail.has_parking || !buildingDetail.parking_count);
+  const hideParking = buildingHasNoParking && parkingNo === '';
+  const parkingAutoNo = useRef(false);
+  useEffect(() => {
+    if (isView) return;
+    if (hideParking) {
+      if (wantsParking !== 'no') { parkingAutoNo.current = true; setWantsParking('no'); }
+    } else if (parkingAutoNo.current && selectedBuilding && !buildingHasNoParking) {
+      // Moved on to a building that does have parking: put back the
+      // default this form starts with, since "No" was ours, not the user's.
+      parkingAutoNo.current = false;
+      setWantsParking('yes');
+    }
+  }, [hideParking, buildingHasNoParking, wantsParking, selectedBuilding, isView]);
+
   const wingNameOptions = useMemo(() => (buildingDetail ? buildingDetail.wings.map((w) => w.name) : []), [buildingDetail]);
   const selectedWing = useMemo(() => buildingDetail?.wings.find((w) => w.name === wingName), [buildingDetail, wingName]);
   const floorLabelOptions = useMemo(() => (selectedWing ? selectedWing.floors.map((f) => f.label) : []), [selectedWing]);
@@ -2046,13 +2069,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               </Field>
             </>
           )}
-          <Field t={t} label="Purchase Parking?" required>
-            <div className="flex items-center gap-4" style={{ height: 38 }}>
-              <RadioOption t={t} label="Yes" selected={wantsParking === 'yes'} disabled={isView} onSelect={() => setWantsParking('yes')} />
-              <RadioOption t={t} label="No" selected={wantsParking === 'no'} disabled={isView} onSelect={() => { setWantsParking('no'); setParkingNo(''); }} />
-            </div>
-          </Field>
-          {wantsParking === 'yes' && (
+          {!hideParking && (
+            <Field t={t} label="Purchase Parking?" required>
+              <div className="flex items-center gap-4" style={{ height: 38 }}>
+                <RadioOption t={t} label="Yes" selected={wantsParking === 'yes'} disabled={isView} onSelect={() => { parkingAutoNo.current = false; setWantsParking('yes'); }} />
+                <RadioOption t={t} label="No" selected={wantsParking === 'no'} disabled={isView} onSelect={() => { parkingAutoNo.current = false; setWantsParking('no'); setParkingNo(''); }} />
+              </div>
+            </Field>
+          )}
+          {!hideParking && wantsParking === 'yes' && (
             <Field t={t} label="Parking No?" required error={errorFor('parkingNo')} fieldRef={setFieldRef('parkingNo') as React.Ref<HTMLDivElement>}>
               {/* A free-text box let two customers end up with the same
                   parking number in the same building. This is now a
