@@ -17,7 +17,7 @@ import { toast } from '@/utils/toast';
 import {
   MdEventBusy, MdClose, MdRefresh, MdMoreVert, MdVisibility, MdDownload,
   MdCalendarMonth, MdCurrencyRupee, MdAssignmentReturn, MdAccountBalanceWallet, MdPendingActions,
-  MdCheckCircle, MdCancel, MdPhone, MdEmail, MdExpandMore, MdPayments, MdHistory, MdReceiptLong, MdUndo,
+  MdCheckCircle, MdCancel, MdHourglassEmpty, MdPhone, MdEmail, MdExpandMore, MdPayments, MdHistory, MdReceiptLong, MdUndo,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -900,7 +900,16 @@ const CancelledBookingPage: React.FC = () => {
                                     <span style={{ fontWeight: 700, color: 'var(--brand-ink)' }}>{r.receipt_number}</span>
                                     {receiptIcons(r.id)}
                                   </span>
-                                ) : <span style={{ color: t.textSecondary }}>{r.status === 'pending' ? 'After approval' : '—'}</span>}
+                                ) : (
+                                  // No cancelled receipt until an admin approves the refund.
+                                  <span className="inline-flex items-center gap-1.5" title="Available after admin approval">
+                                    <span style={{ color: t.textSecondary }}>{r.status === 'pending' ? 'After approval' : '—'}</span>
+                                    <span className="inline-flex items-center gap-1" style={{ opacity: 0.4 }}>
+                                      <button type="button" className="master-icon-btn" disabled aria-label="View Cancelled Receipt (after approval)" style={{ cursor: 'not-allowed' }}><MdVisibility size={14} /></button>
+                                      <button type="button" className="master-icon-btn" disabled aria-label="Download Cancelled Receipt (after approval)" style={{ cursor: 'not-allowed' }}><MdDownload size={14} /></button>
+                                    </span>
+                                  </span>
+                                )}
                               </td>
                               <td style={{ ...td, fontWeight: 700 }}>{r.created_by_name || '—'}</td>
                               <td style={{ ...td, fontWeight: 700, color: r.status === 'rejected' ? t.textSecondary : '#16a34a', textDecoration: r.status === 'rejected' ? 'line-through' : 'none' }}>{rupee(r.refunded_amount)}</td>
@@ -908,12 +917,13 @@ const CancelledBookingPage: React.FC = () => {
                               <td style={td}>{r.mode_of_payment || '—'}</td>
                               <td style={td}>
                                 <div className="flex items-center gap-1.5">
-                                  <span style={{
-                                    padding: '1px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 700,
-                                    color: r.status === 'approved' ? '#15803d' : r.status === 'pending' ? '#b45309' : '#b91c1c',
-                                    background: r.status === 'approved' ? 'rgba(22,163,74,0.12)' : r.status === 'pending' ? 'rgba(217,119,6,0.14)' : 'rgba(220,38,38,0.12)',
-                                  }}>
-                                    {r.status === 'approved' ? 'Approved' : r.status === 'pending' ? 'Refund Payment Pending for Approval' : 'Rejected'}
+                                  {/* Same Approved / UnApproved pill as the payment history. */}
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{
+                                    fontSize: 10.5, whiteSpace: 'nowrap', color: '#fff',
+                                    background: r.status === 'approved' ? '#16a34a' : r.status === 'pending' ? '#d97706' : '#b91c1c',
+                                  }} title={r.status === 'pending' ? 'Refund payment pending for admin approval' : undefined}>
+                                    {r.status === 'approved' ? <MdCheckCircle size={12} /> : r.status === 'pending' ? <MdHourglassEmpty size={12} /> : <MdCancel size={12} />}
+                                    {r.status === 'approved' ? 'Approved' : r.status === 'pending' ? 'UnApproved' : 'Rejected'}
                                   </span>
                                   {isAdmin && r.status === 'pending' && (
                                     <>

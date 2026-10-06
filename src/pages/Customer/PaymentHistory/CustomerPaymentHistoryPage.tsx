@@ -117,6 +117,9 @@ const CustomerPaymentHistoryPage: React.FC = () => {
                 inst_date: r.inst_date, payment_date: r.payment_date ?? r.date, created_at: r.created_at,
                 company: r.company, received_by: r.received_by, is_approved: r.is_approved,
               }))}
+              // View / Download stay disabled until an admin approves the
+              // payment (only then is there a receipt). No delete here —
+              // deleting a payment is admin-only.
               renderActions={(row) => row.is_approved ? (
                 <span className="inline-flex items-center gap-1.5">
                   <button type="button" title="View Receipt" aria-label="View Receipt" disabled={busyId === `p${row.id}`}
@@ -131,8 +134,14 @@ const CustomerPaymentHistoryPage: React.FC = () => {
                   </button>
                 </span>
               ) : (
-                // No receipt until the payment is approved.
-                <span title="Receipt after approval" style={{ fontSize: 11, color: t.textSecondary }}>—</span>
+                <span className="inline-flex items-center gap-1.5" title="Receipt available after admin approval" style={{ opacity: 0.4 }}>
+                  <button type="button" disabled aria-label="View Receipt (after approval)" style={{ ...iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff'), cursor: 'not-allowed' }}>
+                    <MdVisibility size={14} />
+                  </button>
+                  <button type="button" disabled aria-label="Download Receipt (after approval)" style={{ ...iconBtn('#16a34a', isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7'), cursor: 'not-allowed' }}>
+                    <MdDownload size={14} />
+                  </button>
+                </span>
               )}
             />
             <div style={{ fontSize: 11.5, color: t.textSecondary, marginTop: 8 }}>
@@ -158,46 +167,45 @@ const CustomerPaymentHistoryPage: React.FC = () => {
                 <table className="master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
                   <thead>
                     <tr className="master-table-header-gradient">
-                      {['Cancelled Receipt No.', 'Refunded Amount', 'Refund Date', 'Mode', 'Status'].map((h) => (
+                      {['Actions', 'Status', 'Cancelled Receipt No.', 'Refunded Amount', 'Refund Date', 'Mode'].map((h) => (
                         <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {b.refunds.length === 0 ? (
-                      <tr><td colSpan={5} style={{ padding: 16, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No refund has been recorded for this booking yet.</td></tr>
+                      <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No refund has been recorded for this booking yet.</td></tr>
                     ) : b.refunds.map((r) => {
                       const approved = r.status === 'approved' && !!r.receipt_number;
                       const td: React.CSSProperties = { padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' };
                       return (
                         <tr key={r.refund_id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                          {/* View / Download only once an admin approves the refund. */}
                           <td style={td}>
-                            {approved ? (
-                              <span className="inline-flex items-center gap-1.5">
-                                <span style={{ fontWeight: 700, color: 'var(--brand-ink)' }}>{r.receipt_number}</span>
-                                <button type="button" title="View Cancelled Receipt" aria-label="View Cancelled Receipt" disabled={busyId === `c${r.refund_id}`}
-                                  onClick={() => withReceipt(`c${r.refund_id}`, () => fetchMyCancelledReceipt(r.refund_id), (data) => setReceipt({ data, variant: 'cancelled' }))}
-                                  style={iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff')}>
-                                  <MdVisibility size={14} />
-                                </button>
-                                <button type="button" title="Download Cancelled Receipt" aria-label="Download Cancelled Receipt" disabled={busyId === `c${r.refund_id}`}
-                                  onClick={() => withReceipt(`c${r.refund_id}`, () => fetchMyCancelledReceipt(r.refund_id), (data) => exportPaymentReceiptPdf(data, 'cancelled'))}
-                                  style={iconBtn('#16a34a', isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7')}>
-                                  <MdDownload size={14} />
-                                </button>
-                              </span>
-                            ) : <span style={{ color: t.textSecondary }}>After approval</span>}
-                          </td>
-                          <td style={{ ...td, fontWeight: 700, color: '#16a34a' }}>{rupee(r.refunded_amount)}</td>
-                          <td style={td}>{formatDate(r.refund_date)}</td>
-                          <td style={td}>
-                            <span className="inline-flex items-center gap-1"><MdPayments size={12} /> {r.mode_of_payment || '—'}</span>
+                            <span className="inline-flex items-center gap-1.5" title={approved ? undefined : 'Cancelled receipt available after admin approval'} style={{ opacity: approved ? 1 : 0.4 }}>
+                              <button type="button" title="View Cancelled Receipt" aria-label="View Cancelled Receipt" disabled={!approved || busyId === `c${r.refund_id}`}
+                                onClick={() => withReceipt(`c${r.refund_id}`, () => fetchMyCancelledReceipt(r.refund_id), (data) => setReceipt({ data, variant: 'cancelled' }))}
+                                style={{ ...iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff'), cursor: approved ? 'pointer' : 'not-allowed' }}>
+                                <MdVisibility size={14} />
+                              </button>
+                              <button type="button" title="Download Cancelled Receipt" aria-label="Download Cancelled Receipt" disabled={!approved || busyId === `c${r.refund_id}`}
+                                onClick={() => withReceipt(`c${r.refund_id}`, () => fetchMyCancelledReceipt(r.refund_id), (data) => exportPaymentReceiptPdf(data, 'cancelled'))}
+                                style={{ ...iconBtn('#16a34a', isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7'), cursor: approved ? 'pointer' : 'not-allowed' }}>
+                                <MdDownload size={14} />
+                              </button>
+                            </span>
                           </td>
                           <td style={td}>
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: approved ? '#16a34a' : '#d97706', color: '#fff', fontSize: 10.5 }}>
                               {approved ? <MdCheckCircle size={12} /> : <MdHourglassEmpty size={12} />}
-                              {approved ? 'Approved' : 'Pending Approval'}
+                              {approved ? 'Approved' : 'UnApproved'}
                             </span>
+                          </td>
+                          <td style={{ ...td, fontWeight: 700, color: 'var(--brand-ink)' }}>{r.receipt_number || '—'}</td>
+                          <td style={{ ...td, fontWeight: 700, color: '#16a34a' }}>{rupee(r.refunded_amount)}</td>
+                          <td style={td}>{formatDate(r.refund_date)}</td>
+                          <td style={td}>
+                            <span className="inline-flex items-center gap-1"><MdPayments size={12} /> {r.mode_of_payment || '—'}</span>
                           </td>
                         </tr>
                       );
