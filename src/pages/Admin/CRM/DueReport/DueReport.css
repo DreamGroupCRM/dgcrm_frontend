@@ -123,19 +123,19 @@
   .due-report-stat-grid > *:hover { transform: none; }
 }
 
-/* ── Expanded customer row: one card per due, side by side (wrapping), so
-   the list stays short. ─────────────────────────────────────────────── */
-.due-report-cards { display: flex; flex-wrap: wrap; gap: 10px; }
-.due-report-card {
-  display: grid; grid-template-columns: auto auto auto; gap: 14px; align-items: start;
-  border-radius: 12px; padding: 9px 12px; min-width: 0;
-}
-.due-report-card-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 3px; }
-.due-report-card-section { min-width: 0; white-space: nowrap; }
+/* ── Expanded customer row: Inline Payment Summary — one compact line of
+   chips that wraps when there are many dues. ─────────────────────────── */
+.due-summary { display: flex; align-items: stretch; gap: 8px; }
+.due-summary-chips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.due-summary-head { display: flex; flex-direction: column; justify-content: center; padding: 4px 14px 4px 0; margin-right: 4px; border-right: 1px solid var(--cust-field-border, rgba(0,0,0,0.08)); }
+.due-chip { display: flex; align-items: center; gap: 9px; border-radius: 10px; padding: 7px 12px 7px 8px; min-width: 0; max-width: 340px; }
+.due-chip-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
+.due-chip-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 767px) {
+  .due-summary, .due-summary-chips { flex-direction: column; }
+  .due-summary-head { border-right: none; padding-right: 0; }
+  .due-chip { width: calc(100vw - 56px); max-width: 420px; }
   .due-report-cards-cell { padding-left: 12px !important; }
-  .due-report-card { grid-template-columns: 1fr; gap: 6px; width: 100%; }
-  .due-report-card-section { white-space: normal; }
 }
 
 /* ── Add Payment form: ONE row on laptop/desktop (>=1280px) ──────────────

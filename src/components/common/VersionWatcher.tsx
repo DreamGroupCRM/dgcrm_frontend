@@ -1,13 +1,27 @@
-// V_22.0 — "cache the cache": detects when a new deploy has shipped while
-// this tab has an older build already loaded, and reloads automatically
-// instead of leaving the user on stale JS. public/version.json is
-// rewritten with a fresh timestamp on every build (see
-// scripts/generate-version.cjs, wired via package.json's "prebuild"
-// script) — this polls it periodically and compares against the version
-// this page itself was loaded with.
-import { useEffect, useRef } from 'react';
+// V_22.0 / V_25.0 — detects that the page in this tab is an older build
+// than the one now deployed, and reloads it.
+//
+// public/version.json is rewritten with a fresh timestamp on every build
+// (scripts/generate-version.cjs, package.json "prebuild"), and the SAME
+// value is baked into this bundle as __APP_BUILD_VERSION__ (vite.config.ts).
+// So "server version !== my own version" means a newer build is live.
+//
+// The earlier version took its baseline from the SERVER on mount instead
+// of from the bundle. A page whose index.html/JS came out of the browser
+// cache then fetched the NEW version.json as its "own" version and never
+// noticed it was stale — which is why a normal window kept showing the old
+// build until it was opened in Incognito.
+//
+// location.reload() always re-validates the page itself with the server
+// (index.html is served Cache-Control: no-cache by public/web.config), and
+// the new index.html points at the new content-hashed /assets/ files.
+import { useEffect } from 'react';
 
-const POLL_INTERVAL_MS = 30 * 1000;
+const POLL_INTERVAL_MS = 60 * 1000;
+// One automatic reload per deployed version per tab — if something between
+// the browser and the server still hands back the old page, the user must
+// not be stuck in a reload loop.
+const RELOADED_FOR_KEY = 'dgcrm:reloaded-for-version';
 
 async function fetchServerVersion(): Promise<string | null> {
   try {
@@ -23,30 +37,34 @@ async function fetchServerVersion(): Promise<string | null> {
 }
 
 const VersionWatcher: React.FC = () => {
-  const loadedVersionRef = useRef<string | null>(null);
-
   useEffect(() => {
+    const ownVersion = __APP_BUILD_VERSION__;
+    // Dev server (or a build without version.json): nothing to compare.
+    if (!ownVersion) return;
+
     let cancelled = false;
-
-    const init = async () => {
-      loadedVersionRef.current = await fetchServerVersion();
-    };
-    init();
-
-    const interval = setInterval(async () => {
-      if (cancelled || !loadedVersionRef.current) return;
+    const check = async () => {
       const current = await fetchServerVersion();
-      // A brand-new deploy always writes a strictly larger timestamp — a
-      // missing/unreadable response (current === null) is never treated as
-      // "newer", so a flaky request never triggers a spurious reload.
-      if (current && current !== loadedVersionRef.current) {
-        window.location.reload();
-      }
-    }, POLL_INTERVAL_MS);
+      // A missing/unreadable response is never treated as "newer".
+      if (cancelled || !current || current === ownVersion) return;
+      try {
+        if (sessionStorage.getItem(RELOADED_FOR_KEY) === current) return;
+        sessionStorage.setItem(RELOADED_FOR_KEY, current);
+      } catch { /* storage blocked — still reload once below */ }
+      window.location.reload();
+    };
+
+    check();
+    const interval = setInterval(check, POLL_INTERVAL_MS);
+    // Coming back to a tab left open across a deploy: check right away
+    // rather than waiting for the next poll.
+    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
 

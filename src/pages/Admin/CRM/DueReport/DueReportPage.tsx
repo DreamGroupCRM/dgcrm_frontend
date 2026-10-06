@@ -1361,44 +1361,51 @@ const DueReportPage: React.FC = () => {
                       </tr>
                       {open && (
                         <tr style={{ background: t.insetBg }}>
-                          <td colSpan={8} className="due-report-cards-cell" style={{ padding: '10px 12px 12px 52px' }}>
-                            {/* Dues side by side (wrapping) so the list stays short. */}
-                            <div className="due-report-cards">
-                              {g.items.map((r) => (
-                                <div key={r.key} className="due-report-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderTop: `3px solid ${r.statusColor === STATUS_COLORS.upcoming ? '#eab308' : r.statusColor}` }}>
-                                  <div className="due-report-card-section">
-                                    <div className="due-report-card-label" style={{ color: t.textSecondary }}>Payment Details</div>
-                                    <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor, lineHeight: 1.35 }}>
-                                      {getPaymentForDisplay(r).label}
-                                    </span>
-                                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: t.textSecondary }}>{r.statusLabel}</span>
-                                    {r.payment_for_key !== 'BookingAmount' && r.payment_for_key !== 'PayAfterbooking' && (
-                                      <div style={{ marginTop: 3, fontSize: 11.5, fontWeight: 700, color: t.textPrimary }}>{rupee(r.per_month_amount ?? r.amount)}</div>
-                                    )}
-                                  </div>
-                                  <div className="due-report-card-section">
-                                    <div className="due-report-card-label" style={{ color: t.textSecondary }}>Duration</div>
-                                    {showsDueDateOnly(r.payment_for_key) ? (
-                                      <div style={{ fontSize: 11, fontWeight: 600, color: amountColor(r.statusColor) }}>{dueDateText(r)}</div>
-                                    ) : (
-                                      <>
-                                        {r.months_pending ? (
-                                          <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 999, lineHeight: 1.3, fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor }}>
-                                            {r.months_pending} Month{r.months_pending === 1 ? '' : 's'}
-                                          </span>
-                                        ) : null}
-                                        {r.detailText && (
-                                          <div style={{ fontSize: 11, fontWeight: 600, color: amountColor(r.statusColor), marginTop: r.months_pending ? 2 : 0 }}>{r.detailText}</div>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-                                  <div className="due-report-card-section">
-                                    <div className="due-report-card-label" style={{ color: t.textSecondary }}>Total Amount</div>
-                                    <div style={{ fontSize: 13, fontWeight: 800, color: amountColor(r.statusColor) }}>{rupee(r.amount)}</div>
-                                  </div>
+                          <td colSpan={8} className="due-report-cards-cell" style={{ padding: '8px 12px 10px 52px' }}>
+                            {/* Inline Payment Summary: one compact line — the
+                                customer's total on the left, then one small
+                                chip per due (type, status, amount, duration). */}
+                            <div className="due-summary">
+                              <div className="due-summary-head">
+                                <div style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary }}>Payment Summary</div>
+                                <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2, whiteSpace: 'nowrap' }}>
+                                  {g.items.length} payment type{g.items.length === 1 ? '' : 's'} • Total Due{' '}
+                                  <b style={{ color: amountColor(g.statusColor) }}>{rupee(g.total)}</b>
                                 </div>
-                              ))}
+                              </div>
+                              <div className="due-summary-chips">
+                              {g.items.map((r) => {
+                                const meta = PAYMENT_FOR_KEY_META[r.payment_for_key];
+                                const typeColor = getPaymentForDisplay(r).color;
+                                const Icon = meta.icon;
+                                const showPerMonth = r.payment_for_key !== 'BookingAmount' && r.payment_for_key !== 'PayAfterbooking'
+                                  && r.per_month_amount != null && r.per_month_amount !== r.amount;
+                                const subText = showsDueDateOnly(r.payment_for_key) ? dueDateText(r) : r.detailText;
+                                return (
+                                  <div key={r.key} className="due-chip" style={{ background: `${typeColor}0f`, border: `1px solid ${typeColor}33` }}>
+                                    <span className="due-chip-icon" style={{ background: typeColor }}><Icon size={15} /></span>
+                                    <div style={{ minWidth: 0 }}>
+                                      <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: 11.5, fontWeight: 700, color: t.textPrimary }}>{getPaymentForDisplay(r).label}</span>
+                                        <span style={{ padding: '1px 8px', borderRadius: 999, fontSize: 10, fontWeight: 700, lineHeight: 1.4, color: r.statusTextColor, background: r.statusColor }}>{r.statusLabel}</span>
+                                      </div>
+                                      <div style={{ marginTop: 2, fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                                        <b style={{ fontSize: 13, color: amountColor(r.statusColor) }}>{rupee(r.amount)}</b>
+                                        {!showsDueDateOnly(r.payment_for_key) && r.months_pending ? (
+                                          <> <span style={{ margin: '0 4px', opacity: 0.5 }}>|</span>{r.months_pending} Month{r.months_pending === 1 ? '' : 's'}</>
+                                        ) : null}
+                                        {showPerMonth && (
+                                          <> <span style={{ margin: '0 4px', opacity: 0.5 }}>|</span>{rupee(r.per_month_amount!)} each</>
+                                        )}
+                                      </div>
+                                      {subText && (
+                                        <div className="due-chip-sub" title={subText} style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{subText}</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              </div>
                             </div>
                           </td>
                         </tr>
