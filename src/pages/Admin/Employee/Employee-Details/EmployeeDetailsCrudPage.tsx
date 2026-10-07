@@ -2,7 +2,7 @@
 // DREAM GROUP CRM - EMPLOYEE CRUD PAGE
 // ==========================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from '@/utils/toast';
 import {
   MdArrowBack, MdCloudUpload, MdPerson, MdBusinessCenter, MdAccountBalance,
@@ -19,8 +19,9 @@ import {
   ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
   fetchEmployeePermissions, FetchEmployeeDetails,
   FetchVisibleEmployees, AssignVisibleEmployees,
-  EmployeeFormValues, EmployeeFileValues, EmployeeStatus,
+  EmployeeFormValues, EmployeeFileValues, EmployeeStatus, EMPLOYEE_FILE_FIELD_MAP,
 } from '../../../../services/employeeDetailsService';
+import { fetchDraft, saveDraft } from '../../../../services/draftsService';
 import { FetchDepartmentList } from '../../../../services/departmentService';
 import { fetchDesignationList } from '../../../../services/designationService';
 import { fetchMappingMatrix } from '../../../../services/moduleActionService';
@@ -748,6 +749,16 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [existingUrls, setExistingUrls] = useState<Record<string, string | null | undefined>>({});
   const [employeeCode, setEmployeeCode] = useState<string | null>(null);
 
+  // ── V_25.0 — Save as Draft (Add only). The half-filled form is kept
+  // aside without validation, ID or approval; ?draft=<id> resumes it, and
+  // Create submits it through the normal flow (see draftsService.ts).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [draftId, setDraftId] = useState<number | null>(() => {
+    const d = Number(searchParams.get('draft'));
+    return mode === 'add' && Number.isInteger(d) && d > 0 ? d : null;
+  });
+  const [savingDraft, setSavingDraft] = useState(false);
+
   // Assign Departments / Assign Designations / Assign Actions & Modules
   // checklist options — fetched from the real Department, Designation and
   // Module/Action masters (see file header note in employeeDetailsService.ts;
@@ -1224,6 +1235,47 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     }, 60);
   };
 
+  // Resume a draft: form fields, visible employees and its uploaded files.
+  useEffect(() => {
+    if (mode !== 'add' || draftId == null) return;
+    let alive = true;
+    fetchDraft('employee', draftId).then((d) => {
+      if (!alive) return;
+      const data = d.data as { form?: Partial<EmployeeFormValues>; visible_employee_ids?: number[] };
+      setForm((prev) => ({ ...prev, ...(data.form ?? {}) }));
+      if (Array.isArray(data.visible_employee_ids)) setVisibleEmployeeIds(data.visible_employee_ids);
+      setExistingUrls(Object.fromEntries(EMPLOYEE_FILE_FIELD_MAP.map(([front, back]) => [front, d.files[back] ?? null])));
+    }).catch(() => {
+      toast.error('This draft could not be opened. It may have been submitted or deleted.');
+      setDraftId(null);
+    });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // No validation on purpose — any partial form can be kept as a draft.
+  const handleSaveDraft = async () => {
+    setSavingDraft(true);
+    try {
+      const title = [form.first_name, form.last_name].filter(Boolean).join(' ').trim() || form.email || 'Untitled employee';
+      const picked = EMPLOYEE_FILE_FIELD_MAP
+        .map(([front, back]) => [back, files[front as keyof EmployeeFileValues]] as const)
+        .filter((x): x is readonly [string, File] => x[1] instanceof File)
+        .map(([back, f]) => [back, f] as [string, File]);
+      const saved = await saveDraft('employee', draftId, title, { form, visible_employee_ids: visibleEmployeeIds }, picked);
+      setDraftId(saved.id);
+      // Uploaded now — shown as existing files from here on.
+      setFiles({});
+      setExistingUrls(Object.fromEntries(EMPLOYEE_FILE_FIELD_MAP.map(([front, back]) => [front, saved.files[back] ?? null])));
+      setSearchParams({ draft: String(saved.id) }, { replace: true });
+      toast.success('Saved as draft. Resume it any time from Employee Details → Drafts.');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to save the draft.');
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setSubmitAttempted(true);
     const invalid = getFirstInvalid();
@@ -1247,7 +1299,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         pending = Boolean(res.pending);
         toast.success(pending ? 'Changes submitted for admin approval.' : 'Employee updated successfully.');
       } else {
-        const created = await createEmployee(payload, files);
+        const created = await createEmployee(payload, files, draftId);
         pending = Boolean(created.pending);
         targetId = created.data?.id != null ? String(created.data.id) : undefined;
         toast.success(pending ? 'Employee submitted for admin approval.' : 'Employee created successfully.');
@@ -1541,6 +1593,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <div>
             <h1 className="emp-crud-title">
               {mode === 'add' ? 'Create Employee' : 'Edit Employee'}
+              {draftId != null && <span className="draft-badge" style={{ marginLeft: 10, verticalAlign: 'middle' }}>DRAFT</span>}
             </h1>
           </div>
         </div>
@@ -1859,11 +1912,23 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         >
           Go Back
         </button>
+        {mode === 'add' && (
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            disabled={saving || savingDraft}
+            title="Keep this partly filled form and finish it later — no validation, no approval yet."
+            className="px-6 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: t.surfaceBg, color: 'var(--brand-ink)', border: '1px solid var(--brand-ink)', cursor: saving || savingDraft ? 'not-allowed' : 'pointer' }}
+          >
+            {savingDraft ? 'Saving Draft...' : 'Save as Draft'}
+          </button>
+        )}
         {!isView && (
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={saving || savingDraft}
             className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-bold text-white"
             style={{
               background: !isFormValid || saving ? '#9ca3af' : 'var(--brand-gradient)',

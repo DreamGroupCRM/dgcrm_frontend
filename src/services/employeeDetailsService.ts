@@ -314,7 +314,7 @@ const EMPLOYEE_TEXT_FIELD_RENAMES: ReadonlyArray<readonly [string, string]> = [
 // must never be forwarded at all, and one that already matches the backend
 // name (`resume`, `passbook_photo`) still needs an identity entry so it
 // doesn't get dropped.
-const EMPLOYEE_FILE_FIELD_MAP: ReadonlyArray<readonly [string, string]> = [
+export const EMPLOYEE_FILE_FIELD_MAP: ReadonlyArray<readonly [string, string]> = [
   ['profile_photo', 'photo'],
   ['aadhar_card', 'aadhaar_card_img'],
   ['pan_card', 'pan_card_img'],
@@ -414,10 +414,14 @@ export const fetchNextEmployeeCode = async (): Promise<string | null> => {
 /** POST /api/employees (multipart/form-data) — this is what "Save Employee" calls */
 export const createEmployee = async (
   values: EmployeeFormValues,
-  files: EmployeeFileValues
+  files: EmployeeFileValues,
+  // V_25.0 — submitting a saved draft: the server re-uses the draft's
+  // uploaded files and removes the draft once this succeeds.
+  draftId?: number | null,
 ): Promise<EmployeeSingleResponse> => {
   const res = await axiosInstance.post('/employees', toBackendEmployeeFormData(await buildEmployeeFormData(values, files)), {
     headers: { 'Content-Type': 'multipart/form-data' },
+    params: draftId ? { draft_id: draftId } : undefined,
   });
   // V_25.0 — HR's request goes to Admin approval (202, no employee yet).
   if (res.data.pending) return { success: res.data.success, message: res.data.message, pending: true } as EmployeeSingleResponse;

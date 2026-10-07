@@ -580,9 +580,12 @@ export const updateCustomer = async (id: string, payload: UpdateCustomerPayload)
 // back as `{ pending: true }` with no `data` — callers must check
 // `pending` before touching the response's `data`.
 /** POST /api/customers (multipart/form-data) */
-export const createCustomerWithDetails = async (formData: FormData): Promise<CustomerCreateEditResponse> => {
+export const createCustomerWithDetails = async (formData: FormData, draftId?: number | null): Promise<CustomerCreateEditResponse> => {
   const res = await axiosInstance.post('/customers', toBackendCustomerFormData(formData), {
     headers: { 'Content-Type': 'multipart/form-data' },
+    // V_25.0 — submitting a saved draft: its uploaded files are re-used
+    // server-side and the draft is removed once this succeeds.
+    params: draftId ? { draft_id: draftId } : undefined,
   });
   if (res.data.pending) return { success: res.data.success, pending: true, message: res.data.message };
   return { success: res.data.success, pending: false, message: res.data.message, data: mapCustomerRow(res.data.data as BackendCustomer) };

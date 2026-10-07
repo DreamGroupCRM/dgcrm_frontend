@@ -20,6 +20,7 @@ import { AppTheme } from '../../../../styles/theme';
 import { FetchEmployeeDetails, DeleteEmployee, SetEmployeeActiveStatus, Employee, EmployeeStatus, EmployeeListSummary } from '../../../../services/employeeDetailsService';
 import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
+import DraftsButton from '../../../../components/common/DraftsButton';
 import { RowActionMenu, useRowActionMenu, RowMenuAction } from '../../../../components/common/RowActionMenu';
 import './EmployeeDetails.css';
 import { serverToday } from '../../../../utils/serverTime';
@@ -463,6 +464,7 @@ const EmployeeDetailsListPage: React.FC = () => {
             style={{ background: 'var(--brand-gradient)', border: '1px solid var(--brand-gradient)', color: '#fff' }}>
             {view === 'grid' ? <MdViewList size={18} /> : <MdGridView size={18} />}
           </button>
+          <DraftsButton module="employee" addPath={`${employeeDetailsBasePath()}/add`} showOwner={actorRole === 'admin' || actorRole === 'superadmin'} />
           <button type="button" onClick={() => navigate(`${employeeDetailsBasePath()}/add`)} className="master-btn-primary">
             <MdAdd size={18} /> Add Employee
           </button>

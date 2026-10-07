@@ -21,6 +21,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
+import DraftsButton from '../../../../components/common/DraftsButton';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
 import {
   fetchAllCustomerDetails, assignCustomersToEmployee, fetchCustomerPaymentHistory,
@@ -1228,6 +1229,7 @@ const CustomerDetailsListPage: React.FC = () => {
               from their own list the moment it saved — and assigning is
               itself an admin action. Nothing is taken away from anyone:
               this page was a placeholder on the employee side until now. */}
+          {canAddCustomer && <DraftsButton module="customer" addPath={`${paths.customerDetails}/add`} showOwner={paths.isAdmin} />}
           {canAddCustomer && (
             <button type="button" onClick={() => navigate(`${paths.customerDetails}/add`)}
               className="cust-add-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white"

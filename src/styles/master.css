@@ -761,3 +761,17 @@ th,
 th .master-th-sort {
   white-space: nowrap !important;
 }
+
+/* V_25.0 — Save as Draft: marks a draft (form header + Drafts list). */
+.draft-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: #b45309;
+  line-height: 16px;
+}
