@@ -241,10 +241,13 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
               <input ref={fileInputRef} type="file" accept=".csv" onChange={handleImportFile} style={{ display: 'none' }} />
             </>
           )}
+          {/* V_25.0 — Export CSV is Admin-only (refused server-side too). */}
+          {isAdmin && (
           <button type="button" onClick={handleExport} title="Export CSV" className="master-btn-icon"
             style={{ background: 'var(--brand-gradient)', border: '1px solid var(--brand-gradient)', color: '#fff' }}>
             <MdDownload size={18} />
           </button>
+          )}
           <button type="button" onClick={fetchLeads} title="Refresh" className="master-btn-icon"
             style={{ background: 'var(--brand-gradient)', border: '1px solid var(--brand-gradient)', color: '#fff' }}>
             <MdRefresh size={18} className={loading ? 'animate-spin' : ''} />

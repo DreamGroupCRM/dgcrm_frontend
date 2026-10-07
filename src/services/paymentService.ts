@@ -169,6 +169,8 @@ export const fetchDueList = async (): Promise<DueListResponse> => {
 // Project/Location, Assigned Employee+Code, Building/Wing/Flat, Contact
 // (Email/Mobile), Payment For, Amount, Due Status text). Powers the
 // Payment Dues table directly. ───────────────────────────────────────────
+export interface AssigneeRef { id: number; name: string; code: string | null }
+
 export interface DueListDetailRow {
   customer_id: number;
   customer_code: string;
@@ -176,6 +178,9 @@ export interface DueListDetailRow {
   email: string | null;
   assigned_employee_name: string | null;
   assigned_employee_code: string | null;
+  /** V_25.0 — Admin's assignee (Head) and the Head's sub-assignee (Executive). */
+  assigned_head?: AssigneeRef | null;
+  assigned_sub?: AssigneeRef | null;
   company_name: string | null;
   project_name: string | null;
   location: string | null;
@@ -413,6 +418,8 @@ export const fetchPaymentReceivedSummary = async (): Promise<PaymentReceivedSumm
 export interface PaymentCategorySummary {
   emi_before: number;
   emi_after: number;
+  /** V_25.0 — Extra Pay, kept out of the EMI totals (older API: absent). */
+  extra_pay?: number;
   booking: number;
   pay_after_booking: number;
   possession: number;

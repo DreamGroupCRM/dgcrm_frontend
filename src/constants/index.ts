@@ -70,6 +70,8 @@ export const ROUTES = {
     EXECUTIVE_DASHBOARD: '/admin/reports/executive-dashboard',
     PENDING_APPROVALS: '/admin/pending-approvals',
     CHANGE_REQUESTS: '/admin/change-requests',
+    // V_25.0 — Super Admin: departments' pages, Head / Executive designations.
+    DEPARTMENT_SETUP: '/admin/department-setup',
 
     // Super Admin lobby (superadmin-only, see Sidebar.tsx)
     USER_MANAGEMENT: '/admin/user-management',
@@ -95,6 +97,9 @@ export const ROUTES = {
     // (/api/audit is requireAdmin server-side).
     CUSTOMIZE_SCHEME: '/employee/customize-scheme',
     BUILDING_2D_VIEW: '/employee/building-2d-view',
+    // V_25.0 — HR (departments set up with Employee Details / Attendance).
+    EMPLOYEE_DETAILS: '/employee/employee-details',
+    TEAM_ATTENDANCE: '/employee/team-attendance',
   },
 
   // Customer First Login — dedicated portal, separate from the staff LOGIN

@@ -761,3 +761,21 @@ th,
 th .master-th-sort {
   white-space: nowrap !important;
 }
+
+/* V_25.0 — Save as Draft: marks a draft (form header + Drafts list). */
+.draft-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: #b45309;
+  line-height: 16px;
+}
+
+/* V_25.0 — red outline buttons (e.g. "Cancel a Booking") were 3:1 on the
+   black theme; a lighter red reads clearly there. */
+html.dark .danger-outline-btn { color: #fca5a5 !important; border-color: #fca5a5 !important; }

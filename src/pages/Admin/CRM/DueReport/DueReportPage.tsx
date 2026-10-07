@@ -26,22 +26,22 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { useInfiniteScroll } from '../../../../hooks/useInfiniteScroll';
+import { useAccessProfile } from '../../../../hooks/useAccessProfile';
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import StatCard from '../../../../components/masters/StatCard';
 import {
-  fetchDueListDetailed, collectPayment, fetchDefaultAmount, DueListDetailRow,
+  fetchDueListDetailed, collectPayment, fetchDefaultAmount, DueListDetailRow, AssigneeRef,
   fetchCustomerDueGrid,
 } from '../../../../services/paymentService';
 import { fetchAllCustomerDetails } from '../../../../services/customerDetailsService';
 import { FetchBuildingList } from '../../../../services/buildingService';
-import { FetchEmployeeDetails, Employee } from '../../../../services/employeeDetailsService';
 import { tasksService, Task } from '../../../../services/tasksService';
 import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../../types/index';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants';
 import { formatDate } from '../../../../utils';
-import { serverTodayYmd, serverYmdPlusDays } from '../../../../utils/serverTime';
+import { employeeBackdateMinYmd, serverTodayYmd, serverYmdPlusDays } from '../../../../utils/serverTime';
 import { cssRect } from '../../../../utils/appZoom';
 import './DueReport.css';
 import DateInput from '../../../../components/common/DateInput';
@@ -228,11 +228,9 @@ interface StatBoxSpec { label: string; value: number; color: string; icon: IconT
 
 // ── "Payment For" options shown on the Add Payment Details form — richer,
 // friendlier labels than PAYMENT_FOR_OPTIONS (used elsewhere for the raw
-// enum), with "Extra Pay" mapped to EMIAmount + is_advance_pay: true — the
-// exact same "advance pay, applies toward future EMIs" flow collectPayment
-// already supports and already tags "Extra Pay" in its own response
-// message, just surfaced here as its own selectable option instead of a
-// checkbox. ───────────────────────────────────────────────────────────────
+// enum), with "Extra Pay" mapped to EMIAmount + is_advance_pay: true. Since
+// V_25.0 the server keeps Extra Pay as its own payment, separate from EMIs
+// (it no longer settles or reduces any EMI). ───────────────────────────────────────────────────────────────
 interface PaymentForUiOption { key: string; label: string; value: PaymentFor; isAdvance?: boolean; }
 // V_23.0 — "Monthly Installment" split into "EMI Before"/"EMI After" to
 // mirror the Booster Before/After pair. Both cosmetic options submit the
@@ -397,6 +395,7 @@ interface DisplayRow {
   customer_id: number; customer_code: string; customer_name: string;
   email: string | null; mobile_number: string | null;
   assigned_employee_name: string | null; assigned_employee_code: string | null;
+  assigned_head: AssigneeRef | null; assigned_sub: AssigneeRef | null;
   company_name: string | null; project_name: string | null; location: string | null;
   building_name: string | null; wing_name: string | null; flat_no: string | null;
   payment_for: string; payment_for_key: PaymentFor;
@@ -415,6 +414,7 @@ interface CustomerGroup {
   customer_id: number; customer_code: string; customer_name: string;
   mobile_number: string | null;
   assigned_employee_name: string | null; assigned_employee_code: string | null;
+  assigned_head: AssigneeRef | null; assigned_sub: AssigneeRef | null;
   company_name: string | null; project_name: string | null; location: string | null;
   building_name: string | null; wing_name: string | null; flat_no: string | null;
   items: DisplayRow[];
@@ -462,12 +462,10 @@ const DueReportPage: React.FC = () => {
   // while the row kept showing the older, sooner one, so the date looked
   // like it never changed.
   interface FollowUpTarget { customer_id: number | string; customer_name: string; customer_code: string }
-  const [followUpEmployees, setFollowUpEmployees] = useState<Employee[]>([]);
   const [followUpRow, setFollowUpRow] = useState<FollowUpTarget | null>(null);
   const [followUpEditing, setFollowUpEditing] = useState<Task | null>(null);
   const [followUpNote, setFollowUpNote] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
-  const [followUpAssignedTo, setFollowUpAssignedTo] = useState('');
   const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
   const [followUpListOpen, setFollowUpListOpen] = useState(false);
 
@@ -511,7 +509,6 @@ const DueReportPage: React.FC = () => {
     // starts empty; the previous note is shown above the field instead.
     setFollowUpNote('');
     setFollowUpDate(existing?.due_date ? existing.due_date.slice(0, 10) : serverYmdPlusDays(1));
-    setFollowUpAssignedTo(existing?.assigned_to != null ? String(existing.assigned_to) : '');
   };
   const closeFollowUp = () => { setFollowUpRow(null); setFollowUpEditing(null); };
 
@@ -523,14 +520,12 @@ const DueReportPage: React.FC = () => {
     try {
       const title = `Follow-up: ${followUpRow.customer_name}`;
       const description = followUpNote.trim() || null;
-      // Only an admin picks the assignee; the server assigns an employee's
-      // own follow-ups to themselves.
-      const assignee = isAdmin ? { assigned_to: followUpAssignedTo || null } : {};
       let keptId: string | number;
       // Always a NEW entry (never an in-place edit), so every conversation
-      // stays in the Follow-up History with its own date and note. Admin
-      // keeps the previous assignee unless they picked another.
-      const created = await tasksService.createTask({ title, description, due_date: followUpDate, customer_id: followUpRow.customer_id, ...assignee });
+      // stays in the Follow-up History with its own date and note. V_25.0 —
+      // nobody picks an assignee: the server gives it to the customer's
+      // assigned employee (assigning is done from Customer Details only).
+      const created = await tasksService.createTask({ title, description, due_date: followUpDate, customer_id: followUpRow.customer_id });
       keptId = created.id;
       // The customer's previous open follow-up(s) are marked Replaced so
       // only the date just set shows as open; they stay in the history.
@@ -601,12 +596,6 @@ const DueReportPage: React.FC = () => {
         if (res.success) setBuildings(res.rows ?? []);
       } catch { /* building filter/company lookup just stays empty if this fails */ }
     })();
-    (async () => {
-      try {
-        const res = await FetchEmployeeDetails(1, 1000, undefined, true);
-        if (res.success) setFollowUpEmployees(res.rows ?? []);
-      } catch { /* follow-up assignee dropdown just stays empty if this fails */ }
-    })();
   }, []);
 
   const customerOptions = useMemo(
@@ -669,6 +658,7 @@ const DueReportPage: React.FC = () => {
     customer_id: r.customer_id, customer_code: r.customer_code, customer_name: r.customer_name,
     email: r.email, mobile_number: r.mobile_number,
     assigned_employee_name: r.assigned_employee_name, assigned_employee_code: r.assigned_employee_code,
+    assigned_head: r.assigned_head ?? null, assigned_sub: r.assigned_sub ?? null,
     company_name: r.company_name, project_name: r.project_name, location: r.location,
     building_name: r.building_name, wing_name: r.wing_name, flat_no: r.flat_no,
     payment_for: r.payment_for, payment_for_key: r.payment_for_key,
@@ -719,6 +709,7 @@ const DueReportPage: React.FC = () => {
           customer_id: r.customer_id, customer_code: r.customer_code, customer_name: r.customer_name,
           mobile_number: r.mobile_number,
           assigned_employee_name: r.assigned_employee_name, assigned_employee_code: r.assigned_employee_code,
+          assigned_head: r.assigned_head, assigned_sub: r.assigned_sub,
           company_name: r.company_name, project_name: r.project_name, location: r.location,
           building_name: r.building_name, wing_name: r.wing_name, flat_no: r.flat_no,
           items: [], total: 0, statusColor: r.statusColor, statusTextColor: r.statusTextColor,
@@ -823,6 +814,11 @@ const DueReportPage: React.FC = () => {
   // by their declaration above.)
   // Receipt Date (payment_date) is admin-only — item 9.
   const { isAdmin } = useRoleBasePath();
+  // V_25.0 — Admin and Heads see who Admin assigned (Head) and who the Head
+  // sub-assigned (Executive) as two columns.
+  const { profile: access } = useAccessProfile();
+  const showSplitAssign = isAdmin || Boolean(access && access.head_of.length > 0);
+  const tableCols = showSplitAssign ? 9 : 8;
   const navigate = useNavigate();
   const [apInstDate, setApInstDate] = useState('');
   const [apPaymentDate, setApPaymentDate] = useState('');
@@ -991,7 +987,7 @@ const DueReportPage: React.FC = () => {
         inst_date: apInstDate || undefined,
         // Non-admins never see the Receipt Date control, so nothing is
         // sent for them; the server stamps "now" either way.
-        payment_date: (isAdmin && apPaymentDate) ? apPaymentDate : undefined,
+        payment_date: apPaymentDate || undefined,
         mode_of_payment: apModeOfPayment,
         cheque_number: apModeOfPayment === 'Cheque' ? apChequeNumber.trim() : undefined,
         is_advance_pay: apSelectedPaymentFor.isAdvance || undefined,
@@ -1120,7 +1116,7 @@ const DueReportPage: React.FC = () => {
                 {errorFor('amount') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('amount')}</p>}
               </div>
             )}
-            {/* Extra Pay is an advance against future EMIs, not tied to any
+            {/* Extra Pay is its own payment (separate from EMIs), not tied to any
                 one installment — it has no Payment Date at all (takes
                 today's date via Received Date instead), so the field is
                 hidden rather than shown blank/disabled. */}
@@ -1132,11 +1128,9 @@ const DueReportPage: React.FC = () => {
                 <DateInput t={t} readOnly value={apInstDate} style={readOnlyInputStyle} />
               </div>
             )}
-            {/* V_23.0 item 6 — Received Date permissions: Employee can only
-                ever be today (read-only, matching the server's own rule —
-                see finalPaymentDate in payment.service.ts, which has
-                always stamped "now" for a non-admin regardless of any
-                value sent). Admin gets a real, unrestricted date input —
+            {/* V_25.0 — Received Date: an employee may go up to 3 days
+                back within the current month (empty = today; the server
+                enforces the same rule). Admin gets a real, unrestricted date input —
                 no min/max — so a backdated entry (a previous date) is
                 selectable, which is the whole point for Admin. A future date
                 is never allowed (max = the server's today; the backend
@@ -1146,7 +1140,9 @@ const DueReportPage: React.FC = () => {
               {isAdmin ? (
                 <DateInput t={t} value={apPaymentDate} max={serverTodayYmd()} disabled={formLocked} onChange={(v) => setApPaymentDate(v)} style={formLocked ? readOnlyInputStyle : fieldInputStyle()} />
               ) : (
-                <DateInput t={t} readOnly value={serverTodayYmd()} style={readOnlyInputStyle} title="Employees can only record today's date." />
+                <DateInput t={t} value={apPaymentDate || serverTodayYmd()} min={employeeBackdateMinYmd()} max={serverTodayYmd()} disabled={formLocked}
+                  onChange={(v) => setApPaymentDate(v)} style={formLocked ? readOnlyInputStyle : fieldInputStyle()}
+                  title="Up to 3 days back, within the current month." />
               )}
             </div>
             <div ref={setFieldRef('mode_of_payment')}>
@@ -1247,11 +1243,14 @@ const DueReportPage: React.FC = () => {
               <MdNoteAdd size={16} style={{ color: '#fff' }} />
               <span className="due-report-followup-badge-text">Take Follow Ups ({followUpListTasks.length})</span>
             </button>
+            {/* V_25.0 — Export CSV is Admin-only. */}
+            {isAdmin && (
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv || filteredDueRows.length === 0}
               className="due-report-export-btn flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold"
               style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}>
               <MdDownload size={16} /> <span className="due-report-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
             </button>
+            )}
             <button type="button" onClick={handleRefresh} title="Refresh"
               className="due-report-refresh-btn flex items-center justify-center rounded-xl"
               style={{ width: 36, height: 36, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
@@ -1270,22 +1269,24 @@ const DueReportPage: React.FC = () => {
           <table className="due-report-table master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Details', 'Customer Name', 'Company / Project / Location', 'Building Details', 'Phone Number', 'Assigned Employee', 'Total Amount', 'Follow Up'].map((h) => (
+                {['Details', 'Customer Name', 'Company / Project / Location', 'Building Details', 'Phone Number',
+                  ...(showSplitAssign ? ['Assigned (Head)', 'Sub-assigned (Executive)'] : ['Assigned Employee']), 'Total Amount', 'Follow Up'].map((h) => (
                   <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loadingDueList ? (
-                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
+                <tr><td colSpan={tableCols} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payment dues...</td></tr>
               ) : groupedRows.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
+                <tr><td colSpan={tableCols} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>
                   {baseDisplayRows.length === 0 ? 'No customers currently have a payment due.' : 'No dues match the selected filters.'}
                 </td></tr>
               ) : (
                 pagedGroups.map((g) => {
                   const open = expandedCustomers.has(g.customer_id);
-                  const amountColor = (c: string) => (c === STATUS_COLORS.upcoming ? t.textPrimary : c);
+                  // Dark red on the black theme was 2.3:1 — overdue amounts use a light red there.
+                  const amountColor = (c: string) => (c === STATUS_COLORS.upcoming ? t.textPrimary : isDark && c === STATUS_COLORS.overdue ? '#fca5a5' : c);
                   return (
                     <React.Fragment key={`cust-${g.customer_id}`}>
                       <tr className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -1319,17 +1320,20 @@ const DueReportPage: React.FC = () => {
                           )}
                         </td>
                         <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{g.mobile_number || '—'}</td>
-                        <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                          <div style={{ fontWeight: 600 }}>{g.assigned_employee_name || '—'}</div>
-                          {g.assigned_employee_code && (
-                            <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{g.assigned_employee_code}</div>
-                          )}
-                        </td>
+                        {(showSplitAssign
+                          ? [g.assigned_head, g.assigned_sub]
+                          : [g.assigned_employee_name ? { id: 0, name: g.assigned_employee_name, code: g.assigned_employee_code } : null]
+                        ).map((a, idx) => (
+                          <td key={idx} style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                            <div style={{ fontWeight: 600 }}>{a?.name || '—'}</div>
+                            {a?.code && <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{a.code}</div>}
+                          </td>
+                        ))}
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                           <div style={{ fontSize: 12.5, fontWeight: 800, color: amountColor(g.statusColor) }}>{rupee(g.total)}</div>
                           <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{g.items.length} due{g.items.length === 1 ? '' : 's'}</div>
                           {g.extraBalance > 0 && (
-                            <div title="Unused Extra Payment" style={{ fontSize: 10.5, fontWeight: 700, color: '#0369a1', marginTop: 1 }}>Extra Payment: {rupee(g.extraBalance)}</div>
+                            <div title="Extra Payment — kept separate from EMIs" style={{ fontSize: 10.5, fontWeight: 700, color: '#0369a1', marginTop: 1 }}>Extra Payment: {rupee(g.extraBalance)}</div>
                           )}
                         </td>
                         <td style={{ padding: '10px 12px' }}>
@@ -1361,44 +1365,51 @@ const DueReportPage: React.FC = () => {
                       </tr>
                       {open && (
                         <tr style={{ background: t.insetBg }}>
-                          <td colSpan={8} className="due-report-cards-cell" style={{ padding: '10px 12px 12px 52px' }}>
-                            {/* Dues side by side (wrapping) so the list stays short. */}
-                            <div className="due-report-cards">
-                              {g.items.map((r) => (
-                                <div key={r.key} className="due-report-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderTop: `3px solid ${r.statusColor === STATUS_COLORS.upcoming ? '#eab308' : r.statusColor}` }}>
-                                  <div className="due-report-card-section">
-                                    <div className="due-report-card-label" style={{ color: t.textSecondary }}>Payment Details</div>
-                                    <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor, lineHeight: 1.35 }}>
-                                      {getPaymentForDisplay(r).label}
-                                    </span>
-                                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: t.textSecondary }}>{r.statusLabel}</span>
-                                    {r.payment_for_key !== 'BookingAmount' && r.payment_for_key !== 'PayAfterbooking' && (
-                                      <div style={{ marginTop: 3, fontSize: 11.5, fontWeight: 700, color: t.textPrimary }}>{rupee(r.per_month_amount ?? r.amount)}</div>
-                                    )}
-                                  </div>
-                                  <div className="due-report-card-section">
-                                    <div className="due-report-card-label" style={{ color: t.textSecondary }}>Duration</div>
-                                    {showsDueDateOnly(r.payment_for_key) ? (
-                                      <div style={{ fontSize: 11, fontWeight: 600, color: amountColor(r.statusColor) }}>{dueDateText(r)}</div>
-                                    ) : (
-                                      <>
-                                        {r.months_pending ? (
-                                          <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 999, lineHeight: 1.3, fontSize: 10.5, fontWeight: 700, color: r.statusTextColor, background: r.statusColor }}>
-                                            {r.months_pending} Month{r.months_pending === 1 ? '' : 's'}
-                                          </span>
-                                        ) : null}
-                                        {r.detailText && (
-                                          <div style={{ fontSize: 11, fontWeight: 600, color: amountColor(r.statusColor), marginTop: r.months_pending ? 2 : 0 }}>{r.detailText}</div>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-                                  <div className="due-report-card-section">
-                                    <div className="due-report-card-label" style={{ color: t.textSecondary }}>Total Amount</div>
-                                    <div style={{ fontSize: 13, fontWeight: 800, color: amountColor(r.statusColor) }}>{rupee(r.amount)}</div>
-                                  </div>
+                          <td colSpan={tableCols} className="due-report-cards-cell" style={{ padding: '8px 12px 10px 52px' }}>
+                            {/* Inline Payment Summary: one compact line — the
+                                customer's total on the left, then one small
+                                chip per due (type, status, amount, duration). */}
+                            <div className="due-summary">
+                              <div className="due-summary-head">
+                                <div style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary }}>Payment Summary</div>
+                                <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2, whiteSpace: 'nowrap' }}>
+                                  {g.items.length} payment type{g.items.length === 1 ? '' : 's'} • Total Due{' '}
+                                  <b style={{ color: amountColor(g.statusColor) }}>{rupee(g.total)}</b>
                                 </div>
-                              ))}
+                              </div>
+                              <div className="due-summary-chips">
+                              {g.items.map((r) => {
+                                const meta = PAYMENT_FOR_KEY_META[r.payment_for_key];
+                                const typeColor = getPaymentForDisplay(r).color;
+                                const Icon = meta.icon;
+                                const showPerMonth = r.payment_for_key !== 'BookingAmount' && r.payment_for_key !== 'PayAfterbooking'
+                                  && r.per_month_amount != null && r.per_month_amount !== r.amount;
+                                const subText = showsDueDateOnly(r.payment_for_key) ? dueDateText(r) : r.detailText;
+                                return (
+                                  <div key={r.key} className="due-chip" style={{ background: `${typeColor}0f`, border: `1px solid ${typeColor}33` }}>
+                                    <span className="due-chip-icon" style={{ background: typeColor }}><Icon size={15} /></span>
+                                    <div style={{ minWidth: 0 }}>
+                                      <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: 11.5, fontWeight: 700, color: t.textPrimary }}>{getPaymentForDisplay(r).label}</span>
+                                        <span style={{ padding: '1px 8px', borderRadius: 999, fontSize: 10, fontWeight: 700, lineHeight: 1.4, color: r.statusTextColor, background: r.statusColor }}>{r.statusLabel}</span>
+                                      </div>
+                                      <div style={{ marginTop: 2, fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                                        <b style={{ fontSize: 13, color: amountColor(r.statusColor) }}>{rupee(r.amount)}</b>
+                                        {!showsDueDateOnly(r.payment_for_key) && r.months_pending ? (
+                                          <> <span style={{ margin: '0 4px', opacity: 0.5 }}>|</span>{r.months_pending} Month{r.months_pending === 1 ? '' : 's'}</>
+                                        ) : null}
+                                        {showPerMonth && (
+                                          <> <span style={{ margin: '0 4px', opacity: 0.5 }}>|</span>{rupee(r.per_month_amount!)} each</>
+                                        )}
+                                      </div>
+                                      {subText && (
+                                        <div className="due-chip-sub" title={subText} style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{subText}</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -1410,7 +1421,7 @@ const DueReportPage: React.FC = () => {
               {/* Invisible sentinel row — scrolling near it renders the next
                   100 customers. Only present while there is more to show. */}
               {hasMoreRows && (
-                <tr ref={lazyLoadSentinelRef} aria-hidden="true"><td colSpan={8} style={{ padding: 0, border: 'none' }} /></tr>
+                <tr ref={lazyLoadSentinelRef} aria-hidden="true"><td colSpan={tableCols} style={{ padding: 0, border: 'none' }} /></tr>
               )}
             </tbody>
           </table>
@@ -1453,19 +1464,6 @@ const DueReportPage: React.FC = () => {
                 <label style={fieldLabelStyle}>Follow-up Date</label>
                 <DateInput t={t} value={followUpDate} min={serverTodayYmd()} onChange={(v) => setFollowUpDate(v)} style={fieldInputStyle()} />
               </div>
-              {/* Only an admin assigns follow-ups; an employee's own are
-                  assigned to themselves server-side. */}
-              {isAdmin && (
-                <div>
-                  <label style={fieldLabelStyle}>Assign To</label>
-                  <select value={followUpAssignedTo} onChange={(e) => setFollowUpAssignedTo(e.target.value)} style={fieldInputStyle()}>
-                    <option value="">-- Unassigned --</option>
-                    {followUpEmployees.map((e) => (
-                      <option key={e.id} value={e.id}>{[e.first_name, e.last_name].filter(Boolean).join(' ')}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <button type="button" onClick={handleSubmitFollowUp} disabled={followUpSubmitting || !followUpNote.trim()}
                 title={!followUpNote.trim() ? 'Enter the remarks first' : undefined}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"

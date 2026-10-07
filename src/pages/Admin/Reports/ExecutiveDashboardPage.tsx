@@ -175,7 +175,7 @@ const PriorityRow: React.FC<{ t: Theme; rank: number; item: PriorityQueueItem }>
       <span style={{ fontSize: 15, flexShrink: 0 }}>{meta.emoji}</span>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>
-          {item.name} <span style={{ fontWeight: 600, color: meta.color }}>· Score {item.score}</span>
+          {item.name} <span style={{ fontWeight: 600, color: meta.color === '#0000FF' ? 'var(--brand-ink)' : meta.color }}>· Score {item.score}</span>
         </div>
         <div style={{ fontSize: 11, color: t.textSecondary }}>{item.action}{item.is_overdue ? ' (overdue)' : ''} — {item.reason}</div>
       </div>
@@ -475,7 +475,7 @@ const ExecutiveDashboardPage: React.FC = () => {
                   {data.property_overview.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                 </Pie>
                 <Tooltip contentStyle={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderRadius: 10, fontSize: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 11.5 }} />
+                <Legend wrapperStyle={{ fontSize: 11.5 }} formatter={(v) => <span style={{ color: t.textPrimary }}>{v}</span>} />
               </PieChart>
             </ResponsiveContainer>
           )}

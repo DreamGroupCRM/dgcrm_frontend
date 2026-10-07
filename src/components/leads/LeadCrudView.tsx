@@ -19,6 +19,7 @@ import {
   fetchLeadById, createLead, updateLead, assignLead, fetchLeadActivities, addLeadComment,
 } from '../../services/leadService';
 import { FetchEmployeeDetails } from '../../services/employeeDetailsService';
+import { useAccessProfile } from '../../hooks/useAccessProfile';
 import { Lead, LeadActivity, LeadStatus, LEAD_STATUSES, LEAD_STATUS_LABELS, CreateLeadPayload } from '../../types/index';
 import { formatDate } from '../../utils';
 import LeadStatusBadge from './LeadStatusBadge';
@@ -63,7 +64,11 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
   // actually has the new Leads.assign permission (admin/superadmin
   // always do, per usePermission's own bypass) — matches the backend's
   // now-permission-gated POST /leads/:id/assign route.
-  const canAssignLeads = usePermission('leads', 'assign');
+  const legacyAssignLeads = usePermission('leads', 'assign');
+  // V_25.0 — a Sales Head assigns their team's leads to their own Executives.
+  const access = useAccessProfile();
+  const leadTeam = !legacyAssignLeads ? (access.profile?.lead_team ?? []) : [];
+  const canAssignLeads = legacyAssignLeads || leadTeam.length > 0;
 
   const [form, setForm] = useState<CreateLeadPayload>(EMPTY_FORM);
   const [lead, setLead] = useState<Lead | null>(null);
@@ -146,10 +151,15 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
   useEffect(() => { loadLead(); }, [loadLead]);
 
   useEffect(() => {
+    if (leadTeam.length > 0) {
+      setEmployeeOptions(leadTeam.map((m) => ({ id: String(m.id), name: m.name })));
+      return;
+    }
     FetchEmployeeDetails(1, 500, undefined, true)
       .then((res) => { if (res.success) setEmployeeOptions(res.rows.map((e) => ({ id: e.id, name: `${e.first_name} ${e.last_name}`.trim() }))); })
       .catch(() => { /* dropdown staying empty is a harmless degrade */ });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadTeam.map((m) => m.id).join(',')]);
 
   const loadActivities = useCallback(async () => {
     if (isAdd || !id) return;
@@ -198,7 +208,11 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
     if (!id || selectedEmployeeIds.length === 0) { toast.error('Select at least one employee.'); return; }
     setAssigning(true);
     try {
-      await assignLead(id, selectedEmployeeIds);
+      // A Head may only pick their Executives (they stay assigned themselves).
+      const ids = leadTeam.length > 0
+        ? selectedEmployeeIds.filter((eid) => leadTeam.some((m) => String(m.id) === String(eid)))
+        : selectedEmployeeIds;
+      await assignLead(id, ids);
       toast.success('Lead assigned successfully.');
       loadLead();
     } catch (err: any) {

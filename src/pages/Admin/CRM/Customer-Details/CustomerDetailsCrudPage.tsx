@@ -3,7 +3,8 @@
 // ==========================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
+import { fetchDraft, saveDraft } from '../../../../services/draftsService';
 import { toast } from '@/utils/toast';
 import {
   MdArrowBack, MdSave, MdPerson, MdApartment, MdClose, MdKeyboardArrowDown, MdAdd,
@@ -1406,6 +1407,87 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
 
   const handlePreview = () => setPreviewOpen(true);
 
+  // ── V_25.0 — Save as Draft (Add only). Keeps the half-filled form aside
+  // with no validation, no Customer ID, no flat booking and no approval;
+  // ?draft=<id> resumes it and Create submits it through the normal flow.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [draftId, setDraftId] = useState<number | null>(() => {
+    const d = Number(searchParams.get('draft'));
+    return mode === 'add' && Number.isInteger(d) && d > 0 ? d : null;
+  });
+  const [savingDraft, setSavingDraft] = useState(false);
+  // Every text/choice field of the form, by name — what a draft stores.
+  const draftFields: Record<string, [unknown, (v: never) => void]> = {
+    firstName: [firstName, setFirstName], middleName: [middleName, setMiddleName], lastName: [lastName, setLastName],
+    email: [email, setEmail], mobileCountryCode: [mobileCountryCode, setMobileCountryCode], mobileNumber: [mobileNumber, setMobileNumber],
+    mobileIsWhatsapp: [mobileIsWhatsapp, setMobileIsWhatsapp], secondaryCountryCode: [secondaryCountryCode, setSecondaryCountryCode],
+    secondaryNumber: [secondaryNumber, setSecondaryNumber], secondaryIsWhatsapp: [secondaryIsWhatsapp, setSecondaryIsWhatsapp],
+    aadharNumber: [aadharNumber, setAadharNumber], pancardNumber: [pancardNumber, setPancardNumber], address: [address, setAddress],
+    dateOfBirth: [dateOfBirth, setDateOfBirth], alternatePersonName: [alternatePersonName, setAlternatePersonName],
+    alternatePersonCountryCode: [alternatePersonCountryCode, setAlternatePersonCountryCode], alternatePersonMobile: [alternatePersonMobile, setAlternatePersonMobile],
+    companyName: [companyName, setCompanyName], companyFilter: [companyFilter, setCompanyFilter], projectName: [projectName, setProjectName],
+    location: [location, setLocation], buildingName: [buildingName, setBuildingName], wingName: [wingName, setWingName],
+    floorLabel: [floorLabel, setFloorLabel], flatNo: [flatNo, setFlatNo], unitType: [unitType, setUnitType], shopNo: [shopNo, setShopNo],
+    wantsParking: [wantsParking, setWantsParking], parkingNo: [parkingNo, setParkingNo],
+    totalCost: [totalCost, setTotalCost], bookingDate: [bookingDate, setBookingDate], bookingAmount: [bookingAmount, setBookingAmount],
+    remainingBookingAmount: [remainingBookingAmount, setRemainingBookingAmount], remainingBookingDate: [remainingBookingDate, setRemainingBookingDate],
+    possessionAmount: [possessionAmount, setPossessionAmount], installmentDate: [installmentDate, setInstallmentDate],
+    monthlyEmiBeforePossession: [monthlyEmiBeforePossession, setMonthlyEmiBeforePossession],
+    monthlyEmiAfterPossession: [monthlyEmiAfterPossession, setMonthlyEmiAfterPossession], totalEmiTenure: [totalEmiTenure, setTotalEmiTenure],
+    boosterAmountBeforePossession: [boosterAmountBeforePossession, setBoosterAmountBeforePossession],
+    boosterAmountAfterPossession: [boosterAmountAfterPossession, setBoosterAmountAfterPossession],
+    boosterIntervalBeforePossession: [boosterIntervalBeforePossession, setBoosterIntervalBeforePossession],
+    boosterIntervalAfterPossession: [boosterIntervalAfterPossession, setBoosterIntervalAfterPossession],
+    isActive: [isActive, setIsActive],
+  };
+  // Upload fields: form state ↔ the backend's upload field name.
+  const draftFileFields: [string, FileValue, (v: FileValue) => void][] = [
+    ['customer_image', customerPhoto, setCustomerPhoto], ['aadhar_card', aadharPhoto, setAadharPhoto],
+    ['pan_card', pancardPhoto, setPancardPhoto], ['application_form', applicationForm, setApplicationForm],
+    ['declaration_form', declarationForm, setDeclarationForm], ['allotment_letter', allotmentLetter, setAllotmentLetter],
+  ];
+  const applyDraftFiles = (files: Record<string, string>) => {
+    for (const [field, , setter] of draftFileFields) if (files[field]) setter(files[field]);
+  };
+
+  useEffect(() => {
+    if (mode !== 'add' || draftId == null) return;
+    let alive = true;
+    fetchDraft('customer', draftId).then((d) => {
+      if (!alive) return;
+      for (const [key, value] of Object.entries(d.data)) {
+        const entry = draftFields[key];
+        if (entry && value !== undefined) entry[1](value as never);
+      }
+      applyDraftFiles(d.files);
+    }).catch(() => {
+      toast.error('This draft could not be opened. It may have been submitted or deleted.');
+      setDraftId(null);
+    });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // No validation on purpose — any partial form can be kept as a draft.
+  const handleSaveDraft = async () => {
+    setSavingDraft(true);
+    try {
+      const title = [firstName, middleName, lastName].map((x) => x.trim()).filter(Boolean).join(' ')
+        || mobileNumber.trim() || email.trim() || 'Untitled customer';
+      const data = Object.fromEntries(Object.entries(draftFields).map(([k, [v]]) => [k, v]));
+      const picked = draftFileFields.filter(([, v]) => v instanceof File).map(([field, v]) => [field, v as File] as [string, File]);
+      const saved = await saveDraft('customer', draftId, title, data, picked);
+      setDraftId(saved.id);
+      applyDraftFiles(saved.files); // uploaded now — shown as stored files
+      setSearchParams({ draft: String(saved.id) }, { replace: true });
+      toast.success('Saved as draft. Resume it any time from Customer Details → Drafts.');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to save the draft.');
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setSubmitAttempted(true);
     const invalid = getFirstInvalid();
@@ -1558,7 +1640,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         const res = await updateCustomerWithDetails(id, formData);
         toast.success(res.pending ? 'Changes submitted for admin approval.' : 'Customer Updated Successfully');
       } else {
-        const res = await createCustomerWithDetails(formData);
+        const res = await createCustomerWithDetails(formData, draftId);
         toast.success(res.pending ? 'Customer submitted for admin approval.' : 'Customer Created Successfully');
       }
       navigate(paths.customerDetails);
@@ -1786,6 +1868,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
           <div>
             <h1 className="cust-crud-title">
               {mode === 'add' ? 'Create Customer' : mode === 'edit' ? 'Edit Customer' : 'View Customer'}
+              {draftId != null && <span className="draft-badge" style={{ marginLeft: 10, verticalAlign: 'middle' }}>DRAFT</span>}
             </h1>
           </div>
         </div>
@@ -2271,7 +2354,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               style={{ background: t.insetBg, color: 'var(--brand-ink)', border: `1px solid ${t.inputBorder}`, cursor: saving ? 'not-allowed' : 'pointer' }}>
               <MdVisibility size={16} /> Preview
             </button>
-            <button type="button" onClick={handleSubmit} disabled={saving}
+            {mode === 'add' && (
+              <button type="button" onClick={handleSaveDraft} disabled={saving || savingDraft}
+                title="Keep this partly filled form and finish it later — no validation, no approval yet."
+                className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: t.surfaceBg, color: 'var(--brand-ink)', border: '1px solid var(--brand-ink)', cursor: saving || savingDraft ? 'not-allowed' : 'pointer' }}>
+                {savingDraft ? 'Saving Draft...' : 'Save as Draft'}
+              </button>
+            )}
+            <button type="button" onClick={handleSubmit} disabled={saving || savingDraft}
               className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-bold text-white cust-btn-primary"
               style={{
                 opacity: saving ? 0.8 : 1,

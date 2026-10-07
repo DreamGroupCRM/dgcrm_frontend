@@ -273,7 +273,7 @@
   cursor: pointer;
   white-space: nowrap;
 }
-.cp-header-btn-danger { color: #dc2626; border-color: rgba(220, 38, 38, 0.32); }
+.cp-header-btn-danger { color: #b91c1c; border-color: rgba(220, 38, 38, 0.32); }
 .cp-header-btn-text { display: none; } /* label appears from sm up */
 
 /* ── Booking / property switcher — sits right under the header greeting
@@ -423,6 +423,29 @@
   .cp-grid-dense { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .cp-grid-property { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
 }
+/* Home (V_25.0) — Personal Details, Relationship Manager and Property
+   Details stacked full width. Phone: compact — photo + name on one line,
+   then a two-column field grid with small gaps. Desktop (xl+): every
+   section's details in ONE row — photo/name first, then one equal column
+   per field, text wrapping inside its own column. */
+.cp-home-row { display: flex; flex-direction: column; gap: 10px; }
+.cp-home-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cp-home-id .cp-avatar-photo { width: 46px; height: 46px; border-radius: 12px; }
+.cp-home-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; min-width: 0; flex: 1; }
+.cp-home-wide { grid-column: 1 / -1; }
+@media (min-width: 768px) {
+  .cp-home-fields { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px 16px; }
+}
+@media (min-width: 1200px) {
+  .cp-home-row { flex-direction: row; align-items: center; gap: 18px; }
+  .cp-home-id { flex: 0 0 200px; }
+  .cp-home-id .cp-avatar-photo { width: 52px; height: 52px; }
+  .cp-home-fields { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-columns: none; gap: 0 14px; }
+  .cp-home-wide { grid-column: auto; }
+  .cp-home-fields > * { padding-left: 12px; border-left: 1px solid var(--cp-divider, #e5e7eb); }
+  .cp-home-fields > *:first-child { padding-left: 0; border-left: none; }
+}
+html.dark .cp-chip-pending { background: rgba(217, 119, 6, 0.45) !important; color: #fff !important; }
 .cp-rm-contact { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 .cp-rm-contact-item { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--cp-text-primary, #111827); }
 
@@ -504,8 +527,19 @@
 .cp-doc-card-actions .cp-btn { flex: 1; justify-content: center; }
 
 /* ── EMI Scheme & Schedule — compact, no sideways scroll on a phone ───── */
-.cp-scheme-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 16px; align-items: start; }
-@media (min-width: 1200px) { .cp-scheme-layout { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+/* Phone / tablet: EMI Scheme and EMI Schedule side by side, swiped
+   horizontally (each panel snaps into place). Desktop (lg+): the two
+   accordions stacked, Scheme first and Schedule below it, full width. */
+.cp-scheme-layout {
+  display: flex; gap: 12px; align-items: flex-start;
+  overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+}
+.cp-scheme-layout > * { flex: 0 0 88%; min-width: 0; scroll-snap-align: start; }
+@media (min-width: 992px) {
+  .cp-scheme-layout { display: block; overflow: visible; padding-bottom: 0; }
+  .cp-scheme-layout > * { width: 100%; }
+}
 .cp-scheme-section { margin-bottom: 12px; }
 .cp-scheme-heading { font-size: 12.5px; font-weight: 800; margin-bottom: 6px; }
 .cp-scheme-row {
@@ -520,6 +554,22 @@
   display: flex; justify-content: space-between; gap: 10px; align-items: center;
   margin-top: 8px; padding: 8px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 800;
 }
+/* Before / After Possession / Grand Total colours. Light: tinted band
+   with dark ink. Dark: a stronger band with white text — dark blue / green
+   ink was unreadable on the dark background. */
+.cp-tone-A { background: rgba(37, 99, 235, 0.12); color: #1e40af; }
+.cp-tone-B { background: rgba(22, 163, 74, 0.13); color: #166534; }
+.cp-tone-grand { background: rgba(217, 119, 6, 0.15); color: #92400e; }
+.cp-tone-ink-A { color: #1e40af; }
+.cp-tone-ink-B { color: #166534; }
+.cp-due-note { font-size: 10px; font-weight: 700; color: #dc2626; }
+html.dark .cp-tone-A { background: rgba(37, 99, 235, 0.45); color: #fff; }
+html.dark .cp-tone-B { background: rgba(22, 163, 74, 0.45); color: #fff; }
+html.dark .cp-tone-grand { background: rgba(217, 119, 6, 0.5); color: #fff; }
+html.dark .cp-tone-ink-A, html.dark .cp-tone-ink-B { color: #fff; }
+html.dark .cp-due-note { color: #fca5a5; }
+html.dark .cp-chip-paid { background: rgba(5, 150, 105, 0.35) !important; color: #fff !important; }
+html.dark .cp-chip-due { background: rgba(220, 38, 38, 0.4) !important; color: #fff !important; }
 .cp-sched { width: 100%; border-collapse: collapse; table-layout: auto; font-size: 11.5px; }
 .cp-sched thead th {
   text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
@@ -712,3 +762,7 @@
 @media (prefers-reduced-motion: reduce) {
   .cp-sidebar { transition: none; }
 }
+
+/* V_25.0 — red text on the dark header was 3.8:1; a lighter red reads clearly. */
+html.dark .cp-header-btn-danger { color: #fca5a5; }
+html.dark .cp-empty-error, html.dark .cp-doc-card-pdf { color: #fca5a5; }

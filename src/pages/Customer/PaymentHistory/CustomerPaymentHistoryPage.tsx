@@ -53,7 +53,7 @@ const CustomerPaymentHistoryPage: React.FC = () => {
         ]);
         if (stale) return;
         setRows(payments);
-        setTotals(totalsFromDueGrid(grid.rows));
+        setTotals(totalsFromDueGrid(grid.rows, grid.extra_pay_total ?? 0));
       } catch {
         if (!stale) setError(true);
       } finally {
@@ -95,7 +95,7 @@ const CustomerPaymentHistoryPage: React.FC = () => {
 
   return (
     <>
-      <PageHead title="Payment History & Receipt" subtitle="View your payment transactions and approved receipts" />
+      <PageHead title="Payment History & Receipt" />
 
       {selectedId != null && (
         <>
@@ -196,13 +196,13 @@ const CustomerPaymentHistoryPage: React.FC = () => {
                             </span>
                           </td>
                           <td style={td}>
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: approved ? '#16a34a' : '#d97706', color: '#fff', fontSize: 10.5 }}>
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: approved ? '#15803d' : '#b45309', color: '#fff', fontSize: 10.5 }}>
                               {approved ? <MdCheckCircle size={12} /> : <MdHourglassEmpty size={12} />}
                               {approved ? 'Approved' : 'UnApproved'}
                             </span>
                           </td>
                           <td style={{ ...td, fontWeight: 700, color: 'var(--brand-ink)' }}>{r.receipt_number || '—'}</td>
-                          <td style={{ ...td, fontWeight: 700, color: '#16a34a' }}>{rupee(r.refunded_amount)}</td>
+                          <td style={{ ...td, fontWeight: 700, color: isDark ? '#86efac' : '#15803d' }}>{rupee(r.refunded_amount)}</td>
                           <td style={td}>{formatDate(r.refund_date)}</td>
                           <td style={td}>
                             <span className="inline-flex items-center gap-1"><MdPayments size={12} /> {r.mode_of_payment || '—'}</span>

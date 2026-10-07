@@ -20,8 +20,8 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
       },
       text: {
         primary  : mode === 'dark' ? '#ffffff' : '#000000',
-        secondary: mode === 'dark' ? '#a3a3a3' : '#4b5563',
-        disabled : mode === 'dark' ? '#525252' : '#9ca3af',
+        secondary: mode === 'dark' ? '#ffffff' : '#1f2937',
+        disabled : mode === 'dark' ? '#a3a3a3' : '#6b7280',
       },
       divider: mode === 'dark' ? '#1a1a1a' : '#e5e7eb',
       action: {
@@ -88,7 +88,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
         styleOverrides: {
           root: ({ theme }) => ({
             fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
-            color: theme.palette.mode === 'dark' ? '#a3a3a3' : '#4b5563',
+            color: theme.palette.mode === 'dark' ? '#ffffff' : '#1f2937',
             '&.Mui-focused': { color: theme.palette.mode === 'dark' ? '#d4d4d4' : '#0000FF' },
           }),
         },
@@ -133,7 +133,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
             color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000',
           }),
           head: ({ theme }) => ({
-            color: theme.palette.mode === 'dark' ? '#a3a3a3' : '#4b5563',
+            color: theme.palette.mode === 'dark' ? '#ffffff' : '#1f2937',
             fontWeight: 600,
           }),
         },
@@ -183,7 +183,7 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
           root: ({ theme }) => ({
             fontFamily: '"Roboto", "Inter", "Arial", sans-serif',
             backgroundColor: theme.palette.mode === 'dark' ? '#141414' : '#efebe9',
-            color: theme.palette.mode === 'dark' ? '#a3a3a3' : '#0000FF',
+            color: theme.palette.mode === 'dark' ? '#ffffff' : '#0000FF',
           }),
         },
       },

@@ -54,6 +54,7 @@ import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { serverToday, toYmd } from '../../../../utils/serverTime';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 import DateInput from '../../../../components/common/DateInput';
+import { useAccessProfile } from '../../../../hooks/useAccessProfile';
 
 type Theme = AppTheme;
 
@@ -155,8 +156,8 @@ const FilterSelect: React.FC<{
 type ApprovalView = 'all' | 'approved' | 'pending';
 const APPROVAL_VIEWS: { key: ApprovalView; label: string; color: string }[] = [
   { key: 'all', label: 'All', color: '#2563eb' },
-  { key: 'approved', label: 'Approved', color: '#16a34a' },
-  { key: 'pending', label: 'UnApproved', color: '#d97706' },
+  { key: 'approved', label: 'Approved', color: '#15803d' },
+  { key: 'pending', label: 'UnApproved', color: '#b45309' },
 ];
 const approvalParam = (v: ApprovalView): 'approved' | 'pending' | undefined => (v === 'all' ? undefined : v);
 
@@ -203,6 +204,9 @@ const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { isDark, t, cssVars } = useAppearanceTokens();
   const paths = useRoleBasePath();
+  // V_25.0 — a Head (set-up department) may request deleting a team payment.
+  const { profile: access } = useAccessProfile();
+  const canRequestDelete = !paths.isAdmin && Boolean(access && !access.legacy && access.head_of.length > 0);
   const [approvalView, setApprovalView] = useState<ApprovalView>('all');
   const [approvalCounts, setApprovalCounts] = useState<{ approved: number; pending: number } | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -610,19 +614,22 @@ const PaymentReceivedPage: React.FC = () => {
     }
   };
 
+  // Admin deletes; a Head's delete is a request Admin approves (V_25.0).
   const handleDelete = async (row: PaymentListRow) => {
+    const what = `the ₹${row.amount.toLocaleString('en-IN')} payment${row.receipt_number ? ` (Receipt ${row.receipt_number})` : ''} for ${row.customer_name}`;
     const result = await showAlert.confirm(
-      `This will permanently delete the ₹${row.amount.toLocaleString('en-IN')} payment${row.receipt_number ? ` (Receipt ${row.receipt_number})` : ''} for ${row.customer_name}.`,
-      'Delete Payment?'
+      paths.isAdmin ? `This will permanently delete ${what}.` : `This sends a request to Admin to delete ${what}. It is deleted only after Admin approves.`,
+      paths.isAdmin ? 'Delete Payment?' : 'Request Payment Delete?'
     );
     if (!result.isConfirmed) return;
     setDeletingId(row.id);
     try {
-      await deletePayment(row.id);
-      toast.success('Payment deleted.');
+      const res = await deletePayment(row.id) as { pending?: boolean };
+      toast.success(res?.pending ? 'Delete request sent for admin approval.' : 'Payment deleted.');
       refreshAll();
-    } catch {
-      toast.error('Failed to delete payment.');
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg || 'Failed to delete payment.');
     } finally {
       setDeletingId(null);
     }
@@ -644,6 +651,8 @@ const PaymentReceivedPage: React.FC = () => {
   const totalsFooterCells: { key: keyof PaymentCategorySummary; label: string }[] = [
     { key: 'emi_before', label: 'EMI Before' },
     { key: 'emi_after', label: 'EMI After' },
+    // V_25.0 — Extra Pay is its own payment type, not an EMI.
+    { key: 'extra_pay', label: 'Extra Pay' },
     { key: 'booking', label: 'Booking Amount' },
     { key: 'pay_after_booking', label: 'Remaining Booking' },
     { key: 'possession', label: 'Possession' },
@@ -780,15 +789,18 @@ const PaymentReceivedPage: React.FC = () => {
             {paths.isAdmin && selectedPendingIds.length > 0 && (
               <button type="button" onClick={handleBulkApprove} disabled={bulkApproving}
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
-                style={{ background: '#16a34a', border: 'none', color: '#fff', cursor: bulkApproving ? 'not-allowed' : 'pointer', opacity: bulkApproving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                style={{ background: '#15803d', border: 'none', color: '#fff', cursor: bulkApproving ? 'not-allowed' : 'pointer', opacity: bulkApproving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 <MdCheckCircle size={16} /> {bulkApproving ? 'Approving…' : `Approve Selected (${selectedPendingIds.length})`}
               </button>
             )}
+            {/* V_25.0 — Export CSV is Admin-only. */}
+            {paths.isAdmin && (
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
               className="pr-export-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
               style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: exportingCsv ? 'not-allowed' : 'pointer', opacity: exportingCsv ? 0.6 : 1, whiteSpace: 'nowrap' }}>
               <MdDownload size={16} /> <span className="pr-export-btn-text">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
             </button>
+            )}
             <button type="button" onClick={refreshAll} title="Refresh"
               className="pr-refresh-btn flex items-center justify-center rounded-xl"
               style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
@@ -834,7 +846,7 @@ const PaymentReceivedPage: React.FC = () => {
                           .master-table-scroll's overflow:auto. */}
                       <button type="button" title="Actions"
                         ref={rowMenu.openId === r.id ? rowMenu.buttonRef : undefined}
-                        onClick={rowMenu.toggle(r.id, (r.is_approved ? 2 : 1) + (paths.isAdmin ? (r.is_approved ? 1 : 2) : 0))}
+                        onClick={rowMenu.toggle(r.id, (r.is_approved ? 2 : 1) + (paths.isAdmin ? (r.is_approved ? 1 : 2) : canRequestDelete ? 1 : 0))}
                         className="flex items-center justify-center rounded-lg"
                         style={{ width: 28, height: 28, background: 'transparent', border: 'none', color: t.textSecondary, cursor: 'pointer' }}>
                         <MdMoreVert size={18} />
@@ -854,18 +866,20 @@ const PaymentReceivedPage: React.FC = () => {
                           // route (DELETE /payments/:id) already enforces
                           // this via requireAdmin, so this is UI-side only —
                           // an employee must not even see the option.
-                          ...(paths.isAdmin ? [{ key: 'delete', label: 'Delete', icon: <MdDelete size={14} />, danger: true, disabled: deletingId === r.id, onClick: () => { rowMenu.close(); handleDelete(r); } }] : []),
+                          // V_25.0 — a Head may REQUEST a delete (Admin approves);
+                          // Executives still never see it.
+                          ...(paths.isAdmin || canRequestDelete ? [{ key: 'delete', label: paths.isAdmin ? 'Delete' : 'Request Delete', icon: <MdDelete size={14} />, danger: true, disabled: deletingId === r.id, onClick: () => { rowMenu.close(); handleDelete(r); } }] : []),
                         ]} />
                       )}
                     </td>
                     <td style={{ padding: '10px 12px' }}>
                       {r.is_approved ? (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" title={r.approved_by_name ? `Approved by ${r.approved_by_name}${r.approved_at ? ` on ${formatDMY(r.approved_at)}` : ''}` : undefined}
-                          style={{ background: '#16a34a', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                          style={{ background: '#15803d', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
                           <MdCheckCircle size={12} /> Approved
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: '#d97706', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: '#b45309', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
                           <MdHourglassEmpty size={12} /> UnApproved
                         </span>
                       )}
@@ -945,7 +959,7 @@ const PaymentReceivedPage: React.FC = () => {
               </button>
             </div>
           ) : (
-            <TotalsBar items={totalsFooterCells.map((c) => ({ key: c.key, label: c.label, value: categorySummary ? rupee(categorySummary[c.key]) : '…', grand: c.key === 'total' }))} />
+            <TotalsBar items={totalsFooterCells.map((c) => ({ key: c.key, label: c.label, value: categorySummary ? rupee(categorySummary[c.key] ?? 0) : '…', grand: c.key === 'total' }))} />
           )
         )}
 

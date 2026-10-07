@@ -10,7 +10,7 @@
 // (/employee/cancelled-booking). An employee sees only customers assigned to
 // them; the summary boxes and the approval queue are admin-only — all
 // enforced by the API, not just hidden here.
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/utils/toast';
@@ -45,6 +45,7 @@ import { paymentForLabel } from '../../../../services/paymentService';
 import { SearchableSelect } from '../../../../components/common/SearchableSelect';
 import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
 import './CancelledBooking.css';
+import CancelBookingPicker from './CancelBookingPicker';
 
 const rupee = (n: number): string => `₹ ${(n || 0).toLocaleString('en-IN')}`;
 const errMessage = (e: unknown, fallback: string) =>
@@ -147,11 +148,19 @@ const CancelledBookingPage: React.FC = () => {
 
   // Every cancelled customer this user can see — the Customer Name picker's
   // list (and each one's paid / refunded figures for the refund row).
+  // Loaded on first use of the picker (not on every page open — it is up to
+  // 5000 rows), then kept fresh after each change once it has been loaded.
   const [allCancelled, setAllCancelled] = useState<CancelledCustomerRow[]>([]);
-  const loadAllCancelled = useCallback(async () => {
+  const allCancelledWanted = useRef(false);
+  const fetchAllCancelled = useCallback(async () => {
     try { const res = await fetchCancelledCustomers(1, 5000); if (res.success) setAllCancelled(res.rows); } catch { /* picker stays empty */ }
   }, []);
-  useEffect(() => { loadAllCancelled(); }, [loadAllCancelled]);
+  const loadAllCancelled = useCallback(() => { if (allCancelledWanted.current) void fetchAllCancelled(); }, [fetchAllCancelled]);
+  const wantAllCancelled = () => {
+    if (allCancelledWanted.current) return;
+    allCancelledWanted.current = true;
+    void fetchAllCancelled();
+  };
   const customerOptions = useMemo(() => allCancelled.map(customerLabel), [allCancelled]);
 
   // ── Refund entry row: Customer, Building/Wing/Flat, Refund Amount, Submit,
@@ -599,7 +608,7 @@ const CancelledBookingPage: React.FC = () => {
           record a refund, X clears. One row from 1280px up. ─────────── */}
       <div className="rounded-2xl mb-4 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="cb-filter-grid grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-          <div className="cb-f-customer">
+          <div className="cb-f-customer" onFocusCapture={wantAllCancelled} onPointerDownCapture={wantAllCancelled}>
             <label style={labelStyle}>Customer Name / ID</label>
             <SearchableSelect t={t} placeholder="Name or ID" options={customerOptions} value={custText}
               onChange={handleCustomerChange} clearLabel="Clear customer" />
@@ -680,6 +689,7 @@ const CancelledBookingPage: React.FC = () => {
             <SearchableSelect t={t} placeholder="Search employee name" options={employees.map((e) => e.label)} value={empFilterText}
               onChange={handleEmployeeFilterChange} clearLabel="Clear employee filter" />
           </div>
+          <CancelBookingPicker t={t} isAdmin={isAdmin} onDone={refreshAll} />
           <button type="button" onClick={refreshAll} title="Refresh"
             className="flex items-center justify-center rounded-xl"
             style={{ width: 40, height: 38, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>

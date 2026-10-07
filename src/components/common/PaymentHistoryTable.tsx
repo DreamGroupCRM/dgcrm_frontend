@@ -66,11 +66,11 @@ const PaymentHistoryTable: React.FC<{
               <td style={{ padding: '8px 12px' }}>{renderActions(r)}</td>
               <td style={{ padding: '8px 12px' }}>
                 {r.is_approved ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: '#16a34a', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: '#15803d', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
                     <MdCheckCircle size={12} /> Approved
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: '#d97706', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: '#b45309', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
                     <MdHourglassEmpty size={12} /> UnApproved
                   </span>
                 )}
@@ -87,8 +87,8 @@ const PaymentHistoryTable: React.FC<{
                 </span>
               </td>
               <td style={{ ...td, fontSize: 12.5, fontWeight: 700 }}>₹{(r.amount || 0).toLocaleString('en-IN')}</td>
-              {/* Extra Pay pre-pays future EMIs, so it settles no particular
-                  installment — no Payment Date. */}
+              {/* Extra Pay is its own payment, separate from EMIs, so it
+                  settles no installment — no Payment Date. */}
               <td style={{ ...td, color: t.textSecondary }}>{r.payment_tag === 'Extra Pay' || !r.inst_date ? '—' : formatDate(r.inst_date)}</td>
               <td style={{ ...td, color: t.textSecondary }}>
                 <div className="flex items-center gap-1.5">

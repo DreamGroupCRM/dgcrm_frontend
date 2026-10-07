@@ -30,6 +30,8 @@ export interface RoleBasePaths {
   paymentReceived: string;
   /** Where the Cancelled Booking page lives. */
   cancelledBooking: string;
+  /** Where Employee Details lives (V_25.0: HR reaches it as an employee). */
+  employeeDetails: string;
 }
 
 export function useRoleBasePath(): RoleBasePaths {
@@ -47,6 +49,7 @@ export function useRoleBasePath(): RoleBasePaths {
         paymentDues: '/admin/crm/payment-dues',
         paymentReceived: '/admin/crm/payment-received',
         cancelledBooking: '/admin/cancelled-booking',
+        employeeDetails: '/admin/employee/employee-details',
       }
       : {
         isAdmin: false,
@@ -55,6 +58,16 @@ export function useRoleBasePath(): RoleBasePaths {
         paymentDues: '/employee/payment-dues',
         paymentReceived: '/employee/payment-received',
         cancelledBooking: '/employee/cancelled-booking',
+        employeeDetails: '/employee/employee-details',
       };
   }, [role]);
+}
+
+/**
+ * V_25.0 — Employee Details base path for code outside React state (card
+ * components, handlers): HR opens these pages under /employee, Admin under
+ * /admin, so follow whichever tree the page itself is mounted in.
+ */
+export function employeeDetailsBasePath(): string {
+  return window.location.pathname.startsWith('/employee/') ? '/employee/employee-details' : '/admin/employee/employee-details';
 }

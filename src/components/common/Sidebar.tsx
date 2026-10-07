@@ -13,6 +13,8 @@ import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import { AppTheme } from '../../styles/theme';
 import { BaseRole, isAdminRole } from '../../types';
 import { homeRouteForRole, roleLabelFor } from '../../utils';
+import { useAccessProfile } from '../../hooks/useAccessProfile';
+import { AccessArea } from '../../services/accessService';
 
 import {
   MdDashboard, MdBusiness, MdPeople, MdContactPage,
@@ -136,6 +138,7 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
     label: 'Super Admin', icon: <MdAdminPanelSettings />,
     children: [
       { label: 'User Management', path: ROUTES.ADMIN.USER_MANAGEMENT, icon: <MdManageAccounts /> },
+      { label: 'Department Setup', path: ROUTES.ADMIN.DEPARTMENT_SETUP, icon: <MdAccountTree /> },
       { label: 'Backup Database', path: ROUTES.ADMIN.BACKUP_DATABASE, icon: <MdStorage /> },
     ],
   }] : []),
@@ -154,32 +157,35 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
 //
 // Attendance and Leave stay below the CRM group — they are the employee's
 // own HR pages, not customer work, and both were already self-scoped.
-const employeeNavItems: NavItem[] = [
-  { label: 'Dashboard', path: ROUTES.EMPLOYEE.DASHBOARD, icon: <MdDashboard /> },
-
-  {
-    label: 'CRM', icon: <MdLeaderboard />,
-    children: [
-      { label: 'Leads', path: ROUTES.EMPLOYEE.LEADS, icon: <MdLeaderboard /> },
-      { label: 'Customer Details', path: ROUTES.EMPLOYEE.CUSTOMER_DETAILS, icon: <MdContactPage /> },
-      { label: 'Payment Dues', path: ROUTES.EMPLOYEE.PAYMENT_DUES, icon: <MdPayment /> },
-      { label: 'Payment Received', path: ROUTES.EMPLOYEE.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
-      // Scoped to the employee's assigned customers; admin-only parts
-      // (summary boxes, approvals) are refused by the API.
-      { label: 'Cancelled Booking', path: ROUTES.EMPLOYEE.CANCELLED_BOOKING, icon: <MdEventBusy /> },
-    ],
-  },
-
-  { label: 'Customize Scheme', path: ROUTES.EMPLOYEE.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
-  { label: 'Building View', path: ROUTES.EMPLOYEE.BUILDING_2D_VIEW, icon: <MdGridView /> },
-  // Audit History is deliberately NOT here. An audit trail carries the
-  // old/new field values of every user's actions, so it stays admin-only
-  // (the backend's /api/audit router is requireAdmin, and nothing in this
-  // app relaxes that).
-
-  { label: 'Attendance', path: ROUTES.EMPLOYEE.ATTENDANCE, icon: <MdEventAvailable /> },
-  { label: 'Leave', path: ROUTES.EMPLOYEE.LEAVES, icon: <MdBeachAccess /> },
-];
+// V_25.0 — the employee sidebar follows the employee's Department(s):
+// each page shows only if one of their departments is set up with it on
+// the Super Admin "Department Setup" screen. An employee whose department
+// is not set up yet keeps exactly the pages every employee had before.
+// Dashboard, own Attendance and Leave are always there.
+const buildEmployeeNavItems = (has: (area: AccessArea) => boolean): NavItem[] => {
+  const crm: NavItem[] = [
+    ...(has('leads') ? [{ label: 'Leads', path: ROUTES.EMPLOYEE.LEADS, icon: <MdLeaderboard /> }] : []),
+    ...(has('customers') ? [{ label: 'Customer Details', path: ROUTES.EMPLOYEE.CUSTOMER_DETAILS, icon: <MdContactPage /> }] : []),
+    ...(has('payment_dues') ? [{ label: 'Payment Dues', path: ROUTES.EMPLOYEE.PAYMENT_DUES, icon: <MdPayment /> }] : []),
+    ...(has('payment_received') ? [{ label: 'Payment Received', path: ROUTES.EMPLOYEE.PAYMENT_RECEIVED, icon: <MdAttachMoney /> }] : []),
+    // Refund: every cancellation; others: their own customers'.
+    ...(has('cancelled_booking') ? [{ label: 'Cancelled Booking', path: ROUTES.EMPLOYEE.CANCELLED_BOOKING, icon: <MdEventBusy /> }] : []),
+  ];
+  const hr: NavItem[] = [
+    ...(has('employee_details') ? [{ label: 'Employee Details', path: ROUTES.EMPLOYEE.EMPLOYEE_DETAILS, icon: <MdPersonAdd /> }] : []),
+    ...(has('attendance_all') ? [{ label: 'Team Attendance', path: ROUTES.EMPLOYEE.TEAM_ATTENDANCE, icon: <MdEventAvailable /> }] : []),
+  ];
+  return [
+    { label: 'Dashboard', path: ROUTES.EMPLOYEE.DASHBOARD, icon: <MdDashboard /> },
+    ...(crm.length ? [{ label: 'CRM', icon: <MdLeaderboard />, children: crm }] : []),
+    ...(hr.length ? [{ label: 'HR', icon: <MdPeople />, children: hr }] : []),
+    ...(has('customize_scheme') ? [{ label: 'Customize Scheme', path: ROUTES.EMPLOYEE.CUSTOMIZE_SCHEME, icon: <MdCalculate /> }] : []),
+    ...(has('building_view') ? [{ label: 'Building View', path: ROUTES.EMPLOYEE.BUILDING_2D_VIEW, icon: <MdGridView /> }] : []),
+    // Audit History is deliberately NOT here — it stays admin-only.
+    { label: 'Attendance', path: ROUTES.EMPLOYEE.ATTENDANCE, icon: <MdEventAvailable /> },
+    { label: 'Leave', path: ROUTES.EMPLOYEE.LEAVES, icon: <MdBeachAccess /> },
+  ];
+};
 
 // ── NavItemComponent ───────────────────────────────────────────────────────
 // `t` and the nav-active-state colors are computed once in the Sidebar shell
@@ -348,7 +354,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
     };
   }, [mobileOpen]);
 
-  const navItems = isAdminRole(role) ? buildAdminNavItems(masterEnabled, role) : employeeNavItems;
+  const access = useAccessProfile();
+  const navItems = isAdminRole(role) ? buildAdminNavItems(masterEnabled, role) : buildEmployeeNavItems(access.has);
 
   const shellStyle: React.CSSProperties = {
     background: t.sidebarBg,
@@ -387,7 +394,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
       {!collapsed && (
         <div className="px-4 py-2.5 flex-shrink-0">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-semibold"
-            style={{ background: isDark ? '#141414' : '#efebe9', color: isDark ? '#a3a3a3' : 'var(--brand-gradient)', fontFamily: t.fontFamily, fontSize: 9.5 }}>
+            style={{ background: isDark ? '#141414' : '#efebe9', color: isDark ? '#ffffff' : 'var(--brand-gradient)', fontFamily: t.fontFamily, fontSize: 9.5 }}>
             <span className="w-1.5 h-1.5 rounded-full bg-current" />
             {roleLabel} Panel
           </span>

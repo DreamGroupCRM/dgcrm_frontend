@@ -22,15 +22,17 @@ export const getTheme = (isDark: boolean) => ({
   // ── Typography ───────────────────────────────────────────────────────────
   fontFamily    : '"Inter", "Roboto", "Arial", sans-serif',
   textPrimary   : isDark ? '#ffffff' : '#000000',
-  textSecondary : isDark ? '#a3a3a3' : '#111827',
+  textSecondary : isDark ? '#ffffff' : '#111827',
   // Dark value was '#525252', which is 2.5:1 against the dark page/card —
   // below the 3:1 floor for ANY text and well below the 4.5:1 needed for
   // normal-size text, so helper text, captions, "Not uploaded" labels,
   // empty-state lines and disabled-field values were effectively
   // unreadable in black theme. '#8f8f8f' is the same neutral grey, one
-  // step lighter, and clears 4.5:1 on all three dark surfaces. The LIGHT
-  // value is untouched.
-  textMuted     : isDark ? '#8f8f8f' : '#374151',
+  // step lighter, and clears 4.5:1 on all three dark surfaces. V_25.0:
+  // dark secondary / muted text is now white / near-white — in the black
+  // theme every label, caption and total must read as clearly as body text.
+  // The LIGHT values are untouched.
+  textMuted     : isDark ? '#e5e5e5' : '#374151',
   // Accent color that is safe as TEXT or an ICON.
   //
   // --brand-gradient is tuned to be a BUTTON FILL with white text on it,

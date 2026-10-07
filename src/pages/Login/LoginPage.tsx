@@ -18,7 +18,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { loginThunk, verifyOtpThunk, resendOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
+import { WRONG_PORTAL, loginThunk, verifyOtpThunk, resendOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
+import { showWrongPortalAlert } from './wrongPortalAlert';
 import { clearError, resetLoginFlow } from '../../redux/slices/authSlice';
 import { ROUTES } from '../../constants';
 import { showAlert, homeRouteForRole } from '../../utils';
@@ -37,7 +38,9 @@ import Logo from '../../components/ui/Logo';
 // scales it up past its native size, which will look softer there than on
 // a laptop/tablet/phone screen. That's an inherent tradeoff of using a
 // raster photo instead of vector artwork, not a bug in how it's mounted.
-import loginBgImage from '../../assets/images/login_circuit_bg.webp';
+// Black version of the same circuit artwork (white/silver circuit on a
+// black base) — the blue original (login_circuit_bg.webp) is kept on disk.
+import loginBgImage from '../../assets/images/login_circuit_bg_black.webp';
 
 import {
   TextField,
@@ -176,7 +179,10 @@ const LoginPage: React.FC = () => {
 
   // ── Show API-level errors via SweetAlert2 ──
   useEffect(() => {
-    if (error) {
+    if (error === WRONG_PORTAL) {
+      void showWrongPortalAlert('staff');
+      dispatch(clearError());
+    } else if (error) {
       showAlert.error(error, 'Login Failed');
       dispatch(clearError());
     }
@@ -335,7 +341,7 @@ const LoginPage: React.FC = () => {
         return;
       }
 
-      const result = await dispatch(loginThunk({ email: form.email, password: form.password }));
+      const result = await dispatch(loginThunk({ email: form.email, password: form.password, portal: 'staff' }));
       if (loginThunk.fulfilled.match(result)) {
         setJustRequestedOtp(true);
       }
@@ -484,10 +490,11 @@ const LoginPage: React.FC = () => {
             // background carries its own readability wash (see the SVG's
             // `wash` gradient), so the card only has to supply contrast for
             // the fields themselves.
-            background: 'rgba(4,10,18,0.72)',
+            // Neutral edge/glow to match the black background.
+            background: 'rgba(8,8,8,0.72)',
             backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(125,211,252,0.30)',
-            boxShadow: '0 0 45px rgba(56,189,248,0.18), 0 25px 50px rgba(0,0,0,0.65)',
+            border: '1px solid rgba(255,255,255,0.22)',
+            boxShadow: '0 0 45px rgba(255,255,255,0.08), 0 25px 50px rgba(0,0,0,0.65)',
           }}
         >
             {/* ── Tagline + Logo + Title + Hindi slogan (real image) ── */}

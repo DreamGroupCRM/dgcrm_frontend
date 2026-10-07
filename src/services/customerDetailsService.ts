@@ -122,6 +122,9 @@ interface BackendCustomer {
   assigned_employee_code: string | null;
   assigned_employee_name: string | null;
   assigned_employee_photo_url: string | null;
+  /** V_25.0 — Admin's assignee (Head) and the Head's sub-assignee (Executive). */
+  assigned_head?: { id: number; name: string; code: string | null } | null;
+  assigned_sub?: { id: number; name: string; code: string | null } | null;
   cancellation_pending?: boolean;
   customer_image: string | null;
   aadhar_card_no: string;
@@ -245,6 +248,8 @@ const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   assigned_employee_id: bc.assigned_employee_id != null ? String(bc.assigned_employee_id) : undefined,
   assigned_employee_code: bc.assigned_employee_code ?? undefined,
   assigned_employee_name: bc.assigned_employee_name ?? undefined,
+  assigned_head: bc.assigned_head ?? null,
+  assigned_sub: bc.assigned_sub ?? null,
   assigned_employee_photo_url: bc.assigned_employee_photo_url,
   cancellation_pending: !!bc.cancellation_pending,
   status: bc.is_active ? 'active' : 'inactive',
@@ -575,9 +580,12 @@ export const updateCustomer = async (id: string, payload: UpdateCustomerPayload)
 // back as `{ pending: true }` with no `data` — callers must check
 // `pending` before touching the response's `data`.
 /** POST /api/customers (multipart/form-data) */
-export const createCustomerWithDetails = async (formData: FormData): Promise<CustomerCreateEditResponse> => {
+export const createCustomerWithDetails = async (formData: FormData, draftId?: number | null): Promise<CustomerCreateEditResponse> => {
   const res = await axiosInstance.post('/customers', toBackendCustomerFormData(formData), {
     headers: { 'Content-Type': 'multipart/form-data' },
+    // V_25.0 — submitting a saved draft: its uploaded files are re-used
+    // server-side and the draft is removed once this succeeds.
+    params: draftId ? { draft_id: draftId } : undefined,
   });
   if (res.data.pending) return { success: res.data.success, pending: true, message: res.data.message };
   return { success: res.data.success, pending: false, message: res.data.message, data: mapCustomerRow(res.data.data as BackendCustomer) };
@@ -884,4 +892,16 @@ export const customerDetailsService = {
   assign             : assignCustomersToEmployee,
   paymentHistory     : fetchCustomerPaymentHistory,
   scheme             : fetchCustomerScheme,
+};
+
+// ── V_25.0 — Cancel Booking belongs to Refund ──────────────────────────────
+export interface CancellableCustomer {
+  id: string | number; customer_code: string | null;
+  name: string | null; middle_name: string | null; last_name: string | null;
+  mobile_number: string | null; building_name: string | null; wing_name: string | null; flat_no: string | null;
+}
+/** GET /api/customers/cancellable?search= — active customers Refund/Admin may start a cancellation for. */
+export const fetchCancellableCustomers = async (search: string): Promise<CancellableCustomer[]> => {
+  const res = await axiosInstance.get('/customers/cancellable', { params: search.trim() ? { search: search.trim() } : undefined });
+  return res.data.data;
 };
