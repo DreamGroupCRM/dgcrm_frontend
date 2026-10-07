@@ -228,11 +228,9 @@ interface StatBoxSpec { label: string; value: number; color: string; icon: IconT
 
 // ── "Payment For" options shown on the Add Payment Details form — richer,
 // friendlier labels than PAYMENT_FOR_OPTIONS (used elsewhere for the raw
-// enum), with "Extra Pay" mapped to EMIAmount + is_advance_pay: true — the
-// exact same "advance pay, applies toward future EMIs" flow collectPayment
-// already supports and already tags "Extra Pay" in its own response
-// message, just surfaced here as its own selectable option instead of a
-// checkbox. ───────────────────────────────────────────────────────────────
+// enum), with "Extra Pay" mapped to EMIAmount + is_advance_pay: true. Since
+// V_25.0 the server keeps Extra Pay as its own payment, separate from EMIs
+// (it no longer settles or reduces any EMI). ───────────────────────────────────────────────────────────────
 interface PaymentForUiOption { key: string; label: string; value: PaymentFor; isAdvance?: boolean; }
 // V_23.0 — "Monthly Installment" split into "EMI Before"/"EMI After" to
 // mirror the Booster Before/After pair. Both cosmetic options submit the
@@ -1118,7 +1116,7 @@ const DueReportPage: React.FC = () => {
                 {errorFor('amount') && <p style={{ color: '#ef4444', fontSize: 11.5, marginTop: 4 }}>{errorFor('amount')}</p>}
               </div>
             )}
-            {/* Extra Pay is an advance against future EMIs, not tied to any
+            {/* Extra Pay is its own payment (separate from EMIs), not tied to any
                 one installment — it has no Payment Date at all (takes
                 today's date via Received Date instead), so the field is
                 hidden rather than shown blank/disabled. */}
@@ -1334,7 +1332,7 @@ const DueReportPage: React.FC = () => {
                           <div style={{ fontSize: 12.5, fontWeight: 800, color: amountColor(g.statusColor) }}>{rupee(g.total)}</div>
                           <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{g.items.length} due{g.items.length === 1 ? '' : 's'}</div>
                           {g.extraBalance > 0 && (
-                            <div title="Unused Extra Payment" style={{ fontSize: 10.5, fontWeight: 700, color: '#0369a1', marginTop: 1 }}>Extra Payment: {rupee(g.extraBalance)}</div>
+                            <div title="Extra Payment — kept separate from EMIs" style={{ fontSize: 10.5, fontWeight: 700, color: '#0369a1', marginTop: 1 }}>Extra Payment: {rupee(g.extraBalance)}</div>
                           )}
                         </td>
                         <td style={{ padding: '10px 12px' }}>

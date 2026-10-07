@@ -16,7 +16,7 @@
 // The selection is also remembered in localStorage, so a refresh (or
 // following a link straight into a deep page) comes back to the booking the
 // customer was last looking at rather than resetting to the first one.
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchMyBookings, fetchMyBookingDetail, fetchMyCancelledReceipts,
   PortalBookingSummary, PortalBookingDetail, PortalCancelledBooking,
@@ -33,6 +33,8 @@ interface CustomerPortalValue {
   /** Full detail for the selected booking — personal, property, documents. */
   detail: PortalBookingDetail | null;
   loading: boolean;
+  /** The selected booking's details could not be loaded (pages show this instead of a spinner). */
+  detailError: string | null;
   error: string | null;
   selectBooking: (id: number) => void;
   /** Cancelled bookings of this login, with their refund receipts. */
@@ -61,6 +63,9 @@ export const CustomerPortalProvider: React.FC<{ children: React.ReactNode }> = (
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [cancelledBookings, setCancelledBookings] = useState<PortalCancelledBooking[]>([]);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const selectedIdRef = useRef<number | null>(null);
+  selectedIdRef.current = selectedId;
 
   const reload = useCallback(() => setReloadToken((n) => n + 1), []);
 
@@ -106,18 +111,27 @@ export const CustomerPortalProvider: React.FC<{ children: React.ReactNode }> = (
   useEffect(() => {
     if (selectedId == null) { setDetail(null); return; }
     let cancelled = false;
+    setDetailError(null);
     (async () => {
       try {
         const data = await fetchMyBookingDetail(selectedId);
         if (!cancelled) setDetail(data);
       } catch {
-        if (!cancelled) setDetail(null);
+        // Without this the pages kept waiting for a detail that was never
+        // coming — an endless spinner.
+        if (!cancelled) { setDetail(null); setDetailError('We could not load this booking. Please try again.'); }
       }
     })();
     return () => { cancelled = true; };
   }, [selectedId, reloadToken]);
 
   const selectBooking = useCallback((id: number) => {
+    // Clicking the booking that is already selected changes nothing. It
+    // used to clear the loaded details while the selection (and so the
+    // fetch below, keyed on it) stayed the same — nothing ever re-loaded
+    // them and the page spun forever (one-booking customers hit this on
+    // every click of their booking box).
+    if (id === selectedIdRef.current) return;
     setSelectedId(id);
     // Cleared on the next switch anyway, but dropping it here means a page
     // can never paint the previous booking's details under the new
@@ -132,11 +146,12 @@ export const CustomerPortalProvider: React.FC<{ children: React.ReactNode }> = (
     selected: bookings.find((b) => b.id === selectedId) ?? null,
     detail,
     loading,
+    detailError,
     error,
     selectBooking,
     cancelled: cancelledBookings,
     reload,
-  }), [bookings, selectedId, detail, loading, error, selectBooking, cancelledBookings, reload]);
+  }), [bookings, selectedId, detail, loading, detailError, error, selectBooking, cancelledBookings, reload]);
 
   return <CustomerPortalContext.Provider value={value}>{children}</CustomerPortalContext.Provider>;
 };

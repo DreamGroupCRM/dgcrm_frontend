@@ -87,8 +87,8 @@ const PaymentHistoryTable: React.FC<{
                 </span>
               </td>
               <td style={{ ...td, fontSize: 12.5, fontWeight: 700 }}>₹{(r.amount || 0).toLocaleString('en-IN')}</td>
-              {/* Extra Pay pre-pays future EMIs, so it settles no particular
-                  installment — no Payment Date. */}
+              {/* Extra Pay is its own payment, separate from EMIs, so it
+                  settles no installment — no Payment Date. */}
               <td style={{ ...td, color: t.textSecondary }}>{r.payment_tag === 'Extra Pay' || !r.inst_date ? '—' : formatDate(r.inst_date)}</td>
               <td style={{ ...td, color: t.textSecondary }}>
                 <div className="flex items-center gap-1.5">

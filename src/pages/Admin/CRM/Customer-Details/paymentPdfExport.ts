@@ -233,9 +233,9 @@ export function exportPaymentHistoryPdf(
     startY: y,
     head: [['Rec Number', 'Installment Date', 'Received Date', 'Mode Of Payment', 'Payment For', 'Amount', 'Company', 'Status']],
     body: payments.map((p) => {
-      // Extra Pay pre-pays a future EMI rather than settling the
-      // installment its stored inst_date points at — showing that date
-      // here would misleadingly read as "this installment is paid."
+      // Extra Pay is its own payment, separate from EMIs — showing the
+      // stored inst_date here would misleadingly read as "this
+      // installment is paid."
       const isExtraPay = p.payment_tag === 'Extra Pay';
       return [
         p.receipt_number || '—',

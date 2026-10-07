@@ -651,6 +651,8 @@ const PaymentReceivedPage: React.FC = () => {
   const totalsFooterCells: { key: keyof PaymentCategorySummary; label: string }[] = [
     { key: 'emi_before', label: 'EMI Before' },
     { key: 'emi_after', label: 'EMI After' },
+    // V_25.0 — Extra Pay is its own payment type, not an EMI.
+    { key: 'extra_pay', label: 'Extra Pay' },
     { key: 'booking', label: 'Booking Amount' },
     { key: 'pay_after_booking', label: 'Remaining Booking' },
     { key: 'possession', label: 'Possession' },
@@ -957,7 +959,7 @@ const PaymentReceivedPage: React.FC = () => {
               </button>
             </div>
           ) : (
-            <TotalsBar items={totalsFooterCells.map((c) => ({ key: c.key, label: c.label, value: categorySummary ? rupee(categorySummary[c.key]) : '…', grand: c.key === 'total' }))} />
+            <TotalsBar items={totalsFooterCells.map((c) => ({ key: c.key, label: c.label, value: categorySummary ? rupee(categorySummary[c.key] ?? 0) : '…', grand: c.key === 'total' }))} />
           )
         )}
 

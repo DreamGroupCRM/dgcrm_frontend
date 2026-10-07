@@ -15,7 +15,7 @@
 // there is no room for either, so it becomes an overlay drawer that
 // `mobileOpen` slides in and a scrim closes. Sharing one flag between the
 // two made "collapsed on desktop" reopen as "drawer open" on rotate.
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { CircularProgress } from '@mui/material';
 import {
@@ -110,7 +110,7 @@ const CustomerPortalShell: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, cssVars } = useAppearanceTokens();
-  const { loading, error, bookings, detail, cancelled } = useCustomerPortal();
+  const { loading, error, detailError, reload, bookings, detail, cancelled } = useCustomerPortal();
   // A login with only cancelled bookings has no booking detail; its name
   // comes from the cancelled booking instead, and it sees just Payment
   // History (where its cancelled receipts are).
@@ -245,16 +245,25 @@ const CustomerPortalShell: React.FC = () => {
             <div className="cp-center"><CircularProgress size={30} /></div>
           ) : error ? (
             <div className="cp-empty cp-empty-error">{error}</div>
+          ) : detailError && bookings.length > 0 ? (
+            <div className="cp-empty cp-empty-error">
+              {detailError}{' '}
+              <button type="button" className="cp-btn cp-btn-primary" onClick={reload} style={{ marginLeft: 8 }}>Retry</button>
+            </div>
           ) : bookings.length === 0 && cancelled.length > 0 ? (
             // Only cancelled bookings: Payment History (with its cancelled
             // receipts) is the one page with anything to show.
-            location.pathname === ROUTES.CUSTOMER.PAYMENT_HISTORY ? <Outlet /> : <Navigate to={ROUTES.CUSTOMER.PAYMENT_HISTORY} replace />
+            location.pathname === ROUTES.CUSTOMER.PAYMENT_HISTORY
+              ? <Suspense fallback={<div className="cp-center"><CircularProgress size={28} /></div>}><Outlet /></Suspense>
+              : <Navigate to={ROUTES.CUSTOMER.PAYMENT_HISTORY} replace />
           ) : bookings.length === 0 ? (
             <div className="cp-empty">
               No property is linked to your account yet. Please contact our office.
             </div>
           ) : (
-            <Outlet />
+            <Suspense fallback={<div className="cp-center"><CircularProgress size={28} /></div>}>
+              <Outlet />
+            </Suspense>
           )}
         </main>
       </div>

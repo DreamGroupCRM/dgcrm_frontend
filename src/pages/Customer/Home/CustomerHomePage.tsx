@@ -4,7 +4,7 @@
 // documents have their own "My Documents" page in the sidebar.
 import React from 'react';
 import { CircularProgress } from '@mui/material';
-import { MdPerson, MdApartment, MdVerifiedUser, MdGroups, MdCall, MdEmail, MdSend } from 'react-icons/md';
+import { MdPerson, MdApartment, MdVerifiedUser, MdGroups, MdCall, MdEmail } from 'react-icons/md';
 import { formatDate, resolveFileUrl } from '../../../utils';
 import { useCustomerPortal, bookingLabel } from '../CustomerPortalContext';
 import { PageHead, Card, Field } from '../CustomerPortalUi';
@@ -80,11 +80,6 @@ const CustomerHomePage: React.FC = () => {
                 )}
                 {rm.email && <span className="cp-rm-contact-item"><MdEmail size={13} /> {rm.email}</span>}
               </div>
-              {rm.email && (
-                <a className="cp-btn cp-btn-primary" href={`mailto:${rm.email}`} style={{ marginTop: 10, width: 'fit-content' }}>
-                  <MdSend size={14} /> Contact Manager
-                </a>
-              )}
             </>
           )}
         </Card>

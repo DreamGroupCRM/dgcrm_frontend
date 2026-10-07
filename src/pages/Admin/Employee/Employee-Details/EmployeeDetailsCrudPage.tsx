@@ -41,7 +41,7 @@ import {
 import './EmployeeDetails.css';
 import { employeeDetailsBasePath } from '../../../../hooks/useRoleBasePath';
 import { useAppSelector } from '../../../../hooks';
-import { fetchAccessConfig, fetchDepartmentHeads, ConfigDepartment, TeamMember, ACCESS_AREA_LABELS, DesignationLevel } from '../../../../services/accessService';
+import { fetchAccessConfig, fetchDepartmentHeads, ConfigDepartment, TeamMember, DesignationLevel, AccessArea } from '../../../../services/accessService';
 import DateInput from '../../../../components/common/DateInput';
 
 // Employee Status badge colors for View mode — same palette as
@@ -619,48 +619,79 @@ const DocumentCard: React.FC<{
 // ─────────────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────
-// V_25.0 — read-only "what this employee will get", derived from the
-// Department Setup of each selected Department + Designation. Nothing here
-// is editable: it only explains what the choices above mean.
+// V_25.0 — read-only "Access Summary": what this employee will get, shown
+// as ✓ / ✗ before saving. Pages come straight from the department's
+// Department Setup (access_areas; a department not set up yet keeps the
+// pages every employee had before — LEGACY_AREAS on the server). Actions
+// follow the same rules the server enforces for a Head / an Executive on
+// those pages — nothing here grants or changes anything.
+const LEGACY_PAGES: AccessArea[] = ['leads', 'customers', 'payment_dues', 'payment_received', 'cancelled_booking', 'customize_scheme', 'building_view'];
+const PAGE_LABELS: Record<AccessArea, string> = {
+  leads: 'Leads', customers: 'Customer Details', payment_dues: 'Payment Due', payment_received: 'Payment Received',
+  cancelled_booking: 'Cancelled Booking', customize_scheme: 'Customize Scheme', building_view: 'Building View',
+  employee_details: 'Employee Details', attendance_all: "All employees' Attendance & Leave",
+};
+
 const AccessSummary: React.FC<{
   t: Theme;
   roles: { deptId: number; deptName: string; desigId: number | null; level: DesignationLevel }[];
   config: ConfigDepartment[];
   canAddCustomer: boolean;
-}> = ({ t, roles, config, canAddCustomer }) => {
+  reportingHeadName: (deptId: number) => string | null;
+}> = ({ t, roles, config, canAddCustomer, reportingHeadName }) => {
   const ready = roles.filter((r) => r.desigId != null || config.find((d) => d.id === r.deptId)?.designation_required === false);
   if (ready.length === 0) return null;
+  const Row: React.FC<{ ok: boolean; label: string }> = ({ ok, label }) => (
+    <li style={{ display: 'flex', gap: 6, alignItems: 'baseline', listStyle: 'none' }}>
+      <span aria-hidden style={{ fontWeight: 800, color: ok ? '#16a34a' : '#dc2626', width: 12 }}>{ok ? '✓' : '✗'}</span>
+      <span style={{ color: ok ? t.textPrimary : t.textSecondary }}>{label}</span>
+    </li>
+  );
   return (
     <div className="mt-4" style={{ padding: '10px 12px', borderRadius: 10, border: `1px dashed ${t.surfaceBorder}`, background: t.insetBg }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginBottom: 6 }}>Access summary (from Department Setup)</div>
-      <div className="flex flex-col gap-2">
+      <div style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary, marginBottom: 6 }}>Access Summary</div>
+      <div className="flex flex-col gap-3">
         {ready.map((r) => {
-          const areas = config.find((d) => d.id === r.deptId)?.access_areas;
-          const rules: string[] = [];
-          if (r.level === 'head') {
-            rules.push("Sees own and team's data (My Data / Team Data switch)");
-            rules.push('Assigns customers / leads to their team');
-            if (!areas || areas.includes('customers')) rules.push('Edit customer — via Admin approval');
-            if (!areas || areas.includes('payment_received')) rules.push('Delete payment — via Admin approval');
-            if (canAddCustomer) rules.push('Add customer — via Admin approval');
-          } else if (r.level === 'executive') {
-            rules.push('Sees only own data');
-            if (!areas || areas.includes('customers')) rules.push('Customer Details: View, Payment History, Download Schedule only');
+          const configured = config.find((d) => d.id === r.deptId)?.access_areas ?? null;
+          const pages = configured ?? LEGACY_PAGES;
+          const has = (a: AccessArea) => pages.includes(a);
+          const head = r.level === 'head';
+          const exec = r.level === 'executive';
+          const actions: { ok: boolean; label: string }[] = [];
+          if (has('payment_dues')) actions.push({ ok: true, label: 'Follow-ups' });
+          if (has('customers')) {
+            actions.push({ ok: head, label: 'Customer Assignment (to own team)' });
+            // Not-set-up departments keep today's rules (any employee may
+            // request these); once set up, they are a Head's.
+            // An Executive is shown only what applies to them.
+            const legacy = configured == null;
+            if (head || legacy) actions.push({ ok: true, label: 'Edit Customer' });
+            if (head || legacy) actions.push({ ok: legacy || canAddCustomer, label: 'Add Customer' });
           }
-          if (r.level && (!areas || areas.includes('payment_dues'))) rules.push('Received Date: up to 3 days back, same month');
-          if (!areas || areas.includes('cancelled_booking')) rules.push('Cancel Booking requests — via Admin approval');
-          rules.push('Export CSV: Admin only');
+          if (has('leads')) actions.push({ ok: head, label: 'Lead Assignment (to own team)' });
+          if (has('cancelled_booking')) actions.push({ ok: true, label: 'Cancel Booking request' });
+          if (has('payment_received') && head) actions.push({ ok: true, label: 'Payment delete request' });
+          if (head) actions.push({ ok: true, label: 'Team data (My Data / Team Data)' });
+          if (!exec) actions.push({ ok: false, label: 'Export CSV (Admin only)' });
+          const reportsTo = r.level ? (reportingHeadName(r.deptId) ?? 'Admin') : null;
           return (
-            <div key={r.deptId} style={{ fontSize: 11.5, color: t.textSecondary, lineHeight: 1.5 }}>
-              <span style={{ fontWeight: 700, color: t.textPrimary }}>{r.deptName}</span>
-              {r.level && <> · {r.level === 'head' ? 'Head' : 'Executive'}</>}
-              <div>
-                <span style={{ fontWeight: 600 }}>Pages: </span>
-                {areas == null ? 'Not set up yet — same access as before' : areas.length ? areas.map((a) => ACCESS_AREA_LABELS[a]).join(', ') : 'None'}
+            <div key={r.deptId} style={{ fontSize: 11.5, lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700, color: t.textPrimary }}>
+                {r.deptName}{r.level && <> · {head ? 'Head' : 'Executive'}</>}
+                {reportsTo && <span style={{ fontWeight: 500, color: t.textSecondary }}> · reports to {reportsTo}</span>}
               </div>
-              <ul style={{ margin: '2px 0 0 16px', padding: 0, listStyle: 'disc' }}>
-                {rules.map((x) => <li key={x}>{x}</li>)}
+              {configured == null && (
+                <div style={{ color: '#b45309' }}>Department not set up on Department Setup yet — keeps the standard employee pages.</div>
+              )}
+              <ul style={{ margin: '2px 0 0', padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', columnGap: 12 }}>
+                {pages.map((a) => <Row key={a} ok label={PAGE_LABELS[a]} />)}
+                {actions.map((x) => <Row key={x.label} ok={x.ok} label={x.label} />)}
               </ul>
+              {head && (
+                <div style={{ marginTop: 4, fontWeight: 600, color: '#b45309' }}>
+                  Actions performed by this Head are subject to Admin Approval.
+                </div>
+              )}
             </div>
           );
         })}
@@ -1886,7 +1917,12 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 <span style={{ fontWeight: 500, fontSize: 11, color: t.textSecondary }}>(added customers still need Admin approval)</span>
               </label>
             )}
-            <AccessSummary t={t} roles={deptRoles} config={accessConfig ?? []} canAddCustomer={isHeadAnywhere && form.can_add_customer} />
+            <AccessSummary t={t} roles={deptRoles} config={accessConfig ?? []} canAddCustomer={isHeadAnywhere && form.can_add_customer}
+              reportingHeadName={(deptId) => {
+                const headId = form.department_heads[String(deptId)];
+                if (!headId) return null;
+                return (headsByDept[deptId] ?? []).find((h) => h.id === headId)?.name ?? null;
+              }} />
           </div>
         )}
 

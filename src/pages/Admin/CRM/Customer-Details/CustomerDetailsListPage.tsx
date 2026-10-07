@@ -436,6 +436,7 @@ const CustomerDetailsListPage: React.FC = () => {
   const legacyAssignPermission = usePermission('customers', 'assign');
   const headTeam = !paths.isAdmin && !legacyAssignPermission ? (access.profile?.customer_team ?? []) : [];
   const canAddCustomer = paths.isAdmin || Boolean(access.profile && !access.profile.legacy && access.profile.can_add_customer);
+  const needsAllEmployees = paths.isAdmin || legacyAssignPermission;
   const isAdmin = isAdminRole(role);
   // V_25.0 — once the employee's department is set up: an Executive only
   // views (View / Payment History / Download Schedule); a Head may also
@@ -583,8 +584,11 @@ const CustomerDetailsListPage: React.FC = () => {
         if (res.success) setBuildings(res.rows ?? []);
       } catch { /* dropdowns just stay empty if this fails */ }
     })();
-    fetchEmployeesForAssignment();
-  }, [fetchEmployeesForAssignment]);
+    // The full employee list is only for assigning from this page (Admin /
+    // the existing assign permission); a Head picks from their team, and
+    // everyone else can't assign — so don't load up to 1000 rows for them.
+    if (needsAllEmployees) fetchEmployeesForAssignment();
+  }, [fetchEmployeesForAssignment, needsAllEmployees]);
 
   // Customer-name autocomplete — a small server search (top 25) that
   // re-runs as the user types, instead of one unfiltered fetch of up to
@@ -796,11 +800,11 @@ const CustomerDetailsListPage: React.FC = () => {
   const retriedForSelectionRef = useRef(false);
   useEffect(() => {
     if (!assignmentEnabled) { retriedForSelectionRef.current = false; return; }
-    if (employees.length === 0 && !loadingEmployees && !retriedForSelectionRef.current) {
+    if (needsAllEmployees && employees.length === 0 && !loadingEmployees && !retriedForSelectionRef.current) {
       retriedForSelectionRef.current = true;
       fetchEmployeesForAssignment();
     }
-  }, [assignmentEnabled, employees.length, loadingEmployees, fetchEmployeesForAssignment]);
+  }, [assignmentEnabled, employees.length, loadingEmployees, fetchEmployeesForAssignment, needsAllEmployees]);
 
   const handleAssign = async () => {
     const employee = assignableEmployees.find((e) => e.label === employeeSearch);

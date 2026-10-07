@@ -418,6 +418,8 @@ export const fetchPaymentReceivedSummary = async (): Promise<PaymentReceivedSumm
 export interface PaymentCategorySummary {
   emi_before: number;
   emi_after: number;
+  /** V_25.0 — Extra Pay, kept out of the EMI totals (older API: absent). */
+  extra_pay?: number;
   booking: number;
   pay_after_booking: number;
   possession: number;
