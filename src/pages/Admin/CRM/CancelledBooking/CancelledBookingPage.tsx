@@ -45,6 +45,7 @@ import { paymentForLabel } from '../../../../services/paymentService';
 import { SearchableSelect } from '../../../../components/common/SearchableSelect';
 import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
 import './CancelledBooking.css';
+import CancelBookingPicker from './CancelBookingPicker';
 
 const rupee = (n: number): string => `₹ ${(n || 0).toLocaleString('en-IN')}`;
 const errMessage = (e: unknown, fallback: string) =>
@@ -680,6 +681,7 @@ const CancelledBookingPage: React.FC = () => {
             <SearchableSelect t={t} placeholder="Search employee name" options={employees.map((e) => e.label)} value={empFilterText}
               onChange={handleEmployeeFilterChange} clearLabel="Clear employee filter" />
           </div>
+          <CancelBookingPicker t={t} isAdmin={isAdmin} onDone={refreshAll} />
           <button type="button" onClick={refreshAll} title="Refresh"
             className="flex items-center justify-center rounded-xl"
             style={{ width: 40, height: 38, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>

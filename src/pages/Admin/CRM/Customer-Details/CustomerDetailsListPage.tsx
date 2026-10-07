@@ -446,6 +446,9 @@ const CustomerDetailsListPage: React.FC = () => {
   const viewOnly = setUpEmployee && !isHead;
   const canEditCustomer = paths.isAdmin || (setUpEmployee && isHead);
   const showSplitAssign = paths.isAdmin || isHead;
+  // V_25.0 — Cancel Booking belongs to Refund (and Admin); a department not
+  // set up yet keeps it, as before. Same rule the server applies.
+  const canCancelBooking = access.has('cancelled_booking');
 
   // allCustomers now holds ONLY the current server page (see fetchCustomers
   // below) — previously this held up to 1000 rows fetched once, with
@@ -1273,7 +1276,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     menuOpen={openMenuId === c.id} menuPos={menuPos}
                     onView={() => { setOpenMenuId(null); navigate(`${paths.customerDetails}/view/${c.id}`); }}
                     onEdit={canEditCustomer ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
-                    onCancelBooking={c.cancellation_pending || viewOnly ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
+                    onCancelBooking={c.cancellation_pending || !canCancelBooking ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
                     onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                     onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                     onOpenPaymentHistory={() => openPaymentHistory(c)}
@@ -1347,7 +1350,7 @@ const CustomerDetailsListPage: React.FC = () => {
                               t={t} pos={menuPos}
                               onView={() => { setOpenMenuId(null); navigate(`${paths.customerDetails}/view/${c.id}`); }}
                               onEdit={canEditCustomer ? () => { setOpenMenuId(null); navigate(`${paths.customerDetails}/edit/${c.id}`); } : undefined}
-                              onCancelBooking={c.cancellation_pending || viewOnly ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
+                              onCancelBooking={c.cancellation_pending || !canCancelBooking ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
                               onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                               onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
                             />

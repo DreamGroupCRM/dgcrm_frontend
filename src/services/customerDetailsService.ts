@@ -893,3 +893,15 @@ export const customerDetailsService = {
   paymentHistory     : fetchCustomerPaymentHistory,
   scheme             : fetchCustomerScheme,
 };
+
+// ── V_25.0 — Cancel Booking belongs to Refund ──────────────────────────────
+export interface CancellableCustomer {
+  id: string | number; customer_code: string | null;
+  name: string | null; middle_name: string | null; last_name: string | null;
+  mobile_number: string | null; building_name: string | null; wing_name: string | null; flat_no: string | null;
+}
+/** GET /api/customers/cancellable?search= — active customers Refund/Admin may start a cancellation for. */
+export const fetchCancellableCustomers = async (search: string): Promise<CancellableCustomer[]> => {
+  const res = await axiosInstance.get('/customers/cancellable', { params: search.trim() ? { search: search.trim() } : undefined });
+  return res.data.data;
+};

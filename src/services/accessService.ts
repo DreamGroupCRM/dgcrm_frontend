@@ -60,6 +60,8 @@ export interface ConfigDepartment {
   access_areas: AccessArea[] | null;
   designation_required: boolean;
   designations: ConfigDesignation[];
+  /** V_25.0 — designations the Employee form may offer here (server rule). */
+  offered_designation_ids?: number[];
 }
 
 export async function fetchMyAccess(): Promise<AccessProfile> {

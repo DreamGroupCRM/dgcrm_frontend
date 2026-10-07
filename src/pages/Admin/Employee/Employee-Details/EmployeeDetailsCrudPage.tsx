@@ -640,7 +640,7 @@ const AccessSummary: React.FC<{
           if (r.level === 'head') {
             rules.push("Sees own and team's data (My Data / Team Data switch)");
             rules.push('Assigns customers / leads to their team');
-            if (!areas || areas.includes('customers')) rules.push('Edit customer and Cancel booking — via Admin approval');
+            if (!areas || areas.includes('customers')) rules.push('Edit customer — via Admin approval');
             if (!areas || areas.includes('payment_received')) rules.push('Delete payment — via Admin approval');
             if (canAddCustomer) rules.push('Add customer — via Admin approval');
           } else if (r.level === 'executive') {
@@ -648,6 +648,7 @@ const AccessSummary: React.FC<{
             if (!areas || areas.includes('customers')) rules.push('Customer Details: View, Payment History, Download Schedule only');
           }
           if (r.level && (!areas || areas.includes('payment_dues'))) rules.push('Received Date: up to 3 days back, same month');
+          if (!areas || areas.includes('cancelled_booking')) rules.push('Cancel Booking requests — via Admin approval');
           rules.push('Export CSV: Admin only');
           return (
             <div key={r.deptId} style={{ fontSize: 11.5, color: t.textSecondary, lineHeight: 1.5 }}>
@@ -951,6 +952,22 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     fetchAccessConfig().then(setAccessConfig).catch(() => setAccessConfig([]));
   }, []);
 
+  // V_25.0 — designations a department offers (server rule, see
+  // offeredDesignationIds in the backend): Head/Executive where Department
+  // Setup uses them, none where no designation is required (Refund), else
+  // the department's active ones. Extra master rows (e.g. "Recovery Agent")
+  // are not offered — nothing is deleted, and an employee who already holds
+  // one keeps it (heldDesignationIds), marked "not configured".
+  const [heldDesignationIds, setHeldDesignationIds] = useState<number[]>([]);
+  const offeredDesignations = useMemo(() => {
+    if (!accessConfig || accessConfig.length === 0) return null; // config unavailable → previous behaviour
+    return new Set(accessConfig.flatMap((d) => d.offered_designation_ids ?? d.designations.map((g) => g.id)));
+  }, [accessConfig]);
+  const isOfferedDesignation = useCallback(
+    (o: { value: number; departmentId: number | null }) => (offeredDesignations ? offeredDesignations.has(o.value) : true),
+    [offeredDesignations],
+  );
+
   // One row per selected department: the designation picked there and
   // whether it is the department's Head or an Executive (Department Setup).
   const deptRoles = useMemo(() => {
@@ -971,10 +988,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         desigName: desigId != null ? designationOptions.find((o) => o.value === desigId)?.label ?? null : null,
         level: desigId != null ? levelOf(desigId) : null,
         designationRequired: cfg ? cfg.designation_required : true,
-        hasDesignations: designationOptions.some((o) => o.departmentId === deptId),
+        hasDesignations: designationOptions.some((o) => o.departmentId === deptId && isOfferedDesignation(o)),
       };
     });
-  }, [form.department_ids, form.designation_ids, designationOptions, departmentOptions, accessConfig]);
+  }, [form.department_ids, form.designation_ids, designationOptions, departmentOptions, accessConfig, isOfferedDesignation]);
   // V_25.0 — an Executive or a Head may have a Reporting Head (a Head of
   // the same department; Head → Head makes a multi-level hierarchy). It is
   // optional: none means they report to Admin directly.
@@ -1005,6 +1022,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         if (res.success && res.data) {
           const e = res.data;
           setEmployeeCode(e.employee_code);
+          setHeldDesignationIds((e.designation_ids || []).map(Number));
           setForm({
             first_name: e.first_name || '', middle_name: e.middle_name || '', last_name: e.last_name || '',
             date_of_birth: e.date_of_birth || '', email: e.email || '',
@@ -1109,8 +1127,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // (Designation Master allows leaving it unset) is treated as global and
   // always stays visible, since there's no department to scope it to.
   const visibleDesignationOptions = useMemo(
-    () => designationOptions.filter((d) => d.departmentId == null || form.department_ids.includes(d.departmentId)),
-    [designationOptions, form.department_ids]
+    () => designationOptions
+      .filter((d) => {
+        const held = heldDesignationIds.includes(d.value);
+        if (offeredDesignations == null) return d.departmentId == null || form.department_ids.includes(d.departmentId);
+        return held || (d.departmentId != null && form.department_ids.includes(d.departmentId) && isOfferedDesignation(d));
+      })
+      .map((d) => (offeredDesignations && !isOfferedDesignation(d) ? { ...d, label: `${d.label} (not configured)` } : d)),
+    [designationOptions, form.department_ids, heldDesignationIds, offeredDesignations, isOfferedDesignation]
   );
 
   // Designations are radio buttons per department: selecting one replaces
