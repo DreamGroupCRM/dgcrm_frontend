@@ -1,48 +1,16 @@
-// Home — summary tiles, then the customer's own details, the employee
-// looking after their booking, the property itself, and finally the
-// documents on file. That order (money first, then "yes this is me", then
-// who to call, then the unit, then the paperwork) is what the V_24.0
-// redesign asks for and matches the reference screenshots.
-import React, { useEffect, useState } from 'react';
+// Home — the customer's own details, the employee looking after their
+// booking, and the property itself, laid out horizontally so everything is
+// visible at a glance. The money tiles and the documents moved off Home:
+// documents have their own "My Documents" page in the sidebar.
+import React from 'react';
 import { CircularProgress } from '@mui/material';
-import {
-  MdPerson, MdApartment, MdVerifiedUser, MdGroups, MdCall, MdEmail, MdSend,
-  MdTrendingUp, MdAccountBalanceWallet, MdHourglassEmpty, MdFolderOpen,
-  MdDownload, MdInsertDriveFile, MdPictureAsPdf,
-} from 'react-icons/md';
-import { toast } from '@/utils/toast';
+import { MdPerson, MdApartment, MdVerifiedUser, MdGroups, MdCall, MdEmail, MdSend } from 'react-icons/md';
 import { formatDate, resolveFileUrl } from '../../../utils';
-import { useAppearanceTokens } from '../../../styles/appearanceTokens';
-import DocumentViewerModal from '../../../components/common/DocumentViewerModal';
-import { previewKindFor, downloadDocument } from '../../../services/documentService';
-import { fetchMyBookingDueGrid } from '../../../services/customerPortalService';
-import { useCustomerPortal } from '../CustomerPortalContext';
-import { PageHead, Card, Field, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
+import { useCustomerPortal, bookingLabel } from '../CustomerPortalContext';
+import { PageHead, Card, Field } from '../CustomerPortalUi';
 
 const CustomerHomePage: React.FC = () => {
-  const { detail, selected, selectedId } = useCustomerPortal();
-  const { t } = useAppearanceTokens();
-  const [totals, setTotals] = useState<BookingTotals | null>(null);
-  const [viewing, setViewing] = useState<{ label: string; url: string } | null>(null);
-  const [downloading, setDownloading] = useState<string | null>(null);
-
-  // Same three tiles Payment History and EMI Scheme already show, derived
-  // from the same due grid — one source of truth for "what has this
-  // customer paid" across the whole portal, never three separate sums that
-  // can drift apart.
-  useEffect(() => {
-    if (selectedId == null) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const grid = await fetchMyBookingDueGrid(selectedId);
-        if (!cancelled) setTotals(totalsFromDueGrid(grid.rows));
-      } catch {
-        if (!cancelled) setTotals(null);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [selectedId]);
+  const { detail, selected } = useCustomerPortal();
 
   if (!detail) return <div className="cp-center"><CircularProgress size={28} /></div>;
 
@@ -55,61 +23,34 @@ const CustomerHomePage: React.FC = () => {
     .join(', ');
   const rm = detail.assigned_employee;
 
-  const documents = [
-    { label: 'Customer Photo', url: detail.customer_image },
-    { label: 'Aadhaar Card', url: detail.aadhar_card },
-    { label: 'PAN Card', url: detail.pan_card },
-    { label: 'Application Form', url: detail.application_form },
-    { label: 'Declaration Form', url: detail.declaration_form },
-    { label: 'Allotment Letter', url: detail.allotment_letter },
-  ];
-
-  const handleDownload = async (label: string, url: string) => {
-    setDownloading(label);
-    try {
-      await downloadDocument(resolveFileUrl(url), label);
-    } catch {
-      toast.error('We could not download this document. Please try again.');
-    } finally {
-      setDownloading(null);
-    }
-  };
-
   return (
     <>
-      <PageHead
-        title={`Welcome, ${detail.name || 'Customer'}`}
-        subtitle={selected ? `Customer ID: ${selected.customer_code}` : undefined}
-      />
-
-      <div className="cp-stats">
-        <Stat icon={<MdTrendingUp size={19} />} label={`Total ${unitLabel} Amount`} value={rupee(totals?.totalCost ?? detail.flat_amount)} gradient={STAT_GRADIENTS.total} />
-        <Stat icon={<MdAccountBalanceWallet size={19} />} label="Total Amount Paid" value={rupee(totals?.paid)} gradient={STAT_GRADIENTS.paid} />
-        <Stat icon={<MdHourglassEmpty size={19} />} label="Total Amount Pending" value={rupee(totals?.pending)} gradient={STAT_GRADIENTS.pending} />
-      </div>
+      {/* The customer's name / ID are on the header's booking boxes now. */}
+      <PageHead title="Home" subtitle={selected ? bookingLabel(selected) : undefined} />
 
       <div className="cp-row-2">
         <Card icon={<MdPerson size={16} />} title="Personal Details">
-          <div className="cp-person-head">
-            {detail.customer_image && (
-              <img
-                src={resolveFileUrl(detail.customer_image)} alt=""
-                className="cp-avatar-photo"
-              />
-            )}
-            <div>
-              <div className="cp-person-name">{fullName || '—'}</div>
-              <div className="cp-person-sub">Customer ID : {detail.customer_code}</div>
+          <div className="cp-detail-wrap">
+            <div className="cp-detail-id">
+              {detail.customer_image ? (
+                <img src={resolveFileUrl(detail.customer_image)} alt="" className="cp-avatar-photo" />
+              ) : (
+                <div className="cp-avatar-photo cp-avatar-empty"><MdPerson size={28} /></div>
+              )}
+              <div style={{ minWidth: 0 }}>
+                <div className="cp-person-name">{fullName || '—'}</div>
+                <div className="cp-person-sub">Customer ID : {detail.customer_code}</div>
+              </div>
             </div>
-          </div>
-          <div className="cp-grid">
-            <Field label="Email" value={detail.email} />
-            <Field label="Mobile" value={detail.mobile_number ? `${detail.mobile_country_code || ''} ${detail.mobile_number}`.trim() : ''} />
-            <Field label="Alternate Number" value={secondary || detail.alternate_number} />
-            <Field label="Date of Birth" value={detail.date_of_birth ? formatDate(detail.date_of_birth) : ''} />
-            <Field label="Aadhaar Number" value={detail.aadhar_card_no} />
-            <Field label="PAN Number" value={detail.pan_card_no} />
-            <Field label="Address" value={detail.address} />
+            <div className="cp-grid-dense">
+              <Field label="Email" value={detail.email} />
+              <Field label="Mobile" value={detail.mobile_number ? `${detail.mobile_country_code || ''} ${detail.mobile_number}`.trim() : ''} />
+              <Field label="Alternate Number" value={secondary || detail.alternate_number} />
+              <Field label="Date of Birth" value={detail.date_of_birth ? formatDate(detail.date_of_birth) : ''} />
+              <Field label="Aadhaar Number" value={detail.aadhar_card_no} />
+              <Field label="PAN Number" value={detail.pan_card_no} />
+              <div className="cp-grid-span"><Field label="Address" value={detail.address} /></div>
+            </div>
           </div>
         </Card>
 
@@ -119,8 +60,10 @@ const CustomerHomePage: React.FC = () => {
           ) : (
             <>
               <div className="cp-person-head">
-                {rm.photo_url && (
+                {rm.photo_url ? (
                   <img src={resolveFileUrl(rm.photo_url)} alt="" className="cp-avatar-photo" />
+                ) : (
+                  <div className="cp-avatar-photo cp-avatar-empty"><MdPerson size={28} /></div>
                 )}
                 <div>
                   <div className="cp-person-name">{rm.name}</div>
@@ -148,7 +91,7 @@ const CustomerHomePage: React.FC = () => {
       </div>
 
       <Card icon={<MdApartment size={16} />} title="Property Details">
-        <div className="cp-grid">
+        <div className="cp-grid-dense cp-grid-property">
           <Field label="Company" value={detail.company_name} />
           <Field label="Project" value={detail.building?.project_name} />
           <Field label="Building" value={detail.building?.name} />
@@ -174,49 +117,6 @@ const CustomerHomePage: React.FC = () => {
         </div>
       </Card>
 
-      <Card icon={<MdFolderOpen size={16} />} title="My Documents">
-        <div className="cp-doc-tiles">
-          {documents.map(({ label, url }) => {
-            const resolved = url ? resolveFileUrl(url) : null;
-            const isImage = resolved ? previewKindFor(resolved) === 'image' : false;
-            return (
-              <div key={label} className="cp-doc-tile">
-                <div className="cp-doc-tile-icon">
-                  {resolved && isImage ? (
-                    <img src={resolved} alt="" />
-                  ) : resolved ? (
-                    <MdPictureAsPdf size={22} style={{ color: '#dc2626' }} />
-                  ) : (
-                    <MdInsertDriveFile size={20} style={{ color: t.textSecondary, opacity: 0.55 }} />
-                  )}
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div className="cp-doc-tile-name">{label}</div>
-                  {url && resolved ? (
-                    <button type="button" className="cp-doc-tile-action" onClick={() => setViewing({ label, url: resolved })}>
-                      Tap to view
-                    </button>
-                  ) : (
-                    <span className="cp-doc-tile-missing">Not uploaded</span>
-                  )}
-                </div>
-                {url && resolved && (
-                  <button
-                    type="button" className="cp-doc-tile-dl" title="Download" disabled={downloading === label}
-                    onClick={() => handleDownload(label, url)}
-                  >
-                    <MdDownload size={15} />
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </Card>
-
-      {viewing && (
-        <DocumentViewerModal t={t} label={viewing.label} url={viewing.url} onClose={() => setViewing(null)} />
-      )}
     </>
   );
 };

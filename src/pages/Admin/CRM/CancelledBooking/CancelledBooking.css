@@ -20,8 +20,6 @@
   .cb-filter-grid > .cb-f-customer { flex: 1.6 1 200px; min-width: 190px; }
   .cb-filter-grid > .cb-f-bwf { flex: 0 1 auto; min-width: 150px; max-width: 360px; }
   .cb-filter-grid > .cb-f-amount { min-width: 118px; }
-  .cb-filter-grid > .cb-f-date { min-width: 128px; }
-  .cb-filter-grid > .cb-f-mode { min-width: 118px; }
   .cb-filter-grid > .cb-filter-actions { flex: 0 0 auto; min-width: 0; }
   .cb-filter-grid label { white-space: nowrap; }
   .cb-filter-grid > :not(.cb-f-customer) input,

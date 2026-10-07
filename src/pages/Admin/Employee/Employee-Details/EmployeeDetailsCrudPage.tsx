@@ -38,6 +38,7 @@ import {
   DOCUMENT_MAX_MB, IMAGE_MAX_MB, validateFileSelection,
 } from '../../../../constants/uploads';
 import './EmployeeDetails.css';
+import DateInput from '../../../../components/common/DateInput';
 
 // Employee Status badge colors for View mode — same palette as
 // EmployeeDetailsListPage.tsx's STATUS_STYLES, kept as its own small local
@@ -347,8 +348,9 @@ const CheckboxGroup: React.FC<{
 // "Marketing Executive | Marketing Head" — instead of a flat list where
 // every single designation repeated its department name in its own label
 // ("Sales Executive | Sales", "Sales Head | Sales", ...). Each name stays
-// individually checkable; the " | " between them is purely a visual
-// separator matching the requested layout, not a joined static string.
+// a radio button — ONE designation per department (picking another one
+// of the same department replaces it); the " | " between them is purely a
+// visual separator matching the requested layout, not a joined static string.
 // A designation with no department of its own (global) falls into its own
 // "Other" group at the end.
 const GroupedDesignationChecklist: React.FC<{
@@ -392,7 +394,7 @@ const GroupedDesignationChecklist: React.FC<{
                   <React.Fragment key={opt.value}>
                     {i > 0 && <span style={{ color: t.divider }}>|</span>}
                     <label className="flex items-center gap-1.5" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
-                      <input type="checkbox" checked={selected.includes(opt.value)} disabled={isView} onChange={() => onToggle(opt.value)} />
+                      <input type="radio" name={`designation-dept-${group.key}`} checked={selected.includes(opt.value)} disabled={isView} onChange={() => onToggle(opt.value)} />
                       {opt.label}
                     </label>
                   </React.Fragment>
@@ -980,6 +982,18 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     [designationOptions, form.department_ids]
   );
 
+  // Designations are radio buttons per department: selecting one replaces
+  // any other designation already selected for the SAME department (a
+  // department can have only one designation). Global designations (no
+  // department) form their own single-choice "Other" group.
+  const selectDesignation = (desigId: number) => {
+    setForm((prev) => {
+      const dept = designationOptions.find((d) => d.value === desigId)?.departmentId ?? null;
+      const others = prev.designation_ids.filter((id) => (designationOptions.find((d) => d.value === id)?.departmentId ?? null) !== dept);
+      return { ...prev, designation_ids: [...others, desigId] };
+    });
+  };
+
   // Toggling a Department off also drops any currently-selected designation
   // that belongs ONLY to that department — otherwise it would keep counting
   // as "assigned" while no longer being visible/editable in the checklist.
@@ -1051,6 +1065,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     // legitimately be empty. Requiring it here used to make Employee
     // Creation impossible on a fresh install.
     { field: 'designation_ids', section: 'assign', message: 'Please assign at least one Designation.', failed: () => form.designation_ids.length === 0 },
+    // One designation per department (older records may still have two).
+    { field: 'designation_ids', section: 'assign', message: 'Only one designation can be selected per department.', failed: () => {
+      const depts = form.designation_ids.map((id) => designationOptions.find((d) => d.value === id)?.departmentId ?? null).filter((d) => d != null);
+      return new Set(depts).size !== depts.length;
+    } },
   ];
 
   const getFirstInvalid = () => validationChecks.find((c) => c.failed()) ?? null;
@@ -1480,8 +1499,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* All 10 fields flow across exactly 2 rows on desktop (5 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
           <Field t={t} label="Employee Joining Date" required error={errorFor('joining_date')} fieldRef={setFieldRef('joining_date') as React.Ref<HTMLDivElement>}>
-            <input type="date" value={form.joining_date} readOnly={isView} disabled={isView}
-              onChange={(e) => set('joining_date', e.target.value)} onClick={openPicker} className={fieldClass} />
+            <DateInput t={t} value={form.joining_date} readOnly={isView} disabled={isView} onChange={(v) => set('joining_date', v)} className={fieldClass} />
           </Field>
           <Field t={t} label="Working Hours" required error={errorFor('working_hours')} fieldRef={setFieldRef('working_hours') as React.Ref<HTMLDivElement>}>
             <select value={form.working_hours} disabled={isView} onChange={(e) => setWorkingHoursAndAutoCheckOut(e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
@@ -1582,7 +1600,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <GroupedDesignationChecklist
               t={t} isView={isView} required
               options={visibleDesignationOptions} departmentOptions={departmentOptions} selected={form.designation_ids}
-              onToggle={(v) => toggleIdInArray('designation_ids', v)}
+              onToggle={selectDesignation}
               loading={loadingDesignations}
               emptyHint={form.department_ids.length === 0 ? 'Select a department above to see its designations.' : 'No designations available for the selected department(s).'}
               containerRef={setFieldRef('designation_ids') as React.Ref<HTMLDivElement>}

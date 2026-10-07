@@ -58,10 +58,10 @@ interface RestrictedDayPickerProps {
   maxDayOfMonth?: number;
 }
 
-const formatDisplay = (iso: string): string => (iso ? `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}` : '');
+const formatDisplay = (iso: string): string => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '');
 
 export const RestrictedDayPicker: React.FC<RestrictedDayPickerProps> = ({
-  theme, value, onChange, disabled, placeholder = 'dd-mm-yyyy', minDate, maxDayOfMonth,
+  theme, value, onChange, disabled, placeholder = 'DD/MM/YYYY', minDate, maxDayOfMonth,
 }) => {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);

@@ -40,6 +40,8 @@ import { fetchUpcomingAmount, fetchUpcomingListDetailed } from '../../../../serv
 import { PaymentForKey, UpcomingAmountData, UpcomingListDetailRow } from '../../../../types/paymentUpcoming';
 import './PaymentUpcoming.css';
 import { serverTodayYmd } from '../../../../utils/serverTime';
+import { formatDate } from '../../../../utils';
+import DateInput from '../../../../components/common/DateInput';
 
 type Theme = AppTheme;
 
@@ -215,7 +217,7 @@ const PaymentUpcomingPage: React.FC = () => {
           </div>
         {/* Back to Payment Received — this page is opened from its
             "Payment Upcoming" toolbar button and has no sidebar entry. */}
-        <button type="button" onClick={() => navigate(ROUTES.ADMIN.PAYMENT_RECEIVED)} title="Back to Payment Received"
+        <button type="button" onClick={() => navigate(ROUTES.ADMIN.PAYMENT_DUES)} title="Back to Payment Dues"
           aria-label="Back to Payment Received"
           className="flex items-center justify-center rounded-xl flex-shrink-0 ml-auto"
           style={{ width: 40, height: 40, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer' }}>
@@ -248,11 +250,11 @@ const PaymentUpcomingPage: React.FC = () => {
         <div className="payment-upcoming-range-row flex items-end gap-3 flex-wrap">
           <div className="payment-upcoming-range-field">
             <label style={fieldLabelStyle}>From Date</label>
-            <input type="date" value={fromDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setFromDate(e.target.value)} style={{ ...fieldInputStyle, width: 160 }} />
+            <DateInput t={t} value={fromDate} onChange={(v) => setFromDate(v)} style={{ ...fieldInputStyle, width: 160 }} />
           </div>
           <div className="payment-upcoming-range-field">
             <label style={fieldLabelStyle}>To Date</label>
-            <input type="date" value={toDate} onClick={openPicker} onFocus={openPicker} onChange={(e) => setToDate(e.target.value)} style={{ ...fieldInputStyle, width: 160 }} />
+            <DateInput t={t} value={toDate} onChange={(v) => setToDate(v)} style={{ ...fieldInputStyle, width: 160 }} />
           </div>
           <button type="button" onClick={handleApply} disabled={!rangeValid || loadingAmount || loadingList}
             className="payment-upcoming-ok-btn px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
@@ -389,7 +391,7 @@ const PaymentUpcomingPage: React.FC = () => {
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                       <div className="flex items-center gap-1.5">
                         <MdEvent size={13} style={{ color: t.textSecondary }} />
-                        {new Date(r.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {formatDate(r.due_date)}
                       </div>
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>{rupee(r.amount)}</td>

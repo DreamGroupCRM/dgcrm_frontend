@@ -41,6 +41,7 @@ import {
 } from '../../../services/intelligenceService';
 import { MdAutoAwesome, MdPersonSearch, MdTrendingFlat, MdInsights } from 'react-icons/md';
 import { serverToday, toYmd } from '../../../utils/serverTime';
+import DateInput from '../../../components/common/DateInput';
 
 type Theme = AppTheme;
 
@@ -338,9 +339,9 @@ const ExecutiveDashboardPage: React.FC = () => {
           </div>
           {preset === 'custom' && (
             <>
-              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} style={selectStyle} />
+              <DateInput t={t} value={customFrom} onChange={(v) => setCustomFrom(v)} style={selectStyle} />
               <span style={{ color: t.textMuted, fontSize: 12 }}>to</span>
-              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} style={selectStyle} />
+              <DateInput t={t} value={customTo} onChange={(v) => setCustomTo(v)} style={selectStyle} />
             </>
           )}
           <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} style={selectStyle}>

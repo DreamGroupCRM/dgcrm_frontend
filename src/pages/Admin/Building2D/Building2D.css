@@ -164,3 +164,89 @@
   }
   .building-2d-modal-canvas { min-height: 320px; }
 }
+
+/* ==========================================
+   INTERACTIVE BUILDING VIEW (Floor Plan mode)
+   BuildingElevation.tsx · FloorPlanView.tsx · PanZoom.tsx · FlatTooltip.tsx
+   ========================================== */
+.bv-layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 14px; align-items: start; }
+.bv-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.bv-card { border: 1px solid; border-radius: 16px; padding: 14px; box-sizing: border-box; }
+.bv-card-title { font-size: 14.5px; font-weight: 800; margin-bottom: 10px; text-align: center; }
+
+/* Building card: floor list + elevation + legend */
+.bv-building-card { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 600px auto; gap: 10px; }
+.bv-floor-list { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; padding: 2px; scrollbar-width: thin; }
+.bv-floor-btn {
+  width: 42px; min-height: 30px; border-radius: 8px; border: 1px solid; font-size: 12.5px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+  transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+.bv-floor-btn:hover { box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25); }
+.bv-floor-btn-active { background: #2563eb; color: #fff; border-color: #2563eb; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35); }
+.bv-legend { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; font-size: 12px; font-weight: 600; }
+.bv-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.bv-legend i { width: 11px; height: 11px; border-radius: 999px; display: inline-block; }
+
+/* Pan / zoom frame */
+.pz-frame { position: relative; overflow: hidden; border-radius: 12px; cursor: grab; touch-action: none; user-select: none; min-height: 0; height: 100%; }
+.pz-dragging { cursor: grabbing; }
+.pz-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transform-origin: center center; transition: transform 180ms ease-out; will-change: transform; }
+.pz-dragging .pz-stage { transition: none; }
+.pz-content { flex-shrink: 0; line-height: 0; }
+.pz-controls { position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 6px; z-index: 2; }
+.pz-controls button { width: 32px; height: 32px; border-radius: 9px; border: 1px solid; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+.pz-controls button:disabled { opacity: 0.45; cursor: not-allowed; }
+.pz-level { font-size: 11px; font-weight: 700; }
+.bv-sky { background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 55%, #f1f5f9 100%); }
+
+/* Elevation interactions */
+.bv-storey { cursor: pointer; }
+.bv-storey:hover { fill: rgba(37, 99, 235, 0.06); }
+.bv-window { cursor: pointer; transition: opacity 120ms ease; }
+.bv-window:hover rect:first-child { filter: brightness(1.15) saturate(1.1); stroke: #fff; stroke-width: 1.5; }
+.bv-window-selected rect:last-child { filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.9)); }
+.bv-floor-band { animation: bv-band-in 220ms ease-out; }
+@keyframes bv-band-in { from { opacity: 0; } to { opacity: 1; } }
+.bv-wing-label { cursor: pointer; }
+
+/* Floor plan */
+.bv-plan-box { height: 300px; border-radius: 12px; background: #f1f5f9; }
+.bv-plan { animation: bv-plan-in 220ms ease-out; }
+@keyframes bv-plan-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.bv-room { cursor: pointer; }
+.bv-room-fill { transition: filter 120ms ease; }
+.bv-room:hover .bv-room-fill { filter: brightness(0.94); stroke: #334155; }
+.bv-room-ring { filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.85)); animation: bv-ring-in 240ms ease-out; }
+@keyframes bv-ring-in { from { opacity: 0; } to { opacity: 1; } }
+.bv-empty { display: flex; align-items: center; justify-content: center; text-align: center; height: 100%; width: 100%; font-size: 13px; padding: 0 20px; line-height: 1.5; }
+
+/* Tooltip */
+.bv-tip { position: fixed; z-index: 90; min-width: 190px; border: 1px solid; border-radius: 10px; padding: 8px 10px; box-shadow: 0 10px 24px rgba(15,23,42,0.18); pointer-events: none; font-size: 12px; animation: bv-tip-in 120ms ease-out; }
+@keyframes bv-tip-in { from { opacity: 0; } to { opacity: 1; } }
+.bv-tip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 13px; margin-bottom: 6px; }
+.bv-tip-status { font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+.bv-tip-row { display: flex; justify-content: space-between; gap: 12px; line-height: 1.6; }
+.bv-tip-row span { opacity: 0.7; }
+
+/* Unit Details */
+.fp-details-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; line-height: 2; }
+.fp-details-row span:first-child { opacity: 0.65; }
+.fp-details-row span:last-child { font-weight: 700; text-align: right; }
+
+.bv-floor-btn:focus-visible, .pz-controls button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+@media (max-width: 1279px) {
+  .bv-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 767px) {
+  .bv-building-card { grid-template-rows: 460px auto; padding: 10px; }
+  .bv-floor-btn { width: 36px; }
+  .bv-plan-box { height: 260px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pz-stage, .bv-window, .bv-room-fill, .bv-floor-btn { transition: none; }
+  .bv-plan, .bv-floor-band, .bv-room-ring, .bv-tip { animation: none; }
+}
+/* "Shops" level at the foot of the floor list */
+.bv-floor-btn-shops { font-size: 10.5px; margin-top: 6px; }

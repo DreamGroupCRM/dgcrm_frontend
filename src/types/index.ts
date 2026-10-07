@@ -792,6 +792,7 @@ export interface CustomerPaymentRecord {
   company?       : string;
   maintenance?   : number;
   received_by?   : string | null; // who entered the payment
+  is_after_possession_emi?: boolean; // EMI After (true) vs EMI Before
 }
 
 export interface CustomerPaymentHistoryResponse {
@@ -946,6 +947,17 @@ export interface CustomerFullDetail extends Omit<
   allotment_letter_url: string | null;
   created_at : string;
   updated_at?: string;
+  // Set only when the booking has been cancelled — reason and the documents
+  // uploaded with the cancellation (shown on View Details).
+  cancellation?: {
+    reason: string | null;
+    cancelled_at: string | null;
+    cancel_letter: string | null;
+    acceptance_letter: string | null;
+    cancel_documents: string | null;
+    returned_documents: string | null;
+    original_documents_returned: boolean;
+  } | null;
 }
 
 export interface CustomerFullDetailResponse {

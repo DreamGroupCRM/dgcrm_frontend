@@ -16,6 +16,16 @@ import { CustomerSchemeData, CustomerPaymentRecord, Customer, PaymentReceipt } f
 import { paymentForLabel } from '../../../../services/paymentService';
 
 const rupee = (n: number): string => `Rs. ${Math.round(n || 0).toLocaleString('en-IN')}`;
+// jsPDF's helvetica has no ₹ glyph — a label carrying one (e.g. "1st EMI's
+// (₹ 20,000 x 24)") came out letter-spaced and garbled. Use "Rs." instead.
+const pdfText = (s: string): string => s.replace(/(Rs\.\s*)?₹\s?/g, 'Rs. ');
+// Before / After Possession totals get their own colour band.
+const TOTAL_A_FILL: [number, number, number] = [219, 234, 254];  // light blue
+const TOTAL_A_TEXT: [number, number, number] = [30, 64, 175];
+const TOTAL_B_FILL: [number, number, number] = [220, 252, 231];  // light green
+const TOTAL_B_TEXT: [number, number, number] = [22, 101, 52];
+const GRAND_FILL: [number, number, number] = [254, 243, 199];    // light amber
+const GRAND_TEXT: [number, number, number] = [146, 64, 14];
 
 const formatDMY = (iso: string | null | undefined): string => {
   if (!iso) return '—';
@@ -57,12 +67,9 @@ export function exportPaymentSchedulePdf(data: CustomerSchemeData): void {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   y = (doc as any).lastAutoTable.finalY + 26;
 
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Total Cost of Flat for ${c.flat_type || 'this flat'}: ${rupee(c.flat_amount)}`, marginX, y);
-  y += 20;
+  // (Total Flat Cost is already in the details table above — not repeated.)
 
-  const summaryTable = (heading: string, rows: CustomerSchemeData['summaryA'], total: number, totalLabel: string) => {
+  const summaryTable = (heading: string, rows: CustomerSchemeData['summaryA'], total: number, totalLabel: string, fill: [number, number, number], ink: [number, number, number]) => {
     if (y > 680) { doc.addPage(); y = 44; }
     doc.setFontSize(11.5);
     doc.setFont('helvetica', 'bold');
@@ -71,11 +78,13 @@ export function exportPaymentSchedulePdf(data: CustomerSchemeData): void {
     autoTable(doc, {
       startY: y,
       head: [['#', 'Payment Details', 'Amount (Rs.)']],
-      body: rows.map((r, i) => [String(i + 1), r.label, rupee(r.amount)]),
+      body: rows.map((r, i) => [String(i + 1), pdfText(r.label), rupee(r.amount)]),
       foot: [[{ content: totalLabel, colSpan: 2, styles: { fontStyle: 'bold' } }, { content: rupee(total), styles: { fontStyle: 'bold' } }]],
+      showHead: 'firstPage',
+      showFoot: 'lastPage',
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9.5 },
-      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontSize: 9.5 },
+      footStyles: { fillColor: fill, textColor: ink, fontSize: 9.5 },
       styles: { fontSize: 9.5, cellPadding: 6, lineColor: [203, 213, 225], lineWidth: 0.75 },
       columnStyles: { 0: { cellWidth: 24 }, 2: { halign: 'right', cellWidth: 90 } },
       margin: { left: marginX, right: marginX },
@@ -84,13 +93,17 @@ export function exportPaymentSchedulePdf(data: CustomerSchemeData): void {
     y = (doc as any).lastAutoTable.finalY + 20;
   };
 
-  summaryTable('A) Mode of Payment (Before Possession)', data.summaryA, data.totalA, 'Total (A) (Before Possession)');
-  summaryTable('B) After Possession', data.summaryB, data.totalB, 'Total (B) (After Possession)');
+  summaryTable('A) Before Possession', data.summaryA, data.totalA, 'Total (A)', TOTAL_A_FILL, TOTAL_A_TEXT);
+  summaryTable('B) After Possession', data.summaryB, data.totalB, 'Total (B)', TOTAL_B_FILL, TOTAL_B_TEXT);
 
   if (y > 700) { doc.addPage(); y = 44; }
+  doc.setFillColor(...GRAND_FILL);
+  doc.rect(marginX, y - 13, pageWidth - marginX * 2, 20, 'F');
   doc.setFontSize(11.5);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Total Cost of Flat (A + B): ${rupee(data.grandTotal)}`, marginX, y);
+  doc.setTextColor(...GRAND_TEXT);
+  doc.text(`Total Cost of Flat (A + B): ${rupee(data.grandTotal)}`, marginX + 8, y);
+  doc.setTextColor(0, 0, 0);
 
   // ── Full dated schedule — new page, same "A) / B)" split, matching the
   // reference PDF's own page-per-section layout. ────────────────────────
@@ -104,18 +117,32 @@ export function exportPaymentSchedulePdf(data: CustomerSchemeData): void {
   doc.text(`Schedule ${rupee(c.flat_amount)} for ${c.flat_type || 'this flat'} - ${totalMonths} months`, marginX, y);
   y += 20;
 
-  const scheduleTable = (rows: CustomerSchemeData['scheduleA'], section: 'A' | 'B', totalLabel: string, total: number, extraFootRows: [string, string][] = []) => {
+  // Each section's heading and its total appear ONCE: the heading is
+  // printed above the table, the header row only on the table's first page
+  // and the totals only on its last page (they used to repeat on every page
+  // the table ran onto).
+  const scheduleTable = (rows: CustomerSchemeData['scheduleA'], heading: string, totalLabel: string, total: number, fill: [number, number, number], ink: [number, number, number], extraFootRows: [string, string][] = []) => {
+    if (y > 700) { doc.addPage(); y = 44; }
+    doc.setFontSize(11.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(heading, marginX, y);
+    y += 8;
     autoTable(doc, {
       startY: y,
-      head: [['Sr No', 'Inst Date', `(${section}) Mode Of Payment`, 'Amount']],
-      body: rows.map((r) => [String(r.sr), formatDMY(r.date), r.label, rupee(r.amount)]),
+      head: [['Sr No', 'Inst Date', 'Mode Of Payment', 'Amount']],
+      body: rows.map((r) => [String(r.sr), formatDMY(r.date), pdfText(r.label), rupee(r.amount)]),
       foot: [
-        [{ content: totalLabel, colSpan: 3, styles: { fontStyle: 'bold' } }, { content: rupee(total), styles: { fontStyle: 'bold' } }],
-        ...extraFootRows.map(([label, value]) => [{ content: label, colSpan: 3, styles: { fontStyle: 'bold' as const } }, { content: value, styles: { fontStyle: 'bold' as const } }]),
+        [{ content: totalLabel, colSpan: 3, styles: { fontStyle: 'bold', fillColor: fill, textColor: ink } }, { content: rupee(total), styles: { fontStyle: 'bold', fillColor: fill, textColor: ink } }],
+        ...extraFootRows.map(([label, value]) => [
+          { content: label, colSpan: 3, styles: { fontStyle: 'bold' as const, fillColor: GRAND_FILL, textColor: GRAND_TEXT } },
+          { content: value, styles: { fontStyle: 'bold' as const, fillColor: GRAND_FILL, textColor: GRAND_TEXT } },
+        ]),
       ],
+      showHead: 'firstPage',
+      showFoot: 'lastPage',
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9.5 },
-      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontSize: 9.5 },
+      footStyles: { fontSize: 9.5 },
       styles: { fontSize: 9, cellPadding: 5.5, lineColor: [203, 213, 225], lineWidth: 0.75 },
       columnStyles: { 0: { cellWidth: 44 }, 1: { cellWidth: 80 }, 3: { halign: 'right', cellWidth: 90 } },
       margin: { left: marginX, right: marginX },
@@ -125,9 +152,8 @@ export function exportPaymentSchedulePdf(data: CustomerSchemeData): void {
     y = (doc as any).lastAutoTable.finalY + 24;
   };
 
-  scheduleTable(data.scheduleA, 'A', '(A) Total Before Possession :', data.totalA);
-  if (y > 650) { doc.addPage(); y = 44; }
-  scheduleTable(data.scheduleB, 'B', '(B) Total After Possession :', data.totalB, [['Total (A + B):', rupee(data.grandTotal)]]);
+  scheduleTable(data.scheduleA, 'A) Before Possession', 'Total (A)', data.totalA, TOTAL_A_FILL, TOTAL_A_TEXT);
+  scheduleTable(data.scheduleB, 'B) After Possession', 'Total (B)', data.totalB, TOTAL_B_FILL, TOTAL_B_TEXT, [['Total (A + B)', rupee(data.grandTotal)]]);
 
   // ── Terms and Conditions + signature ─────────────────────────────────
   if (y > 620) { doc.addPage(); y = 44; }
@@ -205,7 +231,7 @@ export function exportPaymentHistoryPdf(
 
   autoTable(doc, {
     startY: y,
-    head: [['Rec Number', 'Installment Date', 'Received Date', 'Mode Of Payment', 'Payment For', 'Maintenance', 'Amount', 'Company']],
+    head: [['Rec Number', 'Installment Date', 'Received Date', 'Mode Of Payment', 'Payment For', 'Amount', 'Company', 'Status']],
     body: payments.map((p) => {
       // Extra Pay pre-pays a future EMI rather than settling the
       // installment its stored inst_date points at — showing that date
@@ -217,15 +243,15 @@ export function exportPaymentHistoryPdf(
         formatDMY(p.paid_on),
         p.mode || '—',
         isExtraPay ? 'Extra Pay' : paymentForLabel(p.payment_type),
-        p.maintenance ? rupee(p.maintenance) : '0',
         rupee(p.amount),
         p.company || '—',
+        p.is_approved ? 'Approved' : 'Pending Approval',
       ];
     }),
     theme: 'grid',
     headStyles: { fillColor: [109, 40, 217], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
     styles: { fontSize: 8.5, cellPadding: 5, lineColor: [203, 213, 225], lineWidth: 0.75 },
-    columnStyles: { 5: { textColor: [22, 163, 74] }, 6: { halign: 'right', textColor: [220, 38, 38], fontStyle: 'bold' } },
+    columnStyles: { 5: { halign: 'right', textColor: [220, 38, 38], fontStyle: 'bold' } },
     margin: { left: marginX, right: marginX },
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
