@@ -1360,11 +1360,11 @@ const CustomerDetailsListPage: React.FC = () => {
                             />
                           )}
                         </div>
-                        <button type="button" title="Show Payment History" className="master-icon-btn" onClick={() => openPaymentHistory(c)}>
-                          <MdHistory size={15} />
-                        </button>
                         <button type="button" title="Show Scheme" className="master-icon-btn" onClick={() => navigate(`${paths.customerDetails}/scheme/${c.id}`)}>
                           <MdCalendarMonth size={15} />
+                        </button>
+                        <button type="button" title="Show Payment History" className="master-icon-btn" onClick={() => openPaymentHistory(c)}>
+                          <MdHistory size={15} />
                         </button>
                       </div>
                     </td>
