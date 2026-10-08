@@ -18,7 +18,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { loginThunk, verifyOtpThunk, resendOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
+import { WRONG_PORTAL, loginThunk, verifyOtpThunk, resendOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
+import { showWrongPortalAlert } from './wrongPortalAlert';
 import { clearError, resetLoginFlow } from '../../redux/slices/authSlice';
 import { ROUTES } from '../../constants';
 import { showAlert, homeRouteForRole } from '../../utils';
@@ -178,7 +179,10 @@ const LoginPage: React.FC = () => {
 
   // ── Show API-level errors via SweetAlert2 ──
   useEffect(() => {
-    if (error) {
+    if (error === WRONG_PORTAL) {
+      void showWrongPortalAlert('staff');
+      dispatch(clearError());
+    } else if (error) {
       showAlert.error(error, 'Login Failed');
       dispatch(clearError());
     }
@@ -337,7 +341,7 @@ const LoginPage: React.FC = () => {
         return;
       }
 
-      const result = await dispatch(loginThunk({ email: form.email, password: form.password }));
+      const result = await dispatch(loginThunk({ email: form.email, password: form.password, portal: 'staff' }));
       if (loginThunk.fulfilled.match(result)) {
         setJustRequestedOtp(true);
       }

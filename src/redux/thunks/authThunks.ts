@@ -5,6 +5,9 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import { LoginCredentials, SetNewPasswordCredentials, VerifyOtpCredentials } from '../../types';
 import { authService } from '../../services/authService';
 
+/** Rejection value of loginThunk when the account belongs on the other login page. */
+export const WRONG_PORTAL = 'WRONG_PORTAL';
+
 /**
  * Step 1 of login — verifies email+password. Backend emails an OTP and
  * returns an otpToken; no session is issued yet (see verifyOtpThunk).
@@ -22,6 +25,9 @@ export const loginThunk = createAsyncThunk(
       }
       return response;
     } catch (error: unknown) {
+      if ((error as { response?: { data?: { code?: string } } })?.response?.data?.code === WRONG_PORTAL) {
+        return rejectWithValue(WRONG_PORTAL);
+      }
       const message = error instanceof Error ? error.message : 'An error occurred';
       return rejectWithValue(message);
     }

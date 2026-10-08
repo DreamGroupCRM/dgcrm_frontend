@@ -9,7 +9,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { loginThunk, verifyOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
+import { WRONG_PORTAL, loginThunk, verifyOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
+import { showWrongPortalAlert } from './wrongPortalAlert';
 import { clearError, resetLoginFlow } from '../../redux/slices/authSlice';
 import { ROUTES } from '../../constants';
 import { showAlert, homeRouteForRole } from '../../utils';
@@ -91,7 +92,10 @@ const CustomerLoginPage: React.FC = () => {
   }, [isAuthenticated, role, navigate]);
 
   useEffect(() => {
-    if (error) {
+    if (error === WRONG_PORTAL) {
+      void showWrongPortalAlert('customer');
+      dispatch(clearError());
+    } else if (error) {
       showAlert.error(error, 'Login Failed');
       dispatch(clearError());
     }
@@ -127,7 +131,7 @@ const CustomerLoginPage: React.FC = () => {
       if (emailErr) { showAlert.warning(emailErr, 'Username Error'); return; }
       if (pwdErr) { showAlert.warning(pwdErr, 'Password Error'); return; }
 
-      const result = await dispatch(loginThunk({ email: form.email, password: form.password }));
+      const result = await dispatch(loginThunk({ email: form.email, password: form.password, portal: 'customer' }));
       if (loginThunk.fulfilled.match(result)) setJustRequestedOtp(true);
     },
     [form, dispatch]

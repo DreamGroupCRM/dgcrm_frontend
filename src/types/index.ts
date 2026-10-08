@@ -65,6 +65,9 @@ export interface Permissions {
 export interface LoginCredentials {
   email: string;
   password: string;
+  // Which login page is asking: 'staff' (/login) or 'customer'
+  // (/customer/login). The server refuses an account on the wrong page.
+  portal?: 'staff' | 'customer';
 }
 
 // POST /api/auth/login (step 1 of 2) response — email+password are verified,
