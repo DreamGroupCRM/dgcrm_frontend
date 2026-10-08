@@ -52,7 +52,7 @@ const MultiStatCard: React.FC<MultiStatCardProps> = ({
           <span className="master-stat-multi-sublabel" style={{ color: '#f2f2f2' }}>Enabled</span>
         </div>
         <div className="master-stat-multi-item">
-          <span className="master-stat-multi-value" style={{ color: '#fca5a5' }}>{loading ? '—' : disabled}</span>
+          <span className="master-stat-multi-value" style={{ color: '#ffe4e6' }}>{loading ? '—' : disabled}</span>
           <span className="master-stat-multi-sublabel" style={{ color: '#f2f2f2' }}>Disabled</span>
         </div>
       </div>

@@ -156,8 +156,8 @@ const FilterSelect: React.FC<{
 type ApprovalView = 'all' | 'approved' | 'pending';
 const APPROVAL_VIEWS: { key: ApprovalView; label: string; color: string }[] = [
   { key: 'all', label: 'All', color: '#2563eb' },
-  { key: 'approved', label: 'Approved', color: '#16a34a' },
-  { key: 'pending', label: 'UnApproved', color: '#d97706' },
+  { key: 'approved', label: 'Approved', color: '#15803d' },
+  { key: 'pending', label: 'UnApproved', color: '#b45309' },
 ];
 const approvalParam = (v: ApprovalView): 'approved' | 'pending' | undefined => (v === 'all' ? undefined : v);
 
@@ -789,7 +789,7 @@ const PaymentReceivedPage: React.FC = () => {
             {paths.isAdmin && selectedPendingIds.length > 0 && (
               <button type="button" onClick={handleBulkApprove} disabled={bulkApproving}
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
-                style={{ background: '#16a34a', border: 'none', color: '#fff', cursor: bulkApproving ? 'not-allowed' : 'pointer', opacity: bulkApproving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                style={{ background: '#15803d', border: 'none', color: '#fff', cursor: bulkApproving ? 'not-allowed' : 'pointer', opacity: bulkApproving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 <MdCheckCircle size={16} /> {bulkApproving ? 'Approving…' : `Approve Selected (${selectedPendingIds.length})`}
               </button>
             )}
@@ -875,11 +875,11 @@ const PaymentReceivedPage: React.FC = () => {
                     <td style={{ padding: '10px 12px' }}>
                       {r.is_approved ? (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" title={r.approved_by_name ? `Approved by ${r.approved_by_name}${r.approved_at ? ` on ${formatDMY(r.approved_at)}` : ''}` : undefined}
-                          style={{ background: '#16a34a', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                          style={{ background: '#15803d', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
                           <MdCheckCircle size={12} /> Approved
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: '#d97706', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: '#b45309', color: '#fff', fontSize: 10.5, whiteSpace: 'nowrap' }}>
                           <MdHourglassEmpty size={12} /> UnApproved
                         </span>
                       )}

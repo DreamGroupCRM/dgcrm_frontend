@@ -1285,7 +1285,8 @@ const DueReportPage: React.FC = () => {
               ) : (
                 pagedGroups.map((g) => {
                   const open = expandedCustomers.has(g.customer_id);
-                  const amountColor = (c: string) => (c === STATUS_COLORS.upcoming ? t.textPrimary : c);
+                  // Dark red on the black theme was 2.3:1 — overdue amounts use a light red there.
+                  const amountColor = (c: string) => (c === STATUS_COLORS.upcoming ? t.textPrimary : isDark && c === STATUS_COLORS.overdue ? '#fca5a5' : c);
                   return (
                     <React.Fragment key={`cust-${g.customer_id}`}>
                       <tr className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>

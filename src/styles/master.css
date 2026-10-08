@@ -775,3 +775,7 @@ th .master-th-sort {
   background: #b45309;
   line-height: 16px;
 }
+
+/* V_25.0 — red outline buttons (e.g. "Cancel a Booking") were 3:1 on the
+   black theme; a lighter red reads clearly there. */
+html.dark .danger-outline-btn { color: #fca5a5 !important; border-color: #fca5a5 !important; }

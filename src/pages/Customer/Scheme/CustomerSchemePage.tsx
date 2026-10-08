@@ -1,5 +1,6 @@
 // EMI Scheme & Schedule — the two tables the office sees on Customize
-// Scheme, shown side by side on a laptop (stacked on a phone), plus the
+// Scheme — stacked accordions on a desktop, side by side (swiped) on a
+// phone — plus the
 // three money tiles above them. Compact label / amount rows rather than
 // wide tables, so nothing scrolls sideways on a phone, with the Before /
 // After Possession totals in colour bands.
@@ -31,21 +32,20 @@ import { useCustomerPortal } from '../CustomerPortalContext';
 import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
 
 const STATUS_META = {
-  paid: { label: 'Paid', icon: MdCheckCircle, color: '#059669', bg: 'rgba(5,150,105,0.12)' },
+  paid: { label: 'Paid', icon: MdCheckCircle, color: '#047857', bg: 'rgba(5,150,105,0.12)' },
   due: { label: 'Due', icon: MdErrorOutline, color: '#dc2626', bg: 'rgba(220,38,38,0.12)' },
   upcoming: { label: 'Upcoming', icon: MdSchedule, color: '#1f2937', bg: '#FFFF00' },
 } as const;
 
 // Before / After Possession totals each get their own colour band so they
-// stand out at a glance (same colours as the downloaded PDF).
-const TOTAL_TONES = {
-  A: { bg: 'rgba(37,99,235,0.12)', ink: '#1e40af' },
-  B: { bg: 'rgba(22,163,74,0.13)', ink: '#166534' },
-  grand: { bg: 'rgba(217,119,6,0.15)', ink: '#92400e' },
-} as const;
+// stand out at a glance (same colours as the downloaded PDF). The colours
+// live in CustomerPortal.css (.cp-tone-*) so dark mode can switch them to
+// white text on a stronger band — dark blue / green text was unreadable on
+// the dark background.
+type Tone = 'A' | 'B' | 'grand';
 
-const TotalBand: React.FC<{ label: string; value: number; tone: keyof typeof TOTAL_TONES }> = ({ label, value, tone }) => (
-  <div className="cp-total-band" style={{ background: TOTAL_TONES[tone].bg, color: TOTAL_TONES[tone].ink }}>
+const TotalBand: React.FC<{ label: string; value: number; tone: Tone }> = ({ label, value, tone }) => (
+  <div className={`cp-total-band cp-tone-${tone}`}>
     <span>{label}</span>
     <span className="cp-num">{rupee(value)}</span>
   </div>
@@ -55,7 +55,7 @@ const TotalBand: React.FC<{ label: string; value: number; tone: keyof typeof TOT
 // coloured total.
 const SchemeSection: React.FC<{ heading: string; rows: CustomerSchemeSummaryRow[]; total: number; totalLabel: string; tone: 'A' | 'B' }> = ({ heading, rows, total, totalLabel, tone }) => (
   <div className="cp-scheme-section">
-    <div className="cp-scheme-heading" style={{ color: TOTAL_TONES[tone].ink }}>{heading}</div>
+    <div className={`cp-scheme-heading cp-tone-ink-${tone}`}>{heading}</div>
     {rows.map((r, i) => (
       <div key={i} className="cp-scheme-row">
         <span className="cp-scheme-idx">{i + 1}</span>
@@ -102,7 +102,7 @@ const ScheduleList: React.FC<{ scheme: CustomerSchemeData; gridRows: DueGridRow[
               <React.Fragment key={r.sr}>
                 {(i === 0 || i === lastA + 1) && (
                   <tr className="cp-sched-phase">
-                    <td colSpan={5} style={{ color: TOTAL_TONES[r.phase].ink }}>{r.phase === 'A' ? 'A) Before Possession' : 'B) After Possession'}</td>
+                    <td colSpan={5} className={`cp-tone-ink-${r.phase}`}>{r.phase === 'A' ? 'A) Before Possession' : 'B) After Possession'}</td>
                   </tr>
                 )}
                 <tr>
@@ -111,10 +111,10 @@ const ScheduleList: React.FC<{ scheme: CustomerSchemeData; gridRows: DueGridRow[
                   <td style={strike}>{r.label}</td>
                   <td className="cp-num" style={{ fontWeight: 600 }}>
                     {rupee(r.amount)}
-                    {partial && <div style={{ fontSize: 10, fontWeight: 700, color: '#dc2626' }}>{rupee(grid!.due_amount)} due</div>}
+                    {partial && <div className="cp-due-note">{rupee(grid!.due_amount)} due</div>}
                   </td>
                   <td>
-                    <span className="cp-chip" style={{ background: status.bg, color: status.color }}>
+                    <span className={`cp-chip cp-chip-${grid?.status ?? 'upcoming'}`} style={{ background: status.bg, color: status.color }}>
                       <Icon size={11} />{settled ? 'Paid (Adv.)' : status.label}
                     </span>
                   </td>
@@ -170,7 +170,7 @@ const CustomerSchemePage: React.FC = () => {
         if (cancelled) return;
         setScheme(schemeData);
         setGridRows(grid.rows);
-        setTotals(totalsFromDueGrid(grid.rows));
+        setTotals(totalsFromDueGrid(grid.rows, grid.extra_pay_total ?? 0));
       } catch {
         if (!cancelled) setError(true);
       } finally {
@@ -185,7 +185,7 @@ const CustomerSchemePage: React.FC = () => {
 
   return (
     <>
-      <PageHead title="EMI Scheme & Schedule" subtitle="Your payment plan and every installment in it" />
+      <PageHead title="EMI Scheme & Schedule" />
 
       <div className="cp-stats">
         <Stat icon={<MdTrendingUp size={19} />} label="Total Flat Cost" value={rupee(totals?.totalCost)} gradient={STAT_GRADIENTS.total} />
@@ -195,11 +195,12 @@ const CustomerSchemePage: React.FC = () => {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
         <button type="button" className="cp-btn cp-btn-primary" onClick={() => exportPaymentSchedulePdf(scheme)}>
-          <MdDownload size={14} /> Download Schedule PDF
+          <MdDownload size={14} /> Download Scheme and Schedule PDF
         </button>
       </div>
 
-      {/* Scheme and Schedule side by side on a laptop, stacked on a phone. */}
+      {/* Desktop: EMI Scheme accordion, EMI Schedule accordion below it.
+          Phone: the two side by side, swiped horizontally (CustomerPortal.css). */}
       <div className="cp-scheme-layout">
         <AccordionSection
           theme={t} icon={<MdListAlt size={16} />} title="EMI Scheme" gradient="var(--brand-gradient)"

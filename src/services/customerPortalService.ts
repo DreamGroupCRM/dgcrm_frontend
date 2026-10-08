@@ -118,6 +118,8 @@ export interface PortalDueGrid {
   customer_name: string;
   company_name: string | null;
   rows: DueGridRow[];
+  /** V_25.0 — Extra Pay total (kept out of the rows). */
+  extra_pay_total?: number;
 }
 
 /** GET /api/customer-portal/bookings */

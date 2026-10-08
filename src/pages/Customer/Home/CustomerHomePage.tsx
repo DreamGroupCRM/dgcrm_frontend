@@ -1,6 +1,6 @@
 // Home — the customer's own details, the employee looking after their
-// booking, and the property itself, laid out horizontally so everything is
-// visible at a glance. The money tiles and the documents moved off Home:
+// booking, and the property itself: three sections stacked one below the
+// other, each section's details in one row on a desktop. The money tiles and the documents moved off Home:
 // documents have their own "My Documents" page in the sidebar.
 import React from 'react';
 import { CircularProgress } from '@mui/material';
@@ -28,65 +28,68 @@ const CustomerHomePage: React.FC = () => {
       {/* The customer's name / ID are on the header's booking boxes now. */}
       <PageHead title="Home" subtitle={selected ? bookingLabel(selected) : undefined} />
 
-      <div className="cp-row-2">
-        <Card icon={<MdPerson size={16} />} title="Personal Details">
-          <div className="cp-detail-wrap">
-            <div className="cp-detail-id">
-              {detail.customer_image ? (
-                <img src={resolveFileUrl(detail.customer_image)} alt="" className="cp-avatar-photo" />
-              ) : (
-                <div className="cp-avatar-photo cp-avatar-empty"><MdPerson size={28} /></div>
-              )}
-              <div style={{ minWidth: 0 }}>
-                <div className="cp-person-name">{fullName || '—'}</div>
-                <div className="cp-person-sub">Customer ID : {detail.customer_code}</div>
-              </div>
-            </div>
-            <div className="cp-grid-dense">
-              <Field label="Email" value={detail.email} />
-              <Field label="Mobile" value={detail.mobile_number ? `${detail.mobile_country_code || ''} ${detail.mobile_number}`.trim() : ''} />
-              <Field label="Alternate Number" value={secondary || detail.alternate_number} />
-              <Field label="Date of Birth" value={detail.date_of_birth ? formatDate(detail.date_of_birth) : ''} />
-              <Field label="Aadhaar Number" value={detail.aadhar_card_no} />
-              <Field label="PAN Number" value={detail.pan_card_no} />
-              <div className="cp-grid-span"><Field label="Address" value={detail.address} /></div>
+      {/* Three full-width sections, one below the other: Personal Details,
+          Relationship Manager, Property Details. On a desktop each section's
+          details sit in a single row; on a phone they fold into a compact
+          two-column grid (CustomerPortal.css, .cp-home-*). */}
+      <Card icon={<MdPerson size={16} />} title="Personal Details">
+        <div className="cp-home-row">
+          <div className="cp-home-id">
+            {detail.customer_image ? (
+              <img src={resolveFileUrl(detail.customer_image)} alt="" className="cp-avatar-photo" />
+            ) : (
+              <div className="cp-avatar-photo cp-avatar-empty"><MdPerson size={24} /></div>
+            )}
+            <div style={{ minWidth: 0 }}>
+              <div className="cp-person-name">{fullName || '—'}</div>
+              <div className="cp-person-sub">Customer ID : {detail.customer_code}</div>
             </div>
           </div>
-        </Card>
+          <div className="cp-home-fields">
+            <Field label="Email" value={detail.email} />
+            <Field label="Mobile" value={detail.mobile_number ? `${detail.mobile_country_code || ''} ${detail.mobile_number}`.trim() : ''} />
+            <Field label="Alternate Number" value={secondary || detail.alternate_number} />
+            <Field label="Date of Birth" value={detail.date_of_birth ? formatDate(detail.date_of_birth) : ''} />
+            <Field label="Aadhaar Number" value={detail.aadhar_card_no} />
+            <Field label="PAN Number" value={detail.pan_card_no} />
+            <div className="cp-home-wide"><Field label="Address" value={detail.address} /></div>
+          </div>
+        </div>
+      </Card>
 
-        <Card icon={<MdGroups size={16} />} title="Relationship Manager">
-          {!rm ? (
-            <div className="cp-empty" style={{ margin: 0 }}>No relationship manager is assigned to your booking yet.</div>
-          ) : (
-            <>
-              <div className="cp-person-head">
-                {rm.photo_url ? (
-                  <img src={resolveFileUrl(rm.photo_url)} alt="" className="cp-avatar-photo" />
-                ) : (
-                  <div className="cp-avatar-photo cp-avatar-empty"><MdPerson size={28} /></div>
-                )}
-                <div>
-                  <div className="cp-person-name">{rm.name}</div>
-                  <div className="cp-person-sub">
-                    {rm.employee_code && <>Employee ID : {rm.employee_code}<br /></>}
-                    {rm.designation && <>Designation : {rm.designation}<br /></>}
-                    {rm.department && <>Department : {rm.department}</>}
-                  </div>
-                </div>
+      <Card icon={<MdGroups size={16} />} title="Relationship Manager">
+        {!rm ? (
+          <div className="cp-empty" style={{ margin: 0 }}>No relationship manager is assigned to your booking yet.</div>
+        ) : (
+          <div className="cp-home-row">
+            <div className="cp-home-id">
+              {rm.photo_url ? (
+                <img src={resolveFileUrl(rm.photo_url)} alt="" className="cp-avatar-photo" />
+              ) : (
+                <div className="cp-avatar-photo cp-avatar-empty"><MdPerson size={24} /></div>
+              )}
+              <div style={{ minWidth: 0 }}>
+                <div className="cp-person-name">{rm.name}</div>
+                {rm.employee_code && <div className="cp-person-sub">Employee ID : {rm.employee_code}</div>}
               </div>
-              <div className="cp-rm-contact">
-                {rm.mobile_number && (
-                  <span className="cp-rm-contact-item"><MdCall size={13} /> {rm.mobile_country_code || ''} {rm.mobile_number}</span>
-                )}
-                {rm.email && <span className="cp-rm-contact-item"><MdEmail size={13} /> {rm.email}</span>}
+            </div>
+            <div className="cp-home-fields">
+              <Field label="Designation" value={rm.designation} />
+              <Field label="Department" value={rm.department} />
+              <Field
+                label="Mobile"
+                value={rm.mobile_number ? <span className="cp-rm-contact-item"><MdCall size={13} /> {`${rm.mobile_country_code || ''} ${rm.mobile_number}`.trim()}</span> : ''}
+              />
+              <div className="cp-home-wide">
+                <Field label="Email" value={rm.email ? <span className="cp-rm-contact-item"><MdEmail size={13} /> {rm.email}</span> : ''} />
               </div>
-            </>
-          )}
-        </Card>
-      </div>
+            </div>
+          </div>
+        )}
+      </Card>
 
       <Card icon={<MdApartment size={16} />} title="Property Details">
-        <div className="cp-grid-dense cp-grid-property">
+        <div className="cp-home-fields">
           <Field label="Company" value={detail.company_name} />
           <Field label="Project" value={detail.building?.project_name} />
           <Field label="Building" value={detail.building?.name} />
@@ -100,7 +103,7 @@ const CustomerHomePage: React.FC = () => {
           <Field
             label="Possession"
             value={
-              <span className="cp-chip" style={{
+              <span className={`cp-chip ${detail.possession_granted ? 'cp-chip-paid' : 'cp-chip-pending'}`} style={{
                 background: detail.possession_granted ? 'rgba(5,150,105,0.12)' : 'rgba(217,119,6,0.14)',
                 color: detail.possession_granted ? '#059669' : '#b45309',
               }}>
@@ -111,7 +114,6 @@ const CustomerHomePage: React.FC = () => {
           />
         </div>
       </Card>
-
     </>
   );
 };

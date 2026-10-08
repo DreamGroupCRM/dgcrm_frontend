@@ -46,7 +46,7 @@ export function exportPaymentSchedulePdf(data: CustomerSchemeData): void {
 
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('EMI SCHEDULE', pageWidth / 2, y, { align: 'center' });
+  doc.text('EMI Scheme and Schedule', pageWidth / 2, y, { align: 'center' });
   y += 26;
 
   autoTable(doc, {
@@ -93,6 +93,11 @@ export function exportPaymentSchedulePdf(data: CustomerSchemeData): void {
     y = (doc as any).lastAutoTable.finalY + 20;
   };
 
+  // Section heading for the A / B summary tables.
+  doc.setFontSize(15);
+  doc.setFont('helvetica', 'bold');
+  doc.text('EMI Scheme', marginX, y);
+  y += 20;
   summaryTable('A) Before Possession', data.summaryA, data.totalA, 'Total (A)', TOTAL_A_FILL, TOTAL_A_TEXT);
   summaryTable('B) After Possession', data.summaryB, data.totalB, 'Total (B)', TOTAL_B_FILL, TOTAL_B_TEXT);
 
@@ -114,8 +119,11 @@ export function exportPaymentSchedulePdf(data: CustomerSchemeData): void {
   y = 44;
   doc.setFontSize(15);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Schedule ${rupee(c.flat_amount)} for ${c.flat_type || 'this flat'} - ${totalMonths} months`, marginX, y);
-  y += 20;
+  doc.text('EMI Schedule', marginX, y);
+  y += 18;
+  doc.setFontSize(11);
+  doc.text(`${rupee(c.flat_amount)} for ${c.flat_type || 'this flat'} - ${totalMonths} months`, marginX, y);
+  y += 18;
 
   // Each section's heading and its total appear ONCE: the heading is
   // printed above the table, the header row only on the table's first page
@@ -182,7 +190,7 @@ export function exportPaymentSchedulePdf(data: CustomerSchemeData): void {
   doc.setFont('helvetica', 'bold');
   doc.text('Signature:', marginX, y);
 
-  doc.save(`Payment-Schedule-${c.customer_code}.pdf`);
+  doc.save(`EMI-Scheme-and-Schedule-${c.customer_code}.pdf`);
 }
 
 // ── Payment History PDF (matches the reference "Payments History" PDF) ──

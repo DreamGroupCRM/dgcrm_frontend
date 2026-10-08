@@ -41,7 +41,7 @@ const CancelBookingPicker: React.FC<{ t: AppTheme; isAdmin: boolean; onDone: () 
   return (
     <>
       <button type="button" onClick={() => { setSearch(''); setOpen(true); }}
-        className="flex items-center gap-1.5 px-4 rounded-xl text-sm font-semibold"
+        className="flex items-center gap-1.5 px-4 rounded-xl text-sm font-semibold danger-outline-btn"
         style={{ height: 38, background: t.surfaceBg, color: '#b91c1c', border: '1px solid #b91c1c', cursor: 'pointer', whiteSpace: 'nowrap' }}>
         <MdEventBusy size={17} /> Cancel a Booking
       </button>

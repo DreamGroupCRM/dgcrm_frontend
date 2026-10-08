@@ -57,14 +57,18 @@ export interface BookingTotals {
  * Totals for the summary tiles, derived from the due grid.
  *
  * `amount` is what each scheduled row costs and `due_amount` is what is
- * still owed on it (0 once paid, and reduced on the one row an Extra Pay
+ * still owed on it (0 once paid, and reduced on the one row an EMI
  * advance partly covers — see the backend's emiRowState). So the schedule's
  * own rows give all three numbers, and they always agree with each other
  * and with what the office sees, rather than being three separate
  * calculations that can drift apart.
  */
-export function totalsFromDueGrid(rows: DueGridRow[]): BookingTotals {
+export function totalsFromDueGrid(rows: DueGridRow[], extraPay = 0): BookingTotals {
   const totalCost = rows.reduce((sum, r) => sum + r.amount, 0);
-  const pending = rows.reduce((sum, r) => sum + r.due_amount, 0);
-  return { totalCost, paid: Math.max(0, totalCost - pending), pending };
+  const owed = rows.reduce((sum, r) => sum + r.due_amount, 0);
+  // V_25.0 — Extra Pay is kept separate from EMIs (no schedule row is
+  // marked paid by it), but it is money the customer has paid: it counts in
+  // Payment Completed and comes off Payment Pending.
+  const pending = Math.max(0, owed - extraPay);
+  return { totalCost, paid: Math.min(totalCost, totalCost - owed + extraPay), pending };
 }
