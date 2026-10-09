@@ -353,12 +353,11 @@ const EmployeeDetailsListPage: React.FC = () => {
         toast.error('No employees to export.');
         return;
       }
-      const header = ['Employee Code', 'Name', 'Email', 'Mobile', 'D.O.B', 'Joining Date', 'Department', 'Designation', 'Visible Employees', 'Status'];
+      const header = ['Employee Code', 'Name', 'Email', 'Mobile', 'D.O.B', 'Joining Date', 'Department', 'Designation', 'Status'];
       const rows = exportRows.map((e) => [
         e.employee_code, `${e.first_name} ${e.last_name}`, e.email, `${e.mobile_country_code || ''} ${e.mobile_number || ''}`.trim(),
         formatDate(e.date_of_birth), formatDate(e.joining_date),
         e.department || (e.department_names || []).join('; '), e.designation || (e.designation_names || []).join('; '),
-        e.visible_employees_count ?? 0,
         employeeStatusStyle(e).label,
       ]);
       const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -510,16 +509,16 @@ const EmployeeDetailsListPage: React.FC = () => {
                     borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
                     borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                   }}>Action</th>
-                  {['Employee ID', 'Employee Name', 'Email ID / Mobile Number', 'D.O.B', 'Joining Date', 'Department', 'Designation', 'Visible Employees', 'Status'].map((h) => (
+                  {['Employee ID', 'Employee Name', 'Email ID / Mobile Number', 'D.O.B', 'Joining Date', 'Department', 'Designation', 'Status'].map((h) => (
                     <th key={h} style={{ borderBottom: `1px solid ${t.divider}` }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={10} style={{ textAlign: 'center', padding: 48 }}>Loading employees...</td></tr>
+                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 48 }}>Loading employees...</td></tr>
                 ) : pageRows.length === 0 ? (
-                  <tr><td colSpan={10} style={{ textAlign: 'center', padding: 48 }}>No employees found.</td></tr>
+                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 48 }}>No employees found.</td></tr>
                 ) : (
                   pageRows.map((emp, idx) => {
                     const status = employeeStatusStyle(emp);
@@ -568,7 +567,6 @@ const EmployeeDetailsListPage: React.FC = () => {
                         <td>{formatDate(emp.joining_date) || '—'}</td>
                         <td>{emp.department || '—'}</td>
                         <td>{emp.designation || '—'}</td>
-                        <td style={{ textAlign: 'center' }}>{emp.visible_employees_count ?? 0}</td>
                         <td>
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
                             style={{ background: status.bg, color: status.color, fontSize: 10.5, whiteSpace: 'nowrap' }}>

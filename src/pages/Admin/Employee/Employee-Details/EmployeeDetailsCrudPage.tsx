@@ -17,8 +17,7 @@ import DocumentViewerModal from '../../../../components/common/DocumentViewerMod
 import { previewKindFor, downloadDocument } from '../../../../services/documentService';
 import {
   ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
-  fetchEmployeePermissions, FetchEmployeeDetails,
-  FetchVisibleEmployees, AssignVisibleEmployees,
+  fetchEmployeePermissions,
   EmployeeFormValues, EmployeeFileValues, EmployeeStatus, EMPLOYEE_FILE_FIELD_MAP,
 } from '../../../../services/employeeDetailsService';
 import { fetchDraft, saveDraft } from '../../../../services/draftsService';
@@ -620,7 +619,7 @@ const DocumentCard: React.FC<{
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────
 // V_25.0 — read-only "Access Summary": what this employee will get, shown
-// as ✓ / ✗ before saving. Pages come straight from the department's
+// as a ✓ list before saving — only what they CAN do (V_25.0: no ✗ rows). Pages come straight from the department's
 // Department Setup (access_areas; a department not set up yet keeps the
 // pages every employee had before — LEGACY_AREAS on the server). Actions
 // follow the same rules the server enforces for a Head / an Executive on
@@ -641,10 +640,10 @@ const AccessSummary: React.FC<{
 }> = ({ t, roles, config, canAddCustomer, reportingHeadName }) => {
   const ready = roles.filter((r) => r.desigId != null || config.find((d) => d.id === r.deptId)?.designation_required === false);
   if (ready.length === 0) return null;
-  const Row: React.FC<{ ok: boolean; label: string }> = ({ ok, label }) => (
+  const Row: React.FC<{ label: string }> = ({ label }) => (
     <li style={{ display: 'flex', gap: 6, alignItems: 'baseline', listStyle: 'none' }}>
-      <span aria-hidden style={{ fontWeight: 800, color: ok ? '#16a34a' : '#dc2626', width: 12 }}>{ok ? '✓' : '✗'}</span>
-      <span style={{ color: ok ? t.textPrimary : t.textSecondary }}>{label}</span>
+      <span aria-hidden style={{ fontWeight: 800, color: '#15803d', width: 12 }}>✓</span>
+      <span style={{ color: t.textPrimary }}>{label}</span>
     </li>
   );
   return (
@@ -656,7 +655,6 @@ const AccessSummary: React.FC<{
           const pages = configured ?? LEGACY_PAGES;
           const has = (a: AccessArea) => pages.includes(a);
           const head = r.level === 'head';
-          const exec = r.level === 'executive';
           const actions: { ok: boolean; label: string }[] = [];
           if (has('payment_dues')) actions.push({ ok: true, label: 'Follow-ups' });
           if (has('customers')) {
@@ -672,7 +670,6 @@ const AccessSummary: React.FC<{
           if (has('cancelled_booking')) actions.push({ ok: true, label: 'Cancel Booking request' });
           if (has('payment_received') && head) actions.push({ ok: true, label: 'Payment delete request' });
           if (head) actions.push({ ok: true, label: 'Team data (My Data / Team Data)' });
-          if (!exec) actions.push({ ok: false, label: 'Export CSV (Admin only)' });
           const reportsTo = r.level ? (reportingHeadName(r.deptId) ?? 'Admin') : null;
           return (
             <div key={r.deptId} style={{ fontSize: 11.5, lineHeight: 1.6 }}>
@@ -684,8 +681,8 @@ const AccessSummary: React.FC<{
                 <div style={{ color: '#b45309' }}>Department not set up on Department Setup yet — keeps the standard employee pages.</div>
               )}
               <ul style={{ margin: '2px 0 0', padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', columnGap: 12 }}>
-                {pages.map((a) => <Row key={a} ok label={PAGE_LABELS[a]} />)}
-                {actions.map((x) => <Row key={x.label} ok={x.ok} label={x.label} />)}
+                {pages.map((a) => <Row key={a} label={PAGE_LABELS[a]} />)}
+                {actions.filter((x) => x.ok).map((x) => <Row key={x.label} label={x.label} />)}
               </ul>
               {head && (
                 <div style={{ marginTop: 4, fontWeight: 600, color: '#b45309' }}>
@@ -802,13 +799,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [loadingDesignations, setLoadingDesignations] = useState(true);
   const [loadingModules, setLoadingModules] = useState(true);
 
-  // Assign Visible Employees — which other employees this one can view/
-  // manage (see AssignVisibleEmployees in employeeDetailsService.ts: reuses
-  // the reporting-line mechanism, so this is a genuine checklist like
-  // Department/Designation above, not a numeric cap).
-  const [visibleEmployeeOptions, setVisibleEmployeeOptions] = useState<IdOption[]>([]);
-  const [visibleEmployeeIds, setVisibleEmployeeIds] = useState<number[]>([]);
-  const [loadingVisibleEmployees, setLoadingVisibleEmployees] = useState(true);
+  // V_25.0 — "Assign Visible Employees" was removed from this form: the
+  // Reporting Head above replaced it. Existing assignments stay in the
+  // database untouched (this form no longer reads or writes them).
 
   const set = <K extends keyof EmployeeFormValues>(key: K, value: EmployeeFormValues[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -955,28 +948,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     })();
   }, [mode]);
 
-  // ── Assign Visible Employees checklist options — every other employee in
-  //    the company, needed in every mode; the currently-assigned set is
-  //    loaded below alongside Edit/View's other per-employee data.
-  //    activeOnly=true — a deactivated employee isn't a meaningful pick for
-  //    "who can this employee view/manage". ─────────────────────────────
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await FetchEmployeeDetails(1, 1000, undefined, true);
-        if (res.success) {
-          const opts = (res.rows || [])
-            .filter((e) => !(mode !== 'add' && id && String(e.id) === id))
-            .map((e) => ({ value: Number(e.id), label: `${e.first_name} ${e.last_name || ''}`.trim() + (e.employee_code ? ` (${e.employee_code})` : '') }));
-          setVisibleEmployeeOptions(opts);
-        }
-      } catch {
-        toast.error('Failed to load employee list.');
-      } finally {
-        if (mode === 'add') setLoadingVisibleEmployees(false);
-      }
-    })();
-  }, [mode, id]);
 
   // ── V_25.0 — Department / Designation / Reporting Head ────────────────
   useEffect(() => {
@@ -1092,7 +1063,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       }
 
       // Admin-only below (HR never sees or sends these).
-      if (!actorIsAdmin) { setLoadingModules(false); setLoadingVisibleEmployees(false); return; }
+      if (!actorIsAdmin) { setLoadingModules(false); return; }
 
       // Assign Actions & Modules grid, pre-checked — one call gives both the
       // full assignable list AND which ones are currently assigned, already
@@ -1121,17 +1092,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         setLoadingModules(false);
       }
 
-      // Assign Visible Employees checklist, pre-checked from this
-      // employee's current reporting-line assignments (see
-      // AssignVisibleEmployees / getVisibleEmployees).
-      try {
-        const visRes = await FetchVisibleEmployees(id);
-        if (visRes.success) setVisibleEmployeeIds((visRes.data || []).map((e) => Number(e.id)));
-      } catch {
-        toast.error('Failed to load visible-employees assignment.');
-      } finally {
-        setLoadingVisibleEmployees(false);
-      }
     })();
   }, [mode, id]);
 
@@ -1199,12 +1159,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     });
   };
 
-  // Assign Visible Employees lives outside `form` — it saves through a
-  // separate endpoint (AssignVisibleEmployees), not the main employee
-  // payload, so it isn't part of EmployeeFormValues.
-  const toggleVisibleEmployee = (value: number) => {
-    setVisibleEmployeeIds((prev) => prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]);
-  };
 
   // ── validation ────────────────────────────────────────────────────────
   // Each check names the accordion section (item 2.1) and field it belongs
@@ -1298,7 +1252,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       if (!alive) return;
       const data = d.data as { form?: Partial<EmployeeFormValues>; visible_employee_ids?: number[] };
       setForm((prev) => ({ ...prev, ...(data.form ?? {}) }));
-      if (Array.isArray(data.visible_employee_ids)) setVisibleEmployeeIds(data.visible_employee_ids);
       setExistingUrls(Object.fromEntries(EMPLOYEE_FILE_FIELD_MAP.map(([front, back]) => [front, d.files[back] ?? null])));
     }).catch(() => {
       toast.error('This draft could not be opened. It may have been submitted or deleted.');
@@ -1317,7 +1270,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         .map(([front, back]) => [back, files[front as keyof EmployeeFileValues]] as const)
         .filter((x): x is readonly [string, File] => x[1] instanceof File)
         .map(([back, f]) => [back, f] as [string, File]);
-      const saved = await saveDraft('employee', draftId, title, { form, visible_employee_ids: visibleEmployeeIds }, picked);
+      const saved = await saveDraft('employee', draftId, title, { form }, picked);
       setDraftId(saved.id);
       // Uploaded now — shown as existing files from here on.
       setFiles({});
@@ -1358,17 +1311,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         pending = Boolean(created.pending);
         targetId = created.data?.id != null ? String(created.data.id) : undefined;
         toast.success(pending ? 'Employee submitted for admin approval.' : 'Employee created successfully.');
-      }
-      // Visible-employees assignment saves through its own endpoint (not
-      // part of the Employee payload) — always sent, including an empty
-      // selection, so unchecking everyone on Edit actually clears it
-      // rather than leaving the previous assignment in place. Admin only.
-      if (targetId && !pending && actorIsAdmin) {
-        try {
-          await AssignVisibleEmployees(targetId, visibleEmployeeIds);
-        } catch {
-          toast.error('Employee saved, but failed to update the Visible Employees assignment.');
-        }
       }
       navigate(employeeDetailsBasePath());
     } catch (err: any) {
@@ -1434,7 +1376,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       : (VIEW_STATUS_STYLES[form.status] || VIEW_STATUS_STYLES.active);
     const deptLabels = departmentOptions.filter((d) => form.department_ids.includes(d.value)).map((d) => d.label);
     const desigLabels = designationOptions.filter((d) => form.designation_ids.includes(d.value)).map((d) => d.label);
-    const visibleLabels = visibleEmployeeOptions.filter((e) => visibleEmployeeIds.includes(e.value)).map((e) => e.label);
     const fullName = [form.first_name, form.middle_name, form.last_name].filter(Boolean).join(' ');
 
     return (
@@ -1581,16 +1522,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 <div className="emp-view-label" style={{ marginBottom: 6 }}>Individual module permissions (Super Admin)</div>
                 <div className="emp-module-panel">
                   <ModuleActionGrid t={t} isView grid={moduleGrid} selected={form.module_action_ids} onToggle={() => {}} loading={loadingModules} />
-                </div>
-              </div>
-            )}
-            {actorIsAdmin && (
-              <div>
-                <div className="emp-view-label" style={{ marginBottom: 6 }}>Visible Employees</div>
-                <div className="emp-chip-row">
-                  {visibleLabels.length > 0
-                    ? visibleLabels.map((l) => <span key={l} className="emp-view-chip">{l}</span>)
-                    : <p className="emp-hint-text">None assigned.</p>}
                 </div>
               </div>
             )}
@@ -1895,14 +1826,28 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                       : (!r.designationRequired || !r.hasDesignations ? 'No designation needed' : 'Select a designation above')}
                   </div>
                   <div>
+                    {/* Reporting Head — one Head per department, picked from
+                        that department's Heads only (the server checks it
+                        again on save). */}
                     {r.level && (
-                      <select value={form.department_heads[String(r.deptId)] ?? ''} disabled={isView}
-                        onChange={(e) => setDepartmentHead(r.deptId, e.target.value)} className={fieldClass} aria-label={`Reporting Head for ${r.deptName}`}>
-                        <option value="">No Reporting Head (reports to Admin)</option>
-                        {(headsByDept[r.deptId] ?? []).map((h) => (
-                          <option key={h.id} value={h.id}>{h.name}{h.employee_code ? ` (${h.employee_code})` : ''}</option>
+                      <div role="radiogroup" aria-label={`Reporting Head for ${r.deptName}`} className="flex flex-col gap-1">
+                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Reporting Head</div>
+                        {[{ id: '', label: 'No Reporting Head (reports to Admin)' },
+                          ...(headsByDept[r.deptId] ?? []).map((h) => ({
+                            id: String(h.id),
+                            label: `${h.name}${h.employee_code ? ` (${h.employee_code})` : ''} — ${r.deptName} Head`,
+                          }))].map((o) => (
+                          <label key={o.id || 'none'} className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+                            <input type="radio" name={`reporting-head-${r.deptId}`} value={o.id} disabled={isView}
+                              checked={String(form.department_heads[String(r.deptId)] ?? '') === o.id}
+                              onChange={() => setDepartmentHead(r.deptId, o.id)} />
+                            {o.label}
+                          </label>
                         ))}
-                      </select>
+                        {(headsByDept[r.deptId] ?? []).length === 0 && (
+                          <div style={{ fontSize: 11, color: t.textSecondary }}>No Head in {r.deptName} yet.</div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1926,16 +1871,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
         )}
 
-        {/* Admin only: who this employee can see in the reporting line. */}
-        {actorIsAdmin && (
-          <CheckboxGroup
-            t={t} isView={isView}
-            label="Assign Visible Employees" variant="chip"
-            options={visibleEmployeeOptions} selected={visibleEmployeeIds}
-            onToggle={toggleVisibleEmployee}
-            loading={loadingVisibleEmployees} emptyHint="No other employees available."
-          />
-        )}
 
         {/* The old per-employee module/action matrix — kept (existing
             permissions still apply) but out of the normal flow: Super Admin

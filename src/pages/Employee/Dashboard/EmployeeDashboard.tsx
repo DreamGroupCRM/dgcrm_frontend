@@ -12,6 +12,8 @@ import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { fetchEmployeeDashboardSummary, EmployeeDashboardSummary } from '../../../services/dashboardService';
 import { MdLeaderboard, MdEventAvailable, MdPayment, MdContactPage } from 'react-icons/md';
+import { useAccessProfile } from '../../../hooks/useAccessProfile';
+import type { AccessArea } from '../../../services/accessService';
 import './EmployeeDashboard.css';
 
 const rupeeCompact = (n: number): string => {
@@ -22,18 +24,22 @@ const rupeeCompact = (n: number): string => {
   return `₹${v.toLocaleString('en-IN')}`;
 };
 
-interface CardDef { label: string; value: string; icon: React.ReactNode; color: string; caption: string }
+interface CardDef { label: string; value: string; icon: React.ReactNode; color: string; caption: string; areas?: AccessArea[] }
 
-const quickActions = [
-  { label: 'Add Lead', icon: <MdLeaderboard size={20} />, color: 'var(--brand-ink)' },
+// V_25.0 — tiles and quick actions only for pages the employee's
+// department gives them (areas); Attendance is everyone's.
+const quickActions: { label: string; icon: React.ReactNode; color: string; areas?: AccessArea[] }[] = [
+  { label: 'Add Lead', icon: <MdLeaderboard size={20} />, color: 'var(--brand-ink)', areas: ['leads'] },
   { label: 'Mark Attendance', icon: <MdEventAvailable size={20} />, color: '#059669' },
-  { label: 'View Payments', icon: <MdPayment size={20} />, color: '#dc2626' },
-  { label: 'Customers', icon: <MdContactPage size={20} />, color: '#7c3aed' },
+  { label: 'View Payments', icon: <MdPayment size={20} />, color: '#dc2626', areas: ['payment_dues', 'payment_received'] },
+  { label: 'Customers', icon: <MdContactPage size={20} />, color: '#7c3aed', areas: ['customers'] },
 ];
 
 const EmployeeDashboard: React.FC = () => {
   const dispatch = useAppDispatch();
   const { isDark, t, tintColor } = useAppearanceTokens();
+  const { has } = useAccessProfile();
+  const allowed = (areas?: AccessArea[]) => !areas || areas.some((a) => has(a));
 
   const [data, setData] = useState<EmployeeDashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,8 +61,8 @@ const EmployeeDashboard: React.FC = () => {
     })();
   }, []);
 
-  const cards: CardDef[] = data ? [
-    { label: 'My Leads', value: String(data.my_leads), icon: <MdLeaderboard />, color: tintColor('#22c55e'), caption: 'Assigned to you' },
+  const cards: CardDef[] = data ? ([
+    { label: 'My Leads', value: String(data.my_leads), icon: <MdLeaderboard />, color: tintColor('#22c55e'), caption: 'Assigned to you', areas: ['leads'] },
     {
       label: 'Attendance %',
       value: data.attendance.percent === null ? '—' : `${data.attendance.percent}%`,
@@ -64,9 +70,9 @@ const EmployeeDashboard: React.FC = () => {
       caption: data.attendance.percent === null ? 'No attendance recorded this month' : `${data.attendance.present_days}/${data.attendance.marked_days} days this month`,
     },
     { label: 'Payments Due', value: rupeeCompact(data.payments_due), icon: <MdPayment />, color: tintColor('#ef4444'),
-      caption: `${data.payments_due_customer_count} of your customers` },
-    { label: 'My Customers', value: String(data.my_customers), icon: <MdContactPage />, color: tintColor('#8b5cf6'), caption: 'Assigned to you' },
-  ] : [];
+      caption: `${data.payments_due_customer_count} of your customers`, areas: ['payment_dues'] },
+    { label: 'My Customers', value: String(data.my_customers), icon: <MdContactPage />, color: tintColor('#8b5cf6'), caption: 'Assigned to you', areas: ['customers'] },
+  ] as CardDef[]).filter((c) => allowed(c.areas)) : [];
 
   return (
     <div className="emp-dash-page space-y-6" style={{ fontFamily: t.fontFamily }}>
@@ -114,7 +120,7 @@ const EmployeeDashboard: React.FC = () => {
           Quick Actions
         </h2>
         <div className="emp-dash-quick-actions-grid grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {quickActions.map((action) => (
+          {quickActions.filter((a) => allowed(a.areas)).map((action) => (
             <button
               key={action.label}
               className="emp-dash-quick-action-btn rounded-xl p-4 flex flex-col items-center gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg text-white"
