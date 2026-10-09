@@ -527,19 +527,10 @@ html.dark .cp-chip-pending { background: rgba(217, 119, 6, 0.45) !important; col
 .cp-doc-card-actions .cp-btn { flex: 1; justify-content: center; }
 
 /* ── EMI Scheme & Schedule — compact, no sideways scroll on a phone ───── */
-/* Phone / tablet: EMI Scheme and EMI Schedule side by side, swiped
-   horizontally (each panel snaps into place). Desktop (lg+): the two
-   accordions stacked, Scheme first and Schedule below it, full width. */
-.cp-scheme-layout {
-  display: flex; gap: 12px; align-items: flex-start;
-  overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
-  padding-bottom: 6px;
-}
-.cp-scheme-layout > * { flex: 0 0 88%; min-width: 0; scroll-snap-align: start; }
-@media (min-width: 992px) {
-  .cp-scheme-layout { display: block; overflow: visible; padding-bottom: 0; }
-  .cp-scheme-layout > * { width: 100%; }
-}
+/* EMI Scheme accordion, EMI Schedule accordion below it — stacked
+   vertically on every screen size, full width. */
+.cp-scheme-layout { display: block; }
+.cp-scheme-layout > * { width: 100%; min-width: 0; }
 .cp-scheme-section { margin-bottom: 12px; }
 .cp-scheme-heading { font-size: 12.5px; font-weight: 800; margin-bottom: 6px; }
 .cp-scheme-row {

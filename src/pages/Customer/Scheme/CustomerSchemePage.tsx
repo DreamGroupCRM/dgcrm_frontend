@@ -1,6 +1,5 @@
 // EMI Scheme & Schedule — the two tables the office sees on Customize
-// Scheme — stacked accordions on a desktop, side by side (swiped) on a
-// phone — plus the
+// Scheme — two stacked accordions on every screen size — plus the
 // three money tiles above them. Compact label / amount rows rather than
 // wide tables, so nothing scrolls sideways on a phone, with the Before /
 // After Possession totals in colour bands.
@@ -199,8 +198,8 @@ const CustomerSchemePage: React.FC = () => {
         </button>
       </div>
 
-      {/* Desktop: EMI Scheme accordion, EMI Schedule accordion below it.
-          Phone: the two side by side, swiped horizontally (CustomerPortal.css). */}
+      {/* EMI Scheme accordion, EMI Schedule accordion below it — on desktop
+          and on mobile alike (CustomerPortal.css). */}
       <div className="cp-scheme-layout">
         <AccordionSection
           theme={t} icon={<MdListAlt size={16} />} title="EMI Scheme" gradient="var(--brand-gradient)"
