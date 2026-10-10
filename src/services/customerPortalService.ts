@@ -27,6 +27,9 @@ export interface PortalBookingSummary {
   // all, so the booking switcher has to label it by its shop number.
   unit_type: 'flat' | 'shop';
   shop_no: string | null;
+  // V_25.0 — this booking's own cancellation (never another booking's).
+  is_cancelled?: boolean;
+  cancelled_at?: string | null;
 }
 
 export interface PortalBookingDetail {
@@ -68,6 +71,12 @@ export interface PortalBookingDetail {
   application_form: string | null;
   declaration_form: string | null;
   allotment_letter: string | null;
+  // V_25.0 — cancellation documents of a cancelled booking (null when not uploaded).
+  is_customer_deleted?: boolean;
+  cancel_letter?: string | null;
+  acceptance_letter?: string | null;
+  cancel_documents?: string | null;
+  returned_documents?: string | null;
   flat_amount: number;
   booking_amount: number | null;
   pay_after_booking: number | null;
@@ -174,9 +183,9 @@ export interface PortalCancelledBooking {
   refunds: PortalCancelledRefund[];
 }
 
-/** GET /api/customer-portal/cancelled-receipts — this login's cancelled bookings and their refunds. */
-export const fetchMyCancelledReceipts = async (): Promise<PortalCancelledBooking[]> => {
-  const res = await axiosInstance.get('/customer-portal/cancelled-receipts');
+/** GET /api/customer-portal/cancelled-receipts?booking_id= — that cancelled booking and its refunds. */
+export const fetchMyCancelledReceipts = async (bookingId?: number): Promise<PortalCancelledBooking[]> => {
+  const res = await axiosInstance.get('/customer-portal/cancelled-receipts', { params: bookingId ? { booking_id: bookingId } : undefined });
   return res.data.data ?? [];
 };
 

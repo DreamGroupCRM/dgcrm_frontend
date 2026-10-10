@@ -29,7 +29,8 @@ import { useCustomerPortal } from '../CustomerPortalContext';
 import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
 
 const CustomerPaymentHistoryPage: React.FC = () => {
-  const { selectedId, cancelled } = useCustomerPortal();
+  const { selectedId, selected, cancelled } = useCustomerPortal();
+  const isCancelled = !!selected?.is_cancelled;
   const { t, isDark } = useAppearanceTokens();
   const [rows, setRows] = useState<PortalPaymentRow[]>([]);
   const [totals, setTotals] = useState<BookingTotals | null>(null);
@@ -47,13 +48,18 @@ const CustomerPaymentHistoryPage: React.FC = () => {
       setLoading(true);
       setError(false);
       try {
+        // A cancelled booking has no dues left (the office's due grid only
+        // covers active bookings): its tiles come from the booking amount
+        // and the payments it actually received.
         const [payments, grid] = await Promise.all([
           fetchMyBookingPayments(selectedId),
-          fetchMyBookingDueGrid(selectedId),
+          isCancelled ? Promise.resolve(null) : fetchMyBookingDueGrid(selectedId),
         ]);
         if (stale) return;
         setRows(payments);
-        setTotals(totalsFromDueGrid(grid.rows, grid.extra_pay_total ?? 0));
+        setTotals(grid
+          ? totalsFromDueGrid(grid.rows, grid.extra_pay_total ?? 0)
+          : { totalCost: Number(selected?.flat_amount || 0), paid: payments.reduce((n, r) => n + Number(r.amount || 0), 0), pending: 0 });
       } catch {
         if (!stale) setError(true);
       } finally {
@@ -61,7 +67,8 @@ const CustomerPaymentHistoryPage: React.FC = () => {
       }
     })();
     return () => { stale = true; };
-  }, [selectedId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, isCancelled]);
 
   // Newest first — the payment someone just made is the one they came to
   // check. `date` can be null on older rows, so created_at is the fallback.
@@ -89,6 +96,10 @@ const CustomerPaymentHistoryPage: React.FC = () => {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   });
   const refundCount = cancelled.reduce((n, b) => n + b.refunds.length, 0);
+  // V_25.0 — a cancelled booking owes nothing more: its third tile is what
+  // has been refunded (approved refunds only; pending ones are listed below).
+  const refundedApproved = cancelled.reduce((n, b) => n + b.refunds.filter((r) => r.status === 'approved').reduce((s, r) => s + Number(r.refunded_amount || 0), 0), 0);
+  const refundPending = cancelled.reduce((n, b) => n + b.refunds.filter((r) => r.status !== 'approved').reduce((s, r) => s + Number(r.refunded_amount || 0), 0), 0);
 
   if (loading) return <div className="cp-center"><CircularProgress size={28} /></div>;
   if (error) return <div className="cp-empty cp-empty-error">We could not load your payment history. Please try again.</div>;
@@ -102,7 +113,13 @@ const CustomerPaymentHistoryPage: React.FC = () => {
           <div className="cp-stats">
             <Stat icon={<MdTrendingUp size={19} />} label="Total Flat Amount" value={rupee(totals?.totalCost)} gradient={STAT_GRADIENTS.total} />
             <Stat icon={<MdAccountBalanceWallet size={19} />} label="Total Amount Paid" value={rupee(totals?.paid)} gradient={STAT_GRADIENTS.paid} />
-            <Stat icon={<MdHourglassEmpty size={19} />} label="Total Amount Pending" value={rupee(totals?.pending)} gradient={STAT_GRADIENTS.pending} />
+            {isCancelled ? (
+              <Stat icon={<MdHourglassEmpty size={19} />}
+                label={refundPending > 0 ? `Total Refunded (${rupee(refundPending)} awaiting approval)` : 'Total Refunded'}
+                value={rupee(refundedApproved)} gradient={STAT_GRADIENTS.pending} />
+            ) : (
+              <Stat icon={<MdHourglassEmpty size={19} />} label="Total Amount Pending" value={rupee(totals?.pending)} gradient={STAT_GRADIENTS.pending} />
+            )}
           </div>
 
           <AccordionSection

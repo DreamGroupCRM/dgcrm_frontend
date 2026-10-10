@@ -1287,6 +1287,16 @@ const DueReportPage: React.FC = () => {
                   const open = expandedCustomers.has(g.customer_id);
                   // Dark red on the black theme was 2.3:1 — overdue amounts use a light red there.
                   const amountColor = (c: string) => (c === STATUS_COLORS.upcoming ? t.textPrimary : isDark && c === STATUS_COLORS.overdue ? '#fca5a5' : c);
+                  // V_25.0 — the customer's total split by status, so an
+                  // upcoming EMI is never shown in red as if it were overdue.
+                  const split = (['overdue', 'due_today', 'upcoming'] as const)
+                    .map((k) => ({ k, amount: g.items.filter((r) => r.dueRow?.due_category === k).reduce((n, r) => n + r.amount, 0) }))
+                    .filter((x) => x.amount > 0);
+                  const SPLIT_META: Record<'overdue' | 'due_today' | 'upcoming', { label: string; color: string }> = {
+                    overdue: { label: 'Overdue', color: isDark ? '#fca5a5' : '#b91c1c' },
+                    due_today: { label: 'Due Today', color: isDark ? '#86efac' : '#15803d' },
+                    upcoming: { label: 'Upcoming', color: isDark ? '#fde047' : '#a16207' },
+                  };
                   return (
                     <React.Fragment key={`cust-${g.customer_id}`}>
                       <tr className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -1330,8 +1340,21 @@ const DueReportPage: React.FC = () => {
                           </td>
                         ))}
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 800, color: amountColor(g.statusColor) }}>{rupee(g.total)}</div>
-                          <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{g.items.length} due{g.items.length === 1 ? '' : 's'}</div>
+                          {split.length > 1 ? (
+                            <>
+                              {split.map((x) => (
+                                <div key={x.k} style={{ fontSize: 11.5, fontWeight: 800, color: SPLIT_META[x.k].color }}>
+                                  {SPLIT_META[x.k].label}: {rupee(x.amount)}
+                                </div>
+                              ))}
+                              <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>Total {rupee(g.total)} · {g.items.length} dues</div>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{ fontSize: 12.5, fontWeight: 800, color: amountColor(g.statusColor) }}>{rupee(g.total)}</div>
+                              <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{g.items.length} due{g.items.length === 1 ? '' : 's'}</div>
+                            </>
+                          )}
                           {g.extraBalance > 0 && (
                             <div title="Extra Payment — kept separate from EMIs" style={{ fontSize: 10.5, fontWeight: 700, color: '#0369a1', marginTop: 1 }}>Extra Payment: {rupee(g.extraBalance)}</div>
                           )}
@@ -1374,7 +1397,10 @@ const DueReportPage: React.FC = () => {
                                 <div style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary }}>Payment Summary</div>
                                 <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2, whiteSpace: 'nowrap' }}>
                                   {g.items.length} payment type{g.items.length === 1 ? '' : 's'} • Total Due{' '}
-                                  <b style={{ color: amountColor(g.statusColor) }}>{rupee(g.total)}</b>
+                                  <b style={{ color: split.length > 1 ? t.textPrimary : amountColor(g.statusColor) }}>{rupee(g.total)}</b>
+                                  {split.length > 1 && split.map((x) => (
+                                    <span key={x.k} style={{ marginLeft: 8, fontWeight: 700, color: SPLIT_META[x.k].color }}>{SPLIT_META[x.k].label} {rupee(x.amount)}</span>
+                                  ))}
                                 </div>
                               </div>
                               <div className="due-summary-chips">

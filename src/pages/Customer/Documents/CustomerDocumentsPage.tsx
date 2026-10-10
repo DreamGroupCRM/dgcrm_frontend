@@ -27,6 +27,14 @@ const CustomerDocumentsPage: React.FC = () => {
     { label: 'Application Form', url: detail.application_form },
     { label: 'Declaration Form', url: detail.declaration_form },
     { label: 'Allotment Letter', url: detail.allotment_letter },
+    // V_25.0 — a cancelled booking also lists the cancellation documents
+    // that were actually uploaded (nothing is shown for ones that weren't).
+    ...(selected?.is_cancelled ? [
+      { label: 'Cancellation Letter', url: detail.cancel_letter ?? null },
+      { label: 'Acceptance Letter', url: detail.acceptance_letter ?? null },
+      { label: 'Cancellation Documents', url: detail.cancel_documents ?? null },
+      { label: 'Returned Documents', url: detail.returned_documents ?? null },
+    ].filter((d) => !!d.url) : []),
   ];
 
   const handleDownload = async (label: string, url: string) => {
