@@ -1628,7 +1628,7 @@ const DueReportPage: React.FC = () => {
       )}
       {historyFor && (
         <CustomerPaymentHistoryModal t={t} isDark={isDark} customerId={historyFor.id} customerName={historyFor.name}
-          customerCode={historyFor.code} unit={historyFor.unit} onClose={() => setHistoryFor(null)} />
+          customerCode={historyFor.code} unit={historyFor.unit} vars={cssVars} onClose={() => setHistoryFor(null)} />
       )}
     </div>
   );

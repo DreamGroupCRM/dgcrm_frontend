@@ -8,13 +8,14 @@
 // The server checks the caller may see this customer.
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MdClose, MdDownload, MdHistory, MdVisibility } from 'react-icons/md';
+import { MdDownload, MdVisibility } from 'react-icons/md';
 import { toast } from '@/utils/toast';
 import { AppTheme } from '../../styles/theme';
-import { fetchCustomerPaymentHistory } from '../../services/customerDetailsService';
+import { fetchCustomerFullDetails, fetchCustomerPaymentHistory } from '../../services/customerDetailsService';
 import { fetchPaymentReceipt } from '../../services/paymentService';
 import { exportPaymentReceiptPdf } from '../../pages/Admin/CRM/Customer-Details/paymentPdfExport.lazy';
-import { CustomerPaymentRecord, PaymentReceipt } from '../../types';
+import { CustomerFullDetail, CustomerPaymentRecord, PaymentReceipt } from '../../types';
+import { HistoryPopup, HistorySection } from './HistoryPopup';
 import PaymentHistoryTable, { toPaymentHistoryRow } from './PaymentHistoryTable';
 import { PaymentReceiptViewModal } from './PaymentReceiptViewModal';
 
@@ -26,15 +27,20 @@ const CustomerPaymentHistoryModal: React.FC<{
   customerCode?: string | null;
   unit?: string | null;
   onClose: () => void;
-}> = ({ t, isDark, customerId, customerName, customerCode, unit, onClose }) => {
+  /** The page's appearance CSS variables (the popup is portaled outside the page). */
+  vars?: React.CSSProperties;
+}> = ({ t, isDark, customerId, customerName, customerCode, unit, onClose, vars }) => {
   const [rows, setRows] = useState<CustomerPaymentRecord[] | null>(null);
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
+  const [full, setFull] = useState<CustomerFullDetail | null>(null);
 
   useEffect(() => {
     let stale = false;
     fetchCustomerPaymentHistory(String(customerId))
       .then((res) => { if (!stale) setRows(res.rows); })
       .catch(() => { if (!stale) { setRows([]); toast.error('Failed to load payment history.'); } });
+    // Customer Details block (as on Customer Details); a failure here never blocks the history.
+    fetchCustomerFullDetails(String(customerId)).then((res) => { if (!stale) setFull(res.data); }).catch(() => {});
     return () => { stale = true; };
   }, [customerId]);
 
@@ -51,55 +57,49 @@ const CustomerPaymentHistoryModal: React.FC<{
   const sorted = [...(rows ?? [])].sort((a, b) => String(b.paid_on ?? '').localeCompare(String(a.paid_on ?? '')));
   const total = sorted.reduce((s, p) => s + p.amount, 0);
 
-  return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-      onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Payment History"
-        style={{ width: 'min(1100px, 100%)', maxHeight: '90vh', overflow: 'auto', background: t.surfaceBg, borderRadius: 16, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="flex items-center justify-between gap-2" style={{ padding: '12px 16px', background: 'var(--brand-gradient)', color: '#fff', borderRadius: '16px 16px 0 0' }}>
-          <div className="flex items-center gap-2" style={{ fontWeight: 800, fontSize: 14 }}>
-            <MdHistory size={18} /> Payment History — {customerName}{customerCode ? ` (${customerCode})` : ''}
-            {unit && <span style={{ fontWeight: 600, fontSize: 12, opacity: 0.9 }}>· {unit}</span>}
-          </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><MdClose size={20} /></button>
-        </div>
-        <div style={{ padding: 16 }}>
-          {rows == null ? (
-            <p style={{ color: t.textSecondary, fontSize: 12 }}>Loading...</p>
+  const cost = full?.total_cost ?? null;
+  const rupeeOf = (n: number) => `₹ ${n.toLocaleString('en-IN')}`;
+  return (
+    <>
+      <HistoryPopup t={t} vars={vars} onClose={onClose} loading={rows == null}
+        title={`Payments History - Total Transaction (${sorted.length})`}
+        info={[
+          { label: 'Name', value: `${customerName}${customerCode ? ` (${customerCode})` : ''}` },
+          { label: 'Address', value: full?.address || '—' },
+          { label: 'Building', value: unit || [full?.building_name, full?.wing_name].filter(Boolean).join(' / ') || '—' },
+          { label: 'Email', value: full?.email || '—' },
+          { label: 'Mobile No.', value: full?.mobile_number || '—' },
+          { label: 'Total Flat Cost', value: cost != null ? rupeeOf(cost) : '—', tone: 'green' },
+          { label: 'Total Paid', value: rupeeOf(total), tone: 'green' },
+          { label: 'Pending Amount', value: cost != null ? rupeeOf(Math.max(0, cost - total)) : '—', tone: 'red' },
+        ]}>
+        <HistorySection t={t} title="Payment Details" total={sorted.length ? { label: 'Grand Total:', value: rupeeOf(total) } : undefined}>
+          {sorted.length === 0 ? (
+            <p style={{ color: t.textSecondary, fontSize: 12 }}>No payment history found.</p>
           ) : (
-            <>
-              <PaymentHistoryTable t={t} isDark={isDark} emptyText="No payment history found."
-                rows={sorted.map(toPaymentHistoryRow)}
-                renderActions={(row) => (
-                  <div className="flex items-center gap-1.5">
-                    <button type="button" title="Download Receipt" aria-label="Download Receipt"
-                      onClick={async () => { const d = await loadReceipt(row.id); if (d) await exportPaymentReceiptPdf(d); }}
-                      style={iconBtn('#15803d', isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7')}><MdDownload size={13} /></button>
-                    <button type="button" title="View Receipt" aria-label="View Receipt"
-                      onClick={async () => { const d = await loadReceipt(row.id); if (d) setReceipt(d); }}
-                      style={iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff')}><MdVisibility size={13} /></button>
-                  </div>
-                )} />
-              {sorted.length > 0 && (
-                <div className="flex items-center justify-between rounded-xl px-4 py-3 mt-4" style={{ background: t.insetBg }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--brand-ink)' }}>Grand Total:</span>
-                  <span className="rounded-lg px-3 py-1.5" style={{ border: '1px solid #15803d', fontSize: 13, fontWeight: 800, color: isDark ? '#86efac' : '#15803d' }}>
-                    ₹ {total.toLocaleString('en-IN')}
-                  </span>
+            <PaymentHistoryTable t={t} isDark={isDark}
+              rows={sorted.map(toPaymentHistoryRow)}
+              renderActions={(row) => (
+                <div className="flex items-center gap-1.5">
+                  <button type="button" title="Download Receipt" aria-label="Download Receipt"
+                    onClick={async () => { const d = await loadReceipt(row.id); if (d) await exportPaymentReceiptPdf(d); }}
+                    style={iconBtn('#15803d', isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7')}><MdDownload size={13} /></button>
+                  <button type="button" title="View Receipt" aria-label="View Receipt"
+                    onClick={async () => { const d = await loadReceipt(row.id); if (d) setReceipt(d); }}
+                    style={iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff')}><MdVisibility size={13} /></button>
                 </div>
-              )}
-            </>
+              )} />
           )}
-        </div>
-      </div>
-      {receipt && (
-        // Its own clicks must not reach the backdrop above (which closes this popup).
-        <div onClick={(e) => e.stopPropagation()}>
+        </HistorySection>
+      </HistoryPopup>
+      {receipt && createPortal(
+        // Above the history popup.
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1400 }}>
           <PaymentReceiptViewModal data={receipt} onClose={() => setReceipt(null)} onDownload={() => exportPaymentReceiptPdf(receipt)} />
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>,
-    document.body,
+    </>
   );
 };
 
