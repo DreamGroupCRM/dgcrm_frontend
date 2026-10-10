@@ -25,13 +25,13 @@ import {
   MdPayments, MdRefresh, MdSearch, MdDownload, MdClose, MdKeyboardArrowDown,
   MdFilterAlt, MdVisibility, MdDelete,
   MdCheckCircle, MdMoreVert, MdHourglassEmpty, MdEventBusy,
-  MdHomeWork, MdPendingActions,
-} from 'react-icons/md';
+  MdHomeWork, MdPendingActions, MdHistory } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
+import CustomerPaymentHistoryModal from '../../../../components/common/CustomerPaymentHistoryModal';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import { useInfiniteScroll } from '../../../../hooks/useInfiniteScroll';
@@ -202,6 +202,7 @@ const TotalsBar: React.FC<{ items: { key: string; label: string; value: string; 
 
 const PaymentReceivedPage: React.FC = () => {
   const dispatch = useAppDispatch();
+  const [historyFor, setHistoryFor] = useState<{ id: number | string; name: string; code?: string | null; unit?: string } | null>(null);
   const { isDark, t, cssVars } = useAppearanceTokens();
   const paths = useRoleBasePath();
   // V_25.0 — a Head (set-up department) may request deleting a team payment.
@@ -854,6 +855,8 @@ const PaymentReceivedPage: React.FC = () => {
                       {rowMenu.openId === r.id && rowMenu.pos && (
                         <RowActionMenu t={t} pos={rowMenu.pos} actions={[
                           { key: 'view', label: r.is_approved ? 'View Receipt' : 'View', icon: <MdVisibility size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); handleViewReceipt(r); } },
+                          // V_25.0 — this booking's full payment history (same table as Customer Details).
+                          { key: 'history', label: 'Payment History', icon: <MdHistory size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); setHistoryFor({ id: r.customer_id, name: r.customer_name || 'Customer', code: r.customer_code, unit: [r.building_name, r.wing_name && `${r.wing_name} Wing`, r.flat_no && `Flat ${r.flat_no}`].filter(Boolean).join(' - ') }); } },
                           // No receipt exists until approval, so Download is
                           // only offered on approved rows; Approve only on
                           // unapproved ones (admin).
@@ -980,6 +983,10 @@ const PaymentReceivedPage: React.FC = () => {
             exportPaymentReceiptPdf(receiptPreview);
           }}
         />
+      )}
+      {historyFor && (
+        <CustomerPaymentHistoryModal t={t} isDark={isDark} customerId={historyFor.id} customerName={historyFor.name}
+          customerCode={historyFor.code} unit={historyFor.unit} onClose={() => setHistoryFor(null)} />
       )}
     </div>
   );

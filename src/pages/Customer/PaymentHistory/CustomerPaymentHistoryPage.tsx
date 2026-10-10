@@ -13,7 +13,7 @@ import { CircularProgress } from '@mui/material';
 import { toast } from '@/utils/toast';
 import {
   MdAccountBalanceWallet, MdHourglassEmpty, MdHistory, MdTrendingUp, MdVisibility, MdDownload,
-  MdReceiptLong, MdCheckCircle, MdPayments,
+  MdReceiptLong,
 } from 'react-icons/md';
 import { formatDate } from '../../../utils';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
@@ -25,6 +25,7 @@ import {
 import { PaymentReceiptViewModal } from '../../../components/common/PaymentReceiptViewModal';
 import { exportPaymentReceiptPdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport.lazy';
 import { PaymentReceipt } from '../../../types/index';
+import RefundHistoryTable from '../../../components/common/RefundHistoryTable';
 import { useCustomerPortal } from '../CustomerPortalContext';
 import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
 
@@ -180,56 +181,31 @@ const CustomerPaymentHistoryPage: React.FC = () => {
                 {b.unit || 'Booking'}{b.customer_code ? ` (${b.customer_code})` : ''}
                 {b.cancelled_at && <span style={{ fontWeight: 600, color: t.textSecondary }}> · Cancelled on {formatDate(b.cancelled_at)}</span>}
               </div>
-              <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
-                <table className="master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
-                  <thead>
-                    <tr className="master-table-header-gradient">
-                      {['Actions', 'Status', 'Cancelled Receipt No.', 'Refunded Amount', 'Refund Date', 'Mode'].map((h) => (
-                        <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {b.refunds.length === 0 ? (
-                      <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No refund has been recorded for this booking yet.</td></tr>
-                    ) : b.refunds.map((r) => {
-                      const approved = r.status === 'approved' && !!r.receipt_number;
-                      const td: React.CSSProperties = { padding: '8px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' };
-                      return (
-                        <tr key={r.refund_id} style={{ borderTop: `1px solid ${t.divider}` }}>
-                          {/* View / Download only once an admin approves the refund. */}
-                          <td style={td}>
-                            <span className="inline-flex items-center gap-1.5" title={approved ? undefined : 'Cancelled receipt available after admin approval'} style={{ opacity: approved ? 1 : 0.4 }}>
-                              <button type="button" title="View Cancelled Receipt" aria-label="View Cancelled Receipt" disabled={!approved || busyId === `c${r.refund_id}`}
-                                onClick={() => withReceipt(`c${r.refund_id}`, () => fetchMyCancelledReceipt(r.refund_id), (data) => setReceipt({ data, variant: 'cancelled' }))}
-                                style={{ ...iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff'), cursor: approved ? 'pointer' : 'not-allowed' }}>
-                                <MdVisibility size={14} />
-                              </button>
-                              <button type="button" title="Download Cancelled Receipt" aria-label="Download Cancelled Receipt" disabled={!approved || busyId === `c${r.refund_id}`}
-                                onClick={() => withReceipt(`c${r.refund_id}`, () => fetchMyCancelledReceipt(r.refund_id), (data) => exportPaymentReceiptPdf(data, 'cancelled'))}
-                                style={{ ...iconBtn('#16a34a', isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7'), cursor: approved ? 'pointer' : 'not-allowed' }}>
-                                <MdDownload size={14} />
-                              </button>
-                            </span>
-                          </td>
-                          <td style={td}>
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{ background: approved ? '#15803d' : '#b45309', color: '#fff', fontSize: 10.5 }}>
-                              {approved ? <MdCheckCircle size={12} /> : <MdHourglassEmpty size={12} />}
-                              {approved ? 'Approved' : 'UnApproved'}
-                            </span>
-                          </td>
-                          <td style={{ ...td, fontWeight: 700, color: 'var(--brand-ink)' }}>{r.receipt_number || '—'}</td>
-                          <td style={{ ...td, fontWeight: 700, color: isDark ? '#86efac' : '#15803d' }}>{rupee(r.refunded_amount)}</td>
-                          <td style={td}>{formatDate(r.refund_date)}</td>
-                          <td style={td}>
-                            <span className="inline-flex items-center gap-1"><MdPayments size={12} /> {r.mode_of_payment || '—'}</span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              {/* V_25.0 — the shared Refund History table (same as the office's). */}
+              <RefundHistoryTable t={t} emptyText="No refund has been recorded for this booking yet."
+                rows={b.refunds.map((r) => ({
+                  id: r.refund_id, receipt_number: r.receipt_number, refunded_amount: r.refunded_amount,
+                  refund_date: r.refund_date as string, mode_of_payment: r.mode_of_payment, status: r.status,
+                }))}
+                renderActions={(r) => {
+                  // View / Download only once an admin approves the refund.
+                  const approved = r.status === 'approved' && !!r.receipt_number;
+                  const key = `c${r.id}`;
+                  return (
+                    <span className="inline-flex items-center gap-1.5" title={approved ? undefined : 'Cancelled receipt available after admin approval'} style={{ opacity: approved ? 1 : 0.4 }}>
+                      <button type="button" title="View Cancelled Receipt" aria-label="View Cancelled Receipt" disabled={!approved || busyId === key}
+                        onClick={() => withReceipt(key, () => fetchMyCancelledReceipt(String(r.id)), (data) => setReceipt({ data, variant: 'cancelled' }))}
+                        style={{ ...iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff'), cursor: approved ? 'pointer' : 'not-allowed' }}>
+                        <MdVisibility size={14} />
+                      </button>
+                      <button type="button" title="Download Cancelled Receipt" aria-label="Download Cancelled Receipt" disabled={!approved || busyId === key}
+                        onClick={() => withReceipt(key, () => fetchMyCancelledReceipt(String(r.id)), (data) => exportPaymentReceiptPdf(data, 'cancelled'))}
+                        style={{ ...iconBtn('#16a34a', isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7'), cursor: approved ? 'pointer' : 'not-allowed' }}>
+                        <MdDownload size={14} />
+                      </button>
+                    </span>
+                  );
+                }} />
             </div>
           ))}
           <div style={{ fontSize: 11.5, color: t.textSecondary }}>Cancelled receipts are generated only after the refund is approved.</div>

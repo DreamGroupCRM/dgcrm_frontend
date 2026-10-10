@@ -32,7 +32,7 @@ import {
   collectPayment, fetchPaymentReceipt, deletePayment, paymentForLabel,
 } from '../../../../services/paymentService';
 import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceiptPdf } from './paymentPdfExport.lazy';
-import PaymentHistoryTable from '../../../../components/common/PaymentHistoryTable';
+import PaymentHistoryTable, { toPaymentHistoryRow } from '../../../../components/common/PaymentHistoryTable';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
@@ -1514,11 +1514,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     // Same columns as Payment Received: Actions, Status,
                     // Receipt No., Payment Type, ... (shared table).
                     <PaymentHistoryTable t={t} isDark={isDark}
-                      rows={infoModal.payments!.map((p) => ({
-                        id: p.id, receipt_number: p.receipt_number, payment_type: p.payment_type, payment_tag: p.payment_tag,
-                        is_after_possession_emi: p.is_after_possession_emi, mode: p.mode, amount: p.amount, inst_date: p.inst_date,
-                        payment_date: p.paid_on, created_at: p.created_at, company: p.company, received_by: p.received_by, is_approved: p.is_approved,
-                      }))}
+                      rows={infoModal.payments!.map(toPaymentHistoryRow)}
                       renderActions={(row) => (
                                 <div className="flex items-center gap-1.5">
                                   <button type="button" title="Download Receipt" onClick={() => handleDownloadReceiptForTransaction(String(row.id))}

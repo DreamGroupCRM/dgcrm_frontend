@@ -12,10 +12,8 @@ import { MdClose, MdEventBusy, MdUploadFile } from 'react-icons/md';
 
 import { AppTheme } from '../../../../styles/theme';
 import { cancelCustomerBooking, fetchCustomerPaymentHistory } from '../../../../services/customerDetailsService';
-import { paymentForLabel } from '../../../../services/paymentService';
+import PaymentHistoryTable, { toPaymentHistoryRow } from '../../../../components/common/PaymentHistoryTable';
 import { Customer, CustomerPaymentRecord } from '../../../../types';
-import { formatDate } from '../../../../utils';
-import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const ACCEPT = 'image/*,.pdf';
@@ -157,42 +155,13 @@ const CancelBookingModal: React.FC<{
 
           <div>
             <label style={labelStyle}>Payment History</label>
-            <div className="master-table-scroll rounded-xl" style={{ border: `1px solid ${t.surfaceBorder}` }}>
-              <table className="master-table" style={{ width: '100%', minWidth: 760 }}>
-                <thead>
-                  <tr className="master-table-header-gradient">
-                    {/* Same columns as Customer Details' Payment History. */}
-                    {['Rec Number', 'Payment Date', 'Receipt Date', 'Mode Of Payment', 'Payment For', 'Amount', 'Company', 'Status'].map((h) => (
-                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {loadingPayments ? (
-                    <tr><td colSpan={8} style={{ padding: 16, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>Loading...</td></tr>
-                  ) : payments.length === 0 ? (
-                    <tr><td colSpan={8} style={{ padding: 16, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No payments recorded.</td></tr>
-                  ) : payments.map((p) => (
-                    <tr key={p.id}>
-                      <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.receipt_number || '—'}</td>
-                      <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? '—' : (p.inst_date ? formatDate(p.inst_date) : '—')}</td>
-                      <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                        <div className="flex items-center gap-1.5">{formatDate(p.paid_on)}<BackdatedDot paymentDate={p.payment_date} createdAt={p.created_at} /></div>
-                      </td>
-                      <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.mode || '—'}</td>
-                      <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(p.payment_type)}</td>
-                      <td style={{ padding: '7px 12px', fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>{rupee(p.amount)}</td>
-                      <td style={{ padding: '7px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>{p.company || '—'}</td>
-                      <td style={{ padding: '7px 12px', whiteSpace: 'nowrap' }}>
-                        <span style={{ display: 'inline-block', padding: '2px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, color: '#fff', background: p.is_approved ? '#16a34a' : '#d97706' }}>
-                          {p.is_approved ? 'Approved' : 'Pending Approval'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {/* V_25.0 — the same Payment History table as Customer Details. */}
+            {loadingPayments ? (
+              <p style={{ padding: 12, color: t.textSecondary, fontSize: 12 }}>Loading...</p>
+            ) : (
+              <PaymentHistoryTable t={t} rows={payments.map(toPaymentHistoryRow)} emptyText="No payments recorded."
+                renderActions={() => <span style={{ color: t.textSecondary }}>—</span>} />
+            )}
             {payments.length > 0 && (
               <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 800, color: t.textPrimary, marginTop: 6 }}>Total Paid: {rupee(totalPaid)}</div>
             )}

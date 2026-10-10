@@ -18,12 +18,12 @@ import {
   MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
   MdReceiptLong, MdSchedule, MdVpnKey, MdAccountBalanceWallet, MdNoteAdd,
   MdSearch, MdStars, MdWorkspacePremium, MdForum, MdEvent, MdPerson, MdAccessTime,
-  MdEventAvailable, MdAssignmentInd, MdUpcoming, MdExpandMore, MdChevronRight,
-} from 'react-icons/md';
+  MdEventAvailable, MdAssignmentInd, MdUpcoming, MdExpandMore, MdChevronRight, MdHistory } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
+import CustomerPaymentHistoryModal from '../../../../components/common/CustomerPaymentHistoryModal';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { useInfiniteScroll } from '../../../../hooks/useInfiniteScroll';
 import { useAccessProfile } from '../../../../hooks/useAccessProfile';
@@ -435,6 +435,7 @@ const dueDateText = (r: DisplayRow): string => {
 
 const DueReportPage: React.FC = () => {
   const dispatch = useAppDispatch();
+  const [historyFor, setHistoryFor] = useState<{ id: number | string; name: string; code?: string | null; unit?: string } | null>(null);
   const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -1307,6 +1308,13 @@ const DueReportPage: React.FC = () => {
                             style={{ width: 28, height: 28, background: open ? 'var(--brand-gradient)' : t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: open ? '#fff' : 'var(--brand-ink)', cursor: 'pointer' }}>
                             {open ? <MdExpandMore size={18} /> : <MdChevronRight size={18} />}
                           </button>
+                          {/* V_25.0 — this booking's payment history (same table as Customer Details). */}
+                          <button type="button" onClick={() => setHistoryFor({ id: g.customer_id, name: g.customer_name, code: g.customer_code, unit: [g.building_name, g.wing_name && `${g.wing_name} Wing`, g.flat_no && `Flat ${g.flat_no}`].filter(Boolean).join(' - ') })}
+                            title="Payment History" aria-label={`Payment History of ${g.customer_name}`}
+                            className="flex items-center justify-center rounded-lg mt-1"
+                            style={{ width: 28, height: 28, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' }}>
+                            <MdHistory size={16} />
+                          </button>
                         </td>
                         <td style={{ padding: '10px 12px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                           <div style={{ fontWeight: 600 }}>{g.customer_name}</div>
@@ -1617,6 +1625,10 @@ const DueReportPage: React.FC = () => {
           </div>
         </div>,
         document.body
+      )}
+      {historyFor && (
+        <CustomerPaymentHistoryModal t={t} isDark={isDark} customerId={historyFor.id} customerName={historyFor.name}
+          customerCode={historyFor.code} unit={historyFor.unit} onClose={() => setHistoryFor(null)} />
       )}
     </div>
   );

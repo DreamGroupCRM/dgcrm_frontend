@@ -17,7 +17,7 @@ import { toast } from '@/utils/toast';
 import {
   MdEventBusy, MdClose, MdRefresh, MdMoreVert, MdVisibility, MdDownload,
   MdCalendarMonth, MdCurrencyRupee, MdAssignmentReturn, MdAccountBalanceWallet, MdPendingActions,
-  MdCheckCircle, MdCancel, MdHourglassEmpty, MdPhone, MdEmail, MdExpandMore, MdPayments, MdHistory, MdReceiptLong, MdUndo,
+  MdCheckCircle, MdCancel, MdPhone, MdEmail, MdExpandMore, MdPayments, MdHistory, MdReceiptLong, MdUndo,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
@@ -25,6 +25,8 @@ import { usePermission } from '../../../../hooks/usePermission';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
+import PaymentHistoryTable, { toPaymentHistoryRow } from '../../../../components/common/PaymentHistoryTable';
+import RefundHistoryTable from '../../../../components/common/RefundHistoryTable';
 import StatCard from '../../../../components/masters/StatCard';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
 import { RowActionMenu, useRowActionMenu } from '../../../../components/common/RowActionMenu';
@@ -41,7 +43,6 @@ import { FetchEmployeeDetails } from '../../../../services/employeeDetailsServic
 import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport.lazy';
 import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
 import { CustomerPaymentRecord, PaymentReceipt } from '../../../../types';
-import { paymentForLabel } from '../../../../services/paymentService';
 import { SearchableSelect } from '../../../../components/common/SearchableSelect';
 import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
 import './CancelledBooking.css';
@@ -59,11 +60,6 @@ const unitText = (c: CancelledCustomerRow): string =>
 type Applied = Required<Pick<CancelledCustomerFilters, 'customer_id' | 'employee_id' | 'box'>>;
 const NO_FILTERS: Applied = { customer_id: '', employee_id: '', box: '' };
 
-// "Sep 2026" for an installment date.
-const monthYear = (d: string): string => {
-  const dt = new Date(String(d).slice(0, 10) + 'T00:00:00');
-  return Number.isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-};
 
 // Refunds oldest first, each with the balance still owed after it.
 const refundHistoryRows = (s: RefundSummary) => {
@@ -429,7 +425,6 @@ const CancelledBookingPage: React.FC = () => {
   const cellText = isDark ? '#ffffff' : '#000000';
   const td: React.CSSProperties = { padding: '10px 12px', fontSize: 11.5, color: cellText, whiteSpace: 'nowrap' };
   const bandLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 };
-  const popupTh: React.CSSProperties = { padding: '9px 12px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' };
   const emptyCell: React.CSSProperties = { padding: 18, textAlign: 'center', color: t.textSecondary, fontSize: 12 };
 
   const docLinks = (r: { cancel_letter?: unknown; acceptance_letter?: unknown; cancel_documents?: unknown; returned_documents?: unknown }) =>
@@ -851,112 +846,51 @@ const CancelledBookingPage: React.FC = () => {
                   <Accordion t={t} open={openSection.payments} onToggle={() => setOpenSection((o) => ({ ...o, payments: !o.payments }))}
                     icon={<MdPayments size={17} />} title="Payment History (Before Cancellation)"
                     meta={payHistory ? `${payHistory.length} payment${payHistory.length === 1 ? '' : 's'} · ${rupee(payHistory.reduce((sum, p) => sum + p.amount, 0))}` : 'Loading...'}>
-                    <div className="master-table-scroll">
-                      <table className="master-table" style={{ width: '100%', minWidth: 900 }}>
-                        <thead>
-                          <tr className="master-table-header-gradient">
-                            {['Receipt No.', 'Entered By Employee', 'Amount', 'Received Date', 'Mode', 'Payment For', 'Installment Month', 'Status'].map((h) => (
-                              <th key={h} style={popupTh}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {!payHistory ? (
-                            <tr><td colSpan={8} style={emptyCell}>Loading...</td></tr>
-                          ) : payHistory.length === 0 ? (
-                            <tr><td colSpan={8} style={emptyCell}>No payments recorded for this customer.</td></tr>
-                          ) : [...payHistory].sort((x, y) => String(x.paid_on).localeCompare(String(y.paid_on))).map((p) => (
-                            <tr key={p.id}>
-                              <td style={{ ...td, fontWeight: 700, color: 'var(--brand-ink)' }}>{p.receipt_number || '—'}</td>
-                              <td style={{ ...td, fontWeight: 700 }}>{p.received_by || '—'}</td>
-                              <td style={{ ...td, fontWeight: 700 }}>{rupee(p.amount)}</td>
-                              <td style={td}>{p.paid_on ? formatDate(p.paid_on) : '—'}</td>
-                              <td style={td}>{p.mode || '—'}</td>
-                              <td style={td}>{p.payment_tag === 'Extra Pay' ? 'Extra Pay' : paymentForLabel(p.payment_type)}</td>
-                              <td style={td}>{p.payment_tag === 'Extra Pay' || !p.inst_date ? '—' : monthYear(p.inst_date)}</td>
-                              <td style={td}>
-                                <span style={{ padding: '1px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 700, color: p.is_approved ? '#15803d' : '#b45309', background: p.is_approved ? 'rgba(22,163,74,0.12)' : 'rgba(217,119,6,0.14)' }}>
-                                  {p.is_approved ? 'Approved' : 'Pending'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    {/* V_25.0 — the same Payment History table as Customer Details. */}
+                    {!payHistory ? (
+                      <p style={{ ...emptyCell, textAlign: 'left' }}>Loading...</p>
+                    ) : (
+                      <PaymentHistoryTable t={t} isDark={isDark} emptyText="No payments recorded for this customer."
+                        rows={[...payHistory].sort((x, y) => String(y.paid_on).localeCompare(String(x.paid_on))).map(toPaymentHistoryRow)}
+                        renderActions={() => <span style={{ color: t.textSecondary }}>—</span>} />
+                    )}
                   </Accordion>
 
                   {/* ── Refund history ─────────────────────────────────────── */}
                   <Accordion t={t} open={openSection.refunds} onToggle={() => setOpenSection((o) => ({ ...o, refunds: !o.refunds }))}
                     icon={<MdHistory size={17} />} title="Refund History (After Cancellation)"
                     meta={`Refunded ${rupee(refundSummary.total_refunded)}${refundSummary.pending_refund ? ` · Pending approval ${rupee(refundSummary.pending_refund)}` : ''} · Balance ${rupee(Math.max(0, refundSummary.total_paid - refundSummary.total_refunded))}`}>
-                    <div className="master-table-scroll">
-                      <table className="master-table" style={{ width: '100%', minWidth: 860 }}>
-                        <thead>
-                          <tr className="master-table-header-gradient">
-                            {['Cancelled Receipt No.', 'Processed By Employee', 'Refunded Amount', 'Refund Date', 'Mode', 'Status', 'Balance After'].map((h) => (
-                              <th key={h} style={popupTh}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {refundSummary.refunds.length === 0 ? (
-                            <tr><td colSpan={7} style={emptyCell}>No refunds recorded yet.</td></tr>
-                          ) : refundHistoryRows(refundSummary).map((r) => (
-                            <tr key={r.id}>
-                              <td style={td}>
-                                {r.status === 'approved' && r.receipt_number ? (
-                                  <span className="inline-flex items-center gap-1.5">
-                                    <span style={{ fontWeight: 700, color: 'var(--brand-ink)' }}>{r.receipt_number}</span>
-                                    {receiptIcons(r.id)}
-                                  </span>
-                                ) : (
-                                  // No cancelled receipt until an admin approves the refund.
-                                  <span className="inline-flex items-center gap-1.5" title="Available after admin approval">
-                                    <span style={{ color: t.textSecondary }}>{r.status === 'pending' ? 'After approval' : '—'}</span>
-                                    <span className="inline-flex items-center gap-1" style={{ opacity: 0.4 }}>
-                                      <button type="button" className="master-icon-btn" disabled aria-label="View Cancelled Receipt (after approval)" style={{ cursor: 'not-allowed' }}><MdVisibility size={14} /></button>
-                                      <button type="button" className="master-icon-btn" disabled aria-label="Download Cancelled Receipt (after approval)" style={{ cursor: 'not-allowed' }}><MdDownload size={14} /></button>
-                                    </span>
-                                  </span>
-                                )}
-                              </td>
-                              <td style={{ ...td, fontWeight: 700 }}>{r.created_by_name || '—'}</td>
-                              <td style={{ ...td, fontWeight: 700, color: r.status === 'rejected' ? t.textSecondary : '#16a34a', textDecoration: r.status === 'rejected' ? 'line-through' : 'none' }}>{rupee(r.refunded_amount)}</td>
-                              <td style={td}>{formatDate(r.refund_date)}</td>
-                              <td style={td}>{r.mode_of_payment || '—'}</td>
-                              <td style={td}>
-                                <div className="flex items-center gap-1.5">
-                                  {/* Same Approved / UnApproved pill as the payment history. */}
-                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold" style={{
-                                    fontSize: 10.5, whiteSpace: 'nowrap', color: '#fff',
-                                    background: r.status === 'approved' ? '#16a34a' : r.status === 'pending' ? '#d97706' : '#b91c1c',
-                                  }} title={r.status === 'pending' ? 'Refund payment pending for admin approval' : undefined}>
-                                    {r.status === 'approved' ? <MdCheckCircle size={12} /> : r.status === 'pending' ? <MdHourglassEmpty size={12} /> : <MdCancel size={12} />}
-                                    {r.status === 'approved' ? 'Approved' : r.status === 'pending' ? 'UnApproved' : 'Rejected'}
-                                  </span>
-                                  {isAdmin && r.status === 'pending' && (
-                                    <>
-                                      <button type="button" title="Approve" aria-label="Approve refund" disabled={busyRefund === r.id}
-                                        onClick={() => decideRefund(r.id, true, `${rupee(r.refunded_amount)} to ${refundFor.customer_name}`)}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#16a34a', display: 'flex', padding: 0 }}>
-                                        <MdCheckCircle size={18} />
-                                      </button>
-                                      <button type="button" title="Reject" aria-label="Reject refund" disabled={busyRefund === r.id}
-                                        onClick={() => decideRefund(r.id, false, `${rupee(r.refunded_amount)} to ${refundFor.customer_name}`)}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', display: 'flex', padding: 0 }}>
-                                        <MdCancel size={18} />
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                              <td style={{ ...td, fontWeight: 700, color: '#ea580c' }}>{rupee(r.balance_after)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    {/* V_25.0 — the shared Refund History table (same layout as Payment History). */}
+                    <RefundHistoryTable t={t} showProcessedBy extraHeader="Balance After"
+                      rows={refundHistoryRows(refundSummary).map((r) => ({
+                        id: r.id, receipt_number: r.receipt_number, refunded_amount: r.refunded_amount, refund_date: r.refund_date,
+                        mode_of_payment: r.mode_of_payment, status: r.status, created_by_name: r.created_by_name,
+                        extra: <span style={{ fontWeight: 700, color: '#ea580c' }}>{rupee(r.balance_after)}</span>,
+                      }))}
+                      renderActions={(r) => (
+                        <div className="flex items-center gap-1.5">
+                          {r.status === 'approved' && r.receipt_number ? receiptIcons(String(r.id)) : (
+                            <span className="inline-flex items-center gap-1" style={{ opacity: 0.4 }} title="Available after admin approval">
+                              <button type="button" className="master-icon-btn" disabled aria-label="View Cancelled Receipt (after approval)" style={{ cursor: 'not-allowed' }}><MdVisibility size={14} /></button>
+                              <button type="button" className="master-icon-btn" disabled aria-label="Download Cancelled Receipt (after approval)" style={{ cursor: 'not-allowed' }}><MdDownload size={14} /></button>
+                            </span>
+                          )}
+                          {isAdmin && r.status === 'pending' && (
+                            <>
+                              <button type="button" title="Approve" aria-label="Approve refund" disabled={busyRefund === String(r.id)}
+                                onClick={() => decideRefund(String(r.id), true, `${rupee(r.refunded_amount)} to ${refundFor.customer_name}`)}
+                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#16a34a', display: 'flex', padding: 0 }}>
+                                <MdCheckCircle size={18} />
+                              </button>
+                              <button type="button" title="Reject" aria-label="Reject refund" disabled={busyRefund === String(r.id)}
+                                onClick={() => decideRefund(String(r.id), false, `${rupee(r.refunded_amount)} to ${refundFor.customer_name}`)}
+                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', display: 'flex', padding: 0 }}>
+                                <MdCancel size={18} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )} />
                   </Accordion>
                 </>
               )}
