@@ -1004,7 +1004,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   useEffect(() => {
     reportingDeptIds.filter((deptId) => !(deptId in headsByDept)).forEach((deptId) => {
       setHeadsByDept((prev) => ({ ...prev, [deptId]: [] }));
-      fetchDepartmentHeads(deptId)
+      fetchDepartmentHeads(deptId, form.department_heads[String(deptId)])
         .then((heads) => setHeadsByDept((prev) => ({ ...prev, [deptId]: heads.filter((h) => !(id && String(h.id) === id)) })))
         .catch(() => toast.error('Failed to load Reporting Heads.'));
     });
@@ -1835,7 +1835,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                         {[{ id: '', label: 'No Reporting Head (reports to Admin)' },
                           ...(headsByDept[r.deptId] ?? []).map((h) => ({
                             id: String(h.id),
-                            label: `${h.name}${h.employee_code ? ` (${h.employee_code})` : ''} — ${r.deptName} Head`,
+                            label: `${h.name}${h.employee_code ? ` (${h.employee_code})` : ''} — ${r.deptName} Head${h.inactive ? ' (inactive)' : ''}`,
                           }))].map((o) => (
                           <label key={o.id || 'none'} className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
                             <input type="radio" name={`reporting-head-${r.deptId}`} value={o.id} disabled={isView}
@@ -1844,7 +1844,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                             {o.label}
                           </label>
                         ))}
-                        {(headsByDept[r.deptId] ?? []).length === 0 && (
+                        {(headsByDept[r.deptId] ?? []).filter((h) => !h.inactive).length === 0 && (
                           <div style={{ fontSize: 11, color: t.textSecondary }}>No Head in {r.deptName} yet.</div>
                         )}
                       </div>

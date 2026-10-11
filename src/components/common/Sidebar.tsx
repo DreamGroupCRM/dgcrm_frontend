@@ -128,6 +128,9 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
   // the 'reports' permission still can't pull data even if this link is
   // somehow reached directly.
   { label: 'Reports', path: ROUTES.ADMIN.EXECUTIVE_DASHBOARD, icon: <MdAssessment /> },
+  // Backup Database — Admin may create/download backups (requireAdmin
+  // server-side); Super Admin reaches it from the Super Admin group below.
+  ...(role === 'admin' ? [{ label: 'Backup Database', path: ROUTES.ADMIN.BACKUP_DATABASE, icon: <MdStorage /> }] : []),
 
   // Super Admin lobby — Backup Database moved in here (was previously
   // visible to every admin with no real page behind it) and User
