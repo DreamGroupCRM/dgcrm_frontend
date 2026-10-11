@@ -11,7 +11,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CircularProgress } from '@mui/material';
 import { toast } from '@/utils/toast';
-import { MdVisibility, MdDownload } from 'react-icons/md';
+import { MdVisibility, MdDownload, MdTrendingUp, MdAccountBalanceWallet, MdHourglassEmpty } from 'react-icons/md';
 import { formatDate } from '../../../utils';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import PaymentHistoryTable from '../../../components/common/PaymentHistoryTable';
@@ -24,7 +24,7 @@ import { PaymentReceipt } from '../../../types/index';
 import { HistoryCard, HistorySection, HistoryInfoItem } from '../../../components/common/HistoryPopup';
 import RefundHistoryTable from '../../../components/common/RefundHistoryTable';
 import { useCustomerPortal, bookingLabel } from '../CustomerPortalContext';
-import { PageHead, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
+import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
 
 const CustomerPaymentHistoryPage: React.FC = () => {
   const { selectedId, selected, cancelled, detail } = useCustomerPortal();
@@ -127,6 +127,21 @@ const CustomerPaymentHistoryPage: React.FC = () => {
   return (
     <>
       <PageHead title="Payment History & Receipt" />
+
+      {/* The three summary boxes on top (as before), then the history card. */}
+      {selectedId != null && (
+        <div className="cp-stats">
+          <Stat icon={<MdTrendingUp size={19} />} label="Total Flat Amount" value={rupee(totals?.totalCost)} gradient={STAT_GRADIENTS.total} />
+          <Stat icon={<MdAccountBalanceWallet size={19} />} label="Total Amount Paid" value={rupee(totals?.paid)} gradient={STAT_GRADIENTS.paid} />
+          {isCancelled ? (
+            <Stat icon={<MdHourglassEmpty size={19} />}
+              label={refundPending > 0 ? `Total Refunded (${rupee(refundPending)} awaiting approval)` : 'Total Refunded'}
+              value={rupee(refundedApproved)} gradient={STAT_GRADIENTS.pending} />
+          ) : (
+            <Stat icon={<MdHourglassEmpty size={19} />} label="Total Amount Pending" value={rupee(totals?.pending)} gradient={STAT_GRADIENTS.pending} />
+          )}
+        </div>
+      )}
 
       {selectedId != null && (
         <HistoryCard t={t} title={`Payments History - Total Transaction (${sorted.length})`} info={info}>
