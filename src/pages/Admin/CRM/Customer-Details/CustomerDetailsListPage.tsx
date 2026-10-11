@@ -1517,14 +1517,17 @@ const CustomerDetailsListPage: React.FC = () => {
                       rows={infoModal.payments!.map(toPaymentHistoryRow)}
                       renderActions={(row) => (
                                 <div className="flex items-center gap-1.5">
-                                  <button type="button" title="Download Receipt" onClick={() => handleDownloadReceiptForTransaction(String(row.id))}
+                                  {/* No receipt until an admin approves the payment. */}
+                                  <button type="button" title={row.is_approved ? 'Download Receipt' : 'Download Receipt (available after admin approval)'}
+                                    disabled={!row.is_approved} onClick={() => handleDownloadReceiptForTransaction(String(row.id))}
                                     className="flex items-center justify-center rounded-lg"
-                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', border: 'none', color: '#16a34a', cursor: 'pointer' }}>
+                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', border: 'none', color: '#16a34a', cursor: row.is_approved ? 'pointer' : 'not-allowed', opacity: row.is_approved ? 1 : 0.4 }}>
                                     <MdDownload size={13} />
                                   </button>
-                                  <button type="button" title="View Receipt" onClick={() => openReceipt(String(row.id))}
+                                  <button type="button" title={row.is_approved ? 'View Receipt' : 'View Receipt (available after admin approval)'}
+                                    disabled={!row.is_approved} onClick={() => openReceipt(String(row.id))}
                                     className="flex items-center justify-center rounded-lg"
-                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-ink)', cursor: 'pointer' }}>
+                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-ink)', cursor: row.is_approved ? 'pointer' : 'not-allowed', opacity: row.is_approved ? 1 : 0.4 }}>
                                     <MdVisibility size={13} />
                                   </button>
                                   {isAdmin && (

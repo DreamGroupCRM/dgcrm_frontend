@@ -79,16 +79,23 @@ const CustomerPaymentHistoryModal: React.FC<{
           ) : (
             <PaymentHistoryTable t={t} isDark={isDark}
               rows={sorted.map(toPaymentHistoryRow)}
-              renderActions={(row) => (
-                <div className="flex items-center gap-1.5">
-                  <button type="button" title="Download Receipt" aria-label="Download Receipt"
-                    onClick={async () => { const d = await loadReceipt(row.id); if (d) await exportPaymentReceiptPdf(d); }}
-                    style={iconBtn('#15803d', isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7')}><MdDownload size={13} /></button>
-                  <button type="button" title="View Receipt" aria-label="View Receipt"
-                    onClick={async () => { const d = await loadReceipt(row.id); if (d) setReceipt(d); }}
-                    style={iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff')}><MdVisibility size={13} /></button>
-                </div>
-              )} />
+              // No receipt until an admin approves the payment, so View /
+              // Download stay disabled for an unapproved one.
+              renderActions={(row) => {
+                const off = !row.is_approved;
+                const tip = (label: string) => (off ? `${label} (available after admin approval)` : label);
+                const st = (base: React.CSSProperties): React.CSSProperties => (off ? { ...base, opacity: 0.4, cursor: 'not-allowed' } : base);
+                return (
+                  <div className="flex items-center gap-1.5">
+                    <button type="button" title={tip('Download Receipt')} aria-label={tip('Download Receipt')} disabled={off}
+                      onClick={async () => { const d = await loadReceipt(row.id); if (d) await exportPaymentReceiptPdf(d); }}
+                      style={st(iconBtn('#15803d', isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7'))}><MdDownload size={13} /></button>
+                    <button type="button" title={tip('View Receipt')} aria-label={tip('View Receipt')} disabled={off}
+                      onClick={async () => { const d = await loadReceipt(row.id); if (d) setReceipt(d); }}
+                      style={st(iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff'))}><MdVisibility size={13} /></button>
+                  </div>
+                );
+              }} />
           )}
         </HistorySection>
       </HistoryPopup>
