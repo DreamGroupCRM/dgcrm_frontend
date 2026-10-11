@@ -11,13 +11,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CircularProgress } from '@mui/material';
 import { toast } from '@/utils/toast';
-import {
-  MdAccountBalanceWallet, MdHourglassEmpty, MdHistory, MdTrendingUp, MdVisibility, MdDownload,
-  MdReceiptLong,
-} from 'react-icons/md';
+import { MdVisibility, MdDownload } from 'react-icons/md';
 import { formatDate } from '../../../utils';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
-import { AccordionSection } from '../../../components/common/Accordion';
 import PaymentHistoryTable from '../../../components/common/PaymentHistoryTable';
 import {
   fetchMyBookingPayments, fetchMyBookingDueGrid, fetchMyPaymentReceipt, fetchMyCancelledReceipt, PortalPaymentRow,
@@ -25,12 +21,13 @@ import {
 import { PaymentReceiptViewModal } from '../../../components/common/PaymentReceiptViewModal';
 import { exportPaymentReceiptPdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport.lazy';
 import { PaymentReceipt } from '../../../types/index';
+import { HistoryCard, HistorySection, HistoryInfoItem } from '../../../components/common/HistoryPopup';
 import RefundHistoryTable from '../../../components/common/RefundHistoryTable';
-import { useCustomerPortal } from '../CustomerPortalContext';
-import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
+import { useCustomerPortal, bookingLabel } from '../CustomerPortalContext';
+import { PageHead, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
 
 const CustomerPaymentHistoryPage: React.FC = () => {
-  const { selectedId, selected, cancelled } = useCustomerPortal();
+  const { selectedId, selected, cancelled, detail } = useCustomerPortal();
   const isCancelled = !!selected?.is_cancelled;
   const { t, isDark } = useAppearanceTokens();
   const [rows, setRows] = useState<PortalPaymentRow[]>([]);
@@ -39,8 +36,6 @@ const CustomerPaymentHistoryPage: React.FC = () => {
   const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<{ data: PaymentReceipt; variant: 'payment' | 'cancelled' } | null>(null);
-  const [openPayments, setOpenPayments] = useState(true);
-  const [openCancelled, setOpenCancelled] = useState(true);
 
   useEffect(() => {
     if (selectedId == null) { setLoading(false); return; }
@@ -96,7 +91,6 @@ const CustomerPaymentHistoryPage: React.FC = () => {
     width: 28, height: 28, border: 'none', borderRadius: 8, cursor: 'pointer', color, background: bg,
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   });
-  const refundCount = cancelled.reduce((n, b) => n + b.refunds.length, 0);
   // V_25.0 — a cancelled booking owes nothing more: its third tile is what
   // has been refunded (approved refunds only; pending ones are listed below).
   const refundedApproved = cancelled.reduce((n, b) => n + b.refunds.filter((r) => r.status === 'approved').reduce((s, r) => s + Number(r.refunded_amount || 0), 0), 0);
@@ -105,28 +99,38 @@ const CustomerPaymentHistoryPage: React.FC = () => {
   if (loading) return <div className="cp-center"><CircularProgress size={28} /></div>;
   if (error) return <div className="cp-empty cp-empty-error">We could not load your payment history. Please try again.</div>;
 
+  // V_25.0 — the same plain layout as Customer Details / Cancelled Booking:
+  // purple header, Customer Details text, Payment Details (+ Refund
+  // Details for a cancelled booking), each with its total underneath.
+  const name = detail ? [detail.name, detail.middle_name, detail.last_name].filter(Boolean).join(' ') : '';
+  const unitText = selected ? bookingLabel(selected) : '—';
+  const paidTotal = sorted.reduce((n, r) => n + Number(r.amount || 0), 0);
+  const booking = cancelled[0];
+  const info: HistoryInfoItem[] = [
+    { label: 'Name', value: name || '—' },
+    { label: 'Customer ID', value: selected?.customer_code ?? '—' },
+    { label: 'Flat Details', value: unitText },
+    { label: 'Mobile No.', value: detail?.mobile_number ? `${detail.mobile_country_code || ''} ${detail.mobile_number}`.trim() : '—' },
+    { label: 'Email', value: detail?.email || '—' },
+    ...(isCancelled ? [
+      { label: 'Cancellation Date', value: selected?.cancelled_at ? formatDate(selected.cancelled_at) : '—' },
+      { label: 'Total Paid', value: rupee(totals?.paid), tone: 'green' as const },
+      { label: 'Total Refunded', value: rupee(refundedApproved), tone: 'green' as const },
+      { label: 'Refund Balance', value: rupee(Math.max(0, (totals?.paid ?? 0) - refundedApproved)), tone: 'red' as const },
+    ] : [
+      { label: 'Total Flat Cost', value: rupee(totals?.totalCost), tone: 'green' as const },
+      { label: 'Total Paid', value: rupee(totals?.paid), tone: 'green' as const },
+      { label: 'Pending Amount', value: rupee(totals?.pending), tone: 'red' as const },
+    ]),
+  ];
+
   return (
     <>
       <PageHead title="Payment History & Receipt" />
 
       {selectedId != null && (
-        <>
-          <div className="cp-stats">
-            <Stat icon={<MdTrendingUp size={19} />} label="Total Flat Amount" value={rupee(totals?.totalCost)} gradient={STAT_GRADIENTS.total} />
-            <Stat icon={<MdAccountBalanceWallet size={19} />} label="Total Amount Paid" value={rupee(totals?.paid)} gradient={STAT_GRADIENTS.paid} />
-            {isCancelled ? (
-              <Stat icon={<MdHourglassEmpty size={19} />}
-                label={refundPending > 0 ? `Total Refunded (${rupee(refundPending)} awaiting approval)` : 'Total Refunded'}
-                value={rupee(refundedApproved)} gradient={STAT_GRADIENTS.pending} />
-            ) : (
-              <Stat icon={<MdHourglassEmpty size={19} />} label="Total Amount Pending" value={rupee(totals?.pending)} gradient={STAT_GRADIENTS.pending} />
-            )}
-          </div>
-
-          <AccordionSection
-            theme={t} icon={<MdHistory size={16} />} title={`Payment History (${sorted.length})`} gradient="var(--brand-gradient)"
-            open={openPayments} onToggle={() => setOpenPayments((v) => !v)}
-          >
+        <HistoryCard t={t} title={`Payments History - Total Transaction (${sorted.length})`} info={info}>
+          <HistorySection t={t} title="Payment Details" total={sorted.length ? { label: 'Grand Total:', value: rupee(paidTotal) } : undefined}>
             <PaymentHistoryTable
               t={t} isDark={isDark} emptyText="No payments have been recorded yet."
               rows={sorted.map((r) => ({
@@ -136,8 +140,7 @@ const CustomerPaymentHistoryPage: React.FC = () => {
                 company: r.company, received_by: r.received_by, is_approved: r.is_approved,
               }))}
               // View / Download stay disabled until an admin approves the
-              // payment (only then is there a receipt). No delete here —
-              // deleting a payment is admin-only.
+              // payment (only then is there a receipt).
               renderActions={(row) => row.is_approved ? (
                 <span className="inline-flex items-center gap-1.5">
                   <button type="button" title="View Receipt" aria-label="View Receipt" disabled={busyId === `p${row.id}`}
@@ -162,28 +165,17 @@ const CustomerPaymentHistoryPage: React.FC = () => {
                 </span>
               )}
             />
-            <div style={{ fontSize: 11.5, color: t.textSecondary, marginTop: 8 }}>
-              Receipts are generated only after payment approval.
-            </div>
-          </AccordionSection>
-        </>
-      )}
+            <div style={{ fontSize: 11.5, color: t.textSecondary, marginTop: 8 }}>Receipts are generated only after payment approval.</div>
+          </HistorySection>
 
-      {/* Refunds of cancelled bookings, with their cancelled receipts. */}
-      {cancelled.length > 0 && (
-        <AccordionSection
-          theme={t} icon={<MdReceiptLong size={16} />} title={`Cancelled Receipts — Refund History (${refundCount})`} gradient="linear-gradient(135deg, #b91c1c, #ef4444)"
-          open={openCancelled} onToggle={() => setOpenCancelled((v) => !v)}
-        >
-          {cancelled.map((b) => (
-            <div key={b.customer_id} style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary, marginBottom: 6 }}>
-                {b.unit || 'Booking'}{b.customer_code ? ` (${b.customer_code})` : ''}
-                {b.cancelled_at && <span style={{ fontWeight: 600, color: t.textSecondary }}> · Cancelled on {formatDate(b.cancelled_at)}</span>}
-              </div>
-              {/* V_25.0 — the shared Refund History table (same as the office's). */}
+          {isCancelled && (
+            <HistorySection t={t} title="Refund Details"
+              total={booking && booking.refunds.length ? { label: 'Total Refunded:', value: rupee(refundedApproved) } : undefined}>
+              {refundPending > 0 && (
+                <p style={{ color: '#b45309', fontSize: 12, marginBottom: 6 }}>Awaiting approval: {rupee(refundPending)}</p>
+              )}
               <RefundHistoryTable t={t} emptyText="No refund has been recorded for this booking yet."
-                rows={b.refunds.map((r) => ({
+                rows={(booking?.refunds ?? []).map((r) => ({
                   id: r.refund_id, receipt_number: r.receipt_number, refunded_amount: r.refunded_amount,
                   refund_date: r.refund_date as string, mode_of_payment: r.mode_of_payment, status: r.status,
                 }))}
@@ -206,10 +198,10 @@ const CustomerPaymentHistoryPage: React.FC = () => {
                     </span>
                   );
                 }} />
-            </div>
-          ))}
-          <div style={{ fontSize: 11.5, color: t.textSecondary }}>Cancelled receipts are generated only after the refund is approved.</div>
-        </AccordionSection>
+              <div style={{ fontSize: 11.5, color: t.textSecondary, marginTop: 8 }}>Cancelled receipts are generated only after the refund is approved.</div>
+            </HistorySection>
+          )}
+        </HistoryCard>
       )}
 
       {receipt && (
