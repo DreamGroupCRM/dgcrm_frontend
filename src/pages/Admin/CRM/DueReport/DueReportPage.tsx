@@ -1406,10 +1406,13 @@ const DueReportPage: React.FC = () => {
                               <div className="due-summary-head">
                                 <div style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary }}>Payment Summary</div>
                                 <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2, whiteSpace: 'nowrap' }}>
-                                  {g.items.length} payment type{g.items.length === 1 ? '' : 's'} • Total Due{' '}
+                                  {g.items.length} payment type{g.items.length === 1 ? '' : 's'}<span style={{ margin: '0 8px', color: t.textSecondary }}>|</span>Total Due{' '}
                                   <b style={{ color: split.length > 1 ? t.textPrimary : amountColor(g.statusColor) }}>{rupee(g.total)}</b>
                                   {split.length > 1 && split.map((x) => (
-                                    <span key={x.k} style={{ marginLeft: 8, fontWeight: 700, color: SPLIT_META[x.k].color }}>{SPLIT_META[x.k].label} {rupee(x.amount)}</span>
+                                    <React.Fragment key={x.k}>
+                                      <span style={{ margin: '0 8px', color: t.textSecondary }}>|</span>
+                                      <span style={{ fontWeight: 700, color: SPLIT_META[x.k].color }}>{SPLIT_META[x.k].label} {rupee(x.amount)}</span>
+                                    </React.Fragment>
                                   ))}
                                 </div>
                               </div>
