@@ -15,6 +15,7 @@ import { AppTheme } from '../../styles/theme';
 import { paymentForLabel } from '../../services/paymentService';
 import { formatDate } from '../../utils';
 import { BackdatedDot } from './BackdatedDot';
+import type { CustomerPaymentRecord } from '../../types';
 
 export interface PaymentHistoryRow {
   id: string | number;
@@ -31,6 +32,14 @@ export interface PaymentHistoryRow {
   received_by?: string | null;
   is_approved: boolean;
 }
+
+// V_25.0 — the one mapping from a customer's payment record to a history
+// row, shared by every page that shows payment history.
+export const toPaymentHistoryRow = (p: CustomerPaymentRecord): PaymentHistoryRow => ({
+  id: p.id, receipt_number: p.receipt_number, payment_type: p.payment_type, payment_tag: p.payment_tag,
+  is_after_possession_emi: p.is_after_possession_emi, mode: p.mode, amount: p.amount, inst_date: p.inst_date,
+  payment_date: p.paid_on, created_at: p.created_at, company: p.company, received_by: p.received_by, is_approved: p.is_approved,
+});
 
 const HEADERS = ['Actions', 'Status', 'Receipt No.', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'];
 

@@ -42,7 +42,10 @@ const CustomerHomePage: React.FC = () => {
             )}
             <div style={{ minWidth: 0 }}>
               <div className="cp-person-name">{fullName || '—'}</div>
-              <div className="cp-person-sub">Customer ID : {detail.customer_code}</div>
+              <div className="cp-person-sub">
+                Customer ID : {detail.customer_code}
+                {selected?.is_cancelled && <span className="cp-cancelled-tag">CANCELLED</span>}
+              </div>
             </div>
           </div>
           <div className="cp-home-fields">

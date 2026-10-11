@@ -26,6 +26,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks';
 import { logoutThunk } from '../../redux/thunks/authThunks';
 import { toggleTheme } from '../../redux/slices/themeSlice';
 import { ROUTES } from '../../constants';
+import { formatDate } from '../../utils';
 import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import Logo from '../../components/ui/Logo';
 import ChangePasswordForm from '../../components/common/ChangePasswordForm';
@@ -96,7 +97,10 @@ const BookingBoxes: React.FC = () => {
             {active && <MdCheckCircle size={14} className="cp-booking-box-tick" />}
             <span className="cp-booking-box-text">
               <span className="cp-booking-box-name">{b.customer_name || 'Customer'}</span>
-              <span className="cp-booking-box-code">ID: {b.customer_code}</span>
+              <span className="cp-booking-box-code">
+                ID: {b.customer_code}
+                {b.is_cancelled && <span className="cp-cancelled-tag">CANCELLED</span>}
+              </span>
             </span>
           </button>
         );
@@ -110,14 +114,14 @@ const CustomerPortalShell: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, cssVars } = useAppearanceTokens();
-  const { loading, error, detailError, reload, bookings, detail, cancelled } = useCustomerPortal();
-  // A login with only cancelled bookings has no booking detail; its name
-  // comes from the cancelled booking instead, and it sees just Payment
-  // History (where its cancelled receipts are).
-  const who = detail ?? (cancelled[0] ? { name: cancelled[0].first_name, middle_name: cancelled[0].middle_name, last_name: cancelled[0].last_name } : null);
+  const { loading, error, detailError, reload, bookings, detail, selected } = useCustomerPortal();
+  const who = detail;
+  // V_25.0 — a cancelled booking shows in the portal with its status; its
+  // EMI Scheme no longer applies, so that page is not offered for it.
+  const isCancelled = !!selected?.is_cancelled;
   const navItems: { to: string; label: string; icon: typeof MdHome }[] = bookings.length > 0
-    ? [...NAV_ITEMS]
-    : cancelled.length > 0 ? NAV_ITEMS.filter((n) => n.to === ROUTES.CUSTOMER.PAYMENT_HISTORY) : [];
+    ? NAV_ITEMS.filter((n) => !(isCancelled && n.to === ROUTES.CUSTOMER.SCHEME))
+    : [];
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -250,20 +254,28 @@ const CustomerPortalShell: React.FC = () => {
               {detailError}{' '}
               <button type="button" className="cp-btn cp-btn-primary" onClick={reload} style={{ marginLeft: 8 }}>Retry</button>
             </div>
-          ) : bookings.length === 0 && cancelled.length > 0 ? (
-            // Only cancelled bookings: Payment History (with its cancelled
-            // receipts) is the one page with anything to show.
-            location.pathname === ROUTES.CUSTOMER.PAYMENT_HISTORY
-              ? <Suspense fallback={<div className="cp-center"><CircularProgress size={28} /></div>}><Outlet /></Suspense>
-              : <Navigate to={ROUTES.CUSTOMER.PAYMENT_HISTORY} replace />
           ) : bookings.length === 0 ? (
             <div className="cp-empty">
               No property is linked to your account yet. Please contact our office.
             </div>
+          ) : isCancelled && location.pathname === ROUTES.CUSTOMER.SCHEME ? (
+            <Navigate to={ROUTES.CUSTOMER.HOME} replace />
           ) : (
-            <Suspense fallback={<div className="cp-center"><CircularProgress size={28} /></div>}>
-              <Outlet />
-            </Suspense>
+            <>
+              {isCancelled && (
+                <div className="cp-cancelled-banner" role="status">
+                  <strong>CANCELLED</strong>
+                  <span>
+                    Your booking {selected?.customer_code} has been cancelled
+                    {selected?.cancelled_at ? ` on ${formatDate(selected.cancelled_at)}` : ''}.
+                    Payments and refunds for it are under Payment History &amp; Receipt.
+                  </span>
+                </div>
+              )}
+              <Suspense fallback={<div className="cp-center"><CircularProgress size={28} /></div>}>
+                <Outlet />
+              </Suspense>
+            </>
           )}
         </main>
       </div>

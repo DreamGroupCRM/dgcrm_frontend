@@ -37,7 +37,7 @@ interface CustomerPortalValue {
   detailError: string | null;
   error: string | null;
   selectBooking: (id: number) => void;
-  /** Cancelled bookings of this login, with their refund receipts. */
+  /** The SELECTED booking's cancellation and refund receipts (empty unless it is cancelled). */
   cancelled: PortalCancelledBooking[];
   /** Re-reads the booking list and the selected booking's detail. */
   reload: () => void;
@@ -82,13 +82,9 @@ export const CustomerPortalProvider: React.FC<{ children: React.ReactNode }> = (
         // `b.id === storedNumericId` is always false and a remembered
         // booking silently loses to the first one on every reload.
         // Normalising here keeps the rest of the portal honestly numeric.
-        const [bookingRows, cancelledRows] = await Promise.all([
-          fetchMyBookings(),
-          fetchMyCancelledReceipts().catch(() => [] as PortalCancelledBooking[]),
-        ]);
+        const bookingRows = await fetchMyBookings();
         const rows = bookingRows.map((b) => ({ ...b, id: Number(b.id) }));
         if (cancelled) return;
-        setCancelledBookings(cancelledRows);
         setBookings(rows);
 
         // A stored id is only honoured when it is still one of THIS login's
@@ -124,6 +120,20 @@ export const CustomerPortalProvider: React.FC<{ children: React.ReactNode }> = (
     })();
     return () => { cancelled = true; };
   }, [selectedId, reloadToken]);
+
+  // ── Refunds of the selected booking (only a cancelled booking has any) ──
+  // V_25.0 — asked per booking, so one booking's refunds never appear under
+  // another booking of the same login.
+  const selectedIsCancelled = !!bookings.find((b) => b.id === selectedId)?.is_cancelled;
+  useEffect(() => {
+    setCancelledBookings([]);
+    if (selectedId == null || !selectedIsCancelled) return;
+    let stale = false;
+    fetchMyCancelledReceipts(selectedId)
+      .then((rows) => { if (!stale) setCancelledBookings(rows.filter((r) => Number(r.customer_id) === selectedId)); })
+      .catch(() => { /* the payment list still shows */ });
+    return () => { stale = true; };
+  }, [selectedId, selectedIsCancelled, reloadToken]);
 
   const selectBooking = useCallback((id: number) => {
     // Clicking the booking that is already selected changes nothing. It

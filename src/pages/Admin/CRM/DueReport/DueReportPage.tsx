@@ -18,12 +18,12 @@ import {
   MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
   MdReceiptLong, MdSchedule, MdVpnKey, MdAccountBalanceWallet, MdNoteAdd,
   MdSearch, MdStars, MdWorkspacePremium, MdForum, MdEvent, MdPerson, MdAccessTime,
-  MdEventAvailable, MdAssignmentInd, MdUpcoming, MdExpandMore, MdChevronRight,
-} from 'react-icons/md';
+  MdEventAvailable, MdAssignmentInd, MdUpcoming, MdExpandMore, MdChevronRight, MdHistory } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
+import CustomerPaymentHistoryModal from '../../../../components/common/CustomerPaymentHistoryModal';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { useInfiniteScroll } from '../../../../hooks/useInfiniteScroll';
 import { useAccessProfile } from '../../../../hooks/useAccessProfile';
@@ -435,6 +435,7 @@ const dueDateText = (r: DisplayRow): string => {
 
 const DueReportPage: React.FC = () => {
   const dispatch = useAppDispatch();
+  const [historyFor, setHistoryFor] = useState<{ id: number | string; name: string; code?: string | null; unit?: string } | null>(null);
   const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -1287,6 +1288,16 @@ const DueReportPage: React.FC = () => {
                   const open = expandedCustomers.has(g.customer_id);
                   // Dark red on the black theme was 2.3:1 — overdue amounts use a light red there.
                   const amountColor = (c: string) => (c === STATUS_COLORS.upcoming ? t.textPrimary : isDark && c === STATUS_COLORS.overdue ? '#fca5a5' : c);
+                  // V_25.0 — the customer's total split by status, so an
+                  // upcoming EMI is never shown in red as if it were overdue.
+                  const split = (['overdue', 'due_today', 'upcoming'] as const)
+                    .map((k) => ({ k, amount: g.items.filter((r) => r.dueRow?.due_category === k).reduce((n, r) => n + r.amount, 0) }))
+                    .filter((x) => x.amount > 0);
+                  const SPLIT_META: Record<'overdue' | 'due_today' | 'upcoming', { label: string; color: string }> = {
+                    overdue: { label: 'Overdue', color: isDark ? '#fca5a5' : '#b91c1c' },
+                    due_today: { label: 'Due Today', color: isDark ? '#86efac' : '#15803d' },
+                    upcoming: { label: 'Upcoming', color: isDark ? '#fde047' : '#a16207' },
+                  };
                   return (
                     <React.Fragment key={`cust-${g.customer_id}`}>
                       <tr className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -1296,6 +1307,13 @@ const DueReportPage: React.FC = () => {
                             className="flex items-center justify-center rounded-lg"
                             style={{ width: 28, height: 28, background: open ? 'var(--brand-gradient)' : t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: open ? '#fff' : 'var(--brand-ink)', cursor: 'pointer' }}>
                             {open ? <MdExpandMore size={18} /> : <MdChevronRight size={18} />}
+                          </button>
+                          {/* V_25.0 — this booking's payment history (same table as Customer Details). */}
+                          <button type="button" onClick={() => setHistoryFor({ id: g.customer_id, name: g.customer_name, code: g.customer_code, unit: [g.building_name, g.wing_name && `${g.wing_name} Wing`, g.flat_no && `Flat ${g.flat_no}`].filter(Boolean).join(' - ') })}
+                            title="Payment History" aria-label={`Payment History of ${g.customer_name}`}
+                            className="flex items-center justify-center rounded-lg mt-1"
+                            style={{ width: 28, height: 28, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' }}>
+                            <MdHistory size={16} />
                           </button>
                         </td>
                         <td style={{ padding: '10px 12px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
@@ -1330,8 +1348,21 @@ const DueReportPage: React.FC = () => {
                           </td>
                         ))}
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 800, color: amountColor(g.statusColor) }}>{rupee(g.total)}</div>
-                          <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{g.items.length} due{g.items.length === 1 ? '' : 's'}</div>
+                          {split.length > 1 ? (
+                            <>
+                              {split.map((x) => (
+                                <div key={x.k} style={{ fontSize: 11.5, fontWeight: 800, color: SPLIT_META[x.k].color }}>
+                                  {SPLIT_META[x.k].label}: {rupee(x.amount)}
+                                </div>
+                              ))}
+                              <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>Total {rupee(g.total)} · {g.items.length} dues</div>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{ fontSize: 12.5, fontWeight: 800, color: amountColor(g.statusColor) }}>{rupee(g.total)}</div>
+                              <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{g.items.length} due{g.items.length === 1 ? '' : 's'}</div>
+                            </>
+                          )}
                           {g.extraBalance > 0 && (
                             <div title="Extra Payment — kept separate from EMIs" style={{ fontSize: 10.5, fontWeight: 700, color: '#0369a1', marginTop: 1 }}>Extra Payment: {rupee(g.extraBalance)}</div>
                           )}
@@ -1374,7 +1405,10 @@ const DueReportPage: React.FC = () => {
                                 <div style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary }}>Payment Summary</div>
                                 <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2, whiteSpace: 'nowrap' }}>
                                   {g.items.length} payment type{g.items.length === 1 ? '' : 's'} • Total Due{' '}
-                                  <b style={{ color: amountColor(g.statusColor) }}>{rupee(g.total)}</b>
+                                  <b style={{ color: split.length > 1 ? t.textPrimary : amountColor(g.statusColor) }}>{rupee(g.total)}</b>
+                                  {split.length > 1 && split.map((x) => (
+                                    <span key={x.k} style={{ marginLeft: 8, fontWeight: 700, color: SPLIT_META[x.k].color }}>{SPLIT_META[x.k].label} {rupee(x.amount)}</span>
+                                  ))}
                                 </div>
                               </div>
                               <div className="due-summary-chips">
@@ -1591,6 +1625,10 @@ const DueReportPage: React.FC = () => {
           </div>
         </div>,
         document.body
+      )}
+      {historyFor && (
+        <CustomerPaymentHistoryModal t={t} isDark={isDark} customerId={historyFor.id} customerName={historyFor.name}
+          customerCode={historyFor.code} unit={historyFor.unit} vars={cssVars} onClose={() => setHistoryFor(null)} />
       )}
     </div>
   );

@@ -757,3 +757,17 @@ html.dark .cp-chip-due { background: rgba(220, 38, 38, 0.4) !important; color: #
 /* V_25.0 — red text on the dark header was 3.8:1; a lighter red reads clearly. */
 html.dark .cp-header-btn-danger { color: #fca5a5; }
 html.dark .cp-empty-error, html.dark .cp-doc-card-pdf { color: #fca5a5; }
+
+/* V_25.0 — a cancelled booking: red CANCELLED tag on its header box and a
+   banner above every page while it is selected. */
+.cp-cancelled-tag {
+  display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.3px; color: #fff; background: #b91c1c;
+}
+.cp-cancelled-banner {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px;
+  padding: 10px 14px; border-radius: 12px; font-size: 12.5px; font-weight: 600;
+  color: #991b1b; background: #fef2f2; border: 1px solid #fecaca;
+}
+.cp-cancelled-banner strong { color: #fff; background: #b91c1c; padding: 2px 8px; border-radius: 999px; font-size: 11px; letter-spacing: 0.4px; }
+html.dark .cp-cancelled-banner { color: #fff; background: rgba(185, 28, 28, 0.35); border-color: rgba(248, 113, 113, 0.5); }

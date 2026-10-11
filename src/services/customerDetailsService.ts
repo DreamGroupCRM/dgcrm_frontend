@@ -796,17 +796,27 @@ export const fetchPendingRefunds = async (): Promise<PendingRefundRow[]> => {
 export interface GivenRefundRow {
   id: string; customer_id: string; refunded_amount: number; refund_date: string; receipt_number: string | null;
   mode_of_payment: string | null; created_by_name: string | null; approved_by_name: string | null; approved_at: string | null;
+  status?: 'approved' | 'pending' | 'rejected';
   customer_name: string; customer_code: string | null; mobile_number: string | null;
   building_name: string | null; wing_name: string | null; flat_no: string | null; shop_no: string | null;
 }
 /** GET /api/customers/refunds/given — admin only. */
-export const fetchGivenRefunds = async (filters: { date_from?: string; date_to?: string; search?: string }): Promise<{ rows: GivenRefundRow[]; total_refunded: number }> => {
+export interface GivenRefundsResult {
+  rows: GivenRefundRow[]; total_refunded: number; pending_amount: number;
+  approved_count: number; pending_count: number; rejected_count: number;
+}
+export const fetchGivenRefunds = async (filters: { date_from?: string; date_to?: string; search?: string; status?: 'approved' | 'pending' | 'rejected' | 'all' }): Promise<GivenRefundsResult> => {
   const params: Record<string, string> = {};
+  if (filters.status) params.status = filters.status;
   if (filters.date_from) params.date_from = filters.date_from;
   if (filters.date_to) params.date_to = filters.date_to;
   if (filters.search?.trim()) params.search = filters.search.trim();
   const res = await axiosInstance.get('/customers/refunds/given', { params });
-  return { rows: res.data.data ?? [], total_refunded: Number(res.data.total_refunded ?? 0) };
+  const d = res.data;
+  return {
+    rows: d.data ?? [], total_refunded: Number(d.total_refunded ?? 0), pending_amount: Number(d.pending_amount ?? 0),
+    approved_count: Number(d.approved_count ?? 0), pending_count: Number(d.pending_count ?? 0), rejected_count: Number(d.rejected_count ?? 0),
+  };
 };
 /** PUT /api/customers/refunds/:id/approve — admin only; assigns the cancelled receipt number. */
 export const approveRefund = async (refundId: string): Promise<RefundSummary> => {
