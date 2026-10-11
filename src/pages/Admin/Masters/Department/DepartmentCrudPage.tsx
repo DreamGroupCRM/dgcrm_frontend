@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from '@/utils/toast';
 import {
-  MdApartment, MdArrowBack, MdSave, MdAdd, MdDelete, MdEdit, MdCheck, MdClose,
+  MdApartment, MdArrowBack, MdSave, MdAdd, MdEdit, MdCheck, MdClose,
 } from 'react-icons/md';
 
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
@@ -135,36 +135,22 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
     toast.success('Designation added');
   };
 
-  const toggleDesignation = (designationId: string | undefined, v: boolean) => {
-    setDesignations((prev) => prev.map((d) => (d.id === designationId ? { ...d, is_active: v } : d)));
-  };
-
-  // Deleting a not-yet-saved (local) designation row is still immediate and
-  // local. An already-saved designation (a real id, not a `local_...` one)
-  // may have employees assigned to it, so we look that up first and show a
-  // warn-but-allow popup — the admin can still confirm and remove it; it
-  // only actually deactivates in the backend once the department is Saved.
-  const removeDesignation = async (designationId: string | undefined) => {
-    if (!designationId) return;
-    const isLocal = designationId.startsWith('local_');
-    if (!isLocal) {
+  // V_25.0 — a saved designation that is still assigned to an employee
+  // cannot be disabled (the server refuses it too).
+  const toggleDesignation = async (designationId: string | undefined, v: boolean) => {
+    if (!v && designationId && !designationId.startsWith('local_')) {
       let assigned: { name: string; employee_code: string | null }[] = [];
-      try {
-        assigned = await getDesignationAssignedEmployees(designationId);
-      } catch {
-        // lookup failure shouldn't block removal — fall through with an empty list
-      }
+      try { assigned = await getDesignationAssignedEmployees(designationId); } catch { /* server still checks on Save */ }
       if (assigned.length > 0) {
-        const result = await showAlert.confirmWithList(
-          `This designation has ${assigned.length} active employee${assigned.length === 1 ? '' : 's'} assigned to it. Removing it will not unassign them automatically.`,
-          'Designation Has Assigned Employees',
-          assigned.map((e) => (e.employee_code ? `${e.name} (${e.employee_code})` : e.name))
+        const names = assigned.slice(0, 5).map((e) => (e.employee_code ? `${e.name} (${e.employee_code})` : e.name)).join(', ');
+        showAlert.error(
+          `This designation is assigned to ${assigned.length} employee${assigned.length === 1 ? '' : 's'} (${names}${assigned.length > 5 ? ', …' : ''}). Change their designation first.`,
+          'Designation cannot be disabled',
         );
-        if (!result.isConfirmed) return;
+        return;
       }
     }
-    setDesignations((prev) => prev.filter((d) => d.id !== designationId));
-    if (designationId === editingDesignationId) setEditingDesignationId(null);
+    setDesignations((prev) => prev.map((d) => (d.id === designationId ? { ...d, is_active: v } : d)));
   };
 
   // Rename an existing designation — same "local until Save" model as
@@ -468,7 +454,7 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                               </>
                             ) : (
                               <>
-                                {/* Sequence: Edit, Delete, then Enable/Disable toggle last. */}
+                                {/* Sequence: Edit, then Enable/Disable toggle (V_25.0: no Delete). */}
                                 {!isView && (
                                   <button
                                     type="button"
@@ -483,22 +469,6 @@ const DepartmentCrudPage: React.FC<Props> = ({ mode }) => {
                                     }}
                                   >
                                     <MdEdit size={16} />
-                                  </button>
-                                )}
-                                {!isView && (
-                                  <button
-                                    type="button"
-                                    onClick={() => removeDesignation(d.id)}
-                                    title="Delete designation"
-                                    style={{
-                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                      width: 32, height: 32, borderRadius: 8,
-                                      background: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2',
-                                      border: `1px solid ${isDark ? 'rgba(239,68,68,0.3)' : '#fecaca'}`,
-                                      color: '#dc2626', cursor: 'pointer',
-                                    }}
-                                  >
-                                    <MdDelete size={17} />
                                   </button>
                                 )}
                                 <StatusToggle

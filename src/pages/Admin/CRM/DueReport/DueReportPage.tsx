@@ -1302,6 +1302,7 @@ const DueReportPage: React.FC = () => {
                     <React.Fragment key={`cust-${g.customer_id}`}>
                       <tr className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
                         <td style={{ padding: '10px 12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <button type="button" onClick={() => toggleExpanded(g.customer_id)}
                             title={open ? 'Hide details' : 'View details'} aria-label={open ? 'Hide details' : 'View details'} aria-expanded={open}
                             className="flex items-center justify-center rounded-lg"
@@ -1311,10 +1312,11 @@ const DueReportPage: React.FC = () => {
                           {/* V_25.0 — this booking's payment history (same table as Customer Details). */}
                           <button type="button" onClick={() => setHistoryFor({ id: g.customer_id, name: g.customer_name, code: g.customer_code, unit: [g.building_name, g.wing_name && `${g.wing_name} Wing`, g.flat_no && `Flat ${g.flat_no}`].filter(Boolean).join(' - ') })}
                             title="Payment History" aria-label={`Payment History of ${g.customer_name}`}
-                            className="flex items-center justify-center rounded-lg mt-1"
+                            className="flex items-center justify-center rounded-lg"
                             style={{ width: 28, height: 28, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' }}>
                             <MdHistory size={16} />
                           </button>
+                          </div>
                         </td>
                         <td style={{ padding: '10px 12px', fontSize: 12.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                           <div style={{ fontWeight: 600 }}>{g.customer_name}</div>
@@ -1404,10 +1406,13 @@ const DueReportPage: React.FC = () => {
                               <div className="due-summary-head">
                                 <div style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary }}>Payment Summary</div>
                                 <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2, whiteSpace: 'nowrap' }}>
-                                  {g.items.length} payment type{g.items.length === 1 ? '' : 's'} • Total Due{' '}
+                                  {g.items.length} payment type{g.items.length === 1 ? '' : 's'}<span style={{ margin: '0 8px', color: t.textSecondary }}>|</span>Total Due{' '}
                                   <b style={{ color: split.length > 1 ? t.textPrimary : amountColor(g.statusColor) }}>{rupee(g.total)}</b>
                                   {split.length > 1 && split.map((x) => (
-                                    <span key={x.k} style={{ marginLeft: 8, fontWeight: 700, color: SPLIT_META[x.k].color }}>{SPLIT_META[x.k].label} {rupee(x.amount)}</span>
+                                    <React.Fragment key={x.k}>
+                                      <span style={{ margin: '0 8px', color: t.textSecondary }}>|</span>
+                                      <span style={{ fontWeight: 700, color: SPLIT_META[x.k].color }}>{SPLIT_META[x.k].label} {rupee(x.amount)}</span>
+                                    </React.Fragment>
                                   ))}
                                 </div>
                               </div>

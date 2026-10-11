@@ -47,7 +47,6 @@ import { CustomerPaymentRecord, PaymentReceipt } from '../../../../types';
 import { SearchableSelect } from '../../../../components/common/SearchableSelect';
 import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
 import './CancelledBooking.css';
-import CancelBookingPicker from './CancelBookingPicker';
 
 const rupee = (n: number): string => `₹ ${(n || 0).toLocaleString('en-IN')}`;
 const errMessage = (e: unknown, fallback: string) =>
@@ -421,14 +420,6 @@ const CancelledBookingPage: React.FC = () => {
           </div>
           <h1 style={{ fontSize: 16, fontWeight: 800, color: t.textPrimary, margin: 0 }}>Cancelled Booking</h1>
         </div>
-        {/* All refunds given, date-wise (admin). */}
-        {isAdmin && (
-          <button type="button" onClick={() => navigate(`${paths.cancelledBooking}/refund-details`)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold"
-            style={{ background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            <MdAssignmentReturn size={16} /> Refund Details
-          </button>
-        )}
       </div>
 
       {/* ── Summary boxes — admin only ─────────────────────────────────── */}
@@ -662,7 +653,14 @@ const CancelledBookingPage: React.FC = () => {
             <SearchableSelect t={t} placeholder="Search employee name" options={employees.map((e) => e.label)} value={empFilterText}
               onChange={handleEmployeeFilterChange} clearLabel="Clear employee filter" />
           </div>
-          <CancelBookingPicker t={t} isAdmin={isAdmin} onDone={refreshAll} />
+          {/* V_25.0 — "Cancel a Booking" removed from this page; Refund Details sits here instead (admin). */}
+          {isAdmin && (
+            <button type="button" onClick={() => navigate(`${paths.cancelledBooking}/refund-details`)}
+              className="flex items-center gap-1.5 px-4 rounded-xl text-sm font-bold"
+              style={{ height: 38, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <MdAssignmentReturn size={16} /> Refund Details
+            </button>
+          )}
           <button type="button" onClick={refreshAll} title="Refresh"
             className="flex items-center justify-center rounded-xl"
             style={{ width: 40, height: 38, background: 'var(--brand-gradient)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
