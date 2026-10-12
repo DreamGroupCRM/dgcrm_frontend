@@ -207,6 +207,8 @@ export interface DueListDetailRow {
   per_month_amount: number | null;
   // Unused part of the customer's Extra Payment(s) (same on every row of that customer).
   extra_payment_balance?: number;
+  // Total the customer paid today (Received Date = today, approved or not).
+  received_today?: number;
 }
 /** GET /api/payments/due-list-detailed */
 export const fetchDueListDetailed = async (): Promise<{ success: boolean; rows: DueListDetailRow[]; total: number }> => {

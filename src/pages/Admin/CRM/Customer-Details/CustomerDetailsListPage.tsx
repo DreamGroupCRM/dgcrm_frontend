@@ -33,6 +33,7 @@ import {
 } from '../../../../services/paymentService';
 import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceiptPdf } from './paymentPdfExport.lazy';
 import PaymentHistoryTable, { toPaymentHistoryRow } from '../../../../components/common/PaymentHistoryTable';
+import { HistoryCard, HistorySection, customerInfoItems, propertyInfoItems } from '../../../../components/common/HistoryPopup';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
@@ -1470,88 +1471,59 @@ const CustomerDetailsListPage: React.FC = () => {
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.45)' }}
         >
-          <div
-            className="rounded-2xl w-full"
-            style={{ maxWidth: 920, background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxHeight: '88vh', overflowY: 'auto' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-5 py-3.5" style={{ background: '#6d28d9', borderRadius: '16px 16px 0 0' }}>
-              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#fff' }}>
-                Payments History - Total Transaction ({(infoModal.payments || []).length})
-              </div>
-              <button type="button" onClick={() => setInfoModal(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#fff', padding: 4, display: 'flex' }}>
-                <MdClose size={20} />
-              </button>
-            </div>
-            <div className="p-5">
-              {infoModal.loading ? (
-                <p style={{ color: t.textSecondary, fontSize: 12 }}>Loading...</p>
-              ) : (
-                <>
-                  {/* ── Customer info block — matches the reference Payment
-                      History PDF's own layout (Name/Building/Mobile left,
-                      Address/Email/Total Flat Cost/Pending Amount right). ── */}
-                  <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>Customer Details</div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 mb-4">
-                    <div style={{ fontSize: 12, color: t.textPrimary }}>Name: <strong>{infoModal.customer.customer_name}</strong></div>
-                    <div style={{ fontSize: 12, color: t.textPrimary }}>Address: <strong>{infoModal.customer.address || '—'}</strong></div>
-                    <div style={{ fontSize: 12, color: t.textPrimary }}>Building: <strong>{[infoModal.customer.building_name, infoModal.customer.wing_name].filter(Boolean).join(' / ')}</strong></div>
-                    <div style={{ fontSize: 12, color: t.textPrimary }}>Email: <strong>{infoModal.customer.email || 'no'}</strong></div>
-                    <div style={{ fontSize: 12, color: t.textPrimary }}>Mobile No.: <strong>{infoModal.customer.mobile_number}</strong></div>
-                    <div style={{ fontSize: 12, color: '#16a34a' }}>Total Flat Cost: <strong>{infoModal.totalFlatCost != null ? `₹ ${infoModal.totalFlatCost.toLocaleString('en-IN')}` : '—'}</strong></div>
-                    <div />
-                    <div style={{ fontSize: 12, color: '#dc2626' }}>Pending Amount: <strong>
-                      {infoModal.totalFlatCost != null
-                        ? `₹ ${Math.max(0, infoModal.totalFlatCost - (infoModal.payments ?? []).reduce((s, p) => s + p.amount, 0)).toLocaleString('en-IN')}`
-                        : '—'}
-                    </strong></div>
-                  </div>
-
-                  <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>Payment Details</div>
-                  {(infoModal.payments || []).length === 0 ? (
-                    <p style={{ color: t.textSecondary, fontSize: 12 }}>No payment history found.</p>
-                  ) : (
-                    // Same columns as Payment Received: Actions, Status,
-                    // Receipt No., Payment Type, ... (shared table).
-                    <PaymentHistoryTable t={t} isDark={isDark}
-                      rows={infoModal.payments!.map(toPaymentHistoryRow)}
-                      renderActions={(row) => (
-                                <div className="flex items-center gap-1.5">
-                                  {/* No receipt until an admin approves the payment. */}
-                                  <button type="button" title={row.is_approved ? 'Download Receipt' : 'Download Receipt (available after admin approval)'}
-                                    disabled={!row.is_approved} onClick={() => handleDownloadReceiptForTransaction(String(row.id))}
-                                    className="flex items-center justify-center rounded-lg"
-                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', border: 'none', color: '#16a34a', cursor: row.is_approved ? 'pointer' : 'not-allowed', opacity: row.is_approved ? 1 : 0.4 }}>
-                                    <MdDownload size={13} />
-                                  </button>
-                                  <button type="button" title={row.is_approved ? 'View Receipt' : 'View Receipt (available after admin approval)'}
-                                    disabled={!row.is_approved} onClick={() => openReceipt(String(row.id))}
-                                    className="flex items-center justify-center rounded-lg"
-                                    style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-ink)', cursor: row.is_approved ? 'pointer' : 'not-allowed', opacity: row.is_approved ? 1 : 0.4 }}>
-                                    <MdVisibility size={13} />
-                                  </button>
-                                  {isAdmin && (
-                                    <button type="button" title="Delete Payment" onClick={() => handleDeletePayment(infoModal.payments!.find((x) => x.id === String(row.id))!, infoModal.customer)}
-                                      className="flex items-center justify-center rounded-lg"
-                                      style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
-                                      <MdDelete size={13} />
-                                    </button>
-                                  )}
-                                </div>
-                      )} />
-                  )}
-
-                  {(infoModal.payments || []).length > 0 && (
-                    <div className="flex items-center justify-between rounded-xl px-4 py-3 mt-4" style={{ background: t.insetBg }}>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--brand-ink)' }}>Grand Total:</span>
-                      <span className="rounded-lg px-3 py-1.5" style={{ border: '1px solid #16a34a', fontSize: 13, fontWeight: 800, color: '#16a34a' }}>
-                        ₹ {infoModal.payments!.reduce((s, p) => s + p.amount, 0).toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+          <div style={{ width: '100%', maxWidth: 1000, maxHeight: '88vh', overflowY: 'auto', borderRadius: 16 }} onClick={(e) => e.stopPropagation()}>
+            {/* V_25.0 — the shared Payment History layout (customer left,
+                property right), same as every other page. */}
+            <HistoryCard t={t} title={`Payments History - Total Transaction (${(infoModal.payments || []).length})`}
+              onClose={() => setInfoModal(null)} loading={infoModal.loading}
+              customer={customerInfoItems({
+                name: infoModal.customer.customer_name, code: infoModal.customer.customer_code,
+                mobile: infoModal.customer.mobile_number, email: infoModal.customer.email, address: infoModal.customer.address,
+              })}
+              property={(() => {
+                const c = infoModal.customer;
+                const paid = (infoModal.payments ?? []).reduce((s, p) => s + p.amount, 0);
+                const cost = infoModal.totalFlatCost;
+                return propertyInfoItems({
+                  project: c.project_name, building: c.building_name, wing: c.unit_type === 'shop' ? null : c.wing_name,
+                  unitType: c.unit_type === 'shop' ? 'shop' : 'flat', unitNo: c.unit_type === 'shop' ? c.shop_no : c.flat_no,
+                  flatAmount: cost, paid, pending: cost != null ? Math.max(0, cost - paid) : null,
+                });
+              })()}>
+              <HistorySection t={t} title="Payment Details"
+                total={(infoModal.payments || []).length ? { label: 'Grand Total:', value: `₹ ${infoModal.payments!.reduce((s, p) => s + p.amount, 0).toLocaleString('en-IN')}` } : undefined}>
+                {(infoModal.payments || []).length === 0 ? (
+                  <p style={{ color: t.textSecondary, fontSize: 12 }}>No payment history found.</p>
+                ) : (
+                        <PaymentHistoryTable t={t} isDark={isDark}
+                          rows={infoModal.payments!.map(toPaymentHistoryRow)}
+                          renderActions={(row) => (
+                                    <div className="flex items-center gap-1.5">
+                                      {/* No receipt until an admin approves the payment. */}
+                                      <button type="button" title={row.is_approved ? 'Download Receipt' : 'Download Receipt (available after admin approval)'}
+                                        disabled={!row.is_approved} onClick={() => handleDownloadReceiptForTransaction(String(row.id))}
+                                        className="flex items-center justify-center rounded-lg"
+                                        style={{ width: 26, height: 26, background: isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', border: 'none', color: '#16a34a', cursor: row.is_approved ? 'pointer' : 'not-allowed', opacity: row.is_approved ? 1 : 0.4 }}>
+                                        <MdDownload size={13} />
+                                      </button>
+                                      <button type="button" title={row.is_approved ? 'View Receipt' : 'View Receipt (available after admin approval)'}
+                                        disabled={!row.is_approved} onClick={() => openReceipt(String(row.id))}
+                                        className="flex items-center justify-center rounded-lg"
+                                        style={{ width: 26, height: 26, background: isDark ? 'rgba(0, 0, 255,0.18)' : '#e0f2ff', border: 'none', color: 'var(--brand-ink)', cursor: row.is_approved ? 'pointer' : 'not-allowed', opacity: row.is_approved ? 1 : 0.4 }}>
+                                        <MdVisibility size={13} />
+                                      </button>
+                                      {isAdmin && (
+                                        <button type="button" title="Delete Payment" onClick={() => handleDeletePayment(infoModal.payments!.find((x) => x.id === String(row.id))!, infoModal.customer)}
+                                          className="flex items-center justify-center rounded-lg"
+                                          style={{ width: 26, height: 26, background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
+                                          <MdDelete size={13} />
+                                        </button>
+                                      )}
+                                    </div>
+                          )} />
+                )}
+              </HistorySection>
+            </HistoryCard>
           </div>
         </div>
       )}

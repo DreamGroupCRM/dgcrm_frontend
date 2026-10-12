@@ -21,9 +21,9 @@ import {
 import { PaymentReceiptViewModal } from '../../../components/common/PaymentReceiptViewModal';
 import { exportPaymentReceiptPdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport.lazy';
 import { PaymentReceipt } from '../../../types/index';
-import { HistoryCard, HistorySection, HistoryInfoItem } from '../../../components/common/HistoryPopup';
+import { HistoryCard, HistorySection, customerInfoItems, propertyInfoItems } from '../../../components/common/HistoryPopup';
 import RefundHistoryTable from '../../../components/common/RefundHistoryTable';
-import { useCustomerPortal, bookingLabel } from '../CustomerPortalContext';
+import { useCustomerPortal } from '../CustomerPortalContext';
 import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
 
 const CustomerPaymentHistoryPage: React.FC = () => {
@@ -99,30 +99,29 @@ const CustomerPaymentHistoryPage: React.FC = () => {
   if (loading) return <div className="cp-center"><CircularProgress size={28} /></div>;
   if (error) return <div className="cp-empty cp-empty-error">We could not load your payment history. Please try again.</div>;
 
-  // V_25.0 — the same plain layout as Customer Details / Cancelled Booking:
-  // purple header, Customer Details text, Payment Details (+ Refund
+  // V_25.0 — the same layout as every Payment History: customer left,
+  // property right, then Payment Details (+ Refund
   // Details for a cancelled booking), each with its total underneath.
   const name = detail ? [detail.name, detail.middle_name, detail.last_name].filter(Boolean).join(' ') : '';
-  const unitText = selected ? bookingLabel(selected) : '—';
   const paidTotal = sorted.reduce((n, r) => n + Number(r.amount || 0), 0);
   const booking = cancelled[0];
-  const info: HistoryInfoItem[] = [
-    { label: 'Name', value: name || '—' },
-    { label: 'Customer ID', value: selected?.customer_code ?? '—' },
-    { label: 'Flat Details', value: unitText },
-    { label: 'Mobile No.', value: detail?.mobile_number ? `${detail.mobile_country_code || ''} ${detail.mobile_number}`.trim() : '—' },
-    { label: 'Email', value: detail?.email || '—' },
-    ...(isCancelled ? [
-      { label: 'Cancellation Date', value: selected?.cancelled_at ? formatDate(selected.cancelled_at) : '—' },
-      { label: 'Total Paid', value: rupee(totals?.paid), tone: 'green' as const },
-      { label: 'Total Refunded', value: rupee(refundedApproved), tone: 'green' as const },
-      { label: 'Refund Balance', value: rupee(Math.max(0, (totals?.paid ?? 0) - refundedApproved)), tone: 'red' as const },
-    ] : [
-      { label: 'Total Flat Cost', value: rupee(totals?.totalCost), tone: 'green' as const },
-      { label: 'Total Paid', value: rupee(totals?.paid), tone: 'green' as const },
-      { label: 'Pending Amount', value: rupee(totals?.pending), tone: 'red' as const },
-    ]),
-  ];
+  const customer = customerInfoItems({
+    name: name || '—', code: selected?.customer_code,
+    mobile: detail?.mobile_number ? `${detail.mobile_country_code || ''} ${detail.mobile_number}`.trim() : null,
+    email: detail?.email, address: detail?.address,
+  });
+  const property = propertyInfoItems({
+    project: detail?.building?.project_name, building: selected?.building_name, wing: selected?.unit_type === 'shop' ? null : selected?.wing_name,
+    unitType: selected?.unit_type === 'shop' ? 'shop' : 'flat', unitNo: selected?.unit_type === 'shop' ? selected?.shop_no : selected?.flat_no,
+    flatAmount: totals?.totalCost, paid: totals?.paid,
+    // A cancelled booking owes nothing more — its refund block replaces Pending.
+    ...(isCancelled ? {} : { pending: totals?.pending }),
+  });
+  const extra = isCancelled ? { title: 'Cancellation Details', items: [
+    { label: 'Cancellation Date', value: selected?.cancelled_at ? formatDate(selected.cancelled_at) : '—' },
+    { label: 'Total Refunded', value: rupee(refundedApproved), tone: 'green' as const },
+    { label: 'Refund Balance', value: rupee(Math.max(0, (totals?.paid ?? 0) - refundedApproved)), tone: 'red' as const },
+  ] } : undefined;
 
   return (
     <>
@@ -144,7 +143,7 @@ const CustomerPaymentHistoryPage: React.FC = () => {
       )}
 
       {selectedId != null && (
-        <HistoryCard t={t} title={`Payments History - Total Transaction (${sorted.length})`} info={info}>
+        <HistoryCard t={t} title={`Payments History - Total Transaction (${sorted.length})`} customer={customer} property={property} extra={extra}>
           <HistorySection t={t} title="Payment Details" total={sorted.length ? { label: 'Grand Total:', value: rupee(paidTotal) } : undefined}>
             <PaymentHistoryTable
               t={t} isDark={isDark} emptyText="No payments have been recorded yet."
