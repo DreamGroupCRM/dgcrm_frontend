@@ -180,7 +180,8 @@ const buildEmployeeNavItems = (has: (area: AccessArea) => boolean): NavItem[] =>
   ];
   return [
     { label: 'Dashboard', path: ROUTES.EMPLOYEE.DASHBOARD, icon: <MdDashboard /> },
-    ...(crm.length ? [{ label: 'CRM', icon: <MdLeaderboard />, children: crm }] : []),
+    // A single CRM page (e.g. Sales: just Leads) sits directly in the list.
+    ...(crm.length > 1 ? [{ label: 'CRM', icon: <MdLeaderboard />, children: crm }] : crm),
     ...(hr.length ? [{ label: 'HR', icon: <MdPeople />, children: hr }] : []),
     ...(has('customize_scheme') ? [{ label: 'Customize Scheme', path: ROUTES.EMPLOYEE.CUSTOMIZE_SCHEME, icon: <MdCalculate /> }] : []),
     ...(has('building_view') ? [{ label: 'Building View', path: ROUTES.EMPLOYEE.BUILDING_2D_VIEW, icon: <MdGridView /> }] : []),

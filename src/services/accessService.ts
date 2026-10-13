@@ -59,6 +59,8 @@ export interface ConfigDepartment {
   /** null = not set up yet: employees keep the access they had before. */
   access_areas: AccessArea[] | null;
   designation_required: boolean;
+  /** V_25.0 — Sales: fixed pages and rules (set in code, not by Department Setup). */
+  is_sales?: boolean;
   designations: ConfigDesignation[];
   /** V_25.0 — designations the Employee form may offer here (server rule). */
   offered_designation_ids?: number[];

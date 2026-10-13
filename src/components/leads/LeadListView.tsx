@@ -311,13 +311,9 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
                       <MasterIconButtons
                         onView={() => navigate(`${basePath}/view/${l.id}`)}
                         onEdit={() => navigate(`${basePath}/edit/${l.id}`)}
-                        // V_21.0 — was admin-portal-only; the backend now
-                        // accepts a delete request from any authenticated
-                        // user and branches itself (admin deletes
-                        // immediately, anyone else's is flagged pending
-                        // for admin review), so the button is shown here
-                        // regardless of portal too.
-                        onDelete={() => handleDelete(l)}
+                        // V_25.0 — deleting a lead is Admin-only (the API
+                        // refuses everyone else), so employees get no button.
+                        onDelete={isAdmin ? () => handleDelete(l) : undefined}
                       />
                     </td>
                     <td>

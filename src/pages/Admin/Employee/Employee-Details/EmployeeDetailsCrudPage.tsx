@@ -633,7 +633,7 @@ const PAGE_LABELS: Record<AccessArea, string> = {
 
 const AccessSummary: React.FC<{
   t: Theme;
-  roles: { deptId: number; deptName: string; desigId: number | null; level: DesignationLevel }[];
+  roles: { deptId: number; deptName: string; desigId: number | null; level: DesignationLevel; isSales?: boolean }[];
   config: ConfigDepartment[];
   canAddCustomer: boolean;
   reportingHeadName: (deptId: number) => string | null;
@@ -646,11 +646,44 @@ const AccessSummary: React.FC<{
       <span style={{ color: t.textPrimary }}>{label}</span>
     </li>
   );
+  const No: React.FC<{ label: string }> = ({ label }) => (
+    <li style={{ display: 'flex', gap: 6, alignItems: 'baseline', listStyle: 'none' }}>
+      <span aria-hidden style={{ fontWeight: 800, color: '#dc2626', width: 12 }}>✗</span>
+      <span style={{ color: t.textSecondary }}>{label}</span>
+    </li>
+  );
+  const listStyle: React.CSSProperties = { margin: '2px 0 0', padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', columnGap: 12 };
   return (
     <div className="mt-4" style={{ padding: '10px 12px', borderRadius: 10, border: `1px dashed ${t.surfaceBorder}`, background: t.insetBg }}>
       <div style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary, marginBottom: 6 }}>Access Summary</div>
       <div className="flex flex-col gap-3">
         {ready.map((r) => {
+          // V_25.0 — Sales: fixed pages and rights (set in code).
+          if (r.isSales) {
+            const head = r.level === 'head';
+            const reportsTo = head ? 'Admin' : (reportingHeadName(r.deptId) ?? 'a Sales Head (select above)');
+            return (
+              <div key={r.deptId} style={{ fontSize: 11.5, lineHeight: 1.6 }}>
+                <div style={{ fontWeight: 700, color: t.textPrimary }}>
+                  {r.deptName} · {head ? 'Sales Head' : 'Sales Executive'}
+                  <span style={{ fontWeight: 500, color: t.textSecondary }}> · reports to {reportsTo}</span>
+                </div>
+                <div style={{ fontWeight: 600, color: t.textSecondary, marginTop: 2 }}>Sidebar</div>
+                <ul style={listStyle}>
+                  {['Dashboard', 'Leads', 'Customize Scheme', 'Building View', 'Attendance (own)', 'Leave (own)'].map((x) => <Row key={x} label={x} />)}
+                </ul>
+                <div style={{ fontWeight: 600, color: t.textSecondary, marginTop: 4 }}>Rights</div>
+                <ul style={listStyle}>
+                  <Row label="Create Lead" />
+                  <Row label="Edit Lead" />
+                  <Row label={head ? 'View own + team Leads (My Data / Team Data)' : 'View own Leads'} />
+                  {head ? <Row label="Assign Leads to own Sales Executives" /> : <No label="Assign Leads" />}
+                  <No label="Delete Lead (Admin only)" />
+                  <No label="Customers, Payments & other pages" />
+                </ul>
+              </div>
+            );
+          }
           const configured = config.find((d) => d.id === r.deptId)?.access_areas ?? null;
           const pages = configured ?? LEGACY_PAGES;
           const has = (a: AccessArea) => pages.includes(a);
@@ -990,15 +1023,21 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         desigName: desigId != null ? designationOptions.find((o) => o.value === desigId)?.label ?? null : null,
         level: desigId != null ? levelOf(desigId) : null,
         designationRequired: cfg ? cfg.designation_required : true,
+        isSales: Boolean(cfg?.is_sales),
         hasDesignations: designationOptions.some((o) => o.departmentId === deptId && isOfferedDesignation(o)),
       };
     });
   }, [form.department_ids, form.designation_ids, designationOptions, departmentOptions, accessConfig, isOfferedDesignation]);
   // V_25.0 — an Executive or a Head may have a Reporting Head (a Head of
   // the same department; Head → Head makes a multi-level hierarchy). It is
-  // optional: none means they report to Admin directly.
-  const reportingDeptIds = deptRoles.filter((r) => r.level === 'executive' || r.level === 'head').map((r) => r.deptId);
-  const isHeadAnywhere = deptRoles.some((r) => r.level === 'head');
+  // optional: none means they report to Admin directly. Sales differs: a
+  // Sales Executive MUST pick a Sales Head, and a Sales Head gets no list
+  // (they are the Head) — the server keeps any Head saved earlier as is.
+  const reportingDeptIds = deptRoles
+    .filter((r) => r.level === 'executive' || (r.level === 'head' && !r.isSales))
+    .map((r) => r.deptId);
+  // Sales has no Customers page, so "Can Add Customer" is for other Heads only.
+  const isHeadAnywhere = deptRoles.some((r) => r.level === 'head' && !r.isSales);
 
   // Reporting Head choices — only Heads of that SAME department.
   useEffect(() => {
@@ -1210,6 +1249,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     (() => {
       const missing = deptRoles.find((r) => r.designationRequired && r.hasDesignations && r.desigId == null);
       return { field: 'designation_ids', section: 'assign' as SectionKey, message: `Please select a Designation for ${missing?.deptName ?? 'each department'}.`, failed: () => Boolean(missing) };
+    })(),
+    // V_25.0 — a Sales Executive must have a Reporting Head (a Sales Head).
+    (() => {
+      const missing = deptRoles.find((r) => r.isSales && r.level === 'executive' && !form.department_heads[String(r.deptId)]);
+      return { field: 'department_heads', section: 'assign' as SectionKey, message: `Please select the Reporting Head (a ${missing?.deptName ?? 'Sales'} Head) for this Sales Executive.`, failed: () => Boolean(missing) };
     })(),
     // One designation per department (older records may still have two).
     { field: 'designation_ids', section: 'assign', message: 'Only one designation can be selected per department.', failed: () => {
@@ -1829,10 +1873,16 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                     {/* Reporting Head — one Head per department, picked from
                         that department's Heads only (the server checks it
                         again on save). */}
-                    {r.level && (
-                      <div role="radiogroup" aria-label={`Reporting Head for ${r.deptName}`} className="flex flex-col gap-1">
-                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Reporting Head</div>
-                        {[{ id: '', label: 'No Reporting Head (reports to Admin)' },
+                    {/* Sales Head: no list — they are the Head. */}
+                    {r.level === 'head' && r.isSales && (
+                      <div style={{ fontSize: 11.5, color: t.textSecondary }}>Sales Head — no Reporting Head (reports to Admin).</div>
+                    )}
+                    {r.level && reportingDeptIds.includes(r.deptId) && (
+                      <div role="radiogroup" aria-label={`Reporting Head for ${r.deptName}`} aria-required={r.isSales && r.level === 'executive'} className="flex flex-col gap-1">
+                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>
+                          Reporting Head{r.isSales && r.level === 'executive' && <span style={{ color: '#dc2626' }}> *</span>}
+                        </div>
+                        {[...(r.isSales && r.level === 'executive' ? [] : [{ id: '', label: 'No Reporting Head (reports to Admin)' }]),
                           ...(headsByDept[r.deptId] ?? []).map((h) => ({
                             id: String(h.id),
                             label: `${h.name}${h.employee_code ? ` (${h.employee_code})` : ''} — ${r.deptName} Head${h.inactive ? ' (inactive)' : ''}`,
