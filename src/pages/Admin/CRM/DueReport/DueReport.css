@@ -128,8 +128,8 @@
 .due-summary { display: flex; align-items: stretch; gap: 8px; }
 .due-summary-chips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .due-summary-head { display: flex; flex-direction: column; justify-content: center; padding: 4px 14px 4px 0; margin-right: 4px; border-right: 1px solid var(--cust-field-border, rgba(0,0,0,0.08)); }
-.due-chip { display: flex; align-items: center; gap: 9px; border-radius: 10px; padding: 7px 12px 7px 8px; min-width: 0; max-width: 340px; }
-.due-chip-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
+.due-chip { display: flex; align-items: center; gap: 7px; border-radius: 8px; padding: 4px 10px 4px 5px; min-width: 0; max-width: 320px; }
+.due-chip-icon { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
 .due-chip-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 767px) {
   .due-summary, .due-summary-chips { flex-direction: column; }
