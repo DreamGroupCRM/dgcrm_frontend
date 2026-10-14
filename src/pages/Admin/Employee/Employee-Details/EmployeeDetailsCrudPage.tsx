@@ -633,7 +633,7 @@ const PAGE_LABELS: Record<AccessArea, string> = {
 
 const AccessSummary: React.FC<{
   t: Theme;
-  roles: { deptId: number; deptName: string; desigId: number | null; level: DesignationLevel; isSales?: boolean }[];
+  roles: { deptId: number; deptName: string; desigId: number | null; level: DesignationLevel; isSales?: boolean; isRecovery?: boolean }[];
   config: ConfigDepartment[];
   canAddCustomer: boolean;
   reportingHeadName: (deptId: number) => string | null;
@@ -658,6 +658,34 @@ const AccessSummary: React.FC<{
       <div style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary, marginBottom: 6 }}>Access Summary</div>
       <div className="flex flex-col gap-3">
         {ready.map((r) => {
+          // V_25.0 — Recovery: fixed pages and rights (set in code).
+          if (r.isRecovery && r.level) {
+            const head = r.level === 'head';
+            const reportsTo = reportingHeadName(r.deptId) ?? 'Admin';
+            return (
+              <div key={r.deptId} style={{ fontSize: 11.5, lineHeight: 1.6 }}>
+                <div style={{ fontWeight: 700, color: t.textPrimary }}>
+                  {r.deptName} · {head ? 'Recovery Head' : 'Recovery Executive'}
+                  <span style={{ fontWeight: 500, color: t.textSecondary }}> · reports to {reportsTo}</span>
+                </div>
+                <div style={{ fontWeight: 600, color: t.textSecondary, marginTop: 2 }}>Sidebar</div>
+                <ul style={listStyle}>
+                  {['Dashboard', 'Customer Details', 'Payment Due', 'Payment Received', 'Customize Scheme', 'Building View', 'Attendance (own)', 'Leave (own)'].map((x) => <Row key={x} label={x} />)}
+                </ul>
+                <div style={{ fontWeight: 600, color: t.textSecondary, marginTop: 4 }}>Rights</div>
+                <ul style={listStyle}>
+                  <Row label={head ? 'Own + team customers, dues & received (My Data / Team Data)' : 'Only own assigned customers, dues & received'} />
+                  <Row label={head ? 'Follow-ups: own + team (add / edit)' : 'Follow-ups: own customers only'} />
+                  <Row label="Received Date: today + 4 days back (this month)" />
+                  {head ? <Row label="Assign customers to own Recovery Executives" /> : <No label="Assign customers" />}
+                  {head ? <Row label="Add / Edit Customer (Admin approval)" /> : <No label="Add / Edit Customer" />}
+                  {head ? <Row label="Cancel Booking (Admin approval)" /> : <No label="Cancel Booking" />}
+                  {head ? <Row label="Payment delete request (Admin approval)" /> : <No label="Delete Payment" />}
+                  <No label="Leads & Cancelled Booking page" />
+                </ul>
+              </div>
+            );
+          }
           // V_25.0 — Sales: fixed pages and rights (set in code).
           if (r.isSales) {
             const head = r.level === 'head';
@@ -1024,6 +1052,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         level: desigId != null ? levelOf(desigId) : null,
         designationRequired: cfg ? cfg.designation_required : true,
         isSales: Boolean(cfg?.is_sales),
+        isRecovery: Boolean(cfg?.is_recovery),
         hasDesignations: designationOptions.some((o) => o.departmentId === deptId && isOfferedDesignation(o)),
       };
     });
@@ -1037,7 +1066,8 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     .filter((r) => r.level === 'executive' || (r.level === 'head' && !r.isSales))
     .map((r) => r.deptId);
   // Sales has no Customers page, so "Can Add Customer" is for other Heads only.
-  const isHeadAnywhere = deptRoles.some((r) => r.level === 'head' && !r.isSales);
+  // A Recovery Head may always add customers (via Admin approval), so no box.
+  const isHeadAnywhere = deptRoles.some((r) => r.level === 'head' && !r.isSales && !r.isRecovery);
 
   // Reporting Head choices — only Heads of that SAME department.
   useEffect(() => {
@@ -1349,12 +1379,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       if (mode === 'edit' && id) {
         const res = await EditEmployee(id, payload, files);
         pending = Boolean(res.pending);
-        toast.success(pending ? 'Changes submitted for admin approval.' : 'Employee updated successfully.');
+        if (pending) showAlert.pendingApproval('The employee changes were saved successfully.');
+        else toast.success('Employee updated successfully.');
       } else {
         const created = await createEmployee(payload, files, draftId);
         pending = Boolean(created.pending);
         targetId = created.data?.id != null ? String(created.data.id) : undefined;
-        toast.success(pending ? 'Employee submitted for admin approval.' : 'Employee created successfully.');
+        if (pending) showAlert.pendingApproval('The employee was created successfully.');
+        else toast.success('Employee created successfully.');
       }
       navigate(employeeDetailsBasePath());
     } catch (err: any) {

@@ -237,15 +237,16 @@ const PaymentReceivedPage: React.FC = () => {
   // backend route is requireAdmin too, so an employee never fetches them. ──
   const [receivedSummary, setReceivedSummary] = useState<PaymentReceivedSummary | null>(null);
   const [receivedSummaryError, setReceivedSummaryError] = useState(false);
+  // V_25.0 — every viewer gets these boxes, for their own scope (Admin:
+  // company-wide; an Executive: their customers; a Head: theirs + team's).
   const fetchReceivedSummary = useCallback(async () => {
-    if (!paths.isAdmin) return;
     setReceivedSummaryError(false);
     try {
       setReceivedSummary(await fetchPaymentReceivedSummary());
     } catch {
       setReceivedSummaryError(true);
     }
-  }, [paths.isAdmin]);
+  }, []);
   useEffect(() => { fetchReceivedSummary(); }, [fetchReceivedSummary]);
 
   // ── Filter panel data sources ────────────────────────────────────────
@@ -626,7 +627,8 @@ const PaymentReceivedPage: React.FC = () => {
     setDeletingId(row.id);
     try {
       const res = await deletePayment(row.id) as { pending?: boolean };
-      toast.success(res?.pending ? 'Delete request sent for admin approval.' : 'Payment deleted.');
+      if (res?.pending) showAlert.pendingApproval('The payment delete request was submitted successfully.');
+      else toast.success('Payment deleted.');
       refreshAll();
     } catch (e) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -673,10 +675,11 @@ const PaymentReceivedPage: React.FC = () => {
           </div>
       </div>
 
-      {/* ── Top stat boxes — admin only. Company-wide totals; they do not
-          follow the filter panel (the per-category totals for the filtered
-          rows live in the table's footer row instead). ─────────────────── */}
-      {paths.isAdmin && (
+      {/* ── Top stat boxes — Admin: company-wide; an employee: their own
+          customers (a Head: theirs + their team's). They do not follow the
+          filter panel (the per-category totals for the filtered rows live
+          in the table's footer row instead). ────────────────────────────── */}
+      {(
         <>
           <div className="pr-stat-grid grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
             <StatCard label="Total Flat Sold" value={rupee(receivedSummary?.total_flat_sold ?? 0)} icon={MdHomeWork} color="#2563eb"

@@ -169,7 +169,8 @@ export const fetchDueList = async (): Promise<DueListResponse> => {
 // Project/Location, Assigned Employee+Code, Building/Wing/Flat, Contact
 // (Email/Mobile), Payment For, Amount, Due Status text). Powers the
 // Payment Dues table directly. ───────────────────────────────────────────
-export interface AssigneeRef { id: number; name: string; code: string | null }
+// `at` — when that assignment was made (ISO date-time).
+export interface AssigneeRef { id: number; name: string; code: string | null; at?: string | null }
 
 export interface DueListDetailRow {
   customer_id: number;

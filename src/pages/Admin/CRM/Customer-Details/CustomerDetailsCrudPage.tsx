@@ -1638,10 +1638,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
 
       if (mode === 'edit' && id) {
         const res = await updateCustomerWithDetails(id, formData);
-        toast.success(res.pending ? 'Changes submitted for admin approval.' : 'Customer Updated Successfully');
+        if (res.pending) showAlert.pendingApproval('The customer changes were saved successfully.');
+        else toast.success('Customer Updated Successfully');
       } else {
         const res = await createCustomerWithDetails(formData, draftId);
-        toast.success(res.pending ? 'Customer submitted for admin approval.' : 'Customer Created Successfully');
+        if (res.pending) showAlert.pendingApproval('The customer was created successfully.');
+        else toast.success('Customer Created Successfully');
       }
       navigate(paths.customerDetails);
     } catch (e: any) {

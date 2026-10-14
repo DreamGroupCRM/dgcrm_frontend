@@ -18,7 +18,7 @@ import {
   MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
   MdReceiptLong, MdSchedule, MdVpnKey, MdAccountBalanceWallet, MdNoteAdd,
   MdSearch, MdStars, MdWorkspacePremium, MdForum, MdEvent, MdPerson, MdAccessTime,
-  MdEventAvailable, MdAssignmentInd, MdUpcoming, MdExpandMore, MdChevronRight, MdHistory } from 'react-icons/md';
+  MdEventAvailable, MdUpcoming, MdExpandMore, MdChevronRight, MdHistory } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
@@ -40,7 +40,8 @@ import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants';
-import { formatDate } from '../../../../utils';
+import { formatDate, formatLastLogin } from '../../../../utils';
+import { DataScope, setDataScope } from '../../../../utils/dataScope';
 import { employeeBackdateMinYmd, serverTodayYmd, serverYmdPlusDays } from '../../../../utils/serverTime';
 import { cssRect } from '../../../../utils/appZoom';
 import './DueReport.css';
@@ -425,6 +426,10 @@ interface CustomerGroup {
   receivedToday: number;
 }
 const STATUS_RANK: Record<string, number> = { overdue: 3, due_today: 2, upcoming: 1 };
+// Is this due assigned to `name` — as the Head (Admin's assignment), the
+// sub-assigned Executive, or the latest assignee.
+const assignedTo = (r: { assigned_employee_name?: string | null; assigned_head?: AssigneeRef | null; assigned_sub?: AssigneeRef | null }, name: string): boolean =>
+  r.assigned_employee_name === name || r.assigned_head?.name === name || r.assigned_sub?.name === name;
 
 // Booking Amount and Booster show only their due date(s), no From/To range.
 const showsDueDateOnly = (k: PaymentFor) => k === 'BookingAmount' || k === 'AnnualAmount' || k === 'AnnualAmount1';
@@ -581,6 +586,9 @@ const DueReportPage: React.FC = () => {
   }, []);
 
   useEffect(() => { fetchDueRows(); }, [fetchDueRows]);
+  // V_25.0 — a Head's My Data / Team Data (this page only): every request
+  // made here carries the choice; leaving the page puts it back to Team.
+  useEffect(() => () => setDataScope('team'), []);
 
   useEffect(() => {
     (async () => {
@@ -605,10 +613,20 @@ const DueReportPage: React.FC = () => {
     () => customers.map((c) => `${c.customer_name}${c.customer_code ? ` (${c.customer_code})` : ''}`),
     [customers]
   );
-  const employeeNameOptions = useMemo(
-    () => Array.from(new Set(dueRows.map((r) => r.assigned_employee_name).filter((n): n is string => !!n))),
-    [dueRows]
-  );
+  // V_25.0 — Employee filter: Admin can pick anyone on the list; a Head
+  // only the Executives reporting to them (Team Data only); an Executive
+  // gets no filter at all.
+  const { profile: accessProfile } = useAccessProfile();
+  const viewerIsAdmin = useRoleBasePath().isAdmin;
+  const viewerIsHead = !viewerIsAdmin && Boolean(accessProfile && accessProfile.head_of.length > 0);
+  const [dataScope, setScopeState] = useState<DataScope>('team');
+  const employeeNameOptions = useMemo(() => {
+    if (viewerIsHead) return (accessProfile?.customer_team ?? []).map((m) => m.name);
+    if (!viewerIsAdmin) return [];
+    return Array.from(new Set(dueRows.flatMap((r) => [r.assigned_employee_name, r.assigned_head?.name, r.assigned_sub?.name])
+      .filter((n): n is string => !!n)));
+  }, [dueRows, viewerIsAdmin, viewerIsHead, accessProfile]);
+  const showEmployeeFilter = viewerIsAdmin || (viewerIsHead && dataScope === 'team');
 
   // ── Toolbar filters — Building + Employee, all narrowing the same flat
   // due-item list, in that left-to-right order. The separate "Select
@@ -688,7 +706,7 @@ const DueReportPage: React.FC = () => {
       // also narrows this table to that customer's own dues.
       if (apCustomerId && String(r.customer_id) !== apCustomerId) return false;
       if (filterBuilding && r.building_name !== filterBuilding) return false;
-      if (filterEmployee && r.assigned_employee_name !== filterEmployee) return false;
+      if (filterEmployee && !assignedTo(r, filterEmployee)) return false;
       if (categoryFilter && !matchesCategoryFilter(r, categoryFilter)) return false;
       if (q && ![
         r.customer_code, r.customer_name, r.email, r.mobile_number,
@@ -751,7 +769,9 @@ const DueReportPage: React.FC = () => {
     let emiAfter = 0;
     // With Status = Upcoming / Due Today / Overdue selected, the boxes show
     // only those dues (amount and count); with All Status, every due.
-    const rowsForBoxes = statusFilter === 'all' ? dueRows : dueRows.filter((r) => r.due_category === statusFilter);
+    // The Employee filter narrows the boxes too (that employee's dues).
+    const rowsForBoxes = (statusFilter === 'all' ? dueRows : dueRows.filter((r) => r.due_category === statusFilter))
+      .filter((r) => !filterEmployee || assignedTo(r, filterEmployee));
     for (const r of rowsForBoxes) {
       let key: string;
       if (r.payment_for_key === 'EMIAmount') {
@@ -766,9 +786,17 @@ const DueReportPage: React.FC = () => {
     counts.total = rowsForBoxes.length;
     const total = emiBefore + emiAfter + Object.values(sums).reduce((s, v) => s + v, 0);
     return { ...sums, emiBefore, emiAfter, total, counts };
-  }, [dueRows, statusFilter]);
+  }, [dueRows, statusFilter, filterEmployee]);
 
   const handleRefresh = () => fetchDueRows();
+  const switchDataScope = (next: DataScope) => {
+    if (next === dataScope) return;
+    setDataScope(next);
+    setScopeState(next);
+    setFilterEmployee('');
+    fetchDueRows();
+    fetchFollowUpCounts();
+  };
 
   const handleExportCsv = () => {
     setExportingCsv(true);
@@ -1132,7 +1160,7 @@ const DueReportPage: React.FC = () => {
                 <DateInput t={t} readOnly value={apInstDate} style={readOnlyInputStyle} />
               </div>
             )}
-            {/* V_25.0 — Received Date: an employee may go up to 3 days
+            {/* V_25.0 — Received Date: an employee may go up to 4 days
                 back within the current month (empty = today; the server
                 enforces the same rule). Admin gets a real, unrestricted date input —
                 no min/max — so a backdated entry (a previous date) is
@@ -1146,7 +1174,7 @@ const DueReportPage: React.FC = () => {
               ) : (
                 <DateInput t={t} value={apPaymentDate || serverTodayYmd()} min={employeeBackdateMinYmd()} max={serverTodayYmd()} disabled={formLocked}
                   onChange={(v) => setApPaymentDate(v)} style={formLocked ? readOnlyInputStyle : fieldInputStyle()}
-                  title="Up to 3 days back, within the current month." />
+                  title="Today or up to 4 days back, within the current month." />
               )}
             </div>
             <div ref={setFieldRef('mode_of_payment')}>
@@ -1210,9 +1238,31 @@ const DueReportPage: React.FC = () => {
               <input type="text" placeholder="Search all..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)}
                 style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px 9px 30px', fontSize: 12, outline: 'none' }} />
             </div>
-            <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
-              <SearchableSelect t={t} placeholder="Employee" options={employeeNameOptions} value={filterEmployee} onChange={setFilterEmployee} />
-            </div>
+            {/* V_25.0 — a Head's My Data / Team Data (same look as Payment
+                Received's All / Approved / UnApproved). */}
+            {viewerIsHead && (
+              <div role="radiogroup" aria-label="Show data" className="flex items-center gap-2" style={{ flexShrink: 0 }}>
+                {([['mine', 'My Data', '#2563eb'], ['team', 'Team Data', '#15803d']] as const).map(([key, label, color]) => {
+                  const active = dataScope === key;
+                  return (
+                    <button key={key} type="button" role="radio" aria-checked={active} onClick={() => switchDataScope(key)}
+                      className="flex items-center gap-2 rounded-xl"
+                      style={{
+                        padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                        background: active ? color : t.inputBg, color: active ? '#fff' : t.textPrimary,
+                        border: `1px solid ${active ? color : t.inputBorder}`,
+                      }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {showEmployeeFilter && (
+              <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
+                <SearchableSelect t={t} placeholder="Employee" options={employeeNameOptions} value={filterEmployee} onChange={setFilterEmployee} />
+              </div>
+            )}
             <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
               <SearchableSelect t={t} placeholder="Building name" options={buildingNames} value={filterBuilding} onChange={setFilterBuilding} />
             </div>
@@ -1344,6 +1394,10 @@ const DueReportPage: React.FC = () => {
                           <td key={idx} style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                             <div style={{ fontWeight: 600 }}>{a?.name || '—'}</div>
                             {a?.code && <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{a.code}</div>}
+                            {/* When it was assigned (Admin → Head, or Head → Executive). */}
+                            {(a as AssigneeRef | null)?.at && (
+                              <div style={{ fontSize: 10, color: t.textSecondary, marginTop: 1 }}>{formatLastLogin((a as AssigneeRef).at ?? null)}</div>
+                            )}
                           </td>
                         ))}
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
@@ -1522,9 +1576,6 @@ const DueReportPage: React.FC = () => {
                     {task.description && (
                       <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2 }}>{task.description}</div>
                     )}
-                    <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>
-                      Assigned to: {task.assigned_to_name?.trim() || 'Unassigned'}
-                    </div>
                   </div>
                 );
               })}
@@ -1594,9 +1645,6 @@ const DueReportPage: React.FC = () => {
                         <div className="flex items-center gap-1.5 flex-wrap" style={{ marginTop: 7, fontSize: 10.5, fontWeight: 700 }}>
                           <span className="inline-flex items-center gap-1" style={{ padding: '2px 8px', borderRadius: 999, background: '#e0f2fe', color: '#0369a1' }}>
                             <MdEventAvailable size={12} /> Next follow-up: {task.due_date ? formatDate(task.due_date) : 'No date'}
-                          </span>
-                          <span className="inline-flex items-center gap-1" style={{ padding: '2px 8px', borderRadius: 999, background: '#f3e8ff', color: '#7e22ce' }}>
-                            <MdAssignmentInd size={12} /> Assigned to {task.assigned_to_name?.trim() || 'Unassigned'}
                           </span>
                         </div>
                       </div>

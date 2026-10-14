@@ -70,9 +70,9 @@ export const serverYmdPlusDays = (days: number): string => {
   return toYmd(d);
 };
 
-/** V_25.0 — earliest Received Date an employee may pick: 3 days back, but
+/** V_25.0 — earliest Received Date an employee may pick: today or up to 4 days back, but
  * never into the previous month (same rule the server enforces). */
 export const employeeBackdateMinYmd = (): string => {
   const [y, m, d] = serverTodayYmd().split('-').map(Number);
-  return toYmd(new Date(y, m - 1, Math.max(1, d - 3)));
+  return toYmd(new Date(y, m - 1, Math.max(1, d - 4)));
 };

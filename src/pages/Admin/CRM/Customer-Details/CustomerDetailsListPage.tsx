@@ -434,7 +434,11 @@ const CustomerDetailsListPage: React.FC = () => {
   // only a Head with "Can Add Customer" gets the Add button (the customer
   // still goes to Admin approval).
   const access = useAccessProfile();
-  const legacyAssignPermission = usePermission('customers', 'assign');
+  // The old customers.assign permission counts only for Admin and for
+  // employees whose department is not set up yet (same rule as the API);
+  // otherwise only a Head assigns, to their own Executives.
+  const assignPermission = usePermission('customers', 'assign');
+  const legacyAssignPermission = assignPermission && (paths.isAdmin || Boolean(access.profile?.legacy));
   const headTeam = !paths.isAdmin && !legacyAssignPermission ? (access.profile?.customer_team ?? []) : [];
   const canAddCustomer = paths.isAdmin || Boolean(access.profile && !access.profile.legacy && access.profile.can_add_customer);
   const needsAllEmployees = paths.isAdmin || legacyAssignPermission;
@@ -448,9 +452,10 @@ const CustomerDetailsListPage: React.FC = () => {
   const viewOnly = setUpEmployee && !isHead;
   const canEditCustomer = paths.isAdmin || (setUpEmployee && isHead);
   const showSplitAssign = paths.isAdmin || isHead;
-  // V_25.0 — Cancel Booking belongs to Refund (and Admin); a department not
-  // set up yet keeps it, as before. Same rule the server applies.
-  const canCancelBooking = access.has('cancelled_booking');
+  // V_25.0 — Cancel Booking: Admin, Refund, and a Head (e.g. the Recovery
+  // Head — goes to Admin approval); a department not set up yet keeps it,
+  // as before. Executives cannot. Same rule the server applies.
+  const canCancelBooking = access.has('cancelled_booking') || (setUpEmployee && isHead);
 
   // allCustomers now holds ONLY the current server page (see fetchCustomers
   // below) — previously this held up to 1000 rows fetched once, with

@@ -154,6 +154,12 @@ const DepartmentSetupPage: React.FC = () => {
                   </span>
                 </div>
 
+                {d.is_recovery && (
+                  <div className="mb-2" style={{ fontSize: 11.5, fontWeight: 600, color: '#1d4ed8', padding: '8px 10px', borderRadius: 8, background: 'rgba(37,99,235,0.08)' }}>
+                    Recovery department: its employees always get Dashboard, Customer Details, Payment Due, Payment Received,
+                    Customize Scheme, Building View (+ own Attendance &amp; Leave), whatever is ticked below.
+                  </div>
+                )}
                 {d.is_sales && (
                   <div className="mb-2" style={{ fontSize: 11.5, fontWeight: 600, color: '#1d4ed8', padding: '8px 10px', borderRadius: 8, background: 'rgba(37,99,235,0.08)' }}>
                     Sales department: its employees always get only Dashboard, Leads, Customize Scheme, Building View (+ own Attendance &amp; Leave),
