@@ -886,6 +886,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   // constrained.
   const loadedEmiTenureRef = useRef('');
   const loadedInstallmentDateRef = useRef('');
+  // Plan amounts as loaded on Edit — an existing customer whose plan was
+  // saved before the "plan must equal Total Cost" rule stays editable
+  // until one of these amounts is changed (same as the backend).
+  const loadedPlanKeyRef = useRef<string | null>(null);
   // V_23.0 item 7 — "old records show a Unit Type error when updating".
   // unit_type is NOT a stored column; the backend derives it as
   // `shop_id != null ? 'shop' : 'flat'`. A legacy booking recorded against
@@ -945,6 +949,34 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
     boosterIntervalBeforePossession.trim() !== '' &&
     boosterAmountAfterPossession.trim() !== '' &&
     boosterIntervalAfterPossession.trim() !== '';
+
+  // ── V_25.0 — the payment plan must add up to EXACTLY the Total Cost ──
+  // Same total the Scheme page shows: Booking + Remaining Booking + EMIs and
+  // Boosters before possession + Possession Amount, then the after-
+  // possession EMIs cover whatever is left (only if that EMI is above 0).
+  // Mirrors the backend's planTotalFor (customer.service.ts).
+  const planKey = [totalCost, bookingAmount, remainingBookingAmount, possessionAmount, monthlyEmiBeforePossession,
+    totalEmiTenure, monthlyEmiAfterPossession, boosterAmountBeforePossession, boosterIntervalBeforePossession,
+    boosterAmountAfterPossession, boosterIntervalAfterPossession].map((v) => Number(v) || 0).join('|');
+  const planCheck = useMemo(() => {
+    const n = (v: string) => Number(v) || 0;
+    const cost = n(totalCost);
+    const tenure = Math.max(0, n(totalEmiTenure));
+    const boosterBefore = n(boosterAmountBeforePossession);
+    const interval = n(boosterIntervalBeforePossession);
+    const boosterCount = interval > 0 && boosterBefore > 0 ? Math.floor(tenure / interval) : 0;
+    const beforePossession = n(bookingAmount) + n(remainingBookingAmount) + n(monthlyEmiBeforePossession) * tenure
+      + boosterBefore * boosterCount + n(possessionAmount);
+    const afterPossession = n(monthlyEmiAfterPossession) > 0 ? Math.max(0, cost - beforePossession) : 0;
+    const planTotal = beforePossession + afterPossession;
+    return { cost, planTotal, diff: planTotal - cost };
+  }, [totalCost, bookingAmount, remainingBookingAmount, possessionAmount, monthlyEmiBeforePossession, totalEmiTenure,
+    monthlyEmiAfterPossession, boosterAmountBeforePossession, boosterIntervalBeforePossession]);
+  const inr = (v: number) => `₹${Math.round(Math.abs(v)).toLocaleString('en-IN')}`;
+  const planMismatchMessage = planCheck.diff > 0
+    ? `The payment plan total (${inr(planCheck.planTotal)}) is more than the Total Cost (${inr(planCheck.cost)}) by ${inr(planCheck.diff)}. Reduce the Booking, Possession, EMI Before Possession or Booster amounts.`
+    : `The payment plan total (${inr(planCheck.planTotal)}) is less than the Total Cost (${inr(planCheck.cost)}) by ${inr(planCheck.diff)}. Enter a Monthly EMI After Possession (or increase the other amounts).`;
+  const planMustMatch = loadedPlanKeyRef.current === null || loadedPlanKeyRef.current !== planKey;
 
   // ── Item 2.1/2.2 — collapsible sections + auto-open-and-scroll-to the
   // first invalid field on a failed submit, same pattern as Employee CRUD. ─
@@ -1074,6 +1106,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
           setBoosterAmountAfterPossession(c.booster_amount_after_possession != null ? String(c.booster_amount_after_possession) : '');
           setBoosterIntervalBeforePossession(c.booster_interval_before_possession_months != null ? String(c.booster_interval_before_possession_months) : '');
           setBoosterIntervalAfterPossession(c.booster_interval_after_possession_months != null ? String(c.booster_interval_after_possession_months) : '');
+          loadedPlanKeyRef.current = [c.total_cost, c.booking_amount, c.remaining_booking_amount, c.possession_amount,
+            c.monthly_emi_before_possession, c.total_emi_tenure_months, c.monthly_emi_after_possession,
+            c.booster_amount_before_possession, c.booster_interval_before_possession_months,
+            c.booster_amount_after_possession, c.booster_interval_after_possession_months].map((v) => Number(v) || 0).join('|');
 
           setApplicationForm(c.application_form_url || null);
           setDeclarationForm(c.declaration_form_url || null);
@@ -1356,6 +1392,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
     { field: 'shopNo', section: 'property', message: 'Please select the Shop No.', failed: () => unitRequired() && unitType === 'shop' && shopNo.trim() === '' },
     { field: 'parkingNo', section: 'property', message: 'Please enter the Parking No.', failed: () => wantsParking === 'yes' && parkingNo.trim() === '' },
     { field: 'totalCost', section: 'payment', message: 'Please enter the Total Cost.', failed: () => totalCost.trim() === '' },
+    {
+      field: 'totalCost', section: 'payment', message: planMismatchMessage,
+      failed: () => totalCost.trim() !== '' && planCheck.cost > 0 && planCheck.diff !== 0 && planMustMatch,
+    },
     { field: 'bookingDate', section: 'payment', message: 'Please select the Booking Date.', failed: () => bookingDate === '' },
     { field: 'bookingAmount', section: 'payment', message: 'Please enter the Booking Amount.', failed: () => bookingAmount.trim() === '' },
     { field: 'possessionAmount', section: 'payment', message: 'Please enter the Possession Amount.', failed: () => possessionAmount.trim() === '' },
@@ -2311,6 +2351,27 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             </Field>
           )}
         </div>
+
+        {/* V_25.0 — live check that the plan adds up to the Total Cost
+            exactly (the Save button enforces the same rule). */}
+        {!isView && planCheck.cost > 0 && (() => {
+          const ok = planCheck.diff === 0;
+          const color = ok ? '#16a34a' : '#dc2626';
+          return (
+            <div role="status" style={{
+              marginTop: 12, padding: '8px 12px', borderRadius: 10, display: 'flex', flexWrap: 'wrap',
+              alignItems: 'center', gap: '6px 18px', fontSize: 12, fontVariantNumeric: 'tabular-nums',
+              border: `1px solid ${color}55`, background: `${color}12`, color: t.textPrimary,
+            }}>
+              <span>Total Cost: <b>{inr(planCheck.cost)}</b></span>
+              <span>Payment Plan Total: <b>{inr(planCheck.planTotal)}</b></span>
+              <span style={{ color, fontWeight: 700 }}>
+                {ok ? '✓ Plan matches the Total Cost'
+                  : planCheck.diff < 0 ? `✗ Short by ${inr(planCheck.diff)}` : `✗ Exceeds by ${inr(planCheck.diff)}`}
+              </span>
+            </div>
+          );
+        })()}
       </AccordionSection>
 
       {/* ── Document Upload ──────────────────────────────────────────── */}
