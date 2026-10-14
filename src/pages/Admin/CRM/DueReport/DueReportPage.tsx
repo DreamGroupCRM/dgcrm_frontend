@@ -1238,26 +1238,6 @@ const DueReportPage: React.FC = () => {
               <input type="text" placeholder="Search all..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)}
                 style={{ width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px 9px 30px', fontSize: 12, outline: 'none' }} />
             </div>
-            {/* V_25.0 — a Head's My Data / Team Data (same look as Payment
-                Received's All / Approved / UnApproved). */}
-            {viewerIsHead && (
-              <div role="radiogroup" aria-label="Show data" className="flex items-center gap-2" style={{ flexShrink: 0 }}>
-                {([['mine', 'My Data', '#2563eb'], ['team', 'Team Data', '#15803d']] as const).map(([key, label, color]) => {
-                  const active = dataScope === key;
-                  return (
-                    <button key={key} type="button" role="radio" aria-checked={active} onClick={() => switchDataScope(key)}
-                      className="flex items-center gap-2 rounded-xl"
-                      style={{
-                        padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-                        background: active ? color : t.inputBg, color: active ? '#fff' : t.textPrimary,
-                        border: `1px solid ${active ? color : t.inputBorder}`,
-                      }}>
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
             {showEmployeeFilter && (
               <div className="due-report-filter-item" style={{ width: 140, flexShrink: 0 }}>
                 <SearchableSelect t={t} placeholder="Employee" options={employeeNameOptions} value={filterEmployee} onChange={setFilterEmployee} />
@@ -1279,6 +1259,29 @@ const DueReportPage: React.FC = () => {
               </button>
             )}
           </div>
+          {/* V_25.0 — a Head's My Data / Team Data (same look as Payment
+              Received's All / Approved / UnApproved), centred in the space
+              between the filters (All Status) and Take Follow Ups. */}
+          {viewerIsHead && (
+            <div className="due-report-scope-tabs flex items-center justify-center" style={{ flex: '1 1 auto', minWidth: 'max-content', padding: '0 12px' }}>
+              <div role="radiogroup" aria-label="Show data" className="flex items-center gap-2" style={{ flexShrink: 0 }}>
+                {([['mine', 'My Data', '#2563eb'], ['team', 'Team Data', '#15803d']] as const).map(([key, label, color]) => {
+                  const active = dataScope === key;
+                  return (
+                    <button key={key} type="button" role="radio" aria-checked={active} onClick={() => switchDataScope(key)}
+                      className="flex items-center gap-2 rounded-xl"
+                      style={{
+                        padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                        background: active ? color : t.inputBg, color: active ? '#fff' : t.textPrimary,
+                        border: `1px solid ${active ? color : t.inputBorder}`,
+                      }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="due-report-toolbar-actions flex items-center gap-2" style={{ marginLeft: 'auto', flexShrink: 0 }}>
             {/* Payment Upcoming lives here (moved from Payment Received). */}
             {isAdmin && (
