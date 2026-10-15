@@ -38,17 +38,22 @@ interface StatCardProps {
   // currently applied.
   onClick?: () => void;
   active?: boolean;
+  // Fixed fill + text colour instead of the shared theme colour — Payment
+  // Due's status boxes (red / green / yellow) use it; every other caller
+  // leaves both unset and keeps the theme fill.
+  fill?: string;
+  ink?: string;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
-  label, value, icon: Icon, color, surfaceBorder, loading, compact, onClick, active,
+  label, value, icon: Icon, color, surfaceBorder, loading, compact, onClick, active, fill, ink,
 }) => {
   const { tintGradient } = useAppearanceTokens();
   return (
   <div
     className={`master-stat-card master-stat-card-gradient${compact ? ' master-stat-card-compact' : ''}`}
     style={{
-      background: getStatGradient(color, tintGradient),
+      background: fill ?? getStatGradient(color, tintGradient),
       border: `1px solid ${surfaceBorder}`,
       ...(onClick ? { cursor: 'pointer' } : {}),
       ...(active ? { boxShadow: '0 0 0 2.5px rgba(255,255,255,0.9), 0 0 0 4.5px rgba(0,0,0,0.15)' } : {}),
@@ -59,11 +64,11 @@ const StatCard: React.FC<StatCardProps> = ({
     onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
   >
     <div className="master-stat-icon" style={{ background: 'rgba(255,255,255,0.22)' }}>
-      <Icon size={compact ? 15 : 19} style={{ color: '#fff' }} />
+      <Icon size={compact ? 15 : 19} style={{ color: ink ?? '#fff' }} />
     </div>
     <div className="master-stat-body">
-      <div className="master-stat-label master-stat-label-gradient">{label}</div>
-      <div className="master-stat-value master-stat-value-gradient">{loading ? '—' : value}</div>
+      <div className="master-stat-label master-stat-label-gradient" style={ink ? { color: ink } : undefined}>{label}</div>
+      <div className="master-stat-value master-stat-value-gradient" style={ink ? { color: ink } : undefined}>{loading ? '—' : value}</div>
     </div>
   </div>
   );

@@ -18,7 +18,7 @@ import {
   MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
   MdReceiptLong, MdSchedule, MdVpnKey, MdAccountBalanceWallet, MdNoteAdd,
   MdSearch, MdStars, MdWorkspacePremium, MdForum, MdEvent, MdPerson, MdAccessTime,
-  MdEventAvailable, MdUpcoming, MdExpandMore, MdChevronRight, MdHistory } from 'react-icons/md';
+  MdEventAvailable, MdUpcoming, MdExpandMore, MdChevronRight, MdHistory, MdErrorOutline, MdToday } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
@@ -228,6 +228,7 @@ const formatAmountDisplay = (v: string): string => {
 // saturated-gradient look used site-wide, e.g. Building Master's summary
 // row) instead of a bespoke flat card. ──────────────────────────────────
 interface StatBoxSpec { label: string; value: number; color: string; icon: IconType; }
+const STATUS_BOX_ICON: Record<DueStatus, IconType> = { overdue: MdErrorOutline, due_today: MdToday, upcoming: MdUpcoming };
 
 // ── "Payment For" options shown on the Add Payment Details form — richer,
 // friendlier labels than PAYMENT_FOR_OPTIONS (used elsewhere for the raw
@@ -782,6 +783,21 @@ const DueReportPage: React.FC = () => {
     return { ...sums, emiBefore, emiAfter, total, counts };
   }, [dueRows, statusFilter, filterEmployee]);
 
+  // V_25.0 — the three status boxes (Overdue / Due Today / Upcoming). They
+  // follow the Employee filter but not the Status filter (each box IS a
+  // status), so all three always show their own total.
+  const statusSums = useMemo(() => {
+    const sums: Record<DueStatus, { amount: number; count: number }> = {
+      overdue: { amount: 0, count: 0 }, due_today: { amount: 0, count: 0 }, upcoming: { amount: 0, count: 0 },
+    };
+    for (const r of dueRows) {
+      if (filterEmployee && !assignedTo(r, filterEmployee)) continue;
+      const s = sums[r.due_category as DueStatus];
+      if (s) { s.amount += r.amount; s.count++; }
+    }
+    return sums;
+  }, [dueRows, filterEmployee]);
+
   const handleRefresh = () => fetchDueRows();
   const switchDataScope = (next: DataScope) => {
     if (next === dataScope) return;
@@ -1064,6 +1080,20 @@ const DueReportPage: React.FC = () => {
           click-to-filter on the table below (same convention Payment
           Upcoming's own boxes use) — click again, or click Total, to
           clear it. ────────────────────────────────────────────────────── */}
+      {/* V_25.0 — status boxes in the page's colour code (dueColors.ts).
+          Clicking one sets the Status filter; clicking it again clears it. */}
+      <div className="due-report-status-grid grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        {(['overdue', 'due_today', 'upcoming'] as DueStatus[]).map((k) => (
+          <StatCard key={k}
+            label={`${DUE_STATUS[k].label} (${statusSums[k].count})`}
+            value={rupee(statusSums[k].amount)} icon={STATUS_BOX_ICON[k]} color={DUE_STATUS[k].bg}
+            fill={DUE_STATUS[k].bg} ink={DUE_STATUS[k].fg}
+            bg={DUE_STATUS[k].bg} loading={loadingDueList} compact
+            active={statusFilter === k}
+            onClick={() => setStatusFilter(statusFilter === k ? 'all' : k)}
+            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        ))}
+      </div>
       <div className="due-report-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3 mb-5">
         {statBoxSpecs.map((spec) => (
           <StatCard key={spec.key}
