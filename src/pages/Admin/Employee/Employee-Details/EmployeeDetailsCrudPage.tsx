@@ -631,64 +631,109 @@ const PAGE_LABELS: Record<AccessArea, string> = {
   employee_details: 'Employee Details', attendance_all: "All employees' Attendance & Leave",
 };
 
+// V_25.0 — what the selected Department + Designation gives, in two compact
+// lines: "Access Allowed" (green) and "Access Not Allowed" (red).
+interface RoleAccess { key: number; title: string; reportsTo: string | null; note?: string; allowed: string[]; denied: string[] }
+
+function roleAccess(
+  r: { deptId: number; deptName: string; level: DesignationLevel; isSales?: boolean; isRecovery?: boolean },
+  config: ConfigDepartment[], canAddCustomer: boolean, reportingHeadName: (deptId: number) => string | null,
+): RoleAccess {
+  const head = r.level === 'head';
+  if (r.isRecovery && r.level) {
+    return {
+      key: r.deptId, title: `${r.deptName} · ${head ? 'Recovery Head' : 'Recovery Executive'}`,
+      reportsTo: reportingHeadName(r.deptId) ?? 'Admin',
+      allowed: [
+        'Dashboard', 'Customer Details', 'Payment Due', 'Payment Received', 'Customize Scheme', 'Building View', 'Attendance & Leave (own)',
+        head ? 'Own + team data (My Data / Team Data)' : 'Only own assigned customers',
+        head ? 'Follow-ups: own + team' : 'Follow-ups: own customers',
+        'Received Date: today + 4 days back',
+        ...(head ? ['Assign to own Executives', 'Add / Edit Customer (Admin approval)', 'Cancel Booking (Admin approval)', 'Payment delete request (Admin approval)'] : []),
+      ],
+      denied: [
+        ...(head ? [] : ['Assign customers', 'Add / Edit Customer', 'Cancel Booking', 'Delete Payment', 'Employee filter']),
+        'Leads', 'Cancelled Booking page',
+      ],
+    };
+  }
+  if (r.isSales) {
+    return {
+      key: r.deptId, title: `${r.deptName} · ${head ? 'Sales Head' : 'Sales Executive'}`,
+      reportsTo: head ? 'Admin' : (reportingHeadName(r.deptId) ?? 'a Sales Head (select above)'),
+      allowed: [
+        'Dashboard', 'Leads', 'Customize Scheme', 'Building View', 'Attendance & Leave (own)', 'Create Lead', 'Edit Lead',
+        head ? 'Own + team Leads (My Data / Team Data)' : 'Only own Leads',
+        ...(head ? ['Assign Leads to own Executives'] : []),
+      ],
+      denied: [...(head ? [] : ['Assign Leads']), 'Delete Lead (Admin only)', 'Customers, Payments & other pages'],
+    };
+  }
+  const configured = config.find((d) => d.id === r.deptId)?.access_areas ?? null;
+  const pages = configured ?? LEGACY_PAGES;
+  const has = (a: AccessArea) => pages.includes(a);
+  const actions: { ok: boolean; label: string }[] = [];
+  if (has('payment_dues')) actions.push({ ok: true, label: 'Follow-ups' });
+  if (has('customers')) {
+    // Not-set-up departments keep today's rules; once set up, these are a Head's.
+    const legacy = configured == null;
+    actions.push({ ok: head, label: 'Customer Assignment (to own team)' });
+    actions.push({ ok: head || legacy, label: 'Edit Customer' });
+    actions.push({ ok: (head || legacy) && (legacy || canAddCustomer), label: 'Add Customer' });
+  }
+  if (has('leads')) actions.push({ ok: head, label: 'Lead Assignment (to own team)' });
+  if (has('cancelled_booking')) actions.push({ ok: true, label: 'Cancel Booking request' });
+  if (has('payment_received')) actions.push({ ok: head, label: 'Payment delete request' });
+  if (head) actions.push({ ok: true, label: 'Team data (My Data / Team Data)' });
+  return {
+    key: r.deptId, title: `${r.deptName}${r.level ? ` · ${head ? 'Head' : 'Executive'}` : ''}`,
+    reportsTo: r.level ? (reportingHeadName(r.deptId) ?? 'Admin') : null,
+    note: configured == null ? 'Department not set up yet — keeps the standard employee pages.'
+      : head ? 'Actions by this Head go to Admin approval.' : undefined,
+    allowed: [...pages.map((a) => PAGE_LABELS[a]), ...actions.filter((x) => x.ok).map((x) => x.label)],
+    denied: actions.filter((x) => !x.ok).map((x) => x.label),
+  };
+}
+
 const AccessSummary: React.FC<{
   t: Theme;
-  roles: { deptId: number; deptName: string; desigId: number | null; level: DesignationLevel }[];
+  roles: { deptId: number; deptName: string; desigId: number | null; level: DesignationLevel; isSales?: boolean; isRecovery?: boolean }[];
   config: ConfigDepartment[];
   canAddCustomer: boolean;
   reportingHeadName: (deptId: number) => string | null;
 }> = ({ t, roles, config, canAddCustomer, reportingHeadName }) => {
   const ready = roles.filter((r) => r.desigId != null || config.find((d) => d.id === r.deptId)?.designation_required === false);
   if (ready.length === 0) return null;
-  const Row: React.FC<{ label: string }> = ({ label }) => (
-    <li style={{ display: 'flex', gap: 6, alignItems: 'baseline', listStyle: 'none' }}>
-      <span aria-hidden style={{ fontWeight: 800, color: '#15803d', width: 12 }}>✓</span>
-      <span style={{ color: t.textPrimary }}>{label}</span>
-    </li>
-  );
+  const Line: React.FC<{ ok: boolean; items: string[] }> = ({ ok, items }) => {
+    const color = ok ? '#15803d' : '#dc2626';
+    return (
+      <div className="flex items-start gap-2" style={{ marginTop: 4 }}>
+        <span style={{ flexShrink: 0, width: 128, padding: '2px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 800, color: '#fff', background: color, textAlign: 'center' }}>
+          {ok ? '✓ Access Allowed' : '✗ Access Not Allowed'}
+        </span>
+        <div className="flex flex-wrap" style={{ gap: '3px 4px' }}>
+          {items.length === 0 ? <span style={{ fontSize: 11, color: t.textSecondary }}>—</span> : items.map((x) => (
+            <span key={x} style={{ padding: '1px 7px', borderRadius: 999, fontSize: 10.5, fontWeight: 600, lineHeight: 1.6,
+              color, background: ok ? 'rgba(22,163,74,0.10)' : 'rgba(220,38,38,0.08)', border: `1px solid ${ok ? 'rgba(22,163,74,0.35)' : 'rgba(220,38,38,0.3)'}` }}>{x}</span>
+          ))}
+        </div>
+      </div>
+    );
+  };
   return (
-    <div className="mt-4" style={{ padding: '10px 12px', borderRadius: 10, border: `1px dashed ${t.surfaceBorder}`, background: t.insetBg }}>
-      <div style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary, marginBottom: 6 }}>Access Summary</div>
-      <div className="flex flex-col gap-3">
+    <div className="mt-3" style={{ padding: '8px 10px', borderRadius: 10, border: `1px dashed ${t.surfaceBorder}`, background: t.insetBg }}>
+      <div className="flex flex-col gap-2">
         {ready.map((r) => {
-          const configured = config.find((d) => d.id === r.deptId)?.access_areas ?? null;
-          const pages = configured ?? LEGACY_PAGES;
-          const has = (a: AccessArea) => pages.includes(a);
-          const head = r.level === 'head';
-          const actions: { ok: boolean; label: string }[] = [];
-          if (has('payment_dues')) actions.push({ ok: true, label: 'Follow-ups' });
-          if (has('customers')) {
-            actions.push({ ok: head, label: 'Customer Assignment (to own team)' });
-            // Not-set-up departments keep today's rules (any employee may
-            // request these); once set up, they are a Head's.
-            // An Executive is shown only what applies to them.
-            const legacy = configured == null;
-            if (head || legacy) actions.push({ ok: true, label: 'Edit Customer' });
-            if (head || legacy) actions.push({ ok: legacy || canAddCustomer, label: 'Add Customer' });
-          }
-          if (has('leads')) actions.push({ ok: head, label: 'Lead Assignment (to own team)' });
-          if (has('cancelled_booking')) actions.push({ ok: true, label: 'Cancel Booking request' });
-          if (has('payment_received') && head) actions.push({ ok: true, label: 'Payment delete request' });
-          if (head) actions.push({ ok: true, label: 'Team data (My Data / Team Data)' });
-          const reportsTo = r.level ? (reportingHeadName(r.deptId) ?? 'Admin') : null;
+          const a = roleAccess(r, config, canAddCustomer, reportingHeadName);
           return (
-            <div key={r.deptId} style={{ fontSize: 11.5, lineHeight: 1.6 }}>
-              <div style={{ fontWeight: 700, color: t.textPrimary }}>
-                {r.deptName}{r.level && <> · {head ? 'Head' : 'Executive'}</>}
-                {reportsTo && <span style={{ fontWeight: 500, color: t.textSecondary }}> · reports to {reportsTo}</span>}
+            <div key={a.key}>
+              <div style={{ fontSize: 11.5, fontWeight: 800, color: t.textPrimary }}>
+                Access Summary: {a.title}
+                {a.reportsTo && <span style={{ fontWeight: 500, color: t.textSecondary }}> · reports to {a.reportsTo}</span>}
+                {a.note && <span style={{ fontWeight: 600, color: '#b45309' }}> · {a.note}</span>}
               </div>
-              {configured == null && (
-                <div style={{ color: '#b45309' }}>Department not set up on Department Setup yet — keeps the standard employee pages.</div>
-              )}
-              <ul style={{ margin: '2px 0 0', padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', columnGap: 12 }}>
-                {pages.map((a) => <Row key={a} label={PAGE_LABELS[a]} />)}
-                {actions.filter((x) => x.ok).map((x) => <Row key={x.label} label={x.label} />)}
-              </ul>
-              {head && (
-                <div style={{ marginTop: 4, fontWeight: 600, color: '#b45309' }}>
-                  Actions performed by this Head are subject to Admin Approval.
-                </div>
-              )}
+              <Line ok items={a.allowed} />
+              <Line ok={false} items={a.denied} />
             </div>
           );
         })}
@@ -990,21 +1035,29 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         desigName: desigId != null ? designationOptions.find((o) => o.value === desigId)?.label ?? null : null,
         level: desigId != null ? levelOf(desigId) : null,
         designationRequired: cfg ? cfg.designation_required : true,
+        isSales: Boolean(cfg?.is_sales),
+        isRecovery: Boolean(cfg?.is_recovery),
         hasDesignations: designationOptions.some((o) => o.departmentId === deptId && isOfferedDesignation(o)),
       };
     });
   }, [form.department_ids, form.designation_ids, designationOptions, departmentOptions, accessConfig, isOfferedDesignation]);
   // V_25.0 — an Executive or a Head may have a Reporting Head (a Head of
   // the same department; Head → Head makes a multi-level hierarchy). It is
-  // optional: none means they report to Admin directly.
-  const reportingDeptIds = deptRoles.filter((r) => r.level === 'executive' || r.level === 'head').map((r) => r.deptId);
-  const isHeadAnywhere = deptRoles.some((r) => r.level === 'head');
+  // optional: none means they report to Admin directly. Sales differs: a
+  // Sales Executive MUST pick a Sales Head, and a Sales Head gets no list
+  // (they are the Head) — the server keeps any Head saved earlier as is.
+  const reportingDeptIds = deptRoles
+    .filter((r) => r.level === 'executive' || (r.level === 'head' && !r.isSales && !r.isRecovery))
+    .map((r) => r.deptId);
+  // Sales has no Customers page, so "Can Add Customer" is for other Heads only.
+  // A Recovery Head may always add customers (via Admin approval), so no box.
+  const isHeadAnywhere = deptRoles.some((r) => r.level === 'head' && !r.isSales && !r.isRecovery);
 
   // Reporting Head choices — only Heads of that SAME department.
   useEffect(() => {
     reportingDeptIds.filter((deptId) => !(deptId in headsByDept)).forEach((deptId) => {
       setHeadsByDept((prev) => ({ ...prev, [deptId]: [] }));
-      fetchDepartmentHeads(deptId)
+      fetchDepartmentHeads(deptId, form.department_heads[String(deptId)])
         .then((heads) => setHeadsByDept((prev) => ({ ...prev, [deptId]: heads.filter((h) => !(id && String(h.id) === id)) })))
         .catch(() => toast.error('Failed to load Reporting Heads.'));
     });
@@ -1211,6 +1264,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       const missing = deptRoles.find((r) => r.designationRequired && r.hasDesignations && r.desigId == null);
       return { field: 'designation_ids', section: 'assign' as SectionKey, message: `Please select a Designation for ${missing?.deptName ?? 'each department'}.`, failed: () => Boolean(missing) };
     })(),
+    // V_25.0 — a Sales Executive must have a Reporting Head (a Sales Head).
+    (() => {
+      const missing = deptRoles.find((r) => r.isSales && r.level === 'executive' && !form.department_heads[String(r.deptId)]);
+      return { field: 'department_heads', section: 'assign' as SectionKey, message: `Please select the Reporting Head (a ${missing?.deptName ?? 'Sales'} Head) for this Sales Executive.`, failed: () => Boolean(missing) };
+    })(),
     // One designation per department (older records may still have two).
     { field: 'designation_ids', section: 'assign', message: 'Only one designation can be selected per department.', failed: () => {
       const depts = form.designation_ids.map((id) => designationOptions.find((d) => d.value === id)?.departmentId ?? null).filter((d) => d != null);
@@ -1305,12 +1363,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       if (mode === 'edit' && id) {
         const res = await EditEmployee(id, payload, files);
         pending = Boolean(res.pending);
-        toast.success(pending ? 'Changes submitted for admin approval.' : 'Employee updated successfully.');
+        if (pending) showAlert.pendingApproval('The employee changes were saved successfully.');
+        else toast.success('Employee updated successfully.');
       } else {
         const created = await createEmployee(payload, files, draftId);
         pending = Boolean(created.pending);
         targetId = created.data?.id != null ? String(created.data.id) : undefined;
-        toast.success(pending ? 'Employee submitted for admin approval.' : 'Employee created successfully.');
+        if (pending) showAlert.pendingApproval('The employee was created successfully.');
+        else toast.success('Employee created successfully.');
       }
       navigate(employeeDetailsBasePath());
     } catch (err: any) {
@@ -1782,8 +1842,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         open={openSections.assign} onToggle={() => setOpenSections((p) => ({ ...p, assign: !p.assign }))}
         sectionRef={(el) => { sectionRefs.current.assign = el; }}>
 
-        {/* Department (left) + Designation (right) — side by side, equal balance */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+        {/* V_25.0 — one row: Department | Designation | Reporting Head (the
+            Head list sits right beside the designation, not in a separate
+            block below); then the Access Summary in two lines. */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
           <div className="emp-assign-box">
             <CheckboxGroup
               t={t} isView={isView}
@@ -1805,37 +1867,26 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               containerRef={setFieldRef('designation_ids') as React.Ref<HTMLDivElement>}
             />
           </div>
-        </div>
-
-        {/* V_25.0 — per selected department: Head / Executive, and the
-            Executive's Reporting Head (only that department's Heads). The
-            pages and data the employee gets follow from this — set up by
-            the Super Admin on Department Setup — instead of a hand-picked
-            module/action list. */}
-        {deptRoles.length > 0 && (
-          <div className="emp-assign-box mb-5" ref={setFieldRef('department_heads') as React.Ref<HTMLDivElement>}>
-            <label className="emp-label">Role in each Department</label>
-            <div className="flex flex-col gap-2">
-              {deptRoles.map((r) => (
-                <div key={r.deptId} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center"
-                  style={{ padding: '8px 10px', borderRadius: 10, border: `1px solid ${t.surfaceBorder}`, background: t.surfaceBg }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary }}>{r.deptName}</div>
-                  <div style={{ fontSize: 12, color: t.textSecondary }}>
-                    {r.desigName
-                      ? <>{r.desigName}{r.level && <span style={{ marginLeft: 6, padding: '1px 8px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, color: '#fff', background: r.level === 'head' ? '#7c3aed' : '#0369a1' }}>{r.level === 'head' ? 'Head' : 'Executive'}</span>}</>
-                      : (!r.designationRequired || !r.hasDesignations ? 'No designation needed' : 'Select a designation above')}
-                  </div>
-                  <div>
-                    {/* Reporting Head — one Head per department, picked from
-                        that department's Heads only (the server checks it
-                        again on save). */}
-                    {r.level && (
-                      <div role="radiogroup" aria-label={`Reporting Head for ${r.deptName}`} className="flex flex-col gap-1">
-                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, color: t.textSecondary }}>Reporting Head</div>
-                        {[{ id: '', label: 'No Reporting Head (reports to Admin)' },
+          <div className="emp-assign-box" ref={setFieldRef('department_heads') as React.Ref<HTMLDivElement>}>
+            <label className="emp-label">Reporting Head{deptRoles.some((r) => r.isSales && r.level === 'executive') && <span className="emp-required"> *</span>}</label>
+            {deptRoles.filter((r) => r.level).length === 0 ? (
+              <div style={{ fontSize: 11.5, color: t.textSecondary }}>Select a designation to see its Heads.</div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {deptRoles.filter((r) => r.level).map((r) => (
+                  <div key={r.deptId}>
+                    {deptRoles.filter((x) => x.level).length > 1 && (
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }}>{r.deptName}</div>
+                    )}
+                    {/* A Sales Head has no list — they are the Head. */}
+                    {!reportingDeptIds.includes(r.deptId) ? (
+                      <div style={{ fontSize: 11.5, color: t.textSecondary }}>{r.desigName ?? 'Head'} — no Reporting Head (reports to Admin).</div>
+                    ) : (
+                      <div role="radiogroup" aria-label={`Reporting Head for ${r.deptName}`} aria-required={r.isSales && r.level === 'executive'} className="flex flex-col" style={{ gap: 3 }}>
+                        {[...(r.isSales && r.level === 'executive' ? [] : [{ id: '', label: 'None (reports to Admin)' }]),
                           ...(headsByDept[r.deptId] ?? []).map((h) => ({
                             id: String(h.id),
-                            label: `${h.name}${h.employee_code ? ` (${h.employee_code})` : ''} — ${r.deptName} Head`,
+                            label: `${h.name}${h.employee_code ? ` (${h.employee_code})` : ''}${h.inactive ? ' (inactive)' : ''}`,
                           }))].map((o) => (
                           <label key={o.id || 'none'} className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
                             <input type="radio" name={`reporting-head-${r.deptId}`} value={o.id} disabled={isView}
@@ -1844,33 +1895,35 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                             {o.label}
                           </label>
                         ))}
-                        {(headsByDept[r.deptId] ?? []).length === 0 && (
+                        {(headsByDept[r.deptId] ?? []).filter((h) => !h.inactive).length === 0 && (
                           <div style={{ fontSize: 11, color: t.textSecondary }}>No Head in {r.deptName} yet.</div>
                         )}
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
             {errorFor('department_heads') && <div style={{ fontSize: 11, color: '#dc2626', marginTop: 4 }}>{errorFor('department_heads')}</div>}
             {isHeadAnywhere && (
-              <label className="flex items-center gap-2 mt-3" style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
+              <label className="flex items-center gap-2 mt-2" style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
                 <input type="checkbox" checked={form.can_add_customer} disabled={isView}
                   onChange={(e) => setForm((prev) => ({ ...prev, can_add_customer: e.target.checked }))} />
                 Can Add Customer
-                <span style={{ fontWeight: 500, fontSize: 11, color: t.textSecondary }}>(added customers still need Admin approval)</span>
+                <span style={{ fontWeight: 500, fontSize: 10.5, color: t.textSecondary }}>(Admin approval)</span>
               </label>
             )}
-            <AccessSummary t={t} roles={deptRoles} config={accessConfig ?? []} canAddCustomer={isHeadAnywhere && form.can_add_customer}
-              reportingHeadName={(deptId) => {
-                const headId = form.department_heads[String(deptId)];
-                if (!headId) return null;
-                return (headsByDept[deptId] ?? []).find((h) => h.id === headId)?.name ?? null;
-              }} />
           </div>
-        )}
+        </div>
 
+        {deptRoles.length > 0 && (
+          <AccessSummary t={t} roles={deptRoles} config={accessConfig ?? []} canAddCustomer={isHeadAnywhere && form.can_add_customer}
+            reportingHeadName={(deptId) => {
+              const headId = form.department_heads[String(deptId)];
+              if (!headId) return null;
+              return (headsByDept[deptId] ?? []).find((h) => h.id === headId)?.name ?? null;
+            }} />
+        )}
 
         {/* The old per-employee module/action matrix — kept (existing
             permissions still apply) but out of the normal flow: Super Admin

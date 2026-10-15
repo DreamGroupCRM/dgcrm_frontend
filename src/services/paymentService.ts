@@ -169,7 +169,8 @@ export const fetchDueList = async (): Promise<DueListResponse> => {
 // Project/Location, Assigned Employee+Code, Building/Wing/Flat, Contact
 // (Email/Mobile), Payment For, Amount, Due Status text). Powers the
 // Payment Dues table directly. ───────────────────────────────────────────
-export interface AssigneeRef { id: number; name: string; code: string | null }
+// `at` — when that assignment was made (ISO date-time).
+export interface AssigneeRef { id: number; name: string; code: string | null; at?: string | null }
 
 export interface DueListDetailRow {
   customer_id: number;
@@ -207,6 +208,8 @@ export interface DueListDetailRow {
   per_month_amount: number | null;
   // Unused part of the customer's Extra Payment(s) (same on every row of that customer).
   extra_payment_balance?: number;
+  // Total the customer paid today (Received Date = today, approved or not).
+  received_today?: number;
 }
 /** GET /api/payments/due-list-detailed */
 export const fetchDueListDetailed = async (): Promise<{ success: boolean; rows: DueListDetailRow[]; total: number }> => {

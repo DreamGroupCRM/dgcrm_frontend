@@ -28,7 +28,7 @@ export const ACCESS_AREA_LABELS: Record<AccessArea, string> = {
 
 export type DesignationLevel = 'head' | 'executive' | null;
 
-export interface TeamMember { id: number; name: string; employee_code: string | null }
+export interface TeamMember { id: number; name: string; employee_code: string | null; inactive?: boolean }
 
 export interface AccessDepartment {
   department_id: number;
@@ -59,6 +59,10 @@ export interface ConfigDepartment {
   /** null = not set up yet: employees keep the access they had before. */
   access_areas: AccessArea[] | null;
   designation_required: boolean;
+  /** V_25.0 — Sales: fixed pages and rules (set in code, not by Department Setup). */
+  is_sales?: boolean;
+  /** V_25.0 — Recovery: fixed pages and rules (set in code). */
+  is_recovery?: boolean;
   designations: ConfigDesignation[];
   /** V_25.0 — designations the Employee form may offer here (server rule). */
   offered_designation_ids?: number[];
@@ -69,8 +73,10 @@ export async function fetchMyAccess(): Promise<AccessProfile> {
   return res.data.data;
 }
 
-export async function fetchDepartmentHeads(departmentId: number): Promise<TeamMember[]> {
-  const res = await axiosInstance.get('/access/heads', { params: { department_id: departmentId } });
+// Active Heads of the department. includeId — the employee's already-saved
+// Head — comes back too even if since deactivated (flagged `inactive`).
+export async function fetchDepartmentHeads(departmentId: number, includeId?: number | null): Promise<TeamMember[]> {
+  const res = await axiosInstance.get('/access/heads', { params: { department_id: departmentId, ...(includeId ? { include_id: includeId } : {}) } });
   return res.data.data;
 }
 

@@ -79,7 +79,7 @@ const DeleteRequestsTab: React.FC = () => {
     setBusyKey(rowKey(row));
     try {
       await approvePendingDelete(row.entity_type, row.id);
-      toast.success('Delete approved.');
+      showAlert.approved('The delete request was approved.');
       await load();
     } catch (e) {
       toast.error(errMessage(e, 'Failed to approve delete.'));

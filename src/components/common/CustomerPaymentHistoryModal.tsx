@@ -15,7 +15,7 @@ import { fetchCustomerFullDetails, fetchCustomerPaymentHistory } from '../../ser
 import { fetchPaymentReceipt } from '../../services/paymentService';
 import { exportPaymentReceiptPdf } from '../../pages/Admin/CRM/Customer-Details/paymentPdfExport.lazy';
 import { CustomerFullDetail, CustomerPaymentRecord, PaymentReceipt } from '../../types';
-import { HistoryPopup, HistorySection } from './HistoryPopup';
+import { HistoryPopup, HistorySection, customerInfoItems, propertyInfoItems } from './HistoryPopup';
 import PaymentHistoryTable, { toPaymentHistoryRow } from './PaymentHistoryTable';
 import { PaymentReceiptViewModal } from './PaymentReceiptViewModal';
 
@@ -25,11 +25,12 @@ const CustomerPaymentHistoryModal: React.FC<{
   customerId: string | number;
   customerName: string;
   customerCode?: string | null;
+  /** Unused now — the property block reads the customer record itself. */
   unit?: string | null;
   onClose: () => void;
   /** The page's appearance CSS variables (the popup is portaled outside the page). */
   vars?: React.CSSProperties;
-}> = ({ t, isDark, customerId, customerName, customerCode, unit, onClose, vars }) => {
+}> = ({ t, isDark, customerId, customerName, customerCode, onClose, vars }) => {
   const [rows, setRows] = useState<CustomerPaymentRecord[] | null>(null);
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
   const [full, setFull] = useState<CustomerFullDetail | null>(null);
@@ -63,32 +64,35 @@ const CustomerPaymentHistoryModal: React.FC<{
     <>
       <HistoryPopup t={t} vars={vars} onClose={onClose} loading={rows == null}
         title={`Payments History - Total Transaction (${sorted.length})`}
-        info={[
-          { label: 'Name', value: `${customerName}${customerCode ? ` (${customerCode})` : ''}` },
-          { label: 'Address', value: full?.address || '—' },
-          { label: 'Building', value: unit || [full?.building_name, full?.wing_name].filter(Boolean).join(' / ') || '—' },
-          { label: 'Email', value: full?.email || '—' },
-          { label: 'Mobile No.', value: full?.mobile_number || '—' },
-          { label: 'Total Flat Cost', value: cost != null ? rupeeOf(cost) : '—', tone: 'green' },
-          { label: 'Total Paid', value: rupeeOf(total), tone: 'green' },
-          { label: 'Pending Amount', value: cost != null ? rupeeOf(Math.max(0, cost - total)) : '—', tone: 'red' },
-        ]}>
+        customer={customerInfoItems({ name: customerName, code: customerCode, mobile: full?.mobile_number, email: full?.email, address: full?.address })}
+        property={propertyInfoItems({
+          project: full?.project_name, building: full?.building_name, wing: full?.wing_name,
+          unitType: full?.unit_type === 'shop' ? 'shop' : 'flat', unitNo: full?.unit_type === 'shop' ? full?.shop_no : full?.flat_no,
+          flatAmount: cost, paid: total, pending: cost != null ? Math.max(0, cost - total) : null,
+        })}>
         <HistorySection t={t} title="Payment Details" total={sorted.length ? { label: 'Grand Total:', value: rupeeOf(total) } : undefined}>
           {sorted.length === 0 ? (
             <p style={{ color: t.textSecondary, fontSize: 12 }}>No payment history found.</p>
           ) : (
             <PaymentHistoryTable t={t} isDark={isDark}
               rows={sorted.map(toPaymentHistoryRow)}
-              renderActions={(row) => (
-                <div className="flex items-center gap-1.5">
-                  <button type="button" title="Download Receipt" aria-label="Download Receipt"
-                    onClick={async () => { const d = await loadReceipt(row.id); if (d) await exportPaymentReceiptPdf(d); }}
-                    style={iconBtn('#15803d', isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7')}><MdDownload size={13} /></button>
-                  <button type="button" title="View Receipt" aria-label="View Receipt"
-                    onClick={async () => { const d = await loadReceipt(row.id); if (d) setReceipt(d); }}
-                    style={iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff')}><MdVisibility size={13} /></button>
-                </div>
-              )} />
+              // No receipt until an admin approves the payment, so View /
+              // Download stay disabled for an unapproved one.
+              renderActions={(row) => {
+                const off = !row.is_approved;
+                const tip = (label: string) => (off ? `${label} (available after admin approval)` : label);
+                const st = (base: React.CSSProperties): React.CSSProperties => (off ? { ...base, opacity: 0.4, cursor: 'not-allowed' } : base);
+                return (
+                  <div className="flex items-center gap-1.5">
+                    <button type="button" title={tip('Download Receipt')} aria-label={tip('Download Receipt')} disabled={off}
+                      onClick={async () => { const d = await loadReceipt(row.id); if (d) await exportPaymentReceiptPdf(d); }}
+                      style={st(iconBtn('#15803d', isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7'))}><MdDownload size={13} /></button>
+                    <button type="button" title={tip('View Receipt')} aria-label={tip('View Receipt')} disabled={off}
+                      onClick={async () => { const d = await loadReceipt(row.id); if (d) setReceipt(d); }}
+                      style={st(iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff'))}><MdVisibility size={13} /></button>
+                  </div>
+                );
+              }} />
           )}
         </HistorySection>
       </HistoryPopup>

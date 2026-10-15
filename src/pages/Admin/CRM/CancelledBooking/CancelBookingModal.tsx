@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from '@/utils/toast';
+import { showAlert } from '../../../../utils';
 import { MdClose, MdEventBusy, MdUploadFile } from 'react-icons/md';
 
 import { AppTheme } from '../../../../styles/theme';
@@ -87,7 +88,8 @@ const CancelBookingModal: React.FC<{
         original_documents_returned: originalsReturned,
         ...files,
       });
-      toast.success(res.pending ? 'Cancellation request sent for admin approval.' : 'Booking cancelled.');
+      if (res.pending) showAlert.pendingApproval('The cancel booking request was submitted successfully.');
+      else toast.success('Booking cancelled.');
       onDone(!!res.pending);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;

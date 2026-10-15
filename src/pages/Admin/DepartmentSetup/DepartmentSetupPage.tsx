@@ -154,6 +154,18 @@ const DepartmentSetupPage: React.FC = () => {
                   </span>
                 </div>
 
+                {d.is_recovery && (
+                  <div className="mb-2" style={{ fontSize: 11.5, fontWeight: 600, color: '#1d4ed8', padding: '8px 10px', borderRadius: 8, background: 'rgba(37,99,235,0.08)' }}>
+                    Recovery department: its employees always get Dashboard, Customer Details, Payment Due, Payment Received,
+                    Customize Scheme, Building View (+ own Attendance &amp; Leave), whatever is ticked below.
+                  </div>
+                )}
+                {d.is_sales && (
+                  <div className="mb-2" style={{ fontSize: 11.5, fontWeight: 600, color: '#1d4ed8', padding: '8px 10px', borderRadius: 8, background: 'rgba(37,99,235,0.08)' }}>
+                    Sales department: its employees always get only Dashboard, Leads, Customize Scheme, Building View (+ own Attendance &amp; Leave),
+                    whatever is ticked below. Only Admin can delete leads.
+                  </div>
+                )}
                 <label className="flex items-center gap-2 mb-2" style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary, cursor: 'pointer' }}>
                   <input type="checkbox" checked={draft.setUp} onChange={(e) => patch(d.id, { setUp: e.target.checked })} />
                   Set up this department&apos;s pages

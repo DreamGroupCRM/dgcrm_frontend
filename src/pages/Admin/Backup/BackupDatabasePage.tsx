@@ -3,12 +3,13 @@
 // ==========================================
 // Whole-database point-in-time snapshots — see backupService.ts /
 // modules/backup/ in dgcrm_backend. Replaces the former PlaceholderPage.
-// SuperAdmin-only, enforced server-side; every action here is high-blast-
-// radius (Restore rolls back EVERY company's data), so Restore requires
-// typing a confirmation phrase, not just a plain Yes/No dialog.
+// Admin and Super Admin may create snapshots and download a .sql backup;
+// Restore and Delete are Super Admin only (enforced server-side). Restore
+// rolls back EVERY company's data, so it requires typing a confirmation
+// phrase, not just a plain Yes/No dialog.
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from '@/utils/toast';
-import { MdStorage, MdAdd, MdRestore, MdDelete, MdRefresh, MdShield, MdWarning, MdClose, MdMoreVert } from 'react-icons/md';
+import { MdStorage, MdAdd, MdRestore, MdDelete, MdRefresh, MdShield, MdWarning, MdClose, MdMoreVert, MdDownload } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
@@ -16,7 +17,7 @@ import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import StatCard from '../../../components/masters/StatCard';
 import { RowActionMenu, useRowActionMenu } from '../../../components/common/RowActionMenu';
 import { formatLastLogin } from '../../../utils';
-import { fetchSnapshots, createSnapshot, restoreSnapshot, deleteSnapshot, BackupSnapshot } from '../../../services/backupService';
+import { fetchSnapshots, createSnapshot, restoreSnapshot, deleteSnapshot, downloadSqlBackup, BackupSnapshot } from '../../../services/backupService';
 import './BackupDatabasePage.css';
 
 const formatBytes = (n: number): string => {
@@ -36,6 +37,9 @@ const BackupDatabasePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [labelInput, setLabelInput] = useState('');
+
+  const isSuperAdmin = useAppSelector((s) => s.auth.role) === 'superadmin';
+  const [downloading, setDownloading] = useState(false);
 
   const [restoreTarget, setRestoreTarget] = useState<BackupSnapshot | null>(null);
   const rowMenu = useRowActionMenu<number>();
@@ -68,6 +72,22 @@ const BackupDatabasePage: React.FC = () => {
       toast.error(errMessage(e, 'Failed to create snapshot.'));
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDownloadSql = async () => {
+    setDownloading(true);
+    try {
+      await downloadSqlBackup();
+      toast.success('Database backup downloaded.');
+    } catch (e) {
+      // A blob error body has to be read as text to get the message.
+      let msg = 'Failed to download the database backup.';
+      const data = (e as { response?: { data?: unknown } })?.response?.data;
+      if (data instanceof Blob) { try { msg = JSON.parse(await data.text()).message || msg; } catch { /* keep default */ } }
+      toast.error(msg);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -139,6 +159,25 @@ const BackupDatabasePage: React.FC = () => {
         </div>
       </div>
 
+      <div className="rounded-2xl mb-5 p-5" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+        <div className="flex items-center gap-2.5 -m-5 mb-4 px-5 py-3.5 rounded-t-2xl" style={{ background: 'var(--grad-green)' }}>
+          <MdDownload size={18} style={{ color: '#fff', flexShrink: 0 }} />
+          <h3 style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>Download Backup (.sql)</h3>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <p style={{ fontSize: 12, color: t.textSecondary, margin: 0, flex: 1 }}>
+            Downloads the whole database as it stands right now as a .sql file you can keep off the server. It can be imported
+            into a new, empty MySQL database with MySQL Workbench or the mysql command. Uploaded documents are not included.
+            The file contains every customer's and employee's data — store it safely.
+          </p>
+          <button type="button" onClick={handleDownloadSql} disabled={downloading}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap"
+            style={{ background: downloading ? t.insetBg : 'var(--brand-gradient)', color: downloading ? t.textSecondary : '#fff', border: 'none', cursor: downloading ? 'not-allowed' : 'pointer' }}>
+            <MdDownload size={17} /> {downloading ? 'Preparing download…' : 'Download SQL Backup'}
+          </button>
+        </div>
+      </div>
+
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Snapshots</h3>
@@ -181,6 +220,9 @@ const BackupDatabasePage: React.FC = () => {
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: isDark ? '#fff' : '#000' }}>{s.created_by_name || '—'}</td>
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatBytes(s.size_bytes)}</td>
                     <td style={{ padding: '12px 14px' }}>
+                      {!isSuperAdmin ? (
+                        <div style={{ textAlign: 'center', fontSize: 11, color: t.textSecondary }} title="Restore and Delete are Super Admin only">—</div>
+                      ) : (
                       <div className="flex items-center justify-center">
                         <button type="button" title="Actions" className="master-icon-btn"
                           ref={rowMenu.openId === s.id ? rowMenu.buttonRef : undefined}
@@ -194,6 +236,7 @@ const BackupDatabasePage: React.FC = () => {
                           ]} />
                         )}
                       </div>
+                      )}
                     </td>
                   </tr>
                 ))

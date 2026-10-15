@@ -173,6 +173,31 @@ export const showAlert = {
       confirmButtonColor: '#1a5c38',
     });
   },
+  /**
+   * V_25.0 — a Head's add / edit / delete / cancel request went to Admin
+   * approval: it is saved, but nothing changes in the system until an
+   * Admin approves it on Pending Admin Approval.
+   */
+  pendingApproval: (what: string) => {
+    return Swal.fire({
+      icon: 'info',
+      title: 'Sent for Admin Approval',
+      html: `<div style="font-size:14px;line-height:1.5">${what}<br/><br/>`
+        + '<b>It is waiting for Admin approval.</b> It will show in the system only after an Admin approves it on the <b>Pending Admin Approval</b> page.</div>',
+      confirmButtonText: 'OK, got it',
+      confirmButtonColor: '#1a5c38',
+    });
+  },
+  /** V_25.0 — an Admin approved a request: it is now live in the system. */
+  approved: (what: string) => {
+    return Swal.fire({
+      icon: 'success',
+      title: 'Approved',
+      html: `<div style="font-size:14px;line-height:1.5">${what}<br/><br/>The change is now live in the system.</div>`,
+      confirmButtonText: 'OK',
+      confirmButtonColor: '#1a5c38',
+    });
+  },
   confirm: (message: string, title = 'Are you sure?') => {
     return Swal.fire({
       icon: 'question',

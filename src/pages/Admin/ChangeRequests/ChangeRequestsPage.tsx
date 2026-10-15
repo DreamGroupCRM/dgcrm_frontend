@@ -104,7 +104,12 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
     setBusyKey(row.id);
     try {
       await approveChangeRequest(row.id);
-      toast.success('Request approved.');
+      // V_25.0 — a clear confirmation that the change is now live.
+      const what = row.action === 'create' ? `The new ${MODULE_LABEL[row.module]} "${summarize(row)}" was approved.`
+        : row.action === 'edit' ? `The changes to ${MODULE_LABEL[row.module]} "${summarize(row)}" were approved.`
+        : row.action === 'cancel_booking' ? `The cancel booking request for "${summarize(row)}" was approved.`
+        : `The delete request for ${MODULE_LABEL[row.module]} "${summarize(row)}" was approved.`;
+      showAlert.approved(what);
       await load();
     } catch (e) {
       toast.error(errMessage(e, 'Failed to approve request.'));

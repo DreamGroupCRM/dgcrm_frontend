@@ -26,7 +26,7 @@ import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import PaymentHistoryTable, { toPaymentHistoryRow } from '../../../../components/common/PaymentHistoryTable';
-import { HistoryPopup, HistorySection } from '../../../../components/common/HistoryPopup';
+import { HistoryPopup, HistorySection, customerInfoItems, propertyInfoItems } from '../../../../components/common/HistoryPopup';
 import RefundHistoryTable from '../../../../components/common/RefundHistoryTable';
 import StatCard from '../../../../components/masters/StatCard';
 import PaginationFooter from '../../../../components/common/PaginationFooter';
@@ -772,18 +772,21 @@ const CancelledBookingPage: React.FC = () => {
         // V_25.0 — the plain Customer Details history layout (shared HistoryPopup).
         <HistoryPopup t={t} vars={cssVars} onClose={() => setRefundFor(null)} loading={!refundSummary}
           title={`Payment Refund - ${refundFor.customer_name}${refundFor.customer_code ? ` (${refundFor.customer_code})` : ''}`}
-          info={[
-            { label: 'Name', value: refundFor.customer_name },
+          customer={customerInfoItems({ name: refundFor.customer_name, code: refundFor.customer_code, mobile: refundFor.mobile_number, email: refundFor.email, address: refundFor.address })}
+          property={propertyInfoItems({
+            project: refundFor.project_name, building: refundFor.building_name, wing: refundFor.unit_type === 'shop' ? null : refundFor.wing_name,
+            unitType: refundFor.unit_type === 'shop' ? 'shop' : 'flat', unitNo: refundFor.unit_type === 'shop' ? refundFor.shop_no : refundFor.flat_no,
+            flatAmount: refundFor.flat_amount, paid: refundSummary?.total_paid ?? 0,
+          })}
+          extra={{ title: 'Cancellation Details', items: [
             { label: 'Cancellation Date', value: refundFor.cancelled_at ? formatDate(refundFor.cancelled_at) : '—' },
-            { label: 'Flat Details', value: flatText(refundFor) || '—' },
-            { label: 'Cancellation Reason', value: refundFor.cancellation_reason || '—' },
             { label: 'Assigned Employee', value: refundFor.assigned_employee_name || '—' },
-            { label: 'Original Documents Returned', value: refundFor.original_documents_returned ? 'Yes' : 'No' },
-            { label: 'Cancellation Documents', value: docLinks(refundFor).length ? <span className="inline-flex gap-3 flex-wrap">{docLinks(refundFor)}</span> : '—' },
-            { label: 'Total Paid', value: rupee(refundSummary?.total_paid ?? 0), tone: 'green' },
+            { label: 'Reason', value: refundFor.cancellation_reason || '—' },
+            { label: 'Original Docs Returned', value: refundFor.original_documents_returned ? 'Yes' : 'No' },
+            { label: 'Documents', value: docLinks(refundFor).length ? <span className="inline-flex gap-3 flex-wrap">{docLinks(refundFor)}</span> : '—' },
             { label: 'Total Refunded', value: rupee(refundSummary?.total_refunded ?? 0), tone: 'green' },
             { label: 'Refund Balance', value: rupee(Math.max(0, (refundSummary?.total_paid ?? 0) - (refundSummary?.total_refunded ?? 0))), tone: 'red' },
-          ]}>
+          ] }}>
           {refundSummary && (
             <>
               <HistorySection t={t} title="Payment Details"

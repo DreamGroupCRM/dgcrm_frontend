@@ -99,7 +99,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="masters/department/view/:id" element={<DepartmentCrudPage mode="view" />} />
       <Route path="masters/department/edit/:id" element={<DepartmentCrudPage mode="edit" />} />
 
-      {/* SuperAdmin-only — see Sidebar.tsx / backend's requireSuperAdmin */}
+      {/* Backup: Admin + Super Admin (Restore/Delete Super Admin only, server-side). User Management: Super Admin only. */}
       <Route path="masters/roles" element={<ProtectedRoute allowedRoles={['superadmin']}><RoleListPage /></ProtectedRoute>} />
       <Route path="masters/roles/add" element={<ProtectedRoute allowedRoles={['superadmin']}><RoleCrudPage mode="add" /></ProtectedRoute>} />
       <Route path="masters/roles/view/:id" element={<ProtectedRoute allowedRoles={['superadmin']}><RoleCrudPage mode="view" /></ProtectedRoute>} />
@@ -115,7 +115,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="masters/building/view/:id" element={<BuildingCrudPage mode="view" />} />
       <Route path="masters/building/edit/:id" element={<BuildingCrudPage mode="edit" />} />
 
-      {/* SuperAdmin-only — see Sidebar.tsx / backend's requireSuperAdmin */}
+      {/* Backup: Admin + Super Admin (Restore/Delete Super Admin only, server-side). User Management: Super Admin only. */}
       <Route path="masters/action-module" element={<ProtectedRoute allowedRoles={['superadmin']}><ActionModuleListPage /></ProtectedRoute>} />
       <Route path="masters/action/add" element={<ProtectedRoute allowedRoles={['superadmin']}><ActionMasterCrudPage mode="add" /></ProtectedRoute>} />
       <Route path="masters/action/view/:id" element={<ProtectedRoute allowedRoles={['superadmin']}><ActionMasterCrudPage mode="view" /></ProtectedRoute>} />
@@ -165,8 +165,8 @@ const AdminRoutes: React.FC = () => (
       <Route path="customize-scheme" element={<CustomizeSchemePage />} />
       <Route path="building-2d-view" element={<Building2DViewPage />} />
 
-      {/* SuperAdmin-only — see Sidebar.tsx / backend's requireSuperAdmin */}
-      <Route path="backup-database" element={<ProtectedRoute allowedRoles={['superadmin']}><BackupDatabasePage /></ProtectedRoute>} />
+      {/* Backup: Admin + Super Admin (Restore/Delete Super Admin only, server-side). User Management: Super Admin only. */}
+      <Route path="backup-database" element={<ProtectedRoute allowedRoles={['superadmin', 'admin']}><BackupDatabasePage /></ProtectedRoute>} />
       <Route path="user-management" element={<ProtectedRoute allowedRoles={['superadmin']}><UserManagementPage /></ProtectedRoute>} />
     </Route>
   </Routes>
