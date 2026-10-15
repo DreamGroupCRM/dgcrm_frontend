@@ -1398,8 +1398,10 @@ const DueReportPage: React.FC = () => {
                           </td>
                         ))}
                         <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
-                          <DueCircles amounts={circles} size={34} />
-                          <div style={{ fontSize: 10, color: t.textSecondary, marginTop: 2 }}>Total {rupee(g.total)} · {g.items.length} due{g.items.length === 1 ? '' : 's'}</div>
+                          {/* Boxes and the total on ONE row. */}
+                          <DueCircles amounts={circles} size={34}>
+                            <span style={{ fontSize: 10.5, fontWeight: 600, color: t.textSecondary, marginLeft: 4, whiteSpace: 'nowrap' }}>Total {rupee(g.total)} · {g.items.length} due{g.items.length === 1 ? '' : 's'}</span>
+                          </DueCircles>
                           {g.extraBalance > 0 && (
                             <div title="Extra Payment — kept separate from EMIs" style={{ fontSize: 10.5, fontWeight: 700, color: '#0369a1', marginTop: 1 }}>Extra Payment: {rupee(g.extraBalance)}</div>
                           )}
