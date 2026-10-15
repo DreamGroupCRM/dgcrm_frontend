@@ -1464,17 +1464,17 @@ const DueReportPage: React.FC = () => {
                                         <span style={{ fontSize: 11, fontWeight: 800 }}>{getPaymentForDisplay(r).label}</span>
                                         <span style={{ padding: '0 6px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, lineHeight: 1.5, color: r.statusColor, background: r.statusTextColor }}>{r.statusLabel}</span>
                                       </div>
-                                      <div style={{ marginTop: 1, fontSize: 11, whiteSpace: 'nowrap', opacity: 0.95 }}>
+                                      <div style={{ marginTop: 1, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
                                         <b style={{ fontSize: 12.5 }}>{rupee(r.amount)}</b>
                                         {!showsDueDateOnly(r.payment_for_key) && r.months_pending ? (
-                                          <> <span style={{ margin: '0 4px', opacity: 0.5 }}>|</span>{r.months_pending} Month{r.months_pending === 1 ? '' : 's'}</>
+                                          <> <span style={{ margin: '0 4px', opacity: 0.75 }}>|</span>{r.months_pending} Month{r.months_pending === 1 ? '' : 's'}</>
                                         ) : null}
                                         {showPerMonth && (
-                                          <> <span style={{ margin: '0 4px', opacity: 0.5 }}>|</span>{rupee(r.per_month_amount!)} each</>
+                                          <> <span style={{ margin: '0 4px', opacity: 0.75 }}>|</span>{rupee(r.per_month_amount!)} each</>
                                         )}
                                       </div>
                                       {subText && (
-                                        <div className="due-chip-sub" title={subText} style={{ fontSize: 10, marginTop: 1, opacity: 0.9 }}>{subText}</div>
+                                        <div className="due-chip-sub" title={subText} style={{ fontSize: 10, fontWeight: 600, marginTop: 1 }}>{subText}</div>
                                       )}
                                     </div>
                                   </div>

@@ -35,7 +35,7 @@ const DueCircles: React.FC<{ amounts: DueCircleAmounts; size?: number }> = ({ am
           className="inline-flex items-center justify-center"
           style={{
             width: size, height: size, borderRadius: '50%', flexShrink: 0,
-            background: c.bg, color: c.fg, opacity: v > 0 ? 1 : 0.3,
+            background: c.bg, color: c.fg, // full colour even at ₹0 — a faded circle made its text unreadable
             fontSize: size < 36 ? 9 : 9.5, fontWeight: 800, letterSpacing: -0.3,
             fontVariantNumeric: 'tabular-nums', lineHeight: 1, cursor: 'default',
           }}>
