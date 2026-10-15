@@ -63,6 +63,8 @@ export interface ConfigDepartment {
   is_sales?: boolean;
   /** V_25.0 — Recovery: fixed pages and rules (set in code). */
   is_recovery?: boolean;
+  /** Pages an employee here actually gets (server rule; null = not set up yet). */
+  effective_areas?: AccessArea[] | null;
   designations: ConfigDesignation[];
   /** V_25.0 — designations the Employee form may offer here (server rule). */
   offered_designation_ids?: number[];
