@@ -156,11 +156,19 @@ const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; ro
                 </td>
                 <td style={{ padding: '7px 12px', fontSize: 11.5, textAlign: 'right', fontWeight: 600 }}>
                   <span style={{ color: settled ? t.textSecondary : t.textPrimary, textDecoration: settled ? 'line-through' : 'none' }}>{formatINR(r.amount)}</span>
-                  {partiallyCredited && (
-                    <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
-                      {formatINR(dueAmount as number)} due &middot; {formatINR(r.amount - (dueAmount as number))} via Extra Pay
-                    </div>
-                  )}
+                  {partiallyCredited && (() => {
+                    // V_25.0 — say where the already-paid part came from:
+                    // an earlier over-payment carried forward, or a part payment.
+                    const carried = gridRows?.[i]?.carried_forward ?? 0;
+                    const partPaid = gridRows?.[i]?.part_paid ?? 0;
+                    return (
+                      <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
+                        {carried > 0 && <div>{formatINR(carried)} carried forward from previous payment</div>}
+                        {partPaid > 0 && <div>{formatINR(partPaid)} part-paid</div>}
+                        <div style={{ color: '#b45309' }}>{formatINR(dueAmount as number)} pending</div>
+                      </div>
+                    );
+                  })()}
                 </td>
               </tr>
             );

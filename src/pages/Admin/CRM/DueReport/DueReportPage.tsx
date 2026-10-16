@@ -391,6 +391,9 @@ const DUE_BATCH_SIZE = 100;
 // due today, or upcoming within its early-visibility window). ────────────
 interface DisplayRow {
   key: string;
+  /** EMI groups: covered by an earlier over-payment / part payment (see payment.service.ts). */
+  carried_forward_amount?: number;
+  part_paid_amount?: number;
   customer_id: number; customer_code: string; customer_name: string;
   email: string | null; mobile_number: string | null;
   assigned_employee_name: string | null; assigned_employee_code: string | null;
@@ -682,6 +685,8 @@ const DueReportPage: React.FC = () => {
     amount: r.amount,
     months_pending: r.months_pending,
     per_month_amount: r.per_month_amount,
+    carried_forward_amount: r.carried_forward_amount ?? 0,
+    part_paid_amount: r.part_paid_amount ?? 0,
     statusLabel: STATUS_LABEL[r.due_category],
     statusColor: STATUS_COLORS[r.due_category],
     statusTextColor: STATUS_TEXT_COLORS[r.due_category],
@@ -1514,6 +1519,13 @@ const DueReportPage: React.FC = () => {
                                       </div>
                                       {subText && (
                                         <div className="due-chip-sub" title={subText} style={{ fontSize: 10, fontWeight: 600, marginTop: 1 }}>{subText}</div>
+                                      )}
+                                      {/* V_25.0 — why this is less than months × EMI. */}
+                                      {(r.carried_forward_amount ?? 0) > 0 && (
+                                        <div style={{ fontSize: 10, fontWeight: 700, marginTop: 1 }}>{rupee(r.carried_forward_amount!)} carried forward from previous payment</div>
+                                      )}
+                                      {(r.part_paid_amount ?? 0) > 0 && (
+                                        <div style={{ fontSize: 10, fontWeight: 700, marginTop: 1 }}>{rupee(r.part_paid_amount!)} part-paid on the current EMI</div>
                                       )}
                                     </div>
                                   </div>
