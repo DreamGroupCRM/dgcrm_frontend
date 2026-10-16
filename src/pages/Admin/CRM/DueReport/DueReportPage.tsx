@@ -1014,12 +1014,18 @@ const DueReportPage: React.FC = () => {
   const errorFor = (field: string): string | undefined =>
     submitAttempted ? validationChecks.find((c) => c.field === field && c.failed())?.message : undefined;
 
+  // Blocks a second submit at once, before React re-renders the button as
+  // disabled — a quick double-click could otherwise record the same
+  // payment twice.
+  const submitLockRef = useRef(false);
   const handleSubmitAddPayment = async () => {
+    if (submitLockRef.current) return;
     setSubmitAttempted(true);
     const invalid = validationChecks.find((c) => c.failed());
     if (invalid) { revealInvalidField(invalid.field); return; }
     if (!apSelectedCustomer || !apSelectedPaymentFor) return;
 
+    submitLockRef.current = true;
     setSubmitting(true);
     try {
       const payload: CollectPaymentPayload = {
@@ -1041,6 +1047,7 @@ const DueReportPage: React.FC = () => {
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to record payment.');
     } finally {
+      submitLockRef.current = false;
       setSubmitting(false);
     }
   };
