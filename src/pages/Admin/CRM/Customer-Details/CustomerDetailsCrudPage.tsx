@@ -935,20 +935,19 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   // actually save the customer, only to preview the EMI numbers.
   const [emiPreviewOpen, setEmiPreviewOpen] = useState(false);
   const paymentFieldsComplete =
+    // V_25.0 (approved change) — only the REQUIRED payment fields gate the
+    // preview now. The optional ones (Remaining Booking Amount/Date and the
+    // 4 Booster fields) count as 0 / none when left empty, exactly as they
+    // do when the customer is saved — before, an empty optional Booster
+    // kept Preview disabled for a plan that could already be saved.
     totalCost.trim() !== '' &&
     bookingDate !== '' &&
     bookingAmount.trim() !== '' &&
-    remainingBookingAmount.trim() !== '' &&
-    remainingBookingDate !== '' &&
     possessionAmount.trim() !== '' &&
     installmentDate !== '' &&
     monthlyEmiBeforePossession.trim() !== '' &&
     monthlyEmiAfterPossession.trim() !== '' &&
-    totalEmiTenure.trim() !== '' &&
-    boosterAmountBeforePossession.trim() !== '' &&
-    boosterIntervalBeforePossession.trim() !== '' &&
-    boosterAmountAfterPossession.trim() !== '' &&
-    boosterIntervalAfterPossession.trim() !== '';
+    totalEmiTenure.trim() !== '';
 
   // ── V_25.0 — the payment plan must add up to EXACTLY the Total Cost ──
   // Same total the Scheme page shows: Booking + Remaining Booking + EMIs and
@@ -2337,7 +2336,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
                 type="button"
                 onClick={() => setEmiPreviewOpen(true)}
                 disabled={!paymentFieldsComplete}
-                title={paymentFieldsComplete ? 'Preview the EMI Scheme & Schedule for these Payment Details' : 'Fill in every Payment Details field to preview the EMI Scheme & Schedule'}
+                title={paymentFieldsComplete ? 'Preview the EMI Scheme & Schedule for these Payment Details' : 'Fill in the required Payment Details fields to preview the EMI Scheme & Schedule'}
                 className={fieldClass}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,

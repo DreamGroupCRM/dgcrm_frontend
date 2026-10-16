@@ -149,12 +149,15 @@ export const showAlert = {
       timerProgressBar: true,
     });
   },
-  error: (message: string, title = 'Error') => {
+  // `options` lets a caller adjust the popup (e.g. returnFocus: false for a
+  // field-level message that moves focus itself).
+  error: (message: string, title = 'Error', options: SweetAlertOptions = {}) => {
     return Swal.fire({
       icon: 'error',
       title,
       text: message,
       confirmButtonColor: '#1a5c38',
+      ...options,
     });
   },
   warning: (message: string, title = 'Warning') => {

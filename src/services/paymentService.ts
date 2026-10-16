@@ -206,6 +206,10 @@ export interface DueListDetailRow {
   // Per-installment EMI amount (amount = per_month_amount * months_pending);
   // null alongside months_pending for one-time dues.
   per_month_amount: number | null;
+  /** EMI groups: covered by an earlier over-payment carried forward. */
+  carried_forward_amount?: number;
+  /** EMI groups: already part-paid towards the current EMI. */
+  part_paid_amount?: number;
   // Unused part of the customer's Extra Payment(s) (same on every row of that customer).
   extra_payment_balance?: number;
   // Total the customer paid today (Received Date = today, approved or not).
@@ -306,6 +310,10 @@ export interface DueGridRow {
   // the scheduled `amount` minus any leftover partial Extra Pay credit for
   // the one row immediately following a settled range.
   due_amount: number;
+  /** EMI rows: already covered by an earlier over-payment carried forward (e.g. ₹5,000 of a ₹15,000 payment on a ₹10,000 EMI). */
+  carried_forward?: number;
+  /** EMI rows: already paid in part towards this EMI. */
+  part_paid?: number;
 }
 export interface CustomerDueGrid {
   customer_id: number;

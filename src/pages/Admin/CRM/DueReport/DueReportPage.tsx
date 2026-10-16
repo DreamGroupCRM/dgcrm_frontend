@@ -18,7 +18,7 @@ import {
   MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
   MdReceiptLong, MdSchedule, MdVpnKey, MdAccountBalanceWallet, MdNoteAdd,
   MdSearch, MdStars, MdWorkspacePremium, MdForum, MdEvent, MdPerson, MdAccessTime,
-  MdEventAvailable, MdUpcoming, MdExpandMore, MdChevronRight, MdHistory } from 'react-icons/md';
+  MdEventAvailable, MdUpcoming, MdExpandMore, MdChevronRight, MdHistory, MdErrorOutline, MdToday } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
@@ -228,6 +228,7 @@ const formatAmountDisplay = (v: string): string => {
 // saturated-gradient look used site-wide, e.g. Building Master's summary
 // row) instead of a bespoke flat card. ──────────────────────────────────
 interface StatBoxSpec { label: string; value: number; color: string; icon: IconType; }
+const STATUS_BOX_ICON: Record<DueStatus, IconType> = { overdue: MdErrorOutline, due_today: MdToday, upcoming: MdUpcoming };
 
 // ── "Payment For" options shown on the Add Payment Details form — richer,
 // friendlier labels than PAYMENT_FOR_OPTIONS (used elsewhere for the raw
@@ -390,6 +391,9 @@ const DUE_BATCH_SIZE = 100;
 // due today, or upcoming within its early-visibility window). ────────────
 interface DisplayRow {
   key: string;
+  /** EMI groups: covered by an earlier over-payment / part payment (see payment.service.ts). */
+  carried_forward_amount?: number;
+  part_paid_amount?: number;
   customer_id: number; customer_code: string; customer_name: string;
   email: string | null; mobile_number: string | null;
   assigned_employee_name: string | null; assigned_employee_code: string | null;
@@ -681,6 +685,8 @@ const DueReportPage: React.FC = () => {
     amount: r.amount,
     months_pending: r.months_pending,
     per_month_amount: r.per_month_amount,
+    carried_forward_amount: r.carried_forward_amount ?? 0,
+    part_paid_amount: r.part_paid_amount ?? 0,
     statusLabel: STATUS_LABEL[r.due_category],
     statusColor: STATUS_COLORS[r.due_category],
     statusTextColor: STATUS_TEXT_COLORS[r.due_category],
@@ -781,6 +787,21 @@ const DueReportPage: React.FC = () => {
     const total = emiBefore + emiAfter + Object.values(sums).reduce((s, v) => s + v, 0);
     return { ...sums, emiBefore, emiAfter, total, counts };
   }, [dueRows, statusFilter, filterEmployee]);
+
+  // V_25.0 — the three status boxes (Overdue / Due Today / Upcoming). They
+  // follow the Employee filter but not the Status filter (each box IS a
+  // status), so all three always show their own total.
+  const statusSums = useMemo(() => {
+    const sums: Record<DueStatus, { amount: number; count: number }> = {
+      overdue: { amount: 0, count: 0 }, due_today: { amount: 0, count: 0 }, upcoming: { amount: 0, count: 0 },
+    };
+    for (const r of dueRows) {
+      if (filterEmployee && !assignedTo(r, filterEmployee)) continue;
+      const s = sums[r.due_category as DueStatus];
+      if (s) { s.amount += r.amount; s.count++; }
+    }
+    return sums;
+  }, [dueRows, filterEmployee]);
 
   const handleRefresh = () => fetchDueRows();
   const switchDataScope = (next: DataScope) => {
@@ -998,12 +1019,18 @@ const DueReportPage: React.FC = () => {
   const errorFor = (field: string): string | undefined =>
     submitAttempted ? validationChecks.find((c) => c.field === field && c.failed())?.message : undefined;
 
+  // Blocks a second submit at once, before React re-renders the button as
+  // disabled — a quick double-click could otherwise record the same
+  // payment twice.
+  const submitLockRef = useRef(false);
   const handleSubmitAddPayment = async () => {
+    if (submitLockRef.current) return;
     setSubmitAttempted(true);
     const invalid = validationChecks.find((c) => c.failed());
     if (invalid) { revealInvalidField(invalid.field); return; }
     if (!apSelectedCustomer || !apSelectedPaymentFor) return;
 
+    submitLockRef.current = true;
     setSubmitting(true);
     try {
       const payload: CollectPaymentPayload = {
@@ -1025,6 +1052,7 @@ const DueReportPage: React.FC = () => {
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to record payment.');
     } finally {
+      submitLockRef.current = false;
       setSubmitting(false);
     }
   };
@@ -1064,6 +1092,20 @@ const DueReportPage: React.FC = () => {
           click-to-filter on the table below (same convention Payment
           Upcoming's own boxes use) — click again, or click Total, to
           clear it. ────────────────────────────────────────────────────── */}
+      {/* V_25.0 — status boxes in the page's colour code (dueColors.ts).
+          Clicking one sets the Status filter; clicking it again clears it. */}
+      <div className="due-report-status-grid grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        {(['overdue', 'due_today', 'upcoming'] as DueStatus[]).map((k) => (
+          <StatCard key={k}
+            label={`${DUE_STATUS[k].label} (${statusSums[k].count})`}
+            value={rupee(statusSums[k].amount)} icon={STATUS_BOX_ICON[k]} color={DUE_STATUS[k].bg}
+            fill={DUE_STATUS[k].bg} ink={DUE_STATUS[k].fg}
+            bg={DUE_STATUS[k].bg} loading={loadingDueList} compact
+            active={statusFilter === k}
+            onClick={() => setStatusFilter(statusFilter === k ? 'all' : k)}
+            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        ))}
+      </div>
       <div className="due-report-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3 mb-5">
         {statBoxSpecs.map((spec) => (
           <StatCard key={spec.key}
@@ -1398,8 +1440,10 @@ const DueReportPage: React.FC = () => {
                           </td>
                         ))}
                         <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
-                          <DueCircles amounts={circles} size={34} />
-                          <div style={{ fontSize: 10, color: t.textSecondary, marginTop: 2 }}>Total {rupee(g.total)} · {g.items.length} due{g.items.length === 1 ? '' : 's'}</div>
+                          {/* Boxes and the total on ONE row. */}
+                          <DueCircles amounts={circles} size={34}>
+                            <span style={{ fontSize: 10.5, fontWeight: 600, color: t.textSecondary, marginLeft: 4, whiteSpace: 'nowrap' }}>Total {rupee(g.total)} · {g.items.length} due{g.items.length === 1 ? '' : 's'}</span>
+                          </DueCircles>
                           {g.extraBalance > 0 && (
                             <div title="Extra Payment — kept separate from EMIs" style={{ fontSize: 10.5, fontWeight: 700, color: '#0369a1', marginTop: 1 }}>Extra Payment: {rupee(g.extraBalance)}</div>
                           )}
@@ -1464,17 +1508,24 @@ const DueReportPage: React.FC = () => {
                                         <span style={{ fontSize: 11, fontWeight: 800 }}>{getPaymentForDisplay(r).label}</span>
                                         <span style={{ padding: '0 6px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, lineHeight: 1.5, color: r.statusColor, background: r.statusTextColor }}>{r.statusLabel}</span>
                                       </div>
-                                      <div style={{ marginTop: 1, fontSize: 11, whiteSpace: 'nowrap', opacity: 0.95 }}>
+                                      <div style={{ marginTop: 1, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
                                         <b style={{ fontSize: 12.5 }}>{rupee(r.amount)}</b>
                                         {!showsDueDateOnly(r.payment_for_key) && r.months_pending ? (
-                                          <> <span style={{ margin: '0 4px', opacity: 0.5 }}>|</span>{r.months_pending} Month{r.months_pending === 1 ? '' : 's'}</>
+                                          <> <span style={{ margin: '0 4px', opacity: 0.75 }}>|</span>{r.months_pending} Month{r.months_pending === 1 ? '' : 's'}</>
                                         ) : null}
                                         {showPerMonth && (
-                                          <> <span style={{ margin: '0 4px', opacity: 0.5 }}>|</span>{rupee(r.per_month_amount!)} each</>
+                                          <> <span style={{ margin: '0 4px', opacity: 0.75 }}>|</span>{rupee(r.per_month_amount!)} each</>
                                         )}
                                       </div>
                                       {subText && (
-                                        <div className="due-chip-sub" title={subText} style={{ fontSize: 10, marginTop: 1, opacity: 0.9 }}>{subText}</div>
+                                        <div className="due-chip-sub" title={subText} style={{ fontSize: 10, fontWeight: 600, marginTop: 1 }}>{subText}</div>
+                                      )}
+                                      {/* V_25.0 — why this is less than months × EMI. */}
+                                      {(r.carried_forward_amount ?? 0) > 0 && (
+                                        <div style={{ fontSize: 10, fontWeight: 700, marginTop: 1 }}>{rupee(r.carried_forward_amount!)} carried forward from previous payment</div>
+                                      )}
+                                      {(r.part_paid_amount ?? 0) > 0 && (
+                                        <div style={{ fontSize: 10, fontWeight: 700, marginTop: 1 }}>{rupee(r.part_paid_amount!)} part-paid on the current EMI</div>
                                       )}
                                     </div>
                                   </div>

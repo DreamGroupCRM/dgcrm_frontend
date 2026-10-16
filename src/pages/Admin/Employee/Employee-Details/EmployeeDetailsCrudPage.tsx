@@ -618,12 +618,14 @@ const DocumentCard: React.FC<{
 // ─────────────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────
-// V_25.0 — read-only "Access Summary": what this employee will get, shown
-// as a ✓ list before saving — only what they CAN do (V_25.0: no ✗ rows). Pages come straight from the department's
-// Department Setup (access_areas; a department not set up yet keeps the
-// pages every employee had before — LEGACY_AREAS on the server). Actions
-// follow the same rules the server enforces for a Head / an Executive on
-// those pages — nothing here grants or changes anything.
+// V_25.0 — read-only "Access Summary": ONLY what this employee will be
+// able to open and do — nothing denied is listed. Pages come from the
+// server (Department Setup, with Sales and Recovery fixed in code —
+// effective_areas on /access/config; a department not set up yet keeps the
+// pages every employee had before). Actions follow the rules the server
+// enforces for a Head / an Executive on those pages, and every action that
+// goes to Admin approval is tagged so. Nothing here grants or changes
+// anything.
 const LEGACY_PAGES: AccessArea[] = ['leads', 'customers', 'payment_dues', 'payment_received', 'cancelled_booking', 'customize_scheme', 'building_view'];
 const PAGE_LABELS: Record<AccessArea, string> = {
   leads: 'Leads', customers: 'Customer Details', payment_dues: 'Payment Due', payment_received: 'Payment Received',
@@ -631,67 +633,57 @@ const PAGE_LABELS: Record<AccessArea, string> = {
   employee_details: 'Employee Details', attendance_all: "All employees' Attendance & Leave",
 };
 
-// V_25.0 — what the selected Department + Designation gives, in two compact
-// lines: "Access Allowed" (green) and "Access Not Allowed" (red).
-interface RoleAccess { key: number; title: string; reportsTo: string | null; note?: string; allowed: string[]; denied: string[] }
+interface AccessItem { label: string; approval?: boolean }
+interface RoleAccess { key: number; title: string; reportsTo: string | null; note?: string; pages: string[]; actions: AccessItem[] }
 
 function roleAccess(
   r: { deptId: number; deptName: string; level: DesignationLevel; isSales?: boolean; isRecovery?: boolean },
   config: ConfigDepartment[], canAddCustomer: boolean, reportingHeadName: (deptId: number) => string | null,
 ): RoleAccess {
   const head = r.level === 'head';
-  if (r.isRecovery && r.level) {
-    return {
-      key: r.deptId, title: `${r.deptName} · ${head ? 'Recovery Head' : 'Recovery Executive'}`,
-      reportsTo: reportingHeadName(r.deptId) ?? 'Admin',
-      allowed: [
-        'Dashboard', 'Customer Details', 'Payment Due', 'Payment Received', 'Customize Scheme', 'Building View', 'Attendance & Leave (own)',
-        head ? 'Own + team data (My Data / Team Data)' : 'Only own assigned customers',
-        head ? 'Follow-ups: own + team' : 'Follow-ups: own customers',
-        'Received Date: today + 4 days back',
-        ...(head ? ['Assign to own Executives', 'Add / Edit Customer (Admin approval)', 'Cancel Booking (Admin approval)', 'Payment delete request (Admin approval)'] : []),
-      ],
-      denied: [
-        ...(head ? [] : ['Assign customers', 'Add / Edit Customer', 'Cancel Booking', 'Delete Payment', 'Employee filter']),
-        'Leads', 'Cancelled Booking page',
-      ],
-    };
-  }
-  if (r.isSales) {
-    return {
-      key: r.deptId, title: `${r.deptName} · ${head ? 'Sales Head' : 'Sales Executive'}`,
-      reportsTo: head ? 'Admin' : (reportingHeadName(r.deptId) ?? 'a Sales Head (select above)'),
-      allowed: [
-        'Dashboard', 'Leads', 'Customize Scheme', 'Building View', 'Attendance & Leave (own)', 'Create Lead', 'Edit Lead',
-        head ? 'Own + team Leads (My Data / Team Data)' : 'Only own Leads',
-        ...(head ? ['Assign Leads to own Executives'] : []),
-      ],
-      denied: [...(head ? [] : ['Assign Leads']), 'Delete Lead (Admin only)', 'Customers, Payments & other pages'],
-    };
-  }
-  const configured = config.find((d) => d.id === r.deptId)?.access_areas ?? null;
+  const cfg = config.find((d) => d.id === r.deptId);
+  const configured = cfg ? (cfg.effective_areas !== undefined ? cfg.effective_areas : cfg.access_areas) : null;
+  const legacy = configured == null;
   const pages = configured ?? LEGACY_PAGES;
   const has = (a: AccessArea) => pages.includes(a);
-  const actions: { ok: boolean; label: string }[] = [];
-  if (has('payment_dues')) actions.push({ ok: true, label: 'Follow-ups' });
-  if (has('customers')) {
-    // Not-set-up departments keep today's rules; once set up, these are a Head's.
-    const legacy = configured == null;
-    actions.push({ ok: head, label: 'Customer Assignment (to own team)' });
-    actions.push({ ok: head || legacy, label: 'Edit Customer' });
-    actions.push({ ok: (head || legacy) && (legacy || canAddCustomer), label: 'Add Customer' });
+  const actions: AccessItem[] = [];
+  const add = (label: string, approval = false) => actions.push({ label, approval });
+
+  if (!legacy) {
+    if (has('leads')) {
+      add('Create Lead', true);
+      add(head ? 'Edit own & team Leads' : 'Edit own Leads');
+      if (head) { add('Team Leads (My Data / Team Data)'); add('Assign Leads to own Executives'); }
+    }
+    if (has('customers')) {
+      add(head ? 'Own & team customers (My Data / Team Data)' : 'Own assigned customers');
+      if (head) {
+        add('Assign customers to own Executives');
+        add('Edit Customer', true);
+        if (r.isRecovery || canAddCustomer) add('Add Customer', true);
+      }
+    }
+    if (has('payment_dues')) {
+      add(head ? 'Follow-ups: own & team' : 'Follow-ups: own customers');
+      add('Record Payment', true);
+      add('Received Date: today + 4 days back');
+    }
+    if (has('payment_received') && head) add('Payment delete request', true);
+    if (has('cancelled_booking') || (head && has('customers'))) add('Cancel Booking', true);
+    if (has('cancelled_booking')) add('Refund entry', true);
+    if (has('employee_details')) add('Add / Edit Employee', true);
   }
-  if (has('leads')) actions.push({ ok: head, label: 'Lead Assignment (to own team)' });
-  if (has('cancelled_booking')) actions.push({ ok: true, label: 'Cancel Booking request' });
-  if (has('payment_received')) actions.push({ ok: head, label: 'Payment delete request' });
-  if (head) actions.push({ ok: true, label: 'Team data (My Data / Team Data)' });
+
+  const title = r.isSales ? `${head ? 'Sales Head' : 'Sales Executive'}`
+    : r.isRecovery ? `${head ? 'Recovery Head' : 'Recovery Executive'}`
+    : r.level ? (head ? 'Head' : 'Executive') : '';
   return {
-    key: r.deptId, title: `${r.deptName}${r.level ? ` · ${head ? 'Head' : 'Executive'}` : ''}`,
-    reportsTo: r.level ? (reportingHeadName(r.deptId) ?? 'Admin') : null,
-    note: configured == null ? 'Department not set up yet — keeps the standard employee pages.'
-      : head ? 'Actions by this Head go to Admin approval.' : undefined,
-    allowed: [...pages.map((a) => PAGE_LABELS[a]), ...actions.filter((x) => x.ok).map((x) => x.label)],
-    denied: actions.filter((x) => !x.ok).map((x) => x.label),
+    key: r.deptId,
+    title: `${r.deptName}${title ? ` · ${title}` : ''}`,
+    reportsTo: r.level ? (r.isSales && head ? 'Admin' : (reportingHeadName(r.deptId) ?? 'Admin')) : null,
+    note: legacy ? 'Department not set up yet — keeps the standard employee pages.' : undefined,
+    pages: ['Dashboard', ...pages.map((a) => PAGE_LABELS[a]), 'Attendance & Leave (own)'],
+    actions,
   };
 }
 
@@ -704,22 +696,28 @@ const AccessSummary: React.FC<{
 }> = ({ t, roles, config, canAddCustomer, reportingHeadName }) => {
   const ready = roles.filter((r) => r.desigId != null || config.find((d) => d.id === r.deptId)?.designation_required === false);
   if (ready.length === 0) return null;
-  const Line: React.FC<{ ok: boolean; items: string[] }> = ({ ok, items }) => {
-    const color = ok ? '#15803d' : '#dc2626';
-    return (
-      <div className="flex items-start gap-2" style={{ marginTop: 4 }}>
-        <span style={{ flexShrink: 0, width: 128, padding: '2px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 800, color: '#fff', background: color, textAlign: 'center' }}>
-          {ok ? '✓ Access Allowed' : '✗ Access Not Allowed'}
+  const green = '#15803d';
+  const Chip: React.FC<{ item: AccessItem }> = ({ item }) => (
+    <span style={{ padding: '1px 7px', borderRadius: 999, fontSize: 10.5, fontWeight: 600, lineHeight: 1.6,
+      color: green, background: 'rgba(22,163,74,0.10)', border: '1px solid rgba(22,163,74,0.35)' }}>
+      {item.label}
+      {item.approval && (
+        <span style={{ marginLeft: 5, padding: '0 5px', borderRadius: 4, fontSize: 9.5, fontWeight: 800, color: '#92400e', background: '#fef3c7', border: '1px solid #f59e0b' }}>
+          Admin approval
         </span>
-        <div className="flex flex-wrap" style={{ gap: '3px 4px' }}>
-          {items.length === 0 ? <span style={{ fontSize: 11, color: t.textSecondary }}>—</span> : items.map((x) => (
-            <span key={x} style={{ padding: '1px 7px', borderRadius: 999, fontSize: 10.5, fontWeight: 600, lineHeight: 1.6,
-              color, background: ok ? 'rgba(22,163,74,0.10)' : 'rgba(220,38,38,0.08)', border: `1px solid ${ok ? 'rgba(22,163,74,0.35)' : 'rgba(220,38,38,0.3)'}` }}>{x}</span>
-          ))}
-        </div>
+      )}
+    </span>
+  );
+  const Line: React.FC<{ label: string; items: AccessItem[] }> = ({ label, items }) => (
+    <div className="flex items-start gap-2" style={{ marginTop: 4 }}>
+      <span style={{ flexShrink: 0, width: 96, padding: '2px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 800, color: '#fff', background: green, textAlign: 'center' }}>
+        {label}
+      </span>
+      <div className="flex flex-wrap" style={{ gap: '3px 4px' }}>
+        {items.map((x) => <Chip key={x.label} item={x} />)}
       </div>
-    );
-  };
+    </div>
+  );
   return (
     <div className="mt-3" style={{ padding: '8px 10px', borderRadius: 10, border: `1px dashed ${t.surfaceBorder}`, background: t.insetBg }}>
       <div className="flex flex-col gap-2">
@@ -732,8 +730,8 @@ const AccessSummary: React.FC<{
                 {a.reportsTo && <span style={{ fontWeight: 500, color: t.textSecondary }}> · reports to {a.reportsTo}</span>}
                 {a.note && <span style={{ fontWeight: 600, color: '#b45309' }}> · {a.note}</span>}
               </div>
-              <Line ok items={a.allowed} />
-              <Line ok={false} items={a.denied} />
+              <Line label="✓ Pages" items={a.pages.map((label) => ({ label }))} />
+              {a.actions.length > 0 && <Line label="✓ Actions" items={a.actions} />}
             </div>
           );
         })}
@@ -777,22 +775,28 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   //   • Never fires when focus is leaving for a button or a link. Cancel,
   //     Go Back and the accordion headers have to stay clickable even
   //     while the address is half-typed.
+  //
+  // Why the popup used to loop: on OK, SweetAlert restores focus to the
+  // field the user had clicked into AFTER our own refocus of the email box
+  // — so the email box blurred again, still invalid, and opened the popup
+  // again, forever. Now (1) SweetAlert does not restore focus at all
+  // (returnFocus: false), so only our refocus runs, and (2) the popup shows
+  // at most once per typed value: leaving the field again with the same
+  // address shows the message under the field instead of another popup.
   const emailAlertOpen = useRef(false);
+  const emailAlertedValue = useRef<string | null>(null);
+  const [emailBlurError, setEmailBlurError] = useState(false);
   const handleEmailBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (!hasEmailFormatError(form.email)) return;
+    if (!hasEmailFormatError(form.email)) { setEmailBlurError(false); return; }
+    setEmailBlurError(true);
     const next = e.relatedTarget as HTMLElement | null;
     if (next && (next.tagName === 'BUTTON' || next.tagName === 'A' || next.closest?.('button, a'))) return;
-    // Guard against re-entry: refocusing below fires another blur when the
-    // alert closes, which would otherwise stack popups.
-    if (emailAlertOpen.current) return;
+    if (emailAlertOpen.current || emailAlertedValue.current === form.email) return;
     emailAlertOpen.current = true;
+    emailAlertedValue.current = form.email;
     const input = e.target;
-    showAlert.error(EMAIL_FORMAT_MESSAGE, 'Invalid Email Address').finally(() => {
+    showAlert.error(EMAIL_FORMAT_MESSAGE, 'Invalid Email Address', { returnFocus: false }).finally(() => {
       emailAlertOpen.current = false;
-      // Next tick, not immediately: SweetAlert restores focus to whatever
-      // was active when it opened (by then, the field the user tabbed
-      // INTO). Focusing in the same turn would be undone by that
-      // restoration and the caret would end up in the wrong box.
       setTimeout(() => { input.focus(); input.select(); }, 0);
     });
   };
@@ -1689,7 +1693,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* Row 2 of 3 (V_23.0 item 5) — Contact + Address, Address placed
             right next to Alternate Number as asked. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <Field t={t} label="Email" required error={errorFor('email')} fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Email" required error={errorFor('email') ?? (emailBlurError && hasEmailFormatError(form.email) ? EMAIL_FORMAT_MESSAGE : undefined)} fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
             <input type="email" placeholder="Enter email address" value={form.email}
               readOnly={isView || emailLocked} disabled={isView || emailLocked}
               title={emailLocked ? EMAIL_ADMIN_ONLY_MESSAGE : undefined}

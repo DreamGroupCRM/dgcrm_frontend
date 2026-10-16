@@ -1,12 +1,12 @@
 // ==========================================
 // DREAM GROUP CRM - PAYMENT DUE CIRCLES
 // ==========================================
-// V_25.0 — three coloured circles in one row, amounts only, in the page's
-// one colour code (dueColors.ts):
+// V_25.0 — three coloured boxes (rectangles, 5% corner radius) in one row,
+// amounts only, in the page's one colour code (dueColors.ts):
 //   red    = overdue
 //   green  = due today (unpaid)
 //   yellow = upcoming (not due yet — never counted in red)
-// Large amounts are shortened inside the circle (₹13.95L); the full amount
+// Large amounts are shortened inside the box (₹13.95L); the full amount
 // and its meaning are in the tooltip and the accessible label.
 import React from 'react';
 import { DUE_STATUS, DueStatus } from './dueColors';
@@ -24,7 +24,7 @@ const ORDER: DueStatus[] = ['overdue', 'due_today', 'upcoming'];
 
 export type DueCircleAmounts = Record<DueStatus, number>;
 
-const DueCircles: React.FC<{ amounts: DueCircleAmounts; size?: number }> = ({ amounts, size = 38 }) => (
+const DueCircles: React.FC<{ amounts: DueCircleAmounts; size?: number; children?: React.ReactNode }> = ({ amounts, size = 38, children }) => (
   <div role="group" aria-label="Payment status" className="flex items-center" style={{ gap: 4, flexWrap: 'nowrap' }}>
     {ORDER.map((k) => {
       const c = DUE_STATUS[k];
@@ -34,15 +34,16 @@ const DueCircles: React.FC<{ amounts: DueCircleAmounts; size?: number }> = ({ am
         <span key={k} title={text} aria-label={text} role="img"
           className="inline-flex items-center justify-center"
           style={{
-            width: size, height: size, borderRadius: '50%', flexShrink: 0,
-            background: c.bg, color: c.fg, opacity: v > 0 ? 1 : 0.3,
-            fontSize: size < 36 ? 9 : 9.5, fontWeight: 800, letterSpacing: -0.3,
+            minWidth: Math.round(size * 1.35), height: Math.round(size * 0.7), padding: '0 6px', borderRadius: '5%', flexShrink: 0,
+            background: c.bg, color: c.fg, // full colour even at ₹0 — a faded box made its text unreadable
+            fontSize: size < 36 ? 10 : 10.5, fontWeight: 800, letterSpacing: -0.2, whiteSpace: 'nowrap',
             fontVariantNumeric: 'tabular-nums', lineHeight: 1, cursor: 'default',
           }}>
           {compactRupee(v)}
         </span>
       );
     })}
+    {children}
   </div>
 );
 
