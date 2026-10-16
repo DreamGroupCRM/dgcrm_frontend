@@ -25,8 +25,11 @@ export const fetchSnapshots = async (): Promise<BackupSnapshot[]> => {
 };
 
 /** POST /api/backup/snapshots */
+// No timeout (same as download-sql): copying a large live database takes
+// longer than the app-wide 10 s limit, which used to abort the request and
+// show "Failed to create snapshot." while the server was still working.
 export const createSnapshot = async (label?: string): Promise<BackupSnapshot> => {
-  const res = await axiosInstance.post('/backup/snapshots', { label: label || undefined });
+  const res = await axiosInstance.post('/backup/snapshots', { label: label || undefined }, { timeout: 0 });
   return res.data.data;
 };
 
@@ -38,7 +41,8 @@ export interface RestoreResult {
 
 /** POST /api/backup/snapshots/:id/restore — confirm must be the literal string "RESTORE" */
 export const restoreSnapshot = async (id: number): Promise<RestoreResult> => {
-  const res = await axiosInstance.post(`/backup/snapshots/${id}/restore`, { confirm: 'RESTORE' });
+  // No timeout — a restore first takes a safety snapshot, then rewrites every table.
+  const res = await axiosInstance.post(`/backup/snapshots/${id}/restore`, { confirm: 'RESTORE' }, { timeout: 0 });
   return res.data.data;
 };
 
