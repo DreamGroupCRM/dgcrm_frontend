@@ -775,22 +775,28 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   //   • Never fires when focus is leaving for a button or a link. Cancel,
   //     Go Back and the accordion headers have to stay clickable even
   //     while the address is half-typed.
+  //
+  // Why the popup used to loop: on OK, SweetAlert restores focus to the
+  // field the user had clicked into AFTER our own refocus of the email box
+  // — so the email box blurred again, still invalid, and opened the popup
+  // again, forever. Now (1) SweetAlert does not restore focus at all
+  // (returnFocus: false), so only our refocus runs, and (2) the popup shows
+  // at most once per typed value: leaving the field again with the same
+  // address shows the message under the field instead of another popup.
   const emailAlertOpen = useRef(false);
+  const emailAlertedValue = useRef<string | null>(null);
+  const [emailBlurError, setEmailBlurError] = useState(false);
   const handleEmailBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (!hasEmailFormatError(form.email)) return;
+    if (!hasEmailFormatError(form.email)) { setEmailBlurError(false); return; }
+    setEmailBlurError(true);
     const next = e.relatedTarget as HTMLElement | null;
     if (next && (next.tagName === 'BUTTON' || next.tagName === 'A' || next.closest?.('button, a'))) return;
-    // Guard against re-entry: refocusing below fires another blur when the
-    // alert closes, which would otherwise stack popups.
-    if (emailAlertOpen.current) return;
+    if (emailAlertOpen.current || emailAlertedValue.current === form.email) return;
     emailAlertOpen.current = true;
+    emailAlertedValue.current = form.email;
     const input = e.target;
-    showAlert.error(EMAIL_FORMAT_MESSAGE, 'Invalid Email Address').finally(() => {
+    showAlert.error(EMAIL_FORMAT_MESSAGE, 'Invalid Email Address', { returnFocus: false }).finally(() => {
       emailAlertOpen.current = false;
-      // Next tick, not immediately: SweetAlert restores focus to whatever
-      // was active when it opened (by then, the field the user tabbed
-      // INTO). Focusing in the same turn would be undone by that
-      // restoration and the caret would end up in the wrong box.
       setTimeout(() => { input.focus(); input.select(); }, 0);
     });
   };
@@ -1687,7 +1693,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* Row 2 of 3 (V_23.0 item 5) — Contact + Address, Address placed
             right next to Alternate Number as asked. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <Field t={t} label="Email" required error={errorFor('email')} fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
+          <Field t={t} label="Email" required error={errorFor('email') ?? (emailBlurError && hasEmailFormatError(form.email) ? EMAIL_FORMAT_MESSAGE : undefined)} fieldRef={setFieldRef('email') as React.Ref<HTMLDivElement>}>
             <input type="email" placeholder="Enter email address" value={form.email}
               readOnly={isView || emailLocked} disabled={isView || emailLocked}
               title={emailLocked ? EMAIL_ADMIN_ONLY_MESSAGE : undefined}
