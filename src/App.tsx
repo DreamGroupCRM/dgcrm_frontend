@@ -6,6 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAppSelector } from './hooks';
 import { createAppTheme } from './theme';
 import AppRoutes from './routes/AppRoutes';
+import AppErrorBoundary from './components/common/AppErrorBoundary';
 
 const App: React.FC = () => {
   const { mode } = useAppSelector((s) => s.theme);
@@ -20,7 +21,9 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={muiTheme}>
       <CssBaseline />
-      <AppRoutes />
+      <AppErrorBoundary>
+        <AppRoutes />
+      </AppErrorBoundary>
       {/* Toast notifications — top-right, 5 second auto-close by default.
           This default is what success/info/warn toasts actually use.
           Error toasts do NOT use this default any more: every call site
