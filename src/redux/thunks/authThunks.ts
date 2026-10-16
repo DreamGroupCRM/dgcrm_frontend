@@ -12,6 +12,15 @@ export const WRONG_PORTAL = 'WRONG_PORTAL';
  * Step 1 of login — verifies email+password. Backend emails an OTP and
  * returns an otpToken; no session is issued yet (see verifyOtpThunk).
  */
+// The server's own reason ("Invalid credentials", "Account is locked…",
+// "Your login is disabled…") — not axios's generic "Request failed with
+// status code 401", which told the user nothing.
+const serverMessage = (error: unknown, fallback: string): string => {
+  const data = (error as { response?: { data?: { message?: string } } })?.response?.data;
+  if (data?.message) return data.message;
+  return error instanceof Error ? error.message : fallback;
+};
+
 export const loginThunk = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
@@ -28,7 +37,7 @@ export const loginThunk = createAsyncThunk(
       if ((error as { response?: { data?: { code?: string } } })?.response?.data?.code === WRONG_PORTAL) {
         return rejectWithValue(WRONG_PORTAL);
       }
-      const message = error instanceof Error ? error.message : 'An error occurred';
+      const message = serverMessage(error, 'An error occurred');
       return rejectWithValue(message);
     }
   }
@@ -72,7 +81,7 @@ export const verifyOtpThunk = createAsyncThunk(
       }
       return response;
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'An error occurred';
+      const message = serverMessage(error, 'An error occurred');
       return rejectWithValue(message);
     }
   }
@@ -93,7 +102,7 @@ export const setNewPasswordThunk = createAsyncThunk(
       }
       return response;
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'An error occurred';
+      const message = serverMessage(error, 'An error occurred');
       return rejectWithValue(message);
     }
   }
@@ -111,7 +120,7 @@ export const logoutThunk = createAsyncThunk(
       const response = await authService.logout();
       return response;
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Logout failed';
+      const message = serverMessage(error, 'Logout failed');
       return rejectWithValue(message);
     }
   }

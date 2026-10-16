@@ -8,7 +8,7 @@
 // activate/deactivate/delete). SuperAdmin-only, enforced server-side.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/utils/toast';
-import { MdPeople, MdCheckCircle, MdCancel, MdDelete, MdRefresh, MdKey, MdClose, MdLock, MdPersonAddAlt1, MdContentCopy, MdEdit, MdMoreVert } from 'react-icons/md';
+import { MdPeople, MdCheckCircle, MdCancel, MdDelete, MdRefresh, MdKey, MdClose, MdLock, MdPersonAddAlt1, MdContentCopy, MdEdit, MdMoreVert, MdLockOpen, MdBlock, MdLogout } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
@@ -26,6 +26,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 interface FieldCheck { field: string; message: string; failed: () => boolean; }
 import {
   fetchUsers, setUserActiveStatus, deleteUser, adminSetPassword, createAdmin, updateUser,
+  unlockUser, setAllowLogin, endUserSession,
   UserManagementRow, CreateAdminResult,
 } from '../../../services/userManagementService';
 
@@ -120,6 +121,32 @@ const UserManagementPage: React.FC = () => {
       setBusyId(null);
     }
   };
+
+  // V_25.0 — unblockers: a locked account, a blocked login or a stuck
+  // session never needs a database fix.
+  const runRowAction = async (row: UserManagementRow, action: () => Promise<void>, done: string, failed: string) => {
+    setBusyId(row.id);
+    try {
+      await action();
+      toast.success(done);
+      await load();
+    } catch (e) {
+      toast.error(errMessage(e, failed));
+    } finally {
+      setBusyId(null);
+    }
+  };
+  const handleUnlock = (row: UserManagementRow) =>
+    runRowAction(row, () => unlockUser(row.id), `${row.first_name} is unlocked and can log in again.`, 'Failed to unlock the account.');
+  const handleAllowLogin = async (row: UserManagementRow) => {
+    if (row.allow_login) {
+      const r = await showAlert.confirm(`${row.first_name} ${row.last_name || ''} will not be able to log in until you allow it again.`, 'Block Login?');
+      if (!r.isConfirmed) return;
+    }
+    return runRowAction(row, () => setAllowLogin(row.id, !row.allow_login), row.allow_login ? 'Login blocked.' : 'Login allowed.', 'Failed to change login access.');
+  };
+  const handleEndSession = (row: UserManagementRow) =>
+    runRowAction(row, () => endUserSession(row.id), `${row.first_name} has been signed out.`, 'Failed to sign the user out.');
 
   const handleDelete = async (row: UserManagementRow) => {
     const result = await showAlert.confirm(
@@ -312,9 +339,26 @@ const UserManagementPage: React.FC = () => {
                           {row.is_active ? <MdCheckCircle size={12} /> : <MdCancel size={12} />} {row.is_active ? 'Active' : 'Disabled'}
                         </span>
                         {row.is_locked && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold ml-1.5" style={{ background: '#fef3c7', color: '#b45309', fontSize: 10.5 }}>
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold ml-1.5" style={{ background: '#fef3c7', color: '#b45309', fontSize: 10.5 }}
+                            title={row.locked_at ? `Locked on ${formatLastLogin(row.locked_at)}` : 'Locked after too many failed attempts'}>
                             <MdLock size={12} /> Locked
                           </span>
+                        )}
+                        {row.allow_login === false && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold ml-1.5" style={{ background: '#fee2e2', color: '#b91c1c', fontSize: 10.5 }}>
+                            <MdBlock size={12} /> Login blocked
+                          </span>
+                        )}
+                        {!row.is_locked && (row.failed_login_attempts ?? 0) > 0 && (
+                          <div style={{ fontSize: 10, color: '#b45309', marginTop: 3 }}>{row.failed_login_attempts} failed attempt{row.failed_login_attempts === 1 ? '' : 's'}</div>
+                        )}
+                        {row.is_locked && (
+                          // One click, right where the problem shows.
+                          <button type="button" disabled={busyId === row.id || isSelf} onClick={() => handleUnlock(row)}
+                            className="inline-flex items-center gap-1 ml-1.5 px-2 py-1 rounded-full font-semibold"
+                            style={{ background: '#16a34a', color: '#fff', border: 'none', fontSize: 10.5, cursor: 'pointer' }}>
+                            <MdLockOpen size={12} /> Unlock
+                          </button>
                         )}
                       </td>
                       <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatLastLogin(row.last_login_at)}</td>
@@ -338,6 +382,22 @@ const UserManagementPage: React.FC = () => {
                                 disabled: locked || busyId === row.id, title: locked ? lockReason : row.is_active ? 'Disable' : 'Enable',
                                 onClick: () => { rowMenu.close(); if (!locked) handleToggleActive(row); },
                               },
+                              ...(row.is_locked ? [{
+                                key: 'unlock', label: 'Unlock account', icon: <MdLockOpen size={14} color="#16a34a" />,
+                                disabled: isSelf || busyId === row.id, title: isSelf ? lockReason : 'Clear the lock and failed attempts',
+                                onClick: () => { rowMenu.close(); if (!isSelf) handleUnlock(row); },
+                              }] : []),
+                              {
+                                key: 'login', label: row.allow_login ? 'Block login' : 'Allow login',
+                                icon: row.allow_login ? <MdBlock size={14} color="#dc2626" /> : <MdCheckCircle size={14} color="#16a34a" />,
+                                disabled: locked || busyId === row.id, title: locked ? lockReason : row.allow_login ? 'Stop this user from logging in' : 'Let this user log in again',
+                                onClick: () => { rowMenu.close(); if (!locked) handleAllowLogin(row); },
+                              },
+                              ...(row.has_active_session ? [{
+                                key: 'signout', label: 'Sign out everywhere', icon: <MdLogout size={14} color="var(--brand-ink)" />,
+                                disabled: isSelf || busyId === row.id, title: isSelf ? lockReason : 'End this user\'s current session',
+                                onClick: () => { rowMenu.close(); if (!isSelf) handleEndSession(row); },
+                              }] : []),
                               // Set-password stays available for your own account
                               // (that's a normal thing to do) but not for the
                               // protected Super Admin.

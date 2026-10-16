@@ -21,6 +21,11 @@ export interface UserManagementRow {
   allow_login: boolean;
   must_change_password: boolean;
   is_locked: boolean;
+  locked_at?: string | null;
+  failed_login_attempts?: number;
+  has_active_session?: boolean;
+  session_last_seen_at?: string | null;
+  linked_employee_active?: boolean | null;
   last_login_at: string | null;
   created_at: string;
   linked_employee_id: number | null;
@@ -43,6 +48,21 @@ export const setUserActiveStatus = async (id: number, is_active: boolean): Promi
 /** DELETE /api/user-management/users/:id */
 export const deleteUser = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/user-management/users/${id}`);
+};
+
+/** PATCH /api/user-management/users/:id/unlock — clears the lockout and failed attempts. */
+export const unlockUser = async (id: number): Promise<void> => {
+  await axiosInstance.patch(`/user-management/users/${id}/unlock`);
+};
+
+/** PATCH /api/user-management/users/:id/allow-login */
+export const setAllowLogin = async (id: number, allow_login: boolean): Promise<void> => {
+  await axiosInstance.patch(`/user-management/users/${id}/allow-login`, { allow_login });
+};
+
+/** POST /api/user-management/users/:id/end-session — signs the user out everywhere. */
+export const endUserSession = async (id: number): Promise<void> => {
+  await axiosInstance.post(`/user-management/users/${id}/end-session`);
 };
 
 /** POST /api/user-management/users/:id/set-password */
