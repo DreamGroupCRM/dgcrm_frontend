@@ -21,6 +21,13 @@ import {
 } from '../../../components/dashboard/DashboardParts';
 import './AdminDashboard.css';
 
+// Lead category chips (same colours as the Leads pages).
+const LEAD_STATUS: Record<string, { bg: string; text: string }> = {
+  hot: { bg: '#fee2e2', text: '#b91c1c' },
+  warm: { bg: '#fef9c3', text: '#92400e' },
+  cold: { bg: '#dbeafe', text: '#1d4ed8' },
+};
+
 const greeting = (): string => {
   const h = new Date().getHours();
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
@@ -162,6 +169,39 @@ const AdminDashboard: React.FC = () => {
             </div>
           ))}
         </div>
+      </Panel>
+
+      <Panel t={t} title="Recent leads" action={{ label: 'All leads', to: ROUTES.ADMIN.LEADS }}>
+        {loading ? <Empty t={t}>Loading…</Empty>
+          : !data?.recent_leads.length ? <Empty t={t}>No leads yet.</Empty>
+          : (
+            <div className="master-table-scroll">
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
+                <thead>
+                  <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
+                    {['Name', 'Mobile', 'Status', 'Date'].map((h) => (
+                      <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.recent_leads.map((lead) => {
+                    const st = LEAD_STATUS[(lead.category || '').toLowerCase()] ?? { bg: t.insetBg, text: t.textSecondary };
+                    return (
+                      <tr key={lead.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                        <td style={{ padding: '10px 14px', fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{lead.name}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 12.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{lead.mobile_number || '—'}</td>
+                        <td style={{ padding: '10px 14px' }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 20, background: st.bg, color: st.text, textTransform: 'capitalize' }}>{lead.category || '—'}</span>
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: 12.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDate(lead.created_at)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
       </Panel>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18 }}>
