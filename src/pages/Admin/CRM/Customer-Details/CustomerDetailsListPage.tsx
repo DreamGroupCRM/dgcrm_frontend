@@ -1214,12 +1214,11 @@ const CustomerDetailsListPage: React.FC = () => {
       </div>
 
       {/* ── Toolbar — Search Employee + Assign to Employee together on the
-          left, Add Customer / Grid-List / Export CSV / Refresh always on
-          the right, all in one single row — flex-nowrap (not flex-wrap)
-          so this never splits into two rows on desktop; the row scrolls
-          horizontally instead of wrapping if the viewport is too narrow
-          to fit everything (e.g. on mobile). ───────────────────────────── */}
-      <div className="cust-toolbar-row flex items-end justify-between gap-3 mb-2" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+          left, Add Customer / Grid-List / Export CSV / Refresh on the
+          right — one row whenever it fits. V_26.0: when it doesn't (e.g. a
+          1024px laptop), the right group wraps onto its own row instead of
+          scrolling out of sight (Export CSV / Refresh were cut off). ───── */}
+      <div className="cust-toolbar-row flex items-end justify-between gap-3 mb-2" style={{ flexWrap: 'wrap' }}>
         {canAssignCustomers && (
           <div className="cust-toolbar-left flex items-end gap-3" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
             <div className="cust-assign-select" style={{ width: 240 }}>
@@ -1253,7 +1252,7 @@ const CustomerDetailsListPage: React.FC = () => {
           </div>
         )}
 
-        <div className="cust-toolbar-right flex items-center gap-2.5" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
+        <div className="cust-toolbar-right flex items-center gap-2.5" style={{ flexWrap: 'wrap', flexShrink: 0, marginLeft: 'auto' }}>
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
             title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
             className="cust-view-toggle-btn flex items-center justify-center rounded-xl"
@@ -1426,7 +1425,9 @@ const CustomerDetailsListPage: React.FC = () => {
                         <span style={{ fontSize: 11.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000' }}>—</span>
                       )}
                     </td>
-                    <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                    {/* V_26.0 — long names wrap inside a fixed band instead of
+                        stretching the table; the badge drops below the name. */}
+                    <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'normal', minWidth: 190, maxWidth: 260 }}>
                       <div className="flex items-center gap-2">
                         {c.customer_photo_url ? (
                           <img src={resolveFileUrl(c.customer_photo_url)} alt="" className="rounded-full flex-shrink-0" style={{ width: 30, height: 30, objectFit: 'cover' }} />
@@ -1435,7 +1436,7 @@ const CustomerDetailsListPage: React.FC = () => {
                             {(c.customer_name || '—').slice(0, 1).toUpperCase()}
                           </div>
                         )}
-                        <span>
+                        <span style={{ overflowWrap: 'anywhere', lineHeight: 1.35 }}>
                           {c.customer_name}
                           {c.cancellation_pending && (
                             <span title="Cancel Booking request is waiting for admin approval"
@@ -1448,8 +1449,8 @@ const CustomerDetailsListPage: React.FC = () => {
                       </div>
                     </td>
                     {showSplitAssign ? [c.assigned_head, c.assigned_sub].map((a, idx) => (
-                      <td key={idx} style={{ padding: '10px 12px', fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
-                        <div style={{ fontWeight: 600 }}>{a?.name || '—'}</div>
+                      <td key={idx} style={{ padding: '10px 12px', fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'normal', minWidth: 130, maxWidth: 180 }}>
+                        <div style={{ fontWeight: 600, overflowWrap: 'anywhere', lineHeight: 1.35 }}>{a?.name || '—'}</div>
                         {a?.code && <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{a.code}</div>}
                       </td>
                     )) : (
@@ -1462,13 +1463,13 @@ const CustomerDetailsListPage: React.FC = () => {
                             {c.assigned_employee_name.slice(0, 1).toUpperCase()}
                           </div>
                         ) : null}
-                        <span style={{ fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{c.assigned_employee_name || '—'}</span>
+                        <span style={{ fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: 160, lineHeight: 1.35 }}>{c.assigned_employee_name || '—'}</span>
                       </div>
                     </td>
                     )}
                     <td style={{ padding: '10px 12px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
                       <div className="flex items-center gap-1.5"><MdPhone size={13} /> {c.mobile_number}</div>
-                      <div className="flex items-center gap-1.5 mt-0.5"><MdEmail size={13} /> {c.email}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5" title={c.email || undefined}><MdEmail size={13} className="flex-shrink-0" /> <span className="master-cell-truncate" style={{ ['--master-cell-truncate-width' as string]: '190px' }}>{c.email}</span></div>
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
                       <div style={{ fontWeight: 700 }}>{c.company_name || '—'}</div>
