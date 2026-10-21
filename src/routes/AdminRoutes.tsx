@@ -169,7 +169,7 @@ const AdminRoutes: React.FC = () => (
 
       {/* Backup: Admin + Super Admin (Restore/Delete Super Admin only, server-side). User Management: Super Admin only. */}
       <Route path="backup-database" element={<ProtectedRoute allowedRoles={['superadmin', 'admin']}><BackupDatabasePage /></ProtectedRoute>} />
-      <Route path="user-management" element={<ProtectedRoute allowedRoles={['superadmin']}><UserManagementPage /></ProtectedRoute>} />
+      <Route path="user-management" element={<UserManagementPage />} />
     </Route>
   </Routes>
 );

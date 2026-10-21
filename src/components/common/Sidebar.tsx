@@ -136,6 +136,9 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null, pendi
   // Backup Database — Admin may create/download backups (requireAdmin
   // server-side); Super Admin reaches it from the Super Admin group below.
   ...(role === 'admin' ? [{ label: 'Backup Database', path: ROUTES.ADMIN.BACKUP_DATABASE, icon: <MdStorage /> }] : []),
+  // V_26.0 — Admin helps employee / customer logins here (unlock, allow /
+  // block login, sign out, set password); Super Admin reaches it below.
+  ...(role === 'admin' ? [{ label: 'User Management', path: ROUTES.ADMIN.USER_MANAGEMENT, icon: <MdManageAccounts /> }] : []),
 
   // Super Admin lobby — Backup Database moved in here (was previously
   // visible to every admin with no real page behind it) and User

@@ -5,7 +5,7 @@
 // See userManagementService.ts / modules/userManagement/ in dgcrm_backend
 // for why this deliberately never touches the linked Employee/Customer
 // business record (Employee/Customer pages already own their own
-// activate/deactivate/delete). SuperAdmin-only, enforced server-side.
+// activate/deactivate/delete). Super Admin: everything. V_26.0 — Admin: unlock / allow login / sign out / set password for employee and customer logins only. Enforced server-side.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/utils/toast';
 import { MdPeople, MdCheckCircle, MdCancel, MdDelete, MdRefresh, MdKey, MdClose, MdLock, MdPersonAddAlt1, MdContentCopy, MdEdit, MdMoreVert, MdLockOpen, MdBlock, MdLogout } from 'react-icons/md';
@@ -37,7 +37,12 @@ const ROLE_LABEL: Record<string, string> = { superadmin: 'Super Admin', admin: '
 
 const UserManagementPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { user: currentUser } = useAppSelector((s) => s.auth);
+  const { user: currentUser, role: viewerRole } = useAppSelector((s) => s.auth);
+  // V_26.0 — an Admin helps employee / customer logins only (unlock,
+  // allow / block login, sign out, set password); Admin accounts, creating,
+  // editing, enabling and deleting stay Super Admin's. Same rule as the API.
+  const viewerIsSuper = viewerRole === 'superadmin';
+  const ADMIN_HELP_ACTIONS = ['unlock', 'login', 'signout', 'password'];
   const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [rows, setRows] = useState<UserManagementRow[]>([]);
@@ -278,11 +283,11 @@ const UserManagementPage: React.FC = () => {
         <div className="um-toolbar flex items-center justify-between gap-3 flex-wrap p-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Login Accounts</h3>
           <div className="um-toolbar-actions flex items-center gap-2">
-            <button type="button" onClick={() => setShowCreate(true)}
+            {viewerIsSuper && <button type="button" onClick={() => setShowCreate(true)}
               className="um-create-btn flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold"
               style={{ background: 'var(--grad-purple)', color: '#fff', border: 'none', cursor: 'pointer' }}>
               <MdPersonAddAlt1 size={15} /> <span className="um-create-btn-text">Create Admin</span>
-            </button>
+            </button>}
             <button type="button" onClick={load} title="Refresh"
               className="um-refresh-btn flex items-center justify-center rounded-xl"
               style={{ width: 36, height: 36, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, cursor: 'pointer' }}>
@@ -320,6 +325,7 @@ const UserManagementPage: React.FC = () => {
                   // exactly the lockout the protection exists to prevent.
                   // Your own name/email stay editable via Profile.
                   const locked = isSelf || isProtectedSuperAdmin;
+                  const superOnlyRow = !viewerIsSuper && (row.base_role === 'admin' || row.base_role === 'superadmin');
                   const lockReason = isProtectedSuperAdmin
                     ? 'The Super Admin account is protected'
                     : 'Not available for your own account';
@@ -352,7 +358,7 @@ const UserManagementPage: React.FC = () => {
                         {!row.is_locked && (row.failed_login_attempts ?? 0) > 0 && (
                           <div style={{ fontSize: 10, color: '#b45309', marginTop: 3 }}>{row.failed_login_attempts} failed attempt{row.failed_login_attempts === 1 ? '' : 's'}</div>
                         )}
-                        {row.is_locked && (
+                        {row.is_locked && !superOnlyRow && (
                           // One click, right where the problem shows.
                           <button type="button" disabled={busyId === row.id || isSelf} onClick={() => handleUnlock(row)}
                             className="inline-flex items-center gap-1 ml-1.5 px-2 py-1 rounded-full font-semibold"
@@ -370,7 +376,10 @@ const UserManagementPage: React.FC = () => {
                             <MdMoreVert size={15} />
                           </button>
                           {rowMenu.openId === row.id && rowMenu.pos && (
-                            <RowActionMenu t={t} pos={rowMenu.pos} actions={[
+                            <RowActionMenu t={t} pos={rowMenu.pos} actions={superOnlyRow ? [{
+                                key: 'super-only', label: 'Super Admin only', icon: <MdLock size={14} />, disabled: true,
+                                title: 'Only the Super Admin can change an Admin account', onClick: () => rowMenu.close(),
+                              }] : [
                               ...(row.base_role === 'admin' ? [{
                                 key: 'edit', label: 'Edit admin details', icon: <MdEdit size={14} color="var(--brand-ink)" />,
                                 disabled: locked, title: locked ? lockReason : 'Edit admin details',
@@ -412,7 +421,7 @@ const UserManagementPage: React.FC = () => {
                                 disabled: locked || busyId === row.id, title: locked ? lockReason : 'Delete',
                                 onClick: () => { rowMenu.close(); if (!locked) handleDelete(row); },
                               },
-                            ]} />
+                            ].filter((a) => viewerIsSuper || ADMIN_HELP_ACTIONS.includes(a.key))} />
                           )}
                         </div>
                       </td>
