@@ -41,6 +41,7 @@ import {
 } from '../../../../services/customerDetailsService';
 import { fetchChangeRequests, approveChangeRequest, rejectChangeRequest, ChangeRequestRow } from '../../../../services/changeRequestsService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
+import { PENDING_APPROVALS_CHANGED } from '../../../../services/pendingApprovalsService';
 import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport.lazy';
 import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
 import { CustomerPaymentRecord, PaymentReceipt } from '../../../../types';
@@ -291,6 +292,18 @@ const CancelledBookingPage: React.FC = () => {
   useEffect(() => { fetchRows(); }, [fetchRows]);
   useEffect(() => { loadSummary(); loadRequests(); }, [loadSummary, loadRequests]);
   useEffect(() => { setSelected(new Set()); }, [rows]);
+  // V_26.0 — the Refund team sees approvals made elsewhere (another tab,
+  // the Approvals page) without a manual reload: refresh when the tab is
+  // focused again and whenever the pending-approvals queue changes.
+  useEffect(() => {
+    const refresh = () => { fetchRows(); loadSummary(); loadRequests(); loadPendingRefunds(); loadAllCancelled(); };
+    window.addEventListener('focus', refresh);
+    window.addEventListener(PENDING_APPROVALS_CHANGED, refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener(PENDING_APPROVALS_CHANGED, refresh);
+    };
+  }, [fetchRows, loadSummary, loadRequests, loadPendingRefunds, loadAllCancelled]);
 
   const refreshAll = () => { fetchRows(); loadSummary(); loadRequests(); loadAllCancelled(); loadPendingRefunds(); };
 

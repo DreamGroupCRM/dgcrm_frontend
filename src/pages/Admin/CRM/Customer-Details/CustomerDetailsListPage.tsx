@@ -573,7 +573,12 @@ const CustomerDetailsListPage: React.FC = () => {
       // assignee for a customer.
       const res = await FetchEmployeeDetails(1, 1000, undefined, true);
       if (res.success) {
-        setEmployees((res.rows ?? []).map((e) => ({ id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})` })));
+        // V_26.0 — department · designation in the label, so two people with
+        // the same name can be told apart when assigning.
+        setEmployees((res.rows ?? []).map((e) => {
+          const role = [e.department, e.designation].filter(Boolean).join(' · ');
+          return { id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})${role ? ` — ${role}` : ''}` };
+        }));
       } else {
         toast.error('Failed to load employees for assignment.');
       }
