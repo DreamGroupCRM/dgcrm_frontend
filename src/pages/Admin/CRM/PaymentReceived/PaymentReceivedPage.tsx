@@ -54,6 +54,7 @@ import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { serverToday, toYmd, employeeReceivedMinYmd } from '../../../../utils/serverTime';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 import { ReceiptEmailSwitch } from '../../../../components/common/ReceiptEmailSwitch';
+import { DataScope, setDataScope } from '../../../../utils/dataScope';
 import DateInput from '../../../../components/common/DateInput';
 import { useAccessProfile } from '../../../../hooks/useAccessProfile';
 
@@ -533,6 +534,20 @@ const PaymentReceivedPage: React.FC = () => {
 
   const refreshAll = () => { fetchRows(); fetchCategorySummary(); fetchReceivedSummary(); fetchApprovalCounts(); };
 
+  // V_26.0 — a Head's My Data / Team Data on this page too (same switch as
+  // Payment Due): every request carries the choice (X-Data-Scope); the
+  // server narrows rows, totals, search and filters. Leaving the page puts
+  // it back to Team.
+  const viewerIsHead = !paths.isAdmin && Boolean(access && access.head_of.length > 0);
+  const [dataScope, setScopeState] = useState<DataScope>('team');
+  useEffect(() => () => setDataScope('team'), []);
+  const switchDataScope = (next: DataScope) => {
+    if (next === dataScope) return;
+    setDataScope(next);
+    setScopeState(next);
+    refreshAll();
+  };
+
   // Approve actions — admin only (PUT /payments/:id/approve and
   // /bulk-approve are requireAdmin server-side too).
   const handleApprove = async (row: PaymentListRow) => {
@@ -805,6 +820,24 @@ const PaymentReceivedPage: React.FC = () => {
                 style={{ background: '#15803d', border: 'none', color: '#fff', cursor: bulkApproving ? 'not-allowed' : 'pointer', opacity: bulkApproving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 <MdCheckCircle size={16} /> {bulkApproving ? 'Approving…' : `Approve Selected (${selectedPendingIds.length})`}
               </button>
+            )}
+            {viewerIsHead && (
+              <div role="radiogroup" aria-label="Show data" className="flex items-center gap-2" style={{ flexShrink: 0 }}>
+                {([['mine', 'My Data', '#2563eb'], ['team', 'Team Data', '#15803d']] as const).map(([key, label, color]) => {
+                  const active = dataScope === key;
+                  return (
+                    <button key={key} type="button" role="radio" aria-checked={active} onClick={() => switchDataScope(key)}
+                      className="flex items-center gap-2 rounded-xl"
+                      style={{
+                        padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                        background: active ? color : t.inputBg, color: active ? '#fff' : t.textPrimary,
+                        border: `1px solid ${active ? color : t.inputBorder}`,
+                      }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             )}
             {paths.isAdmin && <ReceiptEmailSwitch t={t} />}
             {/* V_25.0 — Export CSV is Admin-only. */}
