@@ -59,8 +59,10 @@ function summarize(row: ChangeRequestRow): string {
   const v = row.new_values || {};
   const personName = [v.first_name, v.last_name].filter(Boolean).join(' ');
   const old = row.old_values || {};
-  const oldName = [old.first_name, old.last_name].filter(Boolean).join(' ');
-  const candidate = (v.customer_name || v.name || personName || old.customer_name || oldName || v.title || v.mobile_number || v.email) as string | undefined;
+  // Customers keep the first name in `name`, employees in `first_name`.
+  const oldName = [old.first_name ?? old.name, old.last_name].filter(Boolean).join(' ');
+  const newName = [v.name, v.middle_name, v.last_name].filter(Boolean).join(' ');
+  const candidate = (v.customer_name || newName || personName || old.customer_name || oldName || v.title || v.mobile_number || v.email) as string | undefined;
   return candidate ? String(candidate) : `Request #${row.id}`;
 }
 

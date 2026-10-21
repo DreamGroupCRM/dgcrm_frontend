@@ -33,6 +33,9 @@ export const waitingFor = (iso: string | null | undefined): string => {
   return days <= 0 ? 'today' : days === 1 ? '1 day' : `${days} days`;
 };
 
+/** "1 customer" / "3 customers". */
+export const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
+
 export const initialsOf = (name: string): string =>
   name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || '—';
 

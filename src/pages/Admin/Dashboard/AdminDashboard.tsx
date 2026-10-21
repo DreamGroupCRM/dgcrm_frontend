@@ -17,7 +17,7 @@ import { ROUTES } from '../../../constants';
 import { formatDate } from '../../../utils';
 import { serverToday } from '../../../utils/serverTime';
 import {
-  IdentityBand, KpiTile, Panel, Avatar, Empty, rupeeCompact, waitingFor,
+  IdentityBand, KpiTile, plural, Panel, Avatar, Empty, rupeeCompact, waitingFor,
 } from '../../../components/dashboard/DashboardParts';
 import './AdminDashboard.css';
 
@@ -69,7 +69,7 @@ const AdminDashboard: React.FC = () => {
     { label: 'Employees', value: String(totals?.employees ?? 0), note: totals ? `${totals.attendance_present_today} present today` : undefined, to: ROUTES.ADMIN.EMPLOYEE_DETAILS },
     { label: 'Active leads', value: String(totals?.leads ?? 0), note: totals ? `${totals.hot_leads} hot` : undefined, noteColor: red, to: ROUTES.ADMIN.LEADS },
     { label: 'Received this month', value: rupeeCompact(data?.month?.received ?? 0), to: ROUTES.ADMIN.PAYMENT_RECEIVED },
-    { label: 'Overdue', value: rupeeCompact(totals?.payment_due ?? 0), note: totals?.overdue_customers != null ? `${totals.overdue_customers} customers` : undefined, noteColor: red, to: ROUTES.ADMIN.PAYMENT_DUES },
+    { label: 'Overdue', value: rupeeCompact(totals?.payment_due ?? 0), note: totals?.overdue_customers != null ? plural(totals.overdue_customers, 'customer') : undefined, noteColor: red, to: ROUTES.ADMIN.PAYMENT_DUES },
     { label: 'Waiting for you', value: String(waiting), note: oldest ? `oldest ${waitingFor(oldest)}` : undefined, noteColor: amber, to: ROUTES.ADMIN.PENDING_APPROVALS },
   ];
 
