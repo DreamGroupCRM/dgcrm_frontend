@@ -89,6 +89,7 @@ export const ROUTES = {
     ATTENDANCE: '/employee/attendance',
     LEAVES: '/employee/leaves',
     TASKS: '/employee/tasks',
+    MY_REQUESTS: '/employee/my-requests',
     // The employee sidebar mirrors the admin one for the pages an employee
     // legitimately works in. These reuse the SAME page components as the
     // admin routes — the difference is server-side: every list is scoped

@@ -41,6 +41,7 @@ import {
   PaymentFor, PaymentReceipt, CollectPaymentPayload, isAdminRole,
 } from '../../../../types/index';
 import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
+import { fetchMyChangeRequests, ChangeRequestRow } from '../../../../services/changeRequestsService';
 import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
@@ -702,6 +703,27 @@ const CustomerDetailsListPage: React.FC = () => {
   }, [page, limit, debouncedCustomerNameFilter, selectedBuilding?.id, selectedWing?.id, flatNoFilter, selectedFloor, fromDate, toDate, assignmentStatusFilter, assignedKindFilter]);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
+
+  // V_26.0 — an employee's own customers still waiting for Admin approval
+  // are listed (greyed) at the top, so a submission never just vanishes.
+  // Reloaded with the list and when the tab is focused again.
+  const [pendingCreates, setPendingCreates] = useState<ChangeRequestRow[]>([]);
+  const loadPendingCreates = useCallback(() => {
+    if (paths.isAdmin) return;
+    fetchMyChangeRequests({ module: 'customer', action: 'create', status: 'pending' })
+      .then(setPendingCreates)
+      .catch(() => { /* the list itself still shows; this is extra */ });
+  }, [paths.isAdmin]);
+  useEffect(() => { loadPendingCreates(); }, [loadPendingCreates, allCustomers]);
+  useEffect(() => { window.addEventListener('focus', loadPendingCreates); return () => window.removeEventListener('focus', loadPendingCreates); }, [loadPendingCreates]);
+  const pendingName = (r: ChangeRequestRow) => {
+    const v = { ...r.new_values, ...(r.admin_values ?? {}) } as Record<string, unknown>;
+    return [v.name, v.middle_name, v.last_name].filter(Boolean).join(' ') || `Request #${r.id}`;
+  };
+  const pendingMobile = (r: ChangeRequestRow) => {
+    const v = { ...r.new_values, ...(r.admin_values ?? {}) } as Record<string, unknown>;
+    return v.mobile_number ? `${v.mobile_country_code ?? ''} ${v.mobile_number}`.trim() : '';
+  };
   const flatNoOptions = useMemo(() => Array.from(new Set(flatsInScope.map((fl) => fl.flat_no))), [flatsInScope]);
   // "A-101" -> "A-101 · 2 BHK · 850 Sqft" for the Flat No dropdown's option
   // text — filtering/selection still work off the bare flat_no.
@@ -1270,6 +1292,12 @@ const CustomerDetailsListPage: React.FC = () => {
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         {view === 'grid' ? (
           <div className="p-5">
+            {pendingCreates.length > 0 && (
+              <div className="mb-4 rounded-xl p-3" role="note" style={{ background: isDark ? 'rgba(234,179,8,0.12)' : '#fefce8', border: `1px solid ${t.surfaceBorder}`, fontSize: 12, color: t.textPrimary }}>
+                <b>Waiting for Admin approval:</b>{' '}
+                {pendingCreates.map((r) => `${pendingName(r)} (sent ${formatDate(r.requested_at)})`).join(', ')}
+              </div>
+            )}
             {loading ? (
               <div className="cust-empty-state">Loading customers...</div>
             ) : pageRows.length === 0 ? (
@@ -1331,10 +1359,23 @@ const CustomerDetailsListPage: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr><td colSpan={tableCols} className="cust-empty-state">Loading customers...</td></tr>
-              ) : pageRows.length === 0 ? (
+              ) : pageRows.length === 0 && pendingCreates.length === 0 ? (
                 <tr><td colSpan={tableCols} className="cust-empty-state">No customers found.</td></tr>
-              ) : (
-                pageRows.map((c) => (
+              ) : (<>
+                {pendingCreates.map((r) => (
+                  <tr key={`pending-${r.id}`} className="cust-divider-top" style={{ opacity: 0.65 }} title="Waiting for Admin approval — see My Requests">
+                    {showCheckboxes && <td style={{ padding: '10px 12px' }} />}
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                      <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 20, fontSize: 10.5, fontWeight: 600, background: '#fef3c7', color: '#92400e' }}>Waiting for Admin approval</span>
+                    </td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary }}>—</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, fontWeight: 600 }}>{pendingName(r)}</td>
+                    <td colSpan={tableCols - (showCheckboxes ? 4 : 3)} style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary }}>
+                      {[pendingMobile(r), r.new_values?.booking_date ? `Booking ${formatDate(String(r.new_values.booking_date))}` : '', `Sent ${formatDate(r.requested_at)}`].filter(Boolean).join(' · ')}
+                    </td>
+                  </tr>
+                ))}
+                {pageRows.map((c) => (
                   <tr key={c.id} className="cust-divider-top master-table-row-hover">
                     {showCheckboxes && (
                     <td style={{ padding: '10px 12px' }}>
@@ -1455,8 +1496,8 @@ const CustomerDetailsListPage: React.FC = () => {
                       {c.monthly_installment_date ? formatDate(c.monthly_installment_date) : '—'}
                     </td>
                   </tr>
-                ))
-              )}
+                ))}
+              </>)}
             </tbody>
           </table>
         </div>

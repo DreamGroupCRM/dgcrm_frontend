@@ -195,6 +195,8 @@ const buildEmployeeNavItems = (has: (area: AccessArea) => boolean): NavItem[] =>
     { label: 'Leave', path: ROUTES.EMPLOYEE.LEAVES, icon: <MdBeachAccess /> },
     // V_26.0 — tasks an Admin assigned to this employee.
     { label: 'My Tasks', path: ROUTES.EMPLOYEE.TASKS, icon: <MdAssignment /> },
+    // V_26.0 — requests this employee sent for Admin approval.
+    { label: 'My Requests', path: ROUTES.EMPLOYEE.MY_REQUESTS, icon: <MdPendingActions /> },
   ];
 };
 

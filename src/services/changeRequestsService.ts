@@ -67,6 +67,12 @@ export const fetchChangeRequests = async (module: ChangeRequestModule, status?: 
   return res.data.rows;
 };
 
+/** V_26.0 — GET /api/change-requests/mine: the logged-in user's own requests. */
+export const fetchMyChangeRequests = async (filters: { module?: ChangeRequestModule; action?: ChangeRequestRow['action']; status?: ChangeRequestStatus } = {}): Promise<ChangeRequestRow[]> => {
+  const res = await axiosInstance.get('/change-requests/mine', { params: filters });
+  return res.data.rows ?? [];
+};
+
 /** PUT /api/change-requests/:id/approve — applies the proposed change */
 export const approveChangeRequest = async (id: string): Promise<void> => {
   await axiosInstance.put(`/change-requests/${id}/approve`);
