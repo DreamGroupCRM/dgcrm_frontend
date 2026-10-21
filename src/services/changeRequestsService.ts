@@ -8,6 +8,7 @@
 // applied to the real table until an admin approves them. Admin/
 // superadmin only, enforced server-side.
 import axiosInstance from './axiosConfig';
+import { notifyPendingApprovalsChanged } from './pendingApprovalsService';
 
 export type ChangeRequestModule = 'lead' | 'customer' | 'employee' | 'payment';
 
@@ -45,9 +46,11 @@ export const fetchChangeRequests = async (module: ChangeRequestModule, status?: 
 /** PUT /api/change-requests/:id/approve — applies the proposed change */
 export const approveChangeRequest = async (id: string): Promise<void> => {
   await axiosInstance.put(`/change-requests/${id}/approve`);
+  notifyPendingApprovalsChanged();
 };
 
 /** PUT /api/change-requests/:id/reject — discards the proposed change */
 export const rejectChangeRequest = async (id: string, remarks?: string): Promise<void> => {
   await axiosInstance.put(`/change-requests/${id}/reject`, remarks ? { remarks } : undefined);
+  notifyPendingApprovalsChanged();
 };

@@ -44,6 +44,7 @@
 // already round-trips correctly.
 
 import axiosInstance from './axiosConfig';
+import { notifyPendingApprovalsChanged } from './pendingApprovalsService';
 import {
   Customer,
   CustomerListResponse,
@@ -821,11 +822,13 @@ export const fetchGivenRefunds = async (filters: { date_from?: string; date_to?:
 /** PUT /api/customers/refunds/:id/approve — admin only; assigns the cancelled receipt number. */
 export const approveRefund = async (refundId: string): Promise<RefundSummary> => {
   const res = await axiosInstance.put(`/customers/refunds/${refundId}/approve`);
+  notifyPendingApprovalsChanged();
   return res.data.data;
 };
 /** PUT /api/customers/refunds/:id/reject — admin only. */
 export const rejectRefund = async (refundId: string): Promise<RefundSummary> => {
   const res = await axiosInstance.put(`/customers/refunds/${refundId}/reject`);
+  notifyPendingApprovalsChanged();
   return res.data.data;
 };
 

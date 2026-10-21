@@ -15,6 +15,7 @@ import { BaseRole, isAdminRole } from '../../types';
 import { homeRouteForRole, roleLabelFor } from '../../utils';
 import { useAccessProfile } from '../../hooks/useAccessProfile';
 import { AccessArea } from '../../services/accessService';
+import { fetchPendingApprovalCounts, PENDING_APPROVALS_CHANGED } from '../../services/pendingApprovalsService';
 
 import {
   MdDashboard, MdBusiness, MdPeople, MdContactPage,
@@ -65,9 +66,11 @@ interface NavItem {
   path?: string;
   icon: React.ReactNode;
   children?: NavItem[];
+  /** V_26.0 — a count shown beside the label (hidden when 0). */
+  badge?: number;
 }
 
-const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavItem[] => [
+const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null, pendingCount = 0): NavItem[] => [
   { label: 'Dashboard', path: ROUTES.ADMIN.DASHBOARD, icon: <MdDashboard /> },
 
   // Master section — conditionally included based on settings toggle
@@ -121,7 +124,7 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null): NavI
   // the whole point is a regular Admin reviews delete requests an
   // employee couldn't complete themselves, so this is visible to both,
   // unlike the Super Admin lobby group below.
-  { label: 'Pending Admin Approval', path: ROUTES.ADMIN.PENDING_APPROVALS, icon: <MdPendingActions /> },
+  { label: 'Pending Admin Approval', path: ROUTES.ADMIN.PENDING_APPROVALS, icon: <MdPendingActions />, badge: pendingCount },
   // Executive Dashboard — visible to Admin/SuperAdmin here same as the rest
   // of this nav tree; the real gate is server-side (checkPermission
   // ('reports','view') on GET /api/dashboard/executive) so a role without
@@ -277,10 +280,21 @@ const NavItemComponent: React.FC<{
         }
       }}
     >
-      <span className="flex-shrink-0" style={{ fontSize: 16 }}>{item.icon}</span>
+      <span className="relative flex-shrink-0" style={{ fontSize: 16 }}>
+        {item.icon}
+        {collapsed && !!item.badge && (
+          <span aria-hidden className="absolute rounded-full" style={{ top: -2, right: -3, width: 7, height: 7, background: '#dc2626' }} />
+        )}
+      </span>
       {!collapsed && (
-        <span className="font-medium" style={{ fontFamily: t.fontFamily, fontSize: 12 }}>
+        <span className="flex-1 font-medium" style={{ fontFamily: t.fontFamily, fontSize: 12 }}>
           {item.label}
+        </span>
+      )}
+      {!collapsed && !!item.badge && (
+        <span aria-label={`${item.badge} pending`} className="rounded-full text-center"
+          style={{ minWidth: 18, padding: '1px 6px', fontSize: 10, fontWeight: 700, lineHeight: '16px', background: '#dc2626', color: '#fff' }}>
+          {item.badge > 99 ? '99+' : item.badge}
         </span>
       )}
     </NavLink>
@@ -359,7 +373,29 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
   }, [mobileOpen]);
 
   const access = useAccessProfile();
-  const navItems = isAdminRole(role) ? buildAdminNavItems(masterEnabled, role) : buildEmployeeNavItems(access.has);
+  // V_26.0 — Pending Admin Approval count: reloaded on every page change,
+  // when the browser tab is focused again, and right after an approve/reject.
+  const [pendingCount, setPendingCount] = useState(0);
+  const isAdmin = isAdminRole(role);
+  useEffect(() => {
+    if (!isAdmin) return;
+    let alive = true;
+    const load = () => {
+      fetchPendingApprovalCounts()
+        .then((c) => { if (alive) setPendingCount(c.total); })
+        .catch(() => { /* badge only — never block the sidebar */ });
+    };
+    load();
+    window.addEventListener(PENDING_APPROVALS_CHANGED, load);
+    window.addEventListener('focus', load);
+    return () => {
+      alive = false;
+      window.removeEventListener(PENDING_APPROVALS_CHANGED, load);
+      window.removeEventListener('focus', load);
+    };
+  }, [isAdmin, location.pathname]);
+
+  const navItems = isAdmin ? buildAdminNavItems(masterEnabled, role, pendingCount) : buildEmployeeNavItems(access.has);
 
   const shellStyle: React.CSSProperties = {
     background: t.sidebarBg,
