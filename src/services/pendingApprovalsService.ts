@@ -27,7 +27,11 @@ export interface PendingApprovalRow {
   requested_at: string | null;
 }
 
-export interface PendingApprovalCounts { deletes: number; changes: number; refunds: number; total: number }
+export interface PendingApprovalCounts {
+  deletes: number; changes: number; refunds: number; total: number;
+  /** V_26.0 — pending change requests per module, for the page's tabs. */
+  changes_by_module: Record<string, number>;
+}
 
 /**
  * V_26.0 — GET /api/pending-approvals/count: everything waiting on an Admin
@@ -35,7 +39,7 @@ export interface PendingApprovalCounts { deletes: number; changes: number; refun
  */
 export const fetchPendingApprovalCounts = async (): Promise<PendingApprovalCounts> => {
   const { data } = await axiosInstance.get('/pending-approvals/count');
-  return { deletes: data.deletes, changes: data.changes, refunds: data.refunds, total: data.total };
+  return { deletes: data.deletes, changes: data.changes, refunds: data.refunds, total: data.total, changes_by_module: data.changes_by_module ?? {} };
 };
 
 /** Fired after any approve/reject so the sidebar count refreshes at once. */
@@ -48,6 +52,12 @@ export const notifyPendingApprovalsChanged = (): void => {
 export const fetchPendingApprovals = async (): Promise<PendingApprovalRow[]> => {
   const res = await axiosInstance.get('/pending-approvals');
   return res.data.rows;
+};
+
+/** V_26.0 — GET /api/pending-approvals/:entityType/:id: the record a delete request is for. */
+export const fetchPendingDeleteRecord = async (entityType: PendingApprovalEntityType, id: string): Promise<Record<string, unknown>> => {
+  const res = await axiosInstance.get(`/pending-approvals/${entityType}/${id}`);
+  return res.data.data ?? {};
 };
 
 /** PUT /api/pending-approvals/:entityType/:id/approve — permanently deletes the record */

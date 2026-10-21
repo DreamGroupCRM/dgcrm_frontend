@@ -28,6 +28,7 @@ import {
 } from '../../../services/changeRequestsService';
 import { AppTheme } from '../../../styles/theme';
 import { RequestValuesTable, fieldLabel } from '../../../components/common/RequestValuesTable';
+import { fetchPendingApprovalCounts, PENDING_APPROVALS_CHANGED } from '../../../services/pendingApprovalsService';
 
 interface ErrLike { response?: { data?: { message?: string } } }
 const errMessage = (e: unknown, fallback: string) => (e as ErrLike)?.response?.data?.message || fallback;
@@ -66,6 +67,11 @@ function summarize(row: ChangeRequestRow): string {
   return candidate ? String(candidate) : `Request #${row.id}`;
 }
 
+
+// V_26.0 — which customer (code, unit) a customer / payment request is about.
+const recordContext = (row: ChangeRequestRow): string =>
+  [row.record_customer_name && row.module === 'payment' ? row.record_customer_name : null, row.record_customer_code, row.record_unit]
+    .filter(Boolean).join(' · ');
 
 // V_26.0 — Admin corrects a customer add / edit request before approving:
 // contact / identity fields and the six documents (never prices or the
@@ -152,8 +158,18 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [detailsRow, setDetailsRow] = useState<ChangeRequestRow | null>(null);
   const rowMenu = useRowActionMenu<string>();
+  // V_26.0 — pending count on each module tab, so nothing waits unseen in a
+  // tab the Admin hasn't opened.
+  const [moduleCounts, setModuleCounts] = useState<Record<string, number>>({});
 
   useEffect(() => { if (!embedded) dispatch(setPageTitle('Change Requests')); }, [dispatch, embedded]);
+
+  useEffect(() => {
+    const loadCounts = () => { fetchPendingApprovalCounts().then((c) => setModuleCounts(c.changes_by_module)).catch(() => { /* tabs just show no count */ }); };
+    loadCounts();
+    window.addEventListener(PENDING_APPROVALS_CHANGED, loadCounts);
+    return () => window.removeEventListener(PENDING_APPROVALS_CHANGED, loadCounts);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -198,9 +214,14 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
   };
 
   const handleReject = async (row: ChangeRequestRow) => {
+    // V_26.0 — the note is shown to the employee on My Requests.
+    const { isConfirmed, note } = await showAlert.confirmWithNote(
+      `Reject this ${MODULE_LABEL[row.module]} ${ACTION_LABEL[row.action].toLowerCase()} request ("${summarize(row)}")?`,
+      'Reject Request?', 'Reject', 'Reason for the employee (optional)');
+    if (!isConfirmed) return;
     setBusyKey(row.id);
     try {
-      await rejectChangeRequest(row.id);
+      await rejectChangeRequest(row.id, note || undefined);
       toast.success('Request rejected.');
       await load();
     } catch (e) {
@@ -231,7 +252,7 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
                   background: activeModule === m ? '#4338ca' : t.insetBg,
                   color: activeModule === m ? '#fff' : t.textPrimary,
                 }}>
-                {MODULE_LABEL[m]}
+                {MODULE_LABEL[m]}{moduleCounts[m] ? ` (${moduleCounts[m]})` : ''}
               </button>
             ))}
           </div>
@@ -266,6 +287,7 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
                           className="flex items-center gap-1.5" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, fontSize: 12 }}>
                           {summarize(row)} <MdVisibility size={14} color="var(--brand-gradient)" />
                         </button>
+                        {recordContext(row) && <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 2 }}>{recordContext(row)}</div>}
                       </td>
                       <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary }}>
                         <div style={{ fontWeight: 600, color: isDark ? '#fff' : '#000' }}>
@@ -313,6 +335,15 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
               </button>
             </div>
             <div className="p-4" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {(detailsRow.record_customer_name || recordContext(detailsRow)) && (
+                <div style={{ fontSize: 13, color: t.textPrimary, fontWeight: 700 }}>
+                  {detailsRow.module === 'payment' ? 'Payment of ' : 'Customer: '}
+                  {detailsRow.record_customer_name || summarize(detailsRow)}
+                  {[detailsRow.record_customer_code, detailsRow.record_unit].filter(Boolean).length > 0 && (
+                    <span style={{ fontWeight: 500, color: t.textSecondary }}> · {[detailsRow.record_customer_code, detailsRow.record_unit].filter(Boolean).join(' · ')}</span>
+                  )}
+                </div>
+              )}
               <div style={{ fontSize: 12, color: t.textSecondary }}>
                 Requested by <b style={{ color: t.textPrimary }}>{detailsRow.requested_by_name || detailsRow.requested_by_email || '—'}</b>
                 {' '}on {formatLastLogin(detailsRow.requested_at)} · Status: <b style={{ color: t.textPrimary }}>{detailsRow.status}</b>

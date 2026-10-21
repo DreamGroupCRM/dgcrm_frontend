@@ -2,6 +2,7 @@
 // their own content rather than each restating the same card/field/stat
 // markup. Styling lives in CustomerPortal.css.
 import React from 'react';
+import { MdCheckCircle, MdErrorOutline, MdSchedule } from 'react-icons/md';
 import { DueGridRow } from '../../services/paymentService';
 
 export const rupee = (n: number | null | undefined): string =>
@@ -46,6 +47,25 @@ export const STAT_GRADIENTS = {
   paid: 'linear-gradient(135deg, #059669, #10b981)',
   pending: 'linear-gradient(135deg, #dc2626, #f97316)',
 } as const;
+
+// Paid / Due / Upcoming on a schedule row — the portal's chips, also used
+// by the staff Customer Scheme view so both read the same.
+export const STATUS_META = {
+  paid: { label: 'Paid', icon: MdCheckCircle, color: '#047857', bg: 'rgba(5,150,105,0.12)' },
+  due: { label: 'Due', icon: MdErrorOutline, color: '#dc2626', bg: 'rgba(220,38,38,0.12)' },
+  upcoming: { label: 'Upcoming', icon: MdSchedule, color: '#1f2937', bg: '#FFFF00' },
+} as const;
+
+export const StatusChip: React.FC<{ row?: DueGridRow }> = ({ row }) => {
+  const key = (row?.status ?? 'upcoming') as keyof typeof STATUS_META;
+  const status = STATUS_META[key] ?? STATUS_META.upcoming;
+  const Icon = status.icon;
+  return (
+    <span className={`cp-chip cp-chip-${key}`} style={{ background: status.bg, color: status.color }}>
+      <Icon size={11} />{row?.settled_via_extra_pay ? 'Paid (Adv.)' : status.label}
+    </span>
+  );
+};
 
 export interface BookingTotals {
   totalCost: number;

@@ -17,7 +17,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CircularProgress } from '@mui/material';
 import {
-  MdEventNote, MdListAlt, MdCheckCircle, MdErrorOutline, MdSchedule,
+  MdEventNote, MdListAlt,
   MdTrendingUp, MdAccountBalanceWallet, MdHourglassEmpty, MdDownload,
 } from 'react-icons/md';
 import { formatDate } from '../../../utils';
@@ -28,13 +28,8 @@ import { DueGridRow } from '../../../services/paymentService';
 import { CustomerSchemeData, CustomerSchemeSummaryRow } from '../../../types/index';
 import { exportPaymentSchedulePdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport.lazy';
 import { useCustomerPortal } from '../CustomerPortalContext';
-import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
+import { PageHead, Stat, STAT_GRADIENTS, STATUS_META, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
 
-const STATUS_META = {
-  paid: { label: 'Paid', icon: MdCheckCircle, color: '#047857', bg: 'rgba(5,150,105,0.12)' },
-  due: { label: 'Due', icon: MdErrorOutline, color: '#dc2626', bg: 'rgba(220,38,38,0.12)' },
-  upcoming: { label: 'Upcoming', icon: MdSchedule, color: '#1f2937', bg: '#FFFF00' },
-} as const;
 
 // Before / After Possession totals each get their own colour band so they
 // stand out at a glance (same colours as the downloaded PDF). The colours

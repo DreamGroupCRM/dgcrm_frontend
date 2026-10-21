@@ -37,6 +37,10 @@ export interface ChangeRequestRow {
   admin_remarks: string | null;
   /** V_26.0 — Admin's corrections before approving (laid over new_values). */
   admin_values?: Record<string, unknown> | null;
+  // V_26.0 — which customer / unit a customer or payment request is about.
+  record_customer_name?: string | null;
+  record_customer_code?: string | null;
+  record_unit?: string | null;
 }
 
 /** V_26.0 — what an Admin may correct on a customer request before approving
