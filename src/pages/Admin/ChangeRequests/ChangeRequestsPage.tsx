@@ -19,10 +19,14 @@ import { RowActionMenu, useRowActionMenu } from '../../../components/common/RowA
 import { showAlert, formatLastLogin } from '../../../utils';
 import './ChangeRequestsPage.css';
 import DocumentViewerModal from '../../../components/common/DocumentViewerModal';
+import DateInput from '../../../components/common/DateInput';
+import { serverTodayYmd } from '../../../utils/serverTime';
 import {
   fetchChangeRequests, approveChangeRequest, rejectChangeRequest,
   ChangeRequestRow, ChangeRequestModule,
+  adminEditChangeRequest, ADMIN_EDITABLE_CUSTOMER_FIELDS, ADMIN_BOOLEAN_FIELDS, CUSTOMER_DOC_FIELDS,
 } from '../../../services/changeRequestsService';
+import { AppTheme } from '../../../styles/theme';
 
 interface ErrLike { response?: { data?: { message?: string } } }
 const errMessage = (e: unknown, fallback: string) => (e as ErrLike)?.response?.data?.message || fallback;
@@ -78,6 +82,78 @@ function displayValue(v: unknown): string {
 const sameValue = (a: unknown, b: unknown) =>
   (isBlank(a) && isBlank(b)) || displayValue(a) === displayValue(b);
 
+// V_26.0 — Admin corrects a customer add / edit request before approving:
+// contact / identity fields and the six documents (never prices or the
+// payment plan — the server enforces the same list). Saved separately from
+// the employee's submission, which stays as sent.
+const AdminEditForm: React.FC<{ t: AppTheme; row: ChangeRequestRow; onSaved: (adminValues: Record<string, unknown>) => void; onCancel: () => void }> = ({ t, row, onSaved, onCancel }) => {
+  const current = { ...row.new_values, ...(row.admin_values ?? {}) };
+  const asText = (v: unknown) => (v === null || v === undefined ? '' : String(v));
+  const [fields, setFields] = useState<Record<string, string>>(() =>
+    Object.fromEntries(ADMIN_EDITABLE_CUSTOMER_FIELDS.map((k) => [k, asText(current[k])])));
+  const [files, setFiles] = useState<Partial<Record<(typeof CUSTOMER_DOC_FIELDS)[number], File>>>({});
+  const [saving, setSaving] = useState(false);
+  const input: React.CSSProperties = { width: '100%', padding: '6px 8px', fontSize: 12, borderRadius: 8, border: `1px solid ${t.inputBorder}`, background: t.inputBg, color: t.textPrimary };
+
+  const save = async () => {
+    if (saving) return;
+    // Only what the Admin actually changed is sent.
+    const changed = Object.fromEntries(Object.entries(fields).filter(([k, v]) =>
+      k === 'date_of_birth' ? v.slice(0, 10) !== asText(current[k]).slice(0, 10) : v !== asText(current[k])));
+    if (Object.keys(changed).length === 0 && Object.keys(files).length === 0) { toast.error('Nothing changed.'); return; }
+    setSaving(true);
+    try {
+      const adminValues = await adminEditChangeRequest(row.id, changed, files);
+      toast.success('Changes saved. They are applied when you approve the request.');
+      onSaved(adminValues);
+    } catch (e) {
+      toast.error(errMessage(e, 'Failed to save the changes.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ fontSize: 12, color: t.textSecondary }}>
+        Correct contact details or replace documents. Prices and the payment plan can't be changed here — reject the request instead.
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {ADMIN_EDITABLE_CUSTOMER_FIELDS.map((k) => (
+          <label key={k} style={{ fontSize: 11, color: t.textSecondary, fontWeight: 600 }}>
+            {fieldLabel(k)}
+            {ADMIN_BOOLEAN_FIELDS.includes(k) ? (
+              <select value={fields[k] === 'true' ? 'true' : 'false'} onChange={(e) => setFields((f) => ({ ...f, [k]: e.target.value }))} style={input}>
+                <option value="true">Yes</option><option value="false">No</option>
+              </select>
+            ) : k === 'date_of_birth' ? (
+              <DateInput t={t} value={fields[k].slice(0, 10)} max={serverTodayYmd()} onChange={(v) => setFields((f) => ({ ...f, [k]: v }))} style={input} />
+            ) : (
+              <input value={fields[k]} onChange={(e) => setFields((f) => ({ ...f, [k]: e.target.value }))} style={input} />
+            )}
+          </label>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {CUSTOMER_DOC_FIELDS.map((k) => (
+          <label key={k} style={{ fontSize: 11, color: t.textSecondary, fontWeight: 600 }}>
+            Replace {fieldLabel(k)}
+            <input type="file" accept="image/*,application/pdf"
+              onChange={(e) => { const f = e.target.files?.[0]; setFiles((p) => { const n = { ...p }; if (f) n[k] = f; else delete n[k]; return n; }); }}
+              style={{ ...input, padding: 4 }} />
+          </label>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 justify-end">
+        <button type="button" onClick={onCancel} disabled={saving} className="rounded-xl" style={{ padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: t.inputBg, color: t.textPrimary, border: `1px solid ${t.inputBorder}` }}>Cancel</button>
+        <button type="button" onClick={save} disabled={saving} className="master-btn-primary" style={{ padding: '7px 14px', fontSize: 12 }}>
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // `embedded` — shown as a tab inside Pending Admin Approval (V_25.0).
 const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const dispatch = useAppDispatch();
@@ -85,6 +161,7 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
 
   const [activeModule, setActiveModule] = useState<ChangeRequestModule>(MODULES[0]);
   const [previewDoc, setPreviewDoc] = useState<{ label: string; url: string } | null>(null);
+  const [adminEditing, setAdminEditing] = useState(false);
   const [rows, setRows] = useState<ChangeRequestRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -246,7 +323,7 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
               <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>
                 Proposed {MODULE_LABEL[detailsRow.module]} {ACTION_LABEL[detailsRow.action]}
               </h3>
-              <button type="button" onClick={() => setDetailsRow(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.textSecondary }}>
+              <button type="button" onClick={() => { setDetailsRow(null); setAdminEditing(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.textSecondary }}>
                 <MdClose size={18} />
               </button>
             </div>
@@ -258,7 +335,8 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
               {(() => {
                 const isEdit = detailsRow.action === 'edit';
                 // A delete request shows the record being deleted.
-                const source = detailsRow.action === 'delete' ? (detailsRow.old_values ?? {}) : (detailsRow.new_values ?? {});
+                const adminValues = detailsRow.admin_values ?? {};
+                const source = detailsRow.action === 'delete' ? (detailsRow.old_values ?? {}) : { ...(detailsRow.new_values ?? {}), ...adminValues };
                 const old = detailsRow.old_values ?? {};
                 const entries = Object.entries(source).filter(([k, v]) => isEdit || !isBlank(v) || k in old);
                 const cellStyle: React.CSSProperties = { padding: '7px 8px', fontSize: 12, borderTop: `1px solid ${t.divider}`, verticalAlign: 'top', wordBreak: 'break-word' };
@@ -285,6 +363,11 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
                               {isEdit && <td style={cellStyle}>{valueCell(old[key], fieldLabel(key))}</td>}
                               <td style={{ ...cellStyle, fontWeight: changed ? 700 : 400 }}>
                                 {cleared ? <span style={{ color: '#dc2626' }}>(cleared)</span> : valueCell(value, fieldLabel(key))}
+                                {key in adminValues && (
+                                  <div style={{ fontSize: 10.5, fontWeight: 400, color: '#2563eb', marginTop: 2 }}>
+                                    Edited by Admin{isFileValue(detailsRow.new_values?.[key]) ? '' : ` · employee sent: ${displayValue(detailsRow.new_values?.[key])}`}
+                                  </div>
+                                )}
                               </td>
                             </tr>
                           );
@@ -295,6 +378,23 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
                   </div>
                 );
               })()}
+              {detailsRow.module === 'customer' && (detailsRow.action === 'create' || detailsRow.action === 'edit') && detailsRow.status === 'pending' && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${t.divider}` }}>
+                  {adminEditing ? (
+                    <AdminEditForm t={t} row={detailsRow} onCancel={() => setAdminEditing(false)}
+                      onSaved={(adminValues) => {
+                        const updated = { ...detailsRow, admin_values: adminValues };
+                        setDetailsRow(updated);
+                        setRows((rs) => rs.map((r) => (r.id === updated.id ? updated : r)));
+                        setAdminEditing(false);
+                      }} />
+                  ) : (
+                    <button type="button" onClick={() => setAdminEditing(true)} className="rounded-xl" style={{ padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: t.inputBg, color: t.textPrimary, border: `1px solid ${t.inputBorder}` }}>
+                      Edit before approving
+                    </button>
+                  )}
+                </div>
+              )}
               {detailsRow.reason && (
                 <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${t.divider}`, fontSize: 12 }}>
                   <span style={{ color: t.textSecondary, fontWeight: 600 }}>Reason: </span>
