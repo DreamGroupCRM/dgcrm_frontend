@@ -51,7 +51,7 @@ import { Building, PaymentReceipt } from '../../../../types/index';
 import { showAlert } from '../../../../utils';
 import './PaymentReceived.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
-import { serverToday, toYmd } from '../../../../utils/serverTime';
+import { serverToday, toYmd, employeeReceivedMinYmd } from '../../../../utils/serverTime';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 import { ReceiptEmailSwitch } from '../../../../components/common/ReceiptEmailSwitch';
 import DateInput from '../../../../components/common/DateInput';
@@ -208,6 +208,9 @@ const PaymentReceivedPage: React.FC = () => {
   const paths = useRoleBasePath();
   // V_25.0 — a Head (set-up department) may request deleting a team payment.
   const { profile: access } = useAccessProfile();
+  // V_26.0 — a non-Admin's Payment Received reaches back to the same date
+  // two months ago (enforced server-side); the date filter stops there too.
+  const receivedMinYmd = paths.isAdmin ? undefined : employeeReceivedMinYmd();
   const canRequestDelete = !paths.isAdmin && Boolean(access && !access.legacy && access.head_of.length > 0);
   const [approvalView, setApprovalView] = useState<ApprovalView>('all');
   const [approvalCounts, setApprovalCounts] = useState<{ approved: number; pending: number } | null>(null);
@@ -730,11 +733,11 @@ const PaymentReceivedPage: React.FC = () => {
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
             <label style={labelStyle}>Received Date From</label>
-            <DateInput t={t} value={draftFromDate} onChange={(v) => { setDraftFromDate(v); setDraftDateRange(''); }} style={inputStyle} />
+            <DateInput t={t} value={draftFromDate} min={receivedMinYmd} onChange={(v) => { setDraftFromDate(v); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>Received Date To</label>
-            <DateInput t={t} value={draftToDate} onChange={(v) => { setDraftToDate(v); setDraftDateRange(''); }} style={inputStyle} />
+            <DateInput t={t} value={draftToDate} min={receivedMinYmd} onChange={(v) => { setDraftToDate(v); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           <div className="pr-filter-actions flex items-center gap-2 flex-wrap" style={{ gridColumn: 'span 2 / span 2' }}>
             <button type="button" onClick={handleFilter}
@@ -751,6 +754,11 @@ const PaymentReceivedPage: React.FC = () => {
 
       {/* ── Toolbar — Search (left), All/Approved/UnApproved (center),
           Approve Selected/Payment Upcoming/Export CSV/Refresh (right). ── */}
+      {receivedMinYmd && (
+        <div role="note" className="mb-3" style={{ fontSize: 12, color: t.textSecondary }}>
+          Showing payments from {receivedMinYmd.split('-').reverse().join('/')} (last 2 months).
+        </div>
+      )}
       <div className="pr-toolbar rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="pr-toolbar-row flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
           <div className="pr-toolbar-search flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 260, flexShrink: 0 }}>
