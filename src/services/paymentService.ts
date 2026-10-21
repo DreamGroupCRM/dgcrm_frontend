@@ -461,7 +461,7 @@ export const approvePayment = async (id: string | number): Promise<{ success: bo
 };
 
 /** PUT /api/payments/bulk-approve */
-export const bulkApprovePayments = async (ids: (string | number)[]): Promise<{ success: boolean; approved: number; message: string }> => {
+export const bulkApprovePayments = async (ids: (string | number)[]): Promise<{ success: boolean; approved: number; skipped_delete_requested?: number; message: string }> => {
   const res = await axiosInstance.put('/payments/bulk-approve', { ids: ids.map(Number) });
   return res.data;
 };

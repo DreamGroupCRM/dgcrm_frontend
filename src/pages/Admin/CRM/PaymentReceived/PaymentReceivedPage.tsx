@@ -538,8 +538,8 @@ const PaymentReceivedPage: React.FC = () => {
       await approvePayment(row.id);
       toast.success(`Payment for ${row.customer_name || 'customer'} approved.`);
       refreshAll();
-    } catch {
-      toast.error('Failed to approve payment.');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to approve payment.');
     } finally {
       setApprovingId(null);
     }
@@ -550,7 +550,7 @@ const PaymentReceivedPage: React.FC = () => {
     setBulkApproving(true);
     try {
       const res = await bulkApprovePayments(selectedPendingIds);
-      toast.success(`${res.approved} payment(s) approved.`);
+      toast.success(res.message || `${res.approved} payment(s) approved.`);
       setSelectedIds(new Set());
       refreshAll();
     } catch {
@@ -852,7 +852,7 @@ const PaymentReceivedPage: React.FC = () => {
                           .master-table-scroll's overflow:auto. */}
                       <button type="button" title="Actions"
                         ref={rowMenu.openId === r.id ? rowMenu.buttonRef : undefined}
-                        onClick={rowMenu.toggle(r.id, (r.is_approved ? 2 : 1) + (paths.isAdmin ? (r.is_approved ? 1 : 2) : canRequestDelete ? 1 : 0))}
+                        onClick={rowMenu.toggle(r.id, (r.is_approved ? 2 : 1) + (paths.isAdmin ? (r.is_approved ? 1 : 2) : canRequestDelete && !r.is_approved ? 1 : 0))}
                         className="flex items-center justify-center rounded-lg"
                         style={{ width: 28, height: 28, background: 'transparent', border: 'none', color: t.textSecondary, cursor: 'pointer' }}>
                         <MdMoreVert size={18} />
@@ -875,8 +875,9 @@ const PaymentReceivedPage: React.FC = () => {
                           // this via requireAdmin, so this is UI-side only —
                           // an employee must not even see the option.
                           // V_25.0 — a Head may REQUEST a delete (Admin approves);
-                          // Executives still never see it.
-                          ...(paths.isAdmin || canRequestDelete ? [{ key: 'delete', label: paths.isAdmin ? 'Delete' : 'Request Delete', icon: <MdDelete size={14} />, danger: true, disabled: deletingId === r.id, onClick: () => { rowMenu.close(); handleDelete(r); } }] : []),
+                          // Executives still never see it. V_26.0 — only for an
+                          // unapproved payment (approved: Admin only).
+                          ...(paths.isAdmin || (canRequestDelete && !r.is_approved) ? [{ key: 'delete', label: paths.isAdmin ? 'Delete' : 'Request Delete', icon: <MdDelete size={14} />, danger: true, disabled: deletingId === r.id, onClick: () => { rowMenu.close(); handleDelete(r); } }] : []),
                         ]} />
                       )}
                     </td>
