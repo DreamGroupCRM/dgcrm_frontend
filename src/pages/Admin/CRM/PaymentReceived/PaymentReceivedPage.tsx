@@ -53,6 +53,7 @@ import './PaymentReceived.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { serverToday, toYmd } from '../../../../utils/serverTime';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
+import { ReceiptEmailSwitch } from '../../../../components/common/ReceiptEmailSwitch';
 import DateInput from '../../../../components/common/DateInput';
 import { useAccessProfile } from '../../../../hooks/useAccessProfile';
 
@@ -797,6 +798,7 @@ const PaymentReceivedPage: React.FC = () => {
                 <MdCheckCircle size={16} /> {bulkApproving ? 'Approving…' : `Approve Selected (${selectedPendingIds.length})`}
               </button>
             )}
+            {paths.isAdmin && <ReceiptEmailSwitch t={t} />}
             {/* V_25.0 — Export CSV is Admin-only. */}
             {paths.isAdmin && (
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
