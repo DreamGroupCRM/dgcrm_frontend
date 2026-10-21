@@ -320,6 +320,8 @@ export interface CustomerDueGrid {
   customer_name: string;
   company_name: string | null;
   rows: DueGridRow[];
+  /** Unused Extra Pay — counts as paid in the summary (same as the portal). */
+  extra_pay_total?: number;
 }
 /** GET /api/payments/customer/:customerId/due-grid */
 export const fetchCustomerDueGrid = async (customerId: string | number): Promise<CustomerDueGrid> => {

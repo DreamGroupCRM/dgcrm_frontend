@@ -15,7 +15,11 @@ import { toast } from '@/utils/toast';
 import {
   MdArrowBack, MdCalculate, MdListAlt, MdPerson, MdApartment, MdPhone,
   MdEmail, MdChat, MdLocationOn, MdBadge, MdExpandMore, MdExpandLess,
+  MdTrendingUp, MdAccountBalanceWallet, MdHourglassEmpty, MdWarningAmber,
 } from 'react-icons/md';
+// V_26.0 — the portal's own summary tiles and totals (scoped .cp- styles).
+import { Stat, STAT_GRADIENTS, totalsFromDueGrid } from '../../../Customer/CustomerPortalUi';
+import '../../../Customer/CustomerPortal.css';
 
 import { AppTheme } from '../../../../styles/theme';
 import { resolveFileUrl } from '../../../../utils';
@@ -202,6 +206,7 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
   // loading/error state, and silently stays null (no strikethrough shown)
   // if it fails, rather than treating it as fatal.
   const [gridRows, setGridRows] = useState<DueGridRow[] | null>(null);
+  const [extraPay, setExtraPay] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -231,7 +236,7 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
     if (!id) return;
     let cancelled = false;
     fetchCustomerDueGrid(id)
-      .then((grid) => { if (!cancelled) setGridRows(grid.rows); })
+      .then((grid) => { if (!cancelled) { setGridRows(grid.rows); setExtraPay(grid.extra_pay_total ?? 0); } })
       .catch(() => { if (!cancelled) setGridRows(null); });
     return () => { cancelled = true; };
   }, [id]);
@@ -327,6 +332,24 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
           </div>
         </div>
       </SectionCard>
+
+      {/* V_26.0 — the same summary tiles the customer sees on their portal,
+          from the same due grid and the same calculation (totalsFromDueGrid),
+          so Admin, employee and customer always see identical figures. Due
+          Now = what is past its date and still unpaid. */}
+      {gridRows && (() => {
+        const totals = totalsFromDueGrid(gridRows, extraPay);
+        const dueNow = gridRows.filter((r) => r.status === 'due').reduce((sum, r) => sum + r.due_amount, 0);
+        const paidRows = gridRows.filter((r) => r.status === 'paid').length;
+        return (
+          <div className="cp-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, marginBottom: 16 }}>
+            <Stat icon={<MdTrendingUp size={19} />} label="Total Flat Cost" value={formatINR(totals.totalCost)} gradient={STAT_GRADIENTS.total} />
+            <Stat icon={<MdAccountBalanceWallet size={19} />} label="Payment Completed" value={formatINR(totals.paid)} gradient={STAT_GRADIENTS.paid} />
+            <Stat icon={<MdHourglassEmpty size={19} />} label="Payment Pending" value={formatINR(totals.pending)} gradient={STAT_GRADIENTS.pending} />
+            <Stat icon={<MdWarningAmber size={19} />} label={`Due Now · ${paidRows}/${gridRows.length} paid`} value={formatINR(dueNow)} gradient="linear-gradient(135deg, #b45309, #d97706)" />
+          </div>
+        );
+      })()}
 
       {/* ── EMI Scheme summary — accordion, background now matches EMI
           Schedule's green (was its own blue). ──────────────────────── */}
