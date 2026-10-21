@@ -73,7 +73,7 @@ const MyRequestsPage: React.FC = () => {
           </div>
         </div>
         <div className="master-table-scroll">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: rows.length > 0 ? 760 : undefined }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['Request', 'Record', 'Sent On', 'Status', 'Admin Remark', 'Details'].map((h) => (

@@ -184,7 +184,7 @@ const TasksPage: React.FC = () => {
           </div>
         </div>
         <div className="master-table-scroll">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: tasks.length > 0 ? 820 : undefined }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['Task', 'Assigned To', 'Due Date', 'Priority', 'Status', 'Assigned By', 'Actions'].map((h) => (
