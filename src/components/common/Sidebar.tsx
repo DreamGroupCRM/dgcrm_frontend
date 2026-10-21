@@ -24,7 +24,7 @@ import {
   MdApartment, MdAccountBalance, MdAccountTree,
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
   MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
-  MdAdminPanelSettings, MdManageAccounts, MdPendingActions, MdBeachAccess,
+  MdAdminPanelSettings, MdManageAccounts, MdPendingActions, MdBeachAccess, MdAssignment,
   MdGridView, MdEventBusy,
 } from 'react-icons/md';
 
@@ -125,6 +125,8 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null, pendi
   // employee couldn't complete themselves, so this is visible to both,
   // unlike the Super Admin lobby group below.
   { label: 'Pending Admin Approval', path: ROUTES.ADMIN.PENDING_APPROVALS, icon: <MdPendingActions />, badge: pendingCount },
+  // V_26.0 — general tasks (e.g. HR work) Admin assigns to employees.
+  { label: 'Tasks', path: ROUTES.ADMIN.TASKS, icon: <MdAssignment /> },
   // Executive Dashboard — visible to Admin/SuperAdmin here same as the rest
   // of this nav tree; the real gate is server-side (checkPermission
   // ('reports','view') on GET /api/dashboard/executive) so a role without
@@ -191,6 +193,8 @@ const buildEmployeeNavItems = (has: (area: AccessArea) => boolean): NavItem[] =>
     // Audit History is deliberately NOT here — it stays admin-only.
     { label: 'Attendance', path: ROUTES.EMPLOYEE.ATTENDANCE, icon: <MdEventAvailable /> },
     { label: 'Leave', path: ROUTES.EMPLOYEE.LEAVES, icon: <MdBeachAccess /> },
+    // V_26.0 — tasks an Admin assigned to this employee.
+    { label: 'My Tasks', path: ROUTES.EMPLOYEE.TASKS, icon: <MdAssignment /> },
   ];
 };
 

@@ -481,7 +481,7 @@ const DueReportPage: React.FC = () => {
 
   const fetchFollowUpCounts = useCallback(async () => {
     try {
-      setPendingFollowUps(await tasksService.fetchTasks({ status: 'pending' }));
+      setPendingFollowUps(await tasksService.fetchTasks({ status: 'pending', kind: 'follow_up' }));
     } catch { /* list/badge just keep their last known state if this fails */ }
   }, []);
 

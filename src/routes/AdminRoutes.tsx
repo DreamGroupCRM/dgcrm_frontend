@@ -74,6 +74,7 @@ const UserManagementPage = lazyPage(() => import('../pages/Admin/UserManagement/
 // Audit History below — no extra ProtectedRoute needed, the parent
 // route already restricts this whole subtree to admin/superadmin.
 const PendingApprovalsPage = lazyPage(() => import('../pages/Admin/PendingApprovals/PendingApprovalsPage'));
+const TasksPage = lazyPage(() => import('../pages/Admin/Tasks/TasksPage'));
 // Change Requests — Create/Edit proposal review queue (see changeRequests
 // module in dgcrm_backend). Admin/superadmin, same as Pending Approvals.
 const ChangeRequestsPage = lazyPage(() => import('../pages/Admin/ChangeRequests/ChangeRequestsPage'));
@@ -160,6 +161,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="cancelled-booking/scheme/:id" element={<CustomerSchemeViewPage from="cancelled" />} />
       <Route path="audit-history" element={<AuditHistoryPage />} />
       <Route path="pending-approvals" element={<PendingApprovalsPage />} />
+      <Route path="tasks" element={<TasksPage />} />
       <Route path="change-requests" element={<ChangeRequestsPage />} />
       <Route path="department-setup" element={<DepartmentSetupPage />} />
       <Route path="customize-scheme" element={<CustomizeSchemePage />} />

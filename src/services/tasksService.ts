@@ -34,6 +34,9 @@ export interface TaskListFilters {
   assigned_to?: string | number;
   customer_id?: string | number;
   due_date?: string; // YYYY-MM-DD
+  /** V_26.0 — 'general': tasks with no customer (Tasks / My Tasks pages);
+   * 'follow_up': customer follow-ups (Payment Due). */
+  kind?: 'general' | 'follow_up';
 }
 
 export interface CreateTaskPayload {
@@ -52,6 +55,7 @@ export const fetchTasks = async (filters?: TaskListFilters): Promise<Task[]> => 
   if (filters?.assigned_to) params.assigned_to = filters.assigned_to;
   if (filters?.customer_id) params.customer_id = filters.customer_id;
   if (filters?.due_date) params.due_date = filters.due_date;
+  if (filters?.kind) params.kind = filters.kind;
   const res = await axiosInstance.get('/tasks', { params });
   return (res.data.data ?? []) as Task[];
 };
@@ -77,10 +81,38 @@ export const updateTask = async (id: string | number, payload: UpdateTaskPayload
   return res.data.data as Task;
 };
 
+export const TASK_STATUSES = ['pending', 'in_progress', 'completed'] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+export const TASK_STATUS_LABEL: Record<TaskStatus, string> = { pending: 'Pending', in_progress: 'In Progress', completed: 'Completed' };
+export const TASK_PRIORITIES = ['low', 'medium', 'high'] as const;
+export const TASK_PRIORITY_LABEL: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High' };
+
+/** V_26.0 — an employee an Admin may assign a general task to. */
+export interface TaskAssignee {
+  id: number | string;
+  employee_code: string | null;
+  name: string;
+  departments: string | null;
+  designations: string | null;
+}
+
+/** GET /api/tasks/assignees (admin only) */
+export const fetchTaskAssignees = async (): Promise<TaskAssignee[]> => {
+  const res = await axiosInstance.get('/tasks/assignees');
+  return (res.data.data ?? []) as TaskAssignee[];
+};
+
+/** DELETE /api/tasks/:id (admin only) */
+export const deleteTask = async (id: string | number): Promise<void> => {
+  await axiosInstance.delete(`/tasks/${id}`);
+};
+
 export const tasksService = {
   fetchTasks,
   createTask,
   updateTask,
+  fetchTaskAssignees,
+  deleteTask,
 };
 
 export default tasksService;

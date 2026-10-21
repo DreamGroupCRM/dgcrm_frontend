@@ -69,6 +69,7 @@ export const ROUTES = {
     BACKUP_DATABASE: '/admin/backup-database',
     EXECUTIVE_DASHBOARD: '/admin/reports/executive-dashboard',
     PENDING_APPROVALS: '/admin/pending-approvals',
+    TASKS: '/admin/tasks',
     CHANGE_REQUESTS: '/admin/change-requests',
     // V_25.0 — Super Admin: departments' pages, Head / Executive designations.
     DEPARTMENT_SETUP: '/admin/department-setup',
@@ -87,6 +88,7 @@ export const ROUTES = {
     PAYMENT_DUES: '/employee/payment-dues',
     ATTENDANCE: '/employee/attendance',
     LEAVES: '/employee/leaves',
+    TASKS: '/employee/tasks',
     // The employee sidebar mirrors the admin one for the pages an employee
     // legitimately works in. These reuse the SAME page components as the
     // admin routes — the difference is server-side: every list is scoped
