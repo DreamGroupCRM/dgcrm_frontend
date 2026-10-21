@@ -670,7 +670,7 @@ function roleAccess(
       add('Received Date: today + 4 days back');
     }
     if (has('payment_received') && head) add('Payment delete request', true);
-    if (has('cancelled_booking') || (head && has('customers'))) add('Cancel Booking', true);
+    if (has('cancelled_booking')) add('Cancel Booking', true);
     if (has('cancelled_booking')) add('Refund entry', true);
     if (has('employee_details')) add('Add / Edit Employee', true);
   }

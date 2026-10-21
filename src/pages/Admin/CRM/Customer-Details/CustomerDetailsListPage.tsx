@@ -452,10 +452,11 @@ const CustomerDetailsListPage: React.FC = () => {
   const viewOnly = setUpEmployee && !isHead;
   const canEditCustomer = paths.isAdmin || (setUpEmployee && isHead);
   const showSplitAssign = paths.isAdmin || isHead;
-  // V_25.0 — Cancel Booking: Admin, Refund, and a Head (e.g. the Recovery
-  // Head — goes to Admin approval); a department not set up yet keeps it,
-  // as before. Executives cannot. Same rule the server applies.
-  const canCancelBooking = access.has('cancelled_booking') || (setUpEmployee && isHead);
+  // V_26.0 — Cancel Booking: Admin and Refund only (a department not set up
+  // yet keeps it, as before); no other Head, e.g. the Recovery Head, and no
+  // Executive. An employee's request goes to Admin approval. Same rule the
+  // server applies.
+  const canCancelBooking = access.has('cancelled_booking');
 
   // allCustomers now holds ONLY the current server page (see fetchCustomers
   // below) — previously this held up to 1000 rows fetched once, with
