@@ -49,7 +49,7 @@ import {
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
-import { serverToday } from '../../../../utils/serverTime';
+import { serverToday, serverTodayYmd } from '../../../../utils/serverTime';
 import { cssRect } from '../../../../utils/appZoom';
 import DateInput from '../../../../components/common/DateInput';
 
@@ -867,6 +867,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   // ── Payment Details ───────────────────────────────────────────────────
   const [totalCost, setTotalCost] = useState('');
   const [bookingDate, setBookingDate] = useState('');
+  // V_26.0 — the Booking Date as saved: an old record whose saved date is in
+  // the future stays editable; only a newly entered future date is refused.
+  const savedBookingDate = useRef('');
   const [bookingAmount, setBookingAmount] = useState('');
   const [remainingBookingAmount, setRemainingBookingAmount] = useState('');
   const [remainingBookingDate, setRemainingBookingDate] = useState('');
@@ -1091,6 +1094,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
 
           setTotalCost(c.total_cost != null ? String(c.total_cost) : '');
           setBookingDate(c.booking_date || '');
+          savedBookingDate.current = (c.booking_date || '').slice(0, 10);
           setBookingAmount(c.booking_amount != null ? String(c.booking_amount) : '');
           setRemainingBookingAmount(c.remaining_booking_amount != null ? String(c.remaining_booking_amount) : '');
           setRemainingBookingDate(c.remaining_booking_date || '');
@@ -1396,6 +1400,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
       failed: () => totalCost.trim() !== '' && planCheck.cost > 0 && planCheck.diff !== 0 && planMustMatch,
     },
     { field: 'bookingDate', section: 'payment', message: 'Please select the Booking Date.', failed: () => bookingDate === '' },
+    { field: 'bookingDate', section: 'payment', message: 'Booking Date cannot be in the future.',
+      failed: () => bookingDate !== '' && bookingDate.slice(0, 10) > serverTodayYmd() && bookingDate.slice(0, 10) !== savedBookingDate.current },
     { field: 'bookingAmount', section: 'payment', message: 'Please enter the Booking Amount.', failed: () => bookingAmount.trim() === '' },
     { field: 'possessionAmount', section: 'payment', message: 'Please enter the Possession Amount.', failed: () => possessionAmount.trim() === '' },
     { field: 'installmentDate', section: 'payment', message: 'Please select the Payment Date.', failed: () => installmentDate === '' },
@@ -2256,7 +2262,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             <AmountField t={t} isView={isView} placeholder="Enter total cost" value={totalCost} onChange={setTotalCost} />
           </Field>
           <Field t={t} label="Booking Date" required error={errorFor('bookingDate')} fieldRef={setFieldRef('bookingDate') as React.Ref<HTMLDivElement>}>
-            <DateInput t={t} value={bookingDate} readOnly={isView} disabled={isView} onChange={(v) => setBookingDate(v)} className={fieldClass} />
+            <DateInput t={t} value={bookingDate} max={serverTodayYmd()} readOnly={isView} disabled={isView} onChange={(v) => setBookingDate(v)} className={fieldClass} />
           </Field>
           <Field t={t} label="Booking Amount (₹)" required error={errorFor('bookingAmount')} fieldRef={setFieldRef('bookingAmount') as React.Ref<HTMLDivElement>}>
             <AmountField t={t} isView={isView} placeholder="Enter booking amount" value={bookingAmount} onChange={setBookingAmount} />

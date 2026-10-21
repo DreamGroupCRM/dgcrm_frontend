@@ -42,6 +42,7 @@ import { employeeDetailsBasePath } from '../../../../hooks/useRoleBasePath';
 import { useAppSelector } from '../../../../hooks';
 import { fetchAccessConfig, fetchDepartmentHeads, ConfigDepartment, TeamMember, DesignationLevel, AccessArea } from '../../../../services/accessService';
 import DateInput from '../../../../components/common/DateInput';
+import { serverTodayYmd } from '../../../../utils/serverTime';
 
 // Employee Status badge colors for View mode — same palette as
 // EmployeeDetailsListPage.tsx's STATUS_STYLES, kept as its own small local
@@ -784,6 +785,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // at most once per typed value: leaving the field again with the same
   // address shows the message under the field instead of another popup.
   const emailAlertOpen = useRef(false);
+  // V_26.0 — the Joining Date as saved, so an old record whose saved date is
+  // in the future stays editable (only a newly entered future date is refused).
+  const savedJoiningDate = useRef('');
   const emailAlertedValue = useRef<string | null>(null);
   const [emailBlurError, setEmailBlurError] = useState(false);
   const handleEmailBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -1082,6 +1086,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           const e = res.data;
           setEmployeeCode(e.employee_code);
           setHeldDesignationIds((e.designation_ids || []).map(Number));
+          savedJoiningDate.current = (e.joining_date || '').slice(0, 10);
           setForm({
             first_name: e.first_name || '', middle_name: e.middle_name || '', last_name: e.last_name || '',
             date_of_birth: e.date_of_birth || '', email: e.email || '',
@@ -1242,6 +1247,8 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     { field: 'pan_card', section: 'personal', message: 'Please upload the PAN Card.', failed: () => !files.pan_card && !existingUrls.pan_card },
     { field: 'profile_photo', section: 'personal', message: 'Please upload the Profile Photo.', failed: () => !files.profile_photo && !existingUrls.profile_photo },
     { field: 'joining_date', section: 'office', message: 'Please enter the Employee Joining Date.', failed: () => !form.joining_date },
+    { field: 'joining_date', section: 'office', message: 'Joining Date cannot be in the future.',
+      failed: () => !!form.joining_date && form.joining_date.slice(0, 10) > serverTodayYmd() && form.joining_date.slice(0, 10) !== savedJoiningDate.current },
     { field: 'working_hours', section: 'office', message: 'Please select Working Hours.', failed: () => !form.working_hours },
     { field: 'check_in_time', section: 'office', message: 'Please enter both Check In and Check Out time.', failed: () => !form.check_in_time || !form.check_out_time },
     { field: 'holidays', section: 'office', message: 'Please select Holidays.', failed: () => !form.holidays },
@@ -1761,7 +1768,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* All 10 fields flow across exactly 2 rows on desktop (5 cols x 2) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
           <Field t={t} label="Employee Joining Date" required error={errorFor('joining_date')} fieldRef={setFieldRef('joining_date') as React.Ref<HTMLDivElement>}>
-            <DateInput t={t} value={form.joining_date} readOnly={isView} disabled={isView} onChange={(v) => set('joining_date', v)} className={fieldClass} />
+            <DateInput t={t} value={form.joining_date} max={serverTodayYmd()} readOnly={isView} disabled={isView} onChange={(v) => set('joining_date', v)} className={fieldClass} />
           </Field>
           <Field t={t} label="Working Hours" required error={errorFor('working_hours')} fieldRef={setFieldRef('working_hours') as React.Ref<HTMLDivElement>}>
             <select value={form.working_hours} disabled={isView} onChange={(e) => setWorkingHoursAndAutoCheckOut(e.target.value)} className={fieldClass} style={{ cursor: isView ? 'default' : 'pointer' }}>
