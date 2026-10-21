@@ -18,6 +18,7 @@ import StatCard from '../../../components/masters/StatCard';
 import { RowActionMenu, useRowActionMenu } from '../../../components/common/RowActionMenu';
 import { showAlert, formatLastLogin } from '../../../utils';
 import './ChangeRequestsPage.css';
+import DocumentViewerModal from '../../../components/common/DocumentViewerModal';
 import {
   fetchChangeRequests, approveChangeRequest, rejectChangeRequest,
   ChangeRequestRow, ChangeRequestModule,
@@ -62,12 +63,28 @@ function fieldLabel(key: string): string {
   return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// V_26.0 — request details: every submitted field (blank ones too, so a
+// value being cleared is visible), current vs proposed for an edit, and
+// uploaded documents previewable. Stored uploads are /api/files/... paths.
+const isFileValue = (v: unknown): v is string => typeof v === 'string' && v.startsWith('/api/files/');
+const isBlank = (v: unknown) => v === null || v === undefined || v === '';
+function displayValue(v: unknown): string {
+  if (isBlank(v)) return '—';
+  if (typeof v === 'boolean' || v === 'true' || v === 'false') return v === true || v === 'true' ? 'Yes' : 'No';
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}(T|$)/.test(v)) return v.slice(0, 10).split('-').reverse().join('/');
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+const sameValue = (a: unknown, b: unknown) =>
+  (isBlank(a) && isBlank(b)) || displayValue(a) === displayValue(b);
+
 // `embedded` — shown as a tab inside Pending Admin Approval (V_25.0).
 const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const dispatch = useAppDispatch();
   const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [activeModule, setActiveModule] = useState<ChangeRequestModule>(MODULES[0]);
+  const [previewDoc, setPreviewDoc] = useState<{ label: string; url: string } | null>(null);
   const [rows, setRows] = useState<ChangeRequestRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -224,7 +241,7 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
       {detailsRow && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} className="rounded-2xl"
-            style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxWidth: 520, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
+            style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxWidth: 760, width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
             <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>
                 Proposed {MODULE_LABEL[detailsRow.module]} {ACTION_LABEL[detailsRow.action]}
@@ -234,13 +251,50 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
               </button>
             </div>
             <div className="p-4" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* A delete request shows the payment being deleted. */}
-              {Object.entries(detailsRow.action === 'delete' ? (detailsRow.old_values ?? {}) : detailsRow.new_values).filter(([, v]) => v !== null && v !== '').map(([key, value]) => (
-                <div key={key} className="flex items-start justify-between gap-3" style={{ fontSize: 12 }}>
-                  <span style={{ color: t.textSecondary, fontWeight: 600 }}>{fieldLabel(key)}</span>
-                  <span style={{ color: t.textPrimary, textAlign: 'right' }}>{String(value)}</span>
-                </div>
-              ))}
+              <div style={{ fontSize: 12, color: t.textSecondary }}>
+                Requested by <b style={{ color: t.textPrimary }}>{detailsRow.requested_by_name || detailsRow.requested_by_email || '—'}</b>
+                {' '}on {formatLastLogin(detailsRow.requested_at)} · Status: <b style={{ color: t.textPrimary }}>{detailsRow.status}</b>
+              </div>
+              {(() => {
+                const isEdit = detailsRow.action === 'edit';
+                // A delete request shows the record being deleted.
+                const source = detailsRow.action === 'delete' ? (detailsRow.old_values ?? {}) : (detailsRow.new_values ?? {});
+                const old = detailsRow.old_values ?? {};
+                const entries = Object.entries(source).filter(([k, v]) => isEdit || !isBlank(v) || k in old);
+                const cellStyle: React.CSSProperties = { padding: '7px 8px', fontSize: 12, borderTop: `1px solid ${t.divider}`, verticalAlign: 'top', wordBreak: 'break-word' };
+                const valueCell = (v: unknown, label: string) => isFileValue(v)
+                  ? <button type="button" onClick={() => setPreviewDoc({ label, url: v })} className="master-icon-btn" style={{ fontSize: 12, padding: '2px 8px', width: 'auto' }}>View document</button>
+                  : <span>{displayValue(v)}</span>;
+                return (
+                  <div className="master-table-scroll">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ color: t.textSecondary, fontSize: 11, textAlign: 'left' }}>
+                          <th style={{ padding: '6px 8px' }}>Field</th>
+                          {isEdit && <th style={{ padding: '6px 8px' }}>Current</th>}
+                          <th style={{ padding: '6px 8px' }}>{isEdit ? 'Proposed' : 'Value'}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {entries.map(([key, value]) => {
+                          const changed = isEdit && !sameValue(old[key], value);
+                          const cleared = changed && isBlank(value) && !isBlank(old[key]);
+                          return (
+                            <tr key={key} style={{ background: changed ? (isDark ? 'rgba(234,179,8,0.12)' : '#fefce8') : undefined, color: t.textPrimary }}>
+                              <td style={{ ...cellStyle, color: t.textSecondary, fontWeight: 600, whiteSpace: 'nowrap' }}>{fieldLabel(key)}</td>
+                              {isEdit && <td style={cellStyle}>{valueCell(old[key], fieldLabel(key))}</td>}
+                              <td style={{ ...cellStyle, fontWeight: changed ? 700 : 400 }}>
+                                {cleared ? <span style={{ color: '#dc2626' }}>(cleared)</span> : valueCell(value, fieldLabel(key))}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    {isEdit && <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 6 }}>Highlighted rows change on approval.</div>}
+                  </div>
+                );
+              })()}
               {detailsRow.reason && (
                 <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${t.divider}`, fontSize: 12 }}>
                   <span style={{ color: t.textSecondary, fontWeight: 600 }}>Reason: </span>
@@ -251,6 +305,7 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
           </div>
         </div>
       )}
+      {previewDoc && <DocumentViewerModal t={t} label={previewDoc.label} url={previewDoc.url} onClose={() => setPreviewDoc(null)} />}
     </div>
   );
 };
