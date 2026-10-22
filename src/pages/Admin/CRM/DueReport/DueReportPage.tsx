@@ -427,6 +427,9 @@ interface CustomerGroup {
 const STATUS_RANK: Record<string, number> = { overdue: 3, due_today: 2, upcoming: 1 };
 // Is this due assigned to `name` — as the Head (Admin's assignment), the
 // sub-assigned Executive, or the latest assignee.
+// "Wing 1" stays "Wing 1"; a bare "A" becomes "A Wing" (no "Wing 1 Wing").
+const wingLabel = (w: string | null | undefined): string | null => (w ? (/wing/i.test(w) ? w : `${w} Wing`) : null);
+
 const assignedTo = (r: { assigned_employee_name?: string | null; assigned_head?: AssigneeRef | null; assigned_sub?: AssigneeRef | null }, name: string): boolean =>
   r.assigned_employee_name === name || r.assigned_head?.name === name || r.assigned_sub?.name === name;
 
@@ -1390,20 +1393,16 @@ const DueReportPage: React.FC = () => {
                     <React.Fragment key={`cust-${g.customer_id}`}>
                       <tr className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
                         
+                        {/* V_26.0 — one line per record: name · ID, unit, assignee · code. */}
                         <td style={{ padding: '4px 8px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                          <div style={{ fontWeight: 600 }}>{g.customer_name}</div>
-                          <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{g.customer_code}</div>
+                          <span style={{ fontWeight: 600 }}>{g.customer_name}</span>
+                          {g.customer_code && <span style={{ fontSize: 10.5, color: t.textSecondary }}> · {g.customer_code}</span>}
                         </td>
                         <td style={{ padding: '4px 8px', fontSize: 11, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                           <div className="master-cell-truncate" title={g.location || ''}>{g.location || '—'}</div>
                         </td>
                         <td style={{ padding: '4px 8px', fontSize: 11, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                          <div style={{ fontWeight: 600 }}>{g.building_name || '—'}</div>
-                          {(g.wing_name || g.flat_no) && (
-                            <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
-                              {g.wing_name ? `${g.wing_name} Wing` : ''}{g.wing_name && g.flat_no ? ' - ' : ''}{g.flat_no ? `Flat ${g.flat_no}` : ''}
-                            </div>
-                          )}
+                          {[g.building_name, wingLabel(g.wing_name), g.flat_no ? `Flat ${g.flat_no}` : null].filter(Boolean).join(' · ') || '—'}
                         </td>
                         <td style={{ padding: '4px 8px', fontSize: 11, color: t.textPrimary, whiteSpace: 'nowrap' }}>{g.mobile_number || '—'}</td>
                         {(showSplitAssign
@@ -1411,8 +1410,8 @@ const DueReportPage: React.FC = () => {
                           : [g.assigned_employee_name ? { id: 0, name: g.assigned_employee_name, code: g.assigned_employee_code } : null]
                         ).map((a, idx) => (
                           <td key={idx} style={{ padding: '4px 8px', fontSize: 11, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                            <div style={{ fontWeight: 600 }}>{a?.name || '—'}</div>
-                            {a?.code && <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{a.code}</div>}
+                            <span style={{ fontWeight: 600 }}>{a?.name || '—'}</span>
+                            {a?.code && <span style={{ fontSize: 10.5, color: t.textSecondary }}> · {a.code}</span>}
                           </td>
                         ))}
                         <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
@@ -1422,10 +1421,10 @@ const DueReportPage: React.FC = () => {
                             {Object.values(circles).filter((v) => v > 0).length > 1 && (
                               <span style={{ fontSize: 10.5, fontWeight: 600, color: t.textSecondary, marginLeft: 4, whiteSpace: 'nowrap' }}>Total {rupee(g.total)}</span>
                             )}
+                            {g.extraBalance > 0 && (
+                              <span title="Extra Payment — kept separate from EMIs" style={{ fontSize: 10.5, fontWeight: 700, color: isDark ? '#7dd3fc' : '#0369a1', marginLeft: 4, whiteSpace: 'nowrap' }}>Extra Pay {rupee(g.extraBalance)}</span>
+                            )}
                           </DueCircles>
-                          {g.extraBalance > 0 && (
-                            <div title="Extra Payment — kept separate from EMIs" style={{ fontSize: 10.5, fontWeight: 700, color: '#0369a1', marginTop: 1 }}>Extra Payment: {rupee(g.extraBalance)}</div>
-                          )}
                         </td>
 <td style={{ padding: '4px 8px' }}>
                           {/* V_26.0 — the expand arrow sits at the end of the row. */}
