@@ -1341,7 +1341,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     checked={activePageRows.length > 0 && activePageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
                 )}
-                {['Action', 'Customer ID', 'Customer Name', ...(showSplitAssign ? ['Assigned (Head)', 'Sub-assigned (Executive)'] : ['Employee Name']), 'Contact Details', 'Company / Project', 'Building Details', 'Unit Type / Area', 'Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
+                {['Action', 'Customer ID', 'Customer Name', ...(showSplitAssign ? ['Assigned by Admin', 'Assigned by Head'] : ['Employee Name']), 'Contact Details', 'Company / Project', 'Building Details', 'Unit Type / Area', 'Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
                   <th key={h}
                     style={h === 'Action'
                       // V_24.0 fix — this column holds 3 separate controls
@@ -1457,7 +1457,9 @@ const CustomerDetailsListPage: React.FC = () => {
                     {showSplitAssign ? [c.assigned_head, c.assigned_sub].map((a, idx) => (
                       <td key={idx} style={{ padding: '10px 12px', fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'normal', minWidth: 130, maxWidth: 180 }}>
                         <div style={{ fontWeight: 600, overflowWrap: 'anywhere', lineHeight: 1.35 }}>{a?.name || '—'}</div>
-                        {a?.code && <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{a.code}</div>}
+                        {a?.code && <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{a.code}{idx === 0 && <span title="Assigned by Admin" style={{ marginLeft: 6, padding: '0 6px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, lineHeight: 1.6, color: isDark ? '#bfdbfe' : '#1d4ed8', background: isDark ? 'rgba(59,130,246,0.25)' : '#dbeafe', whiteSpace: 'nowrap' }}>by Admin</span>}</div>}
+                        {/* V_26.0 — who made the assignment, at a glance. */}
+                        {!a?.code && idx === 0 && a && <div style={{ marginTop: 1 }}><span title="Assigned by Admin" style={{ marginLeft: 6, padding: '0 6px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, lineHeight: 1.6, color: isDark ? '#bfdbfe' : '#1d4ed8', background: isDark ? 'rgba(59,130,246,0.25)' : '#dbeafe', whiteSpace: 'nowrap' }}>by Admin</span></div>}
                       </td>
                     )) : (
                     <td style={{ padding: '10px 12px' }}>

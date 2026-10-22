@@ -1480,7 +1480,7 @@ const DueReportPage: React.FC = () => {
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
                 {['Customer Name', 'Location', 'Building Details', 'Phone Number',
-                  ...(showSplitAssign ? ['Assigned (Head)', 'Sub-assigned (Executive)'] : ['Assigned Employee']), 'Total Amount', 'Details', 'Follow Up'].map((h) => (
+                  ...(showSplitAssign ? ['Assigned by Admin', 'Assigned by Head'] : ['Assigned Employee']), 'Total Amount', 'Details', 'Follow Up'].map((h) => (
                   <th key={h} style={{ padding: '4px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -1526,6 +1526,8 @@ const DueReportPage: React.FC = () => {
                           <td key={idx} style={{ padding: '4px 8px', fontSize: 11, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                             <span style={{ fontWeight: 600 }}>{a?.name || '—'}</span>
                             {a?.code && <span style={{ fontSize: 10.5, color: t.textSecondary }}> · {a.code}</span>}
+                            {/* V_26.0 — who made the assignment, at a glance. */}
+                            {showSplitAssign && idx === 0 && a && <span title="Assigned by Admin" style={{ marginLeft: 6, padding: '0 6px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, lineHeight: 1.6, color: isDark ? '#bfdbfe' : '#1d4ed8', background: isDark ? 'rgba(59,130,246,0.25)' : '#dbeafe', whiteSpace: 'nowrap' }}>by Admin</span>}
                           </td>
                         ))}
                         <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
