@@ -210,6 +210,10 @@ export interface DueListDetailRow {
   carried_forward_amount?: number;
   /** EMI groups: already part-paid towards the current EMI. */
   part_paid_amount?: number;
+  /** V_26.0 — EMI groups: the part of that credit still awaiting Admin approval. */
+  part_paid_awaiting_amount?: number;
+  /** V_26.0 — EMI groups: each EMI (number in its phase, date, amount, what is left). */
+  emi_lines?: { n: number; date: string; amount: number; left: number }[];
   // Unused part of the customer's Extra Payment(s) (same on every row of that customer).
   extra_payment_balance?: number;
   // Total the customer paid today (Received Date = today, approved or not).

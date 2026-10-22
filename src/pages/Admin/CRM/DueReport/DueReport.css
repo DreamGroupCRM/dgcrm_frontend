@@ -131,7 +131,10 @@
 .due-chip { display: flex; align-items: center; gap: 7px; border-radius: 8px; padding: 4px 10px 4px 5px; min-width: 0; max-width: 320px; }
 .due-chip-icon { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
 .due-chip-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* V_26.0 — due card on the expanded row. */
+.due-card { border-radius: 8px; padding: 7px 10px; width: 340px; max-width: 100%; white-space: normal; }
 @media (max-width: 767px) {
+  .due-card { width: calc(100vw - 56px); max-width: 420px; }
   .due-summary, .due-summary-chips { flex-direction: column; }
   .due-summary-head { border-right: none; padding-right: 0; }
   .due-chip { width: calc(100vw - 56px); max-width: 420px; }

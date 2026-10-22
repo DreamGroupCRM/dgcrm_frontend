@@ -442,6 +442,117 @@ const dueDateText = (r: DisplayRow): string => {
   return `Due Date: ${from || '—'}`;
 };
 
+// ── V_26.0 — one due on the expanded row, written so it reads at once:
+// "₹3,60,000 to collect · 8 EMIs overdue", then at most a few lines —
+// a part-paid EMI on its own line ("5th EMI · ₹50,000 − ₹40,000 paid →
+// ₹10,000 left"), and the untouched EMIs grouped ("6th – 12th EMI ·
+// 7 × ₹50,000 → ₹3,50,000 left"). "Show EMI-wise" lists every EMI.
+// The figures are the due list's own (emi_lines); nothing is recalculated.
+const ordinal = (n: number): string => {
+  const v = n % 100;
+  return `${n}${v >= 11 && v <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
+};
+type EmiLine = { n: number; date: string; amount: number; left: number };
+type CardLine = { key: string; title: string; sub: string; left: number; paid?: number; awaiting?: number };
+
+function emiCardLines(lines: EmiLine[], awaiting: number, emiWise: boolean): CardLine[] {
+  const out: CardLine[] = [];
+  let run: EmiLine[] = [];
+  const flush = () => {
+    if (run.length === 0) return;
+    const first = run[0]; const last = run[run.length - 1];
+    out.push(run.length === 1
+      ? { key: `e${first.n}`, title: `${ordinal(first.n)} EMI · due ${first.date}`, sub: 'nothing paid yet', left: first.left }
+      : { key: `e${first.n}-${last.n}`, title: `${ordinal(first.n)} – ${ordinal(last.n)} EMI · ${run.length} × ${rupee(first.amount)}`,
+          sub: `due ${first.date} to ${last.date} · nothing paid yet`, left: run.reduce((s, l) => s + l.left, 0) });
+    run = [];
+  };
+  for (const l of lines) {
+    const paid = l.amount - l.left;
+    // Grouping only joins untouched EMIs of the same amount.
+    if (paid <= 0 && !emiWise && (run.length === 0 || run[0].amount === l.amount)) { run.push(l); continue; }
+    flush();
+    if (paid > 0) {
+      out.push({ key: `e${l.n}`, title: `${ordinal(l.n)} EMI · due ${l.date}`, sub: '', left: l.left, paid, awaiting: Math.min(paid, awaiting) });
+    } else {
+      out.push({ key: `e${l.n}`, title: `${ordinal(l.n)} EMI · due ${l.date}`, sub: 'nothing paid yet', left: l.left });
+    }
+  }
+  flush();
+  return out;
+}
+
+const DueCard: React.FC<{ t: AppTheme; r: DisplayRow; textColor: string; emiWise: boolean; onToggleEmiWise: () => void }> = ({ t, r, textColor, emiWise, onToggleEmiWise }) => {
+  const meta = PAYMENT_FOR_KEY_META[r.payment_for_key];
+  const Icon = meta.icon;
+  const category = r.dueRow?.due_category;
+  const lines = r.dueRow?.emi_lines ?? [];
+  const isEmi = r.payment_for_key === 'EMIAmount' && lines.length > 0;
+  const count = r.months_pending ?? 0;
+  const cardLines = isEmi ? emiCardLines(lines, r.dueRow?.part_paid_awaiting_amount ?? 0, emiWise) : [];
+  const groupedAway = isEmi && !emiWise && cardLines.length < lines.length;
+  const verb = category === 'upcoming' ? 'upcoming' : category === 'due_today' ? 'due today' : 'overdue';
+  const unit = r.payment_for_key === 'AnnualAmount' || r.payment_for_key === 'AnnualAmount1' ? 'booster' : 'EMI';
+  const lineStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 8, padding: '4px 0', borderTop: `1px dashed ${t.surfaceBorder}`, fontSize: 11.5 };
+  const muted: React.CSSProperties = { color: t.textSecondary, fontSize: 10.5, fontWeight: 500 };
+  return (
+    <div className="due-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderLeft: `3px solid ${r.statusColor}` }}>
+      <div className="flex items-center gap-1.5" style={{ color: textColor, fontWeight: 800, fontSize: 12, flexWrap: 'wrap' }}>
+        <Icon size={13} style={{ color: getPaymentForDisplay(r).color }} />
+        <span>{getPaymentForDisplay(r).label}</span>
+        <span style={{ padding: '0 6px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, lineHeight: 1.5, border: `1px solid ${textColor}` }}>{r.statusLabel}</span>
+      </div>
+      <div style={{ margin: '3px 0 2px', color: textColor, fontWeight: 800, fontSize: 14 }}>
+        {rupee(r.amount)} {category === 'upcoming' ? '' : 'to collect'}
+        {count > 1 && (
+          <span style={{ ...muted, fontSize: 11, fontWeight: 600 }}> · {count} {unit}s {verb}{r.per_month_amount ? ` · ${rupee(r.per_month_amount)} each` : ''}</span>
+        )}
+      </div>
+      {isEmi ? (
+        <>
+          {cardLines.map((l) => (
+            <div key={l.key} style={lineStyle}>
+              <div style={{ minWidth: 0, color: t.textPrimary }}>
+                {l.title}
+                <div style={muted}>
+                  {l.paid ? (
+                    (() => {
+                      // The credit on this EMI: carried forward from an earlier
+                      // over-payment and / or part payments towards it.
+                      const carried = Math.min(l.paid, r.dueRow?.carried_forward_amount ?? 0);
+                      const part = l.paid - carried;
+                      const green = { color: '#16a34a', fontWeight: 700 } as const;
+                      return (
+                        <>
+                          {rupee(l.paid + l.left)}
+                          {carried > 0 && <> − <span style={green}>{rupee(carried)} carried forward</span></>}
+                          {part > 0 && <> − <span style={green}>{rupee(part)} paid</span></>}
+                          {(l.awaiting ?? 0) > 0 && <div style={{ color: '#b45309', fontWeight: 600 }}>{rupee(l.awaiting!)} awaiting approval</div>}
+                        </>
+                      );
+                    })()
+                  ) : l.sub}
+                </div>
+              </div>
+              <div style={{ color: textColor, fontWeight: 800, whiteSpace: 'nowrap' }}>{rupee(l.left)} left</div>
+            </div>
+          ))}
+          {(groupedAway || emiWise) && lines.length > 1 && (
+            <button type="button" onClick={onToggleEmiWise}
+              style={{ background: 'none', border: 'none', padding: '3px 0 0', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: 'var(--brand-ink)' }}>
+              {emiWise ? '▾ Show grouped' : `▸ Show EMI-wise (${lines.length})`}
+            </button>
+          )}
+        </>
+      ) : (
+        <div style={lineStyle}>
+          <div style={{ ...muted, fontSize: 11 }}>{showsDueDateOnly(r.payment_for_key) || category === 'upcoming' ? dueDateText(r) : r.detailText}</div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const DueReportPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const [historyFor, setHistoryFor] = useState<{ id: number | string; name: string; code?: string | null; unit?: string } | null>(null);
@@ -751,6 +862,9 @@ const DueReportPage: React.FC = () => {
     return Array.from(map.values());
   }, [filteredDueRows]);
   const [expandedCustomers, setExpandedCustomers] = useState<Set<number>>(new Set());
+  // V_26.0 — cards opened to "Show EMI-wise".
+  const [emiWiseOpen, setEmiWiseOpen] = useState<Set<string>>(new Set());
+  const toggleEmiWise = (key: string) => setEmiWiseOpen((prev) => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
   const toggleExpanded = (id: number) => setExpandedCustomers((prev) => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -1476,46 +1590,10 @@ const DueReportPage: React.FC = () => {
                                 chip per due (type, status, amount, duration). */}
                             <div className="due-summary">
                               <div className="due-summary-chips">
-                              {g.items.map((r) => {
-                                const meta = PAYMENT_FOR_KEY_META[r.payment_for_key];
-                                const typeColor = getPaymentForDisplay(r).color;
-                                const Icon = meta.icon;
-                                const showPerMonth = r.payment_for_key !== 'BookingAmount' && r.payment_for_key !== 'PayAfterbooking'
-                                  && r.per_month_amount != null && r.per_month_amount !== r.amount;
-                                const subText = showsDueDateOnly(r.payment_for_key) ? dueDateText(r) : r.detailText;
-                                return (
-                                  // V_26.0 — a plain card; the status shows in its text
-                                  // colour (red overdue, green due today, amber upcoming).
-                                  <div key={r.key} className="due-chip" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderLeft: `3px solid ${r.statusColor}`, color: chipText(r.statusColor) }}>
-                                    <span className="due-chip-icon" style={{ background: t.insetBg, color: typeColor }}><Icon size={13} /></span>
-                                    <div style={{ minWidth: 0 }}>
-                                      <div className="flex items-center gap-1.5" style={{ flexWrap: 'wrap' }}>
-                                        <span style={{ fontSize: 11, fontWeight: 800 }}>{getPaymentForDisplay(r).label}</span>
-                                        <span style={{ padding: '0 6px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, lineHeight: 1.5, color: chipText(r.statusColor), border: `1px solid ${chipText(r.statusColor)}` }}>{r.statusLabel}</span>
-                                      </div>
-                                      <div style={{ marginTop: 1, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                                        <b style={{ fontSize: 12.5 }}>{rupee(r.amount)}</b>
-                                        {!showsDueDateOnly(r.payment_for_key) && r.months_pending ? (
-                                          <> <span style={{ margin: '0 4px', opacity: 0.75 }}>|</span>{r.months_pending} Month{r.months_pending === 1 ? '' : 's'}</>
-                                        ) : null}
-                                        {showPerMonth && (
-                                          <> <span style={{ margin: '0 4px', opacity: 0.75 }}>|</span>{rupee(r.per_month_amount!)} each</>
-                                        )}
-                                      </div>
-                                      {subText && (
-                                        <div className="due-chip-sub" title={subText} style={{ fontSize: 10, fontWeight: 600, marginTop: 1 }}>{subText}</div>
-                                      )}
-                                      {/* V_25.0 — why this is less than months × EMI. */}
-                                      {(r.carried_forward_amount ?? 0) > 0 && (
-                                        <div style={{ fontSize: 10, fontWeight: 700, marginTop: 1 }}>{rupee(r.carried_forward_amount!)} carried forward from previous payment</div>
-                                      )}
-                                      {(r.part_paid_amount ?? 0) > 0 && (
-                                        <div style={{ fontSize: 10, fontWeight: 700, marginTop: 1 }}>{rupee(r.part_paid_amount!)} part-paid on the current EMI</div>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                              {g.items.map((r) => (
+                                <DueCard key={r.key} t={t} r={r} textColor={chipText(r.statusColor)}
+                                  emiWise={emiWiseOpen.has(r.key)} onToggleEmiWise={() => toggleEmiWise(r.key)} />
+                              ))}
                               </div>
                             </div>
                           </td>
