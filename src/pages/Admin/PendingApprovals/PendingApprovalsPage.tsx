@@ -24,6 +24,8 @@ import { showAlert, formatLastLogin, formatDate } from '../../../utils';
 import DocumentViewerModal from '../../../components/common/DocumentViewerModal';
 import { fieldLabel, displayFieldValue, isFileValue, isBlank } from '../../../components/common/RequestValuesTable';
 import { AppTheme } from '../../../styles/theme';
+import { RequestValuesTable } from '../../../components/common/RequestValuesTable';
+import { fetchChangeRequests, approveChangeRequest, rejectChangeRequest, ChangeRequestRow } from '../../../services/changeRequestsService';
 import {
   fetchPendingRefunds, approveRefund, rejectRefund, fetchRefundSummary, PendingRefundRow, RefundSummary,
 } from '../../../services/customerDetailsService';
@@ -37,7 +39,10 @@ import {
 interface ErrLike { response?: { data?: { message?: string } } }
 const errMessage = (e: unknown, fallback: string) => (e as ErrLike)?.response?.data?.message || fallback;
 
-const MODULE_LABEL: Record<PendingApprovalEntityType, string> = {
+const MODULE_LABEL: Record<PendingApprovalEntityType | 'payment', string> = {
+  // V_26.0 — a Head's payment delete request (a change request) is listed
+  // here with the other delete requests.
+  payment: 'Payment',
   performaInvoice: 'Proforma Invoice',
   channelSalesDar: 'Channel Sales DAR',
   supplier: 'Supplier',
@@ -51,7 +56,19 @@ const MODULE_LABEL: Record<PendingApprovalEntityType, string> = {
   employee: 'Employee',
 };
 
-const rowKey = (r: PendingApprovalRow) => `${r.entity_type}:${r.id}`;
+// A row of the Delete Requests tab: a pending-delete record, or (cr set) a
+// payment delete change request.
+type DeleteRow = Omit<PendingApprovalRow, 'entity_type'> & { entity_type: PendingApprovalEntityType | 'payment'; cr?: ChangeRequestRow };
+const rowKey = (r: DeleteRow) => `${r.entity_type}:${r.id}`;
+const paymentDeleteRow = (cr: ChangeRequestRow): DeleteRow => {
+  const amount = Number(cr.old_values?.amount ?? 0);
+  const who = [cr.record_customer_name, cr.record_customer_code ? `(${cr.record_customer_code})` : null].filter(Boolean).join(' ');
+  return {
+    entity_type: 'payment', id: cr.id, label: `${rupee(amount)}${who ? ` · ${who}` : ''}`,
+    requested_by: cr.requested_by != null ? String(cr.requested_by) : null, requested_by_name: cr.requested_by_name,
+    requested_by_email: cr.requested_by_email, requested_at: cr.requested_at, cr,
+  };
+};
 const rupee = (n: number) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
 
 // V_26.0 — shared popup shell for the details views on this page.
@@ -91,20 +108,21 @@ const DeleteRequestsTab: React.FC = () => {
   const dispatch = useAppDispatch();
   const { isDark, t, cssVars } = useAppearanceTokens();
 
-  const [rows, setRows] = useState<PendingApprovalRow[]>([]);
+  const [rows, setRows] = useState<DeleteRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const rowMenu = useRowActionMenu<string>();
-  const [details, setDetails] = useState<{ row: PendingApprovalRow; record: Record<string, unknown> | null } | null>(null);
+  const [details, setDetails] = useState<{ row: DeleteRow; record: Record<string, unknown> | null } | null>(null);
   const [previewDoc, setPreviewDoc] = useState<{ label: string; url: string } | null>(null);
 
   useEffect(() => { dispatch(setPageTitle('Pending Approvals')); }, [dispatch]);
 
   // V_26.0 — what is being deleted, before approving.
-  const openDetails = async (row: PendingApprovalRow) => {
+  const openDetails = async (row: DeleteRow) => {
+    if (row.cr || row.entity_type === 'payment') { setDetails({ row, record: null }); return; }
     setDetails({ row, record: null });
     try {
-      const record = await fetchPendingDeleteRecord(row.entity_type, row.id);
+      const record = await fetchPendingDeleteRecord(row.entity_type as PendingApprovalEntityType, row.id);
       setDetails({ row, record });
     } catch (e) {
       setDetails(null);
@@ -115,7 +133,10 @@ const DeleteRequestsTab: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setRows(await fetchPendingApprovals());
+      const [deletes, payments] = await Promise.all([fetchPendingApprovals(), fetchChangeRequests('payment', 'pending')]);
+      const merged: DeleteRow[] = [...deletes, ...payments.filter((cr) => cr.action === 'delete').map(paymentDeleteRow)];
+      merged.sort((a, b) => String(b.requested_at ?? '').localeCompare(String(a.requested_at ?? '')));
+      setRows(merged);
     } catch (e) {
       toast.error(errMessage(e, 'Failed to load pending approvals.'));
     } finally {
@@ -125,7 +146,7 @@ const DeleteRequestsTab: React.FC = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleApprove = async (row: PendingApprovalRow) => {
+  const handleApprove = async (row: DeleteRow) => {
     const result = await showAlert.confirm(
       `This will PERMANENTLY delete "${row.label || 'this record'}" (${MODULE_LABEL[row.entity_type]}). This cannot be undone.`,
       'Approve Delete?'
@@ -133,7 +154,9 @@ const DeleteRequestsTab: React.FC = () => {
     if (!result.isConfirmed) return;
     setBusyKey(rowKey(row));
     try {
-      await approvePendingDelete(row.entity_type, row.id);
+      if (row.cr) await approveChangeRequest(row.cr.id);
+      else await approvePendingDelete(row.entity_type as PendingApprovalEntityType, row.id);
+      setDetails(null);
       showAlert.approved('The delete request was approved.');
       await load();
     } catch (e) {
@@ -143,11 +166,20 @@ const DeleteRequestsTab: React.FC = () => {
     }
   };
 
-  const handleReject = async (row: PendingApprovalRow) => {
+  const handleReject = async (row: DeleteRow) => {
+    // A payment delete request can carry a note for the Head (My Requests).
+    let note = '';
+    if (row.cr) {
+      const res = await showAlert.confirmWithNote(`Reject the request to delete the payment ${row.label}? The payment stays.`, 'Reject Request?', 'Reject', 'Reason for the employee (optional)');
+      if (!res.isConfirmed) return;
+      note = res.note;
+    }
     setBusyKey(rowKey(row));
     try {
-      await rejectPendingDelete(row.entity_type, row.id);
-      toast.success('Delete request rejected — record restored.');
+      if (row.cr) await rejectChangeRequest(row.cr.id, note || undefined);
+      else await rejectPendingDelete(row.entity_type as PendingApprovalEntityType, row.id);
+      setDetails(null);
+      toast.success(row.cr ? 'Delete request rejected — the payment stays.' : 'Delete request rejected — record restored.');
       await load();
     } catch (e) {
       toast.error(errMessage(e, 'Failed to reject delete request.'));
@@ -169,7 +201,7 @@ const DeleteRequestsTab: React.FC = () => {
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Modules Affected" value={Object.keys(moduleCounts).length} icon={MdPendingActions} color="#0000FF" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
-        <StatCard label="Most Requested" value={topModule ? MODULE_LABEL[topModule[0] as PendingApprovalEntityType] : '—'} icon={MdPendingActions} color="#7c3aed" bg="" loading={loading}
+        <StatCard label="Most Requested" value={topModule ? MODULE_LABEL[topModule[0] as DeleteRow['entity_type']] : '—'} icon={MdPendingActions} color="#7c3aed" bg="" loading={loading}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
@@ -208,6 +240,7 @@ const DeleteRequestsTab: React.FC = () => {
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, fontSize: 12 }}>
                           {row.label || `#${row.id}`} <MdVisibility size={14} />
                         </button>
+                        {row.cr?.reason && <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 2 }}>Reason: {row.cr.reason}</div>}
                       </td>
                       <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary }}>
                         {row.requested_by_name || row.requested_by_email || (row.requested_by ? `User #${row.requested_by}` : '—')}
@@ -243,7 +276,26 @@ const DeleteRequestsTab: React.FC = () => {
             Requested by <b style={{ color: t.textPrimary }}>{details.row.requested_by_name || details.row.requested_by_email || '—'}</b> on {formatLastLogin(details.row.requested_at)}.
             {' '}Approving deletes this record permanently.
           </div>
-          {details.record ? <RecordTable t={t} record={details.record} onPreview={setPreviewDoc} /> : <div style={{ fontSize: 12, color: t.textSecondary }}>Loading...</div>}
+          {details.row.cr ? (
+            <>
+              {(details.row.cr.record_customer_name || details.row.cr.record_unit) && (
+                <div style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary }}>
+                  Payment of {details.row.cr.record_customer_name || '—'}
+                  <span style={{ fontWeight: 500, color: t.textSecondary }}>{[details.row.cr.record_customer_code, details.row.cr.record_unit].filter(Boolean).map((x) => ` · ${x}`).join('')}</span>
+                </div>
+              )}
+              <RequestValuesTable t={t} isDark={isDark} row={details.row.cr} onPreview={setPreviewDoc} />
+              {details.row.cr.reason && (
+                <div style={{ fontSize: 12 }}><span style={{ color: t.textSecondary, fontWeight: 600 }}>Reason: </span><span style={{ color: t.textPrimary }}>{details.row.cr.reason}</span></div>
+              )}
+            </>
+          ) : details.record ? <RecordTable t={t} record={details.record} onPreview={setPreviewDoc} /> : <div style={{ fontSize: 12, color: t.textSecondary }}>Loading...</div>}
+          <div className="flex items-center gap-2 justify-end" style={{ marginTop: 6 }}>
+            <button type="button" disabled={busyKey === rowKey(details.row)} onClick={() => handleReject(details.row)} className="rounded-xl"
+              style={{ padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: t.inputBg, color: t.textPrimary, border: `1px solid ${t.inputBorder}` }}>Reject</button>
+            <button type="button" disabled={busyKey === rowKey(details.row)} onClick={() => handleApprove(details.row)} className="rounded-xl"
+              style={{ padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: '#dc2626', color: '#fff', border: 'none' }}>Approve — delete</button>
+          </div>
         </DetailsModal>
       )}
       {previewDoc && <DocumentViewerModal t={t} label={previewDoc.label} url={previewDoc.url} onClose={() => setPreviewDoc(null)} />}
@@ -417,8 +469,9 @@ const PendingApprovalsPage: React.FC = () => {
   return (
     <div>
       <div className="flex items-center gap-2 flex-wrap mb-4">
-        {tabBtn('changes', withCount('Add / Edit / Cancel Requests', counts?.changes))}
-        {tabBtn('deletes', withCount('Delete Requests', counts?.deletes))}
+        {/* A Head's payment delete requests are counted with the delete requests. */}
+        {tabBtn('changes', withCount('Add / Edit / Cancel Requests', counts ? counts.changes - (counts.changes_by_module.payment ?? 0) : undefined))}
+        {tabBtn('deletes', withCount('Delete Requests', counts ? counts.deletes + (counts.changes_by_module.payment ?? 0) : undefined))}
         {tabBtn('refunds', withCount('Refund Requests', counts?.refunds))}
       </div>
       {tab === 'changes' ? <ChangeRequestsPage embedded /> : tab === 'deletes' ? <DeleteRequestsTab /> : <RefundRequestsTab />}

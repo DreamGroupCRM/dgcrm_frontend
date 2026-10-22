@@ -150,7 +150,10 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
   const dispatch = useAppDispatch();
   const { isDark, t, cssVars } = useAppearanceTokens();
 
-  const [activeModule, setActiveModule] = useState<ChangeRequestModule>(MODULES[0]);
+  // V_26.0 — inside Pending Approvals, payment delete requests are on the
+  // Delete Requests tab instead.
+  const modules = embedded ? MODULES.filter((m) => m !== 'payment') : MODULES;
+  const [activeModule, setActiveModule] = useState<ChangeRequestModule>(modules[0]);
   const [previewDoc, setPreviewDoc] = useState<{ label: string; url: string } | null>(null);
   const [adminEditing, setAdminEditing] = useState(false);
   const [rows, setRows] = useState<ChangeRequestRow[]>([]);
@@ -243,7 +246,7 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="flex items-center justify-between p-4 flex-wrap gap-2" style={{ borderBottom: `1px solid ${t.divider}` }}>
           <div className="flex items-center gap-2 flex-wrap">
-            {MODULES.map((m) => (
+            {modules.map((m) => (
               <button key={m} type="button" onClick={() => setActiveModule(m)}
                 className="rounded-lg"
                 style={{
