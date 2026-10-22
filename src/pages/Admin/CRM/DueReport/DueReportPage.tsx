@@ -40,7 +40,7 @@ import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants';
-import { formatDate, formatLastLogin } from '../../../../utils';
+import { formatDate } from '../../../../utils';
 import { DataScope, setDataScope } from '../../../../utils/dataScope';
 import { employeeBackdateMinYmd, serverTodayYmd, serverYmdPlusDays } from '../../../../utils/serverTime';
 import { cssRect } from '../../../../utils/appZoom';
@@ -1362,8 +1362,8 @@ const DueReportPage: React.FC = () => {
           <table className="due-report-table master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                {['Details', 'Customer Name', 'Company / Project / Location', 'Building Details', 'Phone Number',
-                  ...(showSplitAssign ? ['Assigned (Head)', 'Sub-assigned (Executive)'] : ['Assigned Employee']), 'Total Amount', 'Follow Up'].map((h) => (
+                {['Customer Name', 'Location', 'Building Details', 'Phone Number',
+                  ...(showSplitAssign ? ['Assigned (Head)', 'Sub-assigned (Executive)'] : ['Assigned Employee']), 'Total Amount', 'Details', 'Follow Up'].map((h) => (
                   <th key={h} style={{ padding: '4px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -1379,7 +1379,9 @@ const DueReportPage: React.FC = () => {
                 pagedGroups.map((g) => {
                   const open = expandedCustomers.has(g.customer_id);
                   // Dark red on the black theme was 2.3:1 — overdue amounts use a light red there.
-                  const amountColor = (c: string) => (c === STATUS_COLORS.upcoming ? t.textPrimary : isDark && c === STATUS_COLORS.overdue ? '#fca5a5' : c);
+                  // Readable text for a status colour on a plain card (yellow text on white isn't).
+                  const chipText = (c: string) => (c === STATUS_COLORS.upcoming ? (isDark ? '#fde047' : '#a16207')
+                    : isDark && c === STATUS_COLORS.overdue ? '#fca5a5' : isDark && c === STATUS_COLORS.due_today ? '#86efac' : c);
                   // V_25.0 — red: overdue, green: due today (unpaid), yellow:
                   // upcoming (never in red).
                   const sumOf = (cats: string[]) => g.items.filter((r) => cats.includes(r.dueRow?.due_category ?? '')).reduce((n, r) => n + r.amount, 0);
@@ -1387,35 +1389,13 @@ const DueReportPage: React.FC = () => {
                   return (
                     <React.Fragment key={`cust-${g.customer_id}`}>
                       <tr className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
-                        <td style={{ padding: '4px 8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <button type="button" onClick={() => toggleExpanded(g.customer_id)}
-                            title={open ? 'Hide details' : 'View details'} aria-label={open ? 'Hide details' : 'View details'} aria-expanded={open}
-                            className="flex items-center justify-center rounded-lg"
-                            style={{ width: 24, height: 24, background: open ? 'var(--brand-gradient)' : t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: open ? '#fff' : 'var(--brand-ink)', cursor: 'pointer' }}>
-                            {open ? <MdExpandMore size={18} /> : <MdChevronRight size={18} />}
-                          </button>
-                          {/* V_25.0 — this booking's payment history (same table as Customer Details). */}
-                          <button type="button" onClick={() => setHistoryFor({ id: g.customer_id, name: g.customer_name, code: g.customer_code, unit: [g.building_name, g.wing_name && `${g.wing_name} Wing`, g.flat_no && `Flat ${g.flat_no}`].filter(Boolean).join(' - ') })}
-                            title="Payment History" aria-label={`Payment History of ${g.customer_name}`}
-                            className="flex items-center justify-center rounded-lg"
-                            style={{ width: 24, height: 24, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' }}>
-                            <MdHistory size={16} />
-                          </button>
-                          </div>
-                        </td>
+                        
                         <td style={{ padding: '4px 8px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                           <div style={{ fontWeight: 600 }}>{g.customer_name}</div>
                           <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{g.customer_code}</div>
                         </td>
                         <td style={{ padding: '4px 8px', fontSize: 11, color: t.textPrimary, whiteSpace: 'nowrap' }}>
-                          <div style={{ fontWeight: 600 }}>{g.company_name || '—'}</div>
-                          {(g.project_name || g.location) && (
-                            <div className="master-cell-truncate" title={`${g.project_name || ''}${g.project_name && g.location ? ' • ' : ''}${g.location || ''}`}
-                              style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
-                              {g.project_name || ''}{g.project_name && g.location ? ' • ' : ''}{g.location || ''}
-                            </div>
-                          )}
+                          <div className="master-cell-truncate" title={g.location || ''}>{g.location || '—'}</div>
                         </td>
                         <td style={{ padding: '4px 8px', fontSize: 11, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                           <div style={{ fontWeight: 600 }}>{g.building_name || '—'}</div>
@@ -1433,20 +1413,28 @@ const DueReportPage: React.FC = () => {
                           <td key={idx} style={{ padding: '4px 8px', fontSize: 11, color: t.textPrimary, whiteSpace: 'nowrap' }}>
                             <div style={{ fontWeight: 600 }}>{a?.name || '—'}</div>
                             {a?.code && <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{a.code}</div>}
-                            {/* When it was assigned (Admin → Head, or Head → Executive). */}
-                            {(a as AssigneeRef | null)?.at && (
-                              <div style={{ fontSize: 10, color: t.textSecondary, marginTop: 1 }}>{formatLastLogin((a as AssigneeRef).at ?? null)}</div>
-                            )}
                           </td>
                         ))}
                         <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
                           {/* Boxes and the total on ONE row. */}
                           <DueCircles amounts={circles} size={34}>
-                            <span style={{ fontSize: 10.5, fontWeight: 600, color: t.textSecondary, marginLeft: 4, whiteSpace: 'nowrap' }}>Total {rupee(g.total)} · {g.items.length} due{g.items.length === 1 ? '' : 's'}</span>
+                            {/* The total only adds something when more than one box shows. */}
+                            {Object.values(circles).filter((v) => v > 0).length > 1 && (
+                              <span style={{ fontSize: 10.5, fontWeight: 600, color: t.textSecondary, marginLeft: 4, whiteSpace: 'nowrap' }}>Total {rupee(g.total)}</span>
+                            )}
                           </DueCircles>
                           {g.extraBalance > 0 && (
                             <div title="Extra Payment — kept separate from EMIs" style={{ fontSize: 10.5, fontWeight: 700, color: '#0369a1', marginTop: 1 }}>Extra Payment: {rupee(g.extraBalance)}</div>
                           )}
+                        </td>
+<td style={{ padding: '4px 8px' }}>
+                          {/* V_26.0 — the expand arrow sits at the end of the row. */}
+                          <button type="button" onClick={() => toggleExpanded(g.customer_id)}
+                            title={open ? 'Hide details' : 'View details'} aria-label={open ? 'Hide details' : 'View details'} aria-expanded={open}
+                            className="flex items-center justify-center rounded-lg"
+                            style={{ width: 26, height: 26, background: open ? 'var(--brand-gradient)' : t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: open ? '#fff' : 'var(--brand-ink)', cursor: 'pointer' }}>
+                            {open ? <MdExpandMore size={18} /> : <MdChevronRight size={18} />}
+                          </button>
                         </td>
                         <td style={{ padding: '4px 8px' }}>
                           {(() => {
@@ -1456,6 +1444,12 @@ const DueReportPage: React.FC = () => {
                             const isPast = !!scheduled?.due_date && scheduled.due_date.slice(0, 10) < serverTodayYmd();
                             return (
                               <div className="flex items-center gap-1.5" style={{ whiteSpace: 'nowrap' }}>
+                                {/* This booking's payment history (same table as Customer Details). */}
+                                <button type="button" onClick={() => setHistoryFor({ id: g.customer_id, name: g.customer_name, code: g.customer_code, unit: [g.building_name, g.wing_name && `${g.wing_name} Wing`, g.flat_no && `Flat ${g.flat_no}`].filter(Boolean).join(' - ') })}
+                                  title="Payment History" aria-label={`Payment History of ${g.customer_name}`}
+                                  className="flex items-center justify-center rounded-lg flex-shrink-0" style={iconBtn}>
+                                  <MdHistory size={15} />
+                                </button>
                                 <button type="button" onClick={() => openFollowUp(target)}
                                   title={scheduled ? 'Change follow-up' : 'Schedule a follow-up'}
                                   className="flex items-center justify-center rounded-lg flex-shrink-0" style={iconBtn}>
@@ -1477,19 +1471,11 @@ const DueReportPage: React.FC = () => {
                       </tr>
                       {open && (
                         <tr style={{ background: t.insetBg }}>
-                          <td colSpan={tableCols} className="due-report-cards-cell" style={{ padding: '5px 8px 6px 40px' }}>
+                          <td colSpan={tableCols} className="due-report-cards-cell" style={{ padding: '6px 8px' }}>
                             {/* Inline Payment Summary: one compact line — the
                                 customer's total on the left, then one small
                                 chip per due (type, status, amount, duration). */}
                             <div className="due-summary">
-                              <div className="due-summary-head">
-                                <div style={{ fontSize: 12.5, fontWeight: 800, color: t.textPrimary }}>Payment Summary</div>
-                                <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2, whiteSpace: 'nowrap' }}>
-                                  {g.items.length} payment type{g.items.length === 1 ? '' : 's'}<span style={{ margin: '0 8px', color: t.textSecondary }}>|</span>Total Due{' '}
-                                  <b style={{ color: t.textPrimary }}>{rupee(g.total)}</b>
-                                </div>
-                                <div style={{ marginTop: 4 }}><DueCircles amounts={circles} size={34} /></div>
-                              </div>
                               <div className="due-summary-chips">
                               {g.items.map((r) => {
                                 const meta = PAYMENT_FOR_KEY_META[r.payment_for_key];
@@ -1499,14 +1485,14 @@ const DueReportPage: React.FC = () => {
                                   && r.per_month_amount != null && r.per_month_amount !== r.amount;
                                 const subText = showsDueDateOnly(r.payment_for_key) ? dueDateText(r) : r.detailText;
                                 return (
-                                  // V_25.0 — the whole card in its status colour (red /
-                                  // green / yellow), like everywhere else on the page.
-                                  <div key={r.key} className="due-chip" style={{ background: r.statusColor, border: `1px solid ${r.statusColor}`, color: r.statusTextColor }}>
-                                    <span className="due-chip-icon" style={{ background: '#fff', color: typeColor }}><Icon size={13} /></span>
+                                  // V_26.0 — a plain card; the status shows in its text
+                                  // colour (red overdue, green due today, amber upcoming).
+                                  <div key={r.key} className="due-chip" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, borderLeft: `3px solid ${r.statusColor}`, color: chipText(r.statusColor) }}>
+                                    <span className="due-chip-icon" style={{ background: t.insetBg, color: typeColor }}><Icon size={13} /></span>
                                     <div style={{ minWidth: 0 }}>
                                       <div className="flex items-center gap-1.5" style={{ flexWrap: 'wrap' }}>
                                         <span style={{ fontSize: 11, fontWeight: 800 }}>{getPaymentForDisplay(r).label}</span>
-                                        <span style={{ padding: '0 6px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, lineHeight: 1.5, color: r.statusColor, background: r.statusTextColor }}>{r.statusLabel}</span>
+                                        <span style={{ padding: '0 6px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, lineHeight: 1.5, color: chipText(r.statusColor), border: `1px solid ${chipText(r.statusColor)}` }}>{r.statusLabel}</span>
                                       </div>
                                       <div style={{ marginTop: 1, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
                                         <b style={{ fontSize: 12.5 }}>{rupee(r.amount)}</b>
