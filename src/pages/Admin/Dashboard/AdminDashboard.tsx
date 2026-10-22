@@ -68,7 +68,7 @@ const AdminDashboard: React.FC = () => {
     { label: 'Customers', value: String(totals?.customers ?? 0), to: ROUTES.ADMIN.CUSTOMER_DETAILS },
     { label: 'Employees', value: String(totals?.employees ?? 0), note: totals ? `${totals.attendance_present_today} present today` : undefined, to: ROUTES.ADMIN.EMPLOYEE_DETAILS },
     { label: 'Active leads', value: String(totals?.leads ?? 0), note: totals ? `${totals.hot_leads} hot` : undefined, noteColor: red, to: ROUTES.ADMIN.LEADS },
-    { label: 'Received this month', value: rupeeCompact(data?.month?.received ?? 0), to: ROUTES.ADMIN.PAYMENT_RECEIVED },
+    { label: 'Received this month', value: rupeeCompact(data?.month?.received ?? 0), note: 'approved payments', to: ROUTES.ADMIN.PAYMENT_RECEIVED },
     { label: 'Overdue', value: rupeeCompact(totals?.payment_due ?? 0), note: totals?.overdue_customers != null ? plural(totals.overdue_customers, 'customer') : undefined, noteColor: red, to: ROUTES.ADMIN.PAYMENT_DUES },
     { label: 'Waiting for you', value: String(waiting), note: oldest ? `oldest ${waitingFor(oldest)}` : undefined, noteColor: amber, to: ROUTES.ADMIN.PENDING_APPROVALS },
   ];

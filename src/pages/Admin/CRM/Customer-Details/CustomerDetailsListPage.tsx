@@ -925,7 +925,8 @@ const CustomerDetailsListPage: React.FC = () => {
       // Same fix as openPaymentHistory above — Pending Amount is the flat
       // cost minus what this customer has actually paid, not the separate
       // "currently overdue" figure fetchCustomerDue used to supply here.
-      const totalPaid = historyRes.value.rows.reduce((s, p) => s + p.amount, 0);
+      // V_26.0 — approved payments only.
+      const totalPaid = historyRes.value.rows.filter((p) => p.is_approved).reduce((s, p) => s + p.amount, 0);
       const pendingAmount = totalFlatCost != null ? Math.max(0, totalFlatCost - totalPaid) : null;
       await exportPaymentHistoryPdf(c, historyRes.value.rows, totalFlatCost, pendingAmount);
     } catch {
@@ -1535,12 +1536,15 @@ const CustomerDetailsListPage: React.FC = () => {
               })}
               property={(() => {
                 const c = infoModal.customer;
-                const paid = (infoModal.payments ?? []).reduce((s, p) => s + p.amount, 0);
+                // V_26.0 — Paid / Pending count approved payments only.
+                const all = infoModal.payments ?? [];
+                const paid = all.filter((p) => p.is_approved).reduce((s, p) => s + p.amount, 0);
+                const awaiting = all.reduce((s, p) => s + p.amount, 0) - paid;
                 const cost = infoModal.totalFlatCost;
                 return propertyInfoItems({
                   project: c.project_name, building: c.building_name, wing: c.unit_type === 'shop' ? null : c.wing_name,
                   unitType: c.unit_type === 'shop' ? 'shop' : 'flat', unitNo: c.unit_type === 'shop' ? c.shop_no : c.flat_no,
-                  flatAmount: cost, paid, pending: cost != null ? Math.max(0, cost - paid) : null,
+                  flatAmount: cost, paid, pending: cost != null ? Math.max(0, cost - paid) : null, awaiting,
                 });
               })()}>
               <HistorySection t={t} title="Payment Details"

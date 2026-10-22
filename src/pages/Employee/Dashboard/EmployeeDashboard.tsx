@@ -87,7 +87,7 @@ const EmployeeDashboard: React.FC = () => {
     ...(customersArea ? [
       { label: own ? 'My customers' : 'Customers (me + team)', value: String(fig?.customers ?? data?.my_customers ?? 0), to: ROUTES.EMPLOYEE.CUSTOMER_DETAILS },
       { label: 'Due now', value: rupeeCompact(fig?.due_now ?? 0), note: fig ? plural(fig.due_customers, 'customer') : undefined, noteColor: isDark ? '#fca5a5' : '#b42318', to: ROUTES.EMPLOYEE.PAYMENT_DUES },
-      { label: 'Collected this month', value: rupeeCompact(fig?.collected_this_month ?? 0), note: fig ? plural(fig.collected_count, 'receipt') : undefined, noteColor: isDark ? '#86efac' : '#166534', to: ROUTES.EMPLOYEE.PAYMENT_RECEIVED },
+      { label: 'Collected this month', value: rupeeCompact(fig?.collected_this_month ?? 0), note: fig ? `${plural(fig.collected_count, 'approved receipt')}` : undefined, noteColor: isDark ? '#86efac' : '#166534', to: ROUTES.EMPLOYEE.PAYMENT_RECEIVED },
       { label: 'Waiting for approval', value: rupeeCompact(fig?.awaiting_approval ?? 0), note: fig ? plural(fig.awaiting_approval_count, 'payment') : undefined, noteColor: isDark ? '#fcd34d' : '#92400e', to: ROUTES.EMPLOYEE.PAYMENT_RECEIVED },
     ] : []),
     ...(has('leads') ? [{ label: own ? 'My leads' : 'Leads (me + team)', value: String(fig?.leads ?? data?.my_leads ?? 0), to: ROUTES.EMPLOYEE.LEADS }] : []),

@@ -322,6 +322,10 @@ export interface CustomerDueGrid {
   rows: DueGridRow[];
   /** Unused Extra Pay — counts as paid in the summary (same as the portal). */
   extra_pay_total?: number;
+  /** V_26.0 — approved payments (Extra Pay included): what the tiles count as paid. */
+  approved_paid_total?: number;
+  /** V_26.0 — entered but still awaiting Admin approval (not counted as paid). */
+  awaiting_approval_total?: number;
 }
 /** GET /api/payments/customer/:customerId/due-grid */
 export const fetchCustomerDueGrid = async (customerId: string | number): Promise<CustomerDueGrid> => {

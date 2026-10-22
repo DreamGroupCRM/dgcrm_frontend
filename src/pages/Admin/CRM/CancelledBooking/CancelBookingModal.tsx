@@ -101,7 +101,9 @@ const CancelBookingModal: React.FC<{
 
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 };
   const readOnlyStyle: React.CSSProperties = { width: '100%', background: t.insetBg, border: `1px solid ${t.inputBorder}`, color: t.textSecondary, borderRadius: 10, padding: '9px 10px', fontSize: 12 };
-  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+  // V_26.0 — approved payments only (the same total a refund is checked against).
+  const totalPaid = payments.filter((p) => p.is_approved).reduce((s, p) => s + p.amount, 0);
+  const awaitingPaid = payments.reduce((s, p) => s + p.amount, 0) - totalPaid;
 
   const FileField: React.FC<{ k: FileKey; label: string }> = ({ k, label }) => (
     <div>
@@ -165,7 +167,7 @@ const CancelBookingModal: React.FC<{
                 renderActions={() => <span style={{ color: t.textSecondary }}>—</span>} />
             )}
             {payments.length > 0 && (
-              <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 800, color: t.textPrimary, marginTop: 6 }}>Total Paid: {rupee(totalPaid)}</div>
+              <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 800, color: t.textPrimary, marginTop: 6 }}>Total Paid: {rupee(totalPaid)}{awaitingPaid > 0 ? ` (+ ${rupee(awaitingPaid)} awaiting approval)` : ''}</div>
             )}
           </div>
 

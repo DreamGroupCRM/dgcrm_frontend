@@ -48,6 +48,17 @@ export const STAT_GRADIENTS = {
   pending: 'linear-gradient(135deg, #dc2626, #f97316)',
 } as const;
 
+// V_26.0 — money entered but not yet approved, under the summary tiles.
+export const AwaitingNote: React.FC<{ amount?: number; staff?: boolean }> = ({ amount, staff }) => (
+  amount && amount > 0 ? (
+    <div className="cp-awaiting-note" style={{ fontSize: 12, fontWeight: 600, color: '#b45309', margin: '-4px 0 12px' }}>
+      {staff
+        ? `${rupee(amount)} entered and awaiting Admin approval — not counted in Payment Completed yet.`
+        : `${rupee(amount)} received and awaiting confirmation — it shows in the paid total once confirmed.`}
+    </div>
+  ) : null
+);
+
 // Paid / Due / Upcoming on a schedule row — the portal's chips, also used
 // by the staff Customer Scheme view so both read the same.
 export const STATUS_META = {
@@ -71,10 +82,14 @@ export interface BookingTotals {
   totalCost: number;
   paid: number;
   pending: number;
+  /** V_26.0 — entered but not yet approved by Admin (not in paid). */
+  awaiting?: number;
 }
 
 /**
- * Totals for the summary tiles, derived from the due grid.
+ * Totals for the summary tiles, derived from the due grid. Paid is the sum
+ * of approved payments when the server sends it (V_26.0); the older
+ * schedule-based figure below is the fallback.
  *
  * `amount` is what each scheduled row costs and `due_amount` is what is
  * still owed on it (0 once paid, and reduced on the one row an EMI
@@ -83,8 +98,19 @@ export interface BookingTotals {
  * and with what the office sees, rather than being three separate
  * calculations that can drift apart.
  */
-export function totalsFromDueGrid(rows: DueGridRow[], extraPay = 0): BookingTotals {
+export function totalsFromDueGrid(grid: {
+  rows: DueGridRow[]; extra_pay_total?: number; approved_paid_total?: number; awaiting_approval_total?: number;
+}): BookingTotals {
+  const { rows } = grid;
+  const extraPay = grid.extra_pay_total ?? 0;
   const totalCost = rows.reduce((sum, r) => sum + r.amount, 0);
+  // V_26.0 — only approved payments count as paid; what is entered but
+  // still awaiting approval is shown on its own. (The rows keep their
+  // Paid / Due status: each payment's EMI allocation is fixed at entry.)
+  if (typeof grid.approved_paid_total === 'number') {
+    const paid = Math.min(totalCost, grid.approved_paid_total);
+    return { totalCost, paid, pending: Math.max(0, totalCost - paid), awaiting: grid.awaiting_approval_total ?? 0 };
+  }
   const owed = rows.reduce((sum, r) => sum + r.due_amount, 0);
   // V_25.0 — Extra Pay is kept separate from EMIs (no schedule row is
   // marked paid by it), but it is money the customer has paid: it counts in

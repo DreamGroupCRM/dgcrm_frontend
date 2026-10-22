@@ -18,7 +18,7 @@ import {
   MdTrendingUp, MdAccountBalanceWallet, MdHourglassEmpty, MdWarningAmber,
 } from 'react-icons/md';
 // V_26.0 — the portal's own summary tiles and totals (scoped .cp- styles).
-import { Stat, STAT_GRADIENTS, StatusChip, totalsFromDueGrid } from '../../../Customer/CustomerPortalUi';
+import { Stat, STAT_GRADIENTS, StatusChip, AwaitingNote, totalsFromDueGrid } from '../../../Customer/CustomerPortalUi';
 import '../../../Customer/CustomerPortal.css';
 import './CustomerDetails.css';
 
@@ -26,7 +26,7 @@ import { AppTheme } from '../../../../styles/theme';
 import { resolveFileUrl } from '../../../../utils';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { fetchCustomerScheme } from '../../../../services/customerDetailsService';
-import { fetchCustomerDueGrid, DueGridRow } from '../../../../services/paymentService';
+import { fetchCustomerDueGrid, DueGridRow, CustomerDueGrid } from '../../../../services/paymentService';
 import { CustomerSchemeData, CustomerSchemeSummaryRow, CustomerScheduleRow } from '../../../../types/index';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 
@@ -211,7 +211,7 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
   // loading/error state, and silently stays null (no strikethrough shown)
   // if it fails, rather than treating it as fatal.
   const [gridRows, setGridRows] = useState<DueGridRow[] | null>(null);
-  const [extraPay, setExtraPay] = useState(0);
+  const [grid, setGrid] = useState<CustomerDueGrid | null>(null);
   const [gridFailed, setGridFailed] = useState(false);
 
   useEffect(() => {
@@ -242,7 +242,7 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
     if (!id) return;
     let cancelled = false;
     fetchCustomerDueGrid(id)
-      .then((grid) => { if (!cancelled) { setGridRows(grid.rows); setExtraPay(grid.extra_pay_total ?? 0); } })
+      .then((g) => { if (!cancelled) { setGridRows(g.rows); setGrid(g); } })
       .catch(() => { if (!cancelled) { setGridRows(null); setGridFailed(true); } });
     return () => { cancelled = true; };
   }, [id]);
@@ -344,7 +344,7 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
           so Admin, employee and customer always see identical figures. Due
           Now = what is past its date and still unpaid. */}
       {gridRows && (() => {
-        const totals = totalsFromDueGrid(gridRows, extraPay);
+        const totals = totalsFromDueGrid(grid ?? { rows: gridRows });
         const dueNow = gridRows.filter((r) => r.status === 'due').reduce((sum, r) => sum + r.due_amount, 0);
         // ₹0 rows (e.g. an unused Remaining Booking Amount) aren't instalments.
         const instalments = gridRows.filter((r) => r.amount > 0);
@@ -355,6 +355,7 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
             <Stat icon={<MdAccountBalanceWallet size={19} />} label="Payment Completed" value={formatINR(totals.paid)} gradient={STAT_GRADIENTS.paid} />
             <Stat icon={<MdHourglassEmpty size={19} />} label="Payment Pending" value={formatINR(totals.pending)} gradient={STAT_GRADIENTS.pending} />
             <Stat icon={<MdWarningAmber size={19} />} label={`Due Now · ${paidRows}/${instalments.length} paid`} value={formatINR(dueNow)} gradient="linear-gradient(135deg, #b45309, #d97706)" />
+            <div style={{ gridColumn: '1 / -1' }}><AwaitingNote amount={totals.awaiting} staff /></div>
           </div>
         );
       })()}
