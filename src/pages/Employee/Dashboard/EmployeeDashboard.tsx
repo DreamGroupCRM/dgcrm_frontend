@@ -27,7 +27,7 @@ import {
 import './EmployeeDashboard.css';
 
 const MODULE_LABEL: Record<string, string> = { customer: 'Customer', lead: 'Lead', employee: 'Employee', payment: 'Payment' };
-const ACTION_LABEL: Record<string, string> = { create: 'add', edit: 'edit', cancel_booking: 'cancel booking', delete: 'delete' };
+const ACTION_LABEL: Record<string, string> = { create: 'add', edit: 'edit', cancel_booking: 'cancel booking', delete: 'delete', reassign: 'reassign' };
 
 const EmployeeDashboard: React.FC = () => {
   const dispatch = useAppDispatch();

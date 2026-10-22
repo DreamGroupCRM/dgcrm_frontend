@@ -19,7 +19,7 @@ import { fetchMyChangeRequests, ChangeRequestRow, ChangeRequestStatus } from '..
 import { formatLastLogin } from '../../../utils';
 
 const MODULE_LABEL: Record<string, string> = { customer: 'Customer', lead: 'Lead', employee: 'Employee', payment: 'Payment' };
-const ACTION_LABEL: Record<string, string> = { create: 'Add', edit: 'Edit', cancel_booking: 'Cancel Booking', delete: 'Delete' };
+const ACTION_LABEL: Record<string, string> = { create: 'Add', edit: 'Edit', cancel_booking: 'Cancel Booking', delete: 'Delete', reassign: 'Reassign' };
 const STATUS_LABEL: Record<ChangeRequestStatus, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
 
 function recordName(r: ChangeRequestRow): string {

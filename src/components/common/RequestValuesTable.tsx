@@ -51,13 +51,15 @@ export function displayFieldValue(key: string, v: unknown): string {
 export const RequestValuesTable: React.FC<{
   t: AppTheme; isDark: boolean; row: ChangeRequestRow; onPreview: (doc: { label: string; url: string }) => void;
 }> = ({ t, isDark, row, onPreview }) => {
-  const isEdit = row.action === 'edit';
+  // A reassignment reads like an edit: Assigned To, current vs proposed.
+  const isEdit = row.action === 'edit' || row.action === 'reassign';
   // A delete request shows the record being deleted.
   const adminValues = row.admin_values ?? {};
   const source = row.action === 'delete' ? (row.old_values ?? {}) : { ...(row.new_values ?? {}), ...adminValues };
   const old = row.old_values ?? {};
   // A payment's customer is named in the popup header instead of by id.
-  const entries = Object.entries(source).filter(([k, v]) => (isEdit || !isBlank(v) || k in old) && !(row.module === 'payment' && k === 'customer_id'));
+  const entries = Object.entries(source).filter(([k, v]) => (isEdit || !isBlank(v) || k in old) && !(row.module === 'payment' && k === 'customer_id')
+    && (row.action !== 'reassign' || k === 'assigned_to'));
   const cellStyle: React.CSSProperties = { padding: '7px 8px', fontSize: 12, borderTop: `1px solid ${t.divider}`, verticalAlign: 'top', wordBreak: 'break-word' };
   const valueCell = (v: unknown, label: string, key: string) => isFileValue(v)
     ? <button type="button" onClick={() => onPreview({ label, url: v })} className="master-icon-btn" style={{ fontSize: 12, padding: '2px 8px', width: 'auto' }}>View document</button>

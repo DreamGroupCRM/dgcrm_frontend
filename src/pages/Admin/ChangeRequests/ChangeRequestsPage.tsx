@@ -46,7 +46,7 @@ const MODULE_LABEL: Record<ChangeRequestModule, string> = {
 };
 const MODULES = Object.keys(MODULE_LABEL) as ChangeRequestModule[];
 
-const ACTION_LABEL: Record<ChangeRequestRow['action'], string> = { create: 'Create', edit: 'Edit', cancel_booking: 'Cancel Booking', delete: 'Delete' };
+const ACTION_LABEL: Record<ChangeRequestRow['action'], string> = { create: 'Create', edit: 'Edit', cancel_booking: 'Cancel Booking', delete: 'Delete', reassign: 'Reassign' };
 
 // Best-effort human label for a proposed row without inventing business
 // rules about which field "is" the display name per module — falls back
@@ -191,6 +191,8 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
     const result = await showAlert.confirm(
       row.action === 'delete'
         ? `This will permanently delete the payment ${summarize(row)}.`
+        : row.action === 'reassign'
+        ? `${summarize(row)} will move from ${String(row.old_values?.assigned_to ?? '—')} to ${String(row.new_values?.assigned_to ?? '—')}.`
         : row.action === 'cancel_booking'
         ? `This will cancel ${summarize(row)}'s booking and move them to Cancelled Booking.`
         : row.action === 'edit'
@@ -206,6 +208,7 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
       const what = row.action === 'create' ? `The new ${MODULE_LABEL[row.module]} "${summarize(row)}" was approved.`
         : row.action === 'edit' ? `The changes to ${MODULE_LABEL[row.module]} "${summarize(row)}" were approved.`
         : row.action === 'cancel_booking' ? `The cancel booking request for "${summarize(row)}" was approved.`
+        : row.action === 'reassign' ? `"${summarize(row)}" is now assigned to ${String(row.new_values?.assigned_to ?? '—')}.`
         : `The delete request for ${MODULE_LABEL[row.module]} "${summarize(row)}" was approved.`;
       showAlert.approved(what);
       await load();

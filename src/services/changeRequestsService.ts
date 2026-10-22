@@ -17,7 +17,8 @@ export type ChangeRequestStatus = 'pending' | 'approved' | 'rejected';
 export interface ChangeRequestRow {
   id: string;
   module: ChangeRequestModule;
-  action: 'create' | 'edit' | 'cancel_booking' | 'delete';
+  // V_26.0 — 'reassign': a Head's customer assignment change.
+  action: 'create' | 'edit' | 'cancel_booking' | 'delete' | 'reassign';
   entity_id: string | null;
   old_values: Record<string, unknown> | null;
   new_values: Record<string, unknown>;

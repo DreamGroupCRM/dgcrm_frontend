@@ -848,8 +848,10 @@ const CustomerDetailsListPage: React.FC = () => {
     }
     setAssigning(true);
     try {
-      await assignCustomersToEmployee({ customer_ids: Array.from(selectedIds), employee_id: employee.id });
-      toast.success('Customer(s) Assigned Successfully');
+      const res = await assignCustomersToEmployee({ customer_ids: Array.from(selectedIds), employee_id: employee.id });
+      // V_26.0 — a Head's change waits for Admin approval (Pending Approvals).
+      if (res.pending) toast.success(res.message || 'Sent to Admin for approval.');
+      else toast.success('Customer(s) Assigned Successfully');
       setSelectedIds(new Set());
       setEmployeeSearch('');
       fetchCustomers();

@@ -773,6 +773,8 @@ export interface AssignCustomersPayload {
 export interface AssignCustomersResponse {
   success : boolean;
   message?: string;
+  // V_26.0 — a Head's assignment change waits for Admin approval.
+  pending?: boolean;
 }
 
 export interface CustomerPaymentRecord {
