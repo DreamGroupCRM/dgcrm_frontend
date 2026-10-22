@@ -41,6 +41,7 @@ import {
   PaymentFor, PaymentReceipt, CollectPaymentPayload, isAdminRole,
 } from '../../../../types/index';
 import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
+import { fetchMyChangeRequests, ChangeRequestRow } from '../../../../services/changeRequestsService';
 import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
@@ -452,10 +453,11 @@ const CustomerDetailsListPage: React.FC = () => {
   const viewOnly = setUpEmployee && !isHead;
   const canEditCustomer = paths.isAdmin || (setUpEmployee && isHead);
   const showSplitAssign = paths.isAdmin || isHead;
-  // V_25.0 — Cancel Booking: Admin, Refund, and a Head (e.g. the Recovery
-  // Head — goes to Admin approval); a department not set up yet keeps it,
-  // as before. Executives cannot. Same rule the server applies.
-  const canCancelBooking = access.has('cancelled_booking') || (setUpEmployee && isHead);
+  // V_26.0 — Cancel Booking: Admin and Refund only (a department not set up
+  // yet keeps it, as before); no other Head, e.g. the Recovery Head, and no
+  // Executive. An employee's request goes to Admin approval. Same rule the
+  // server applies.
+  const canCancelBooking = access.has('cancelled_booking');
 
   // allCustomers now holds ONLY the current server page (see fetchCustomers
   // below) — previously this held up to 1000 rows fetched once, with
@@ -571,7 +573,12 @@ const CustomerDetailsListPage: React.FC = () => {
       // assignee for a customer.
       const res = await FetchEmployeeDetails(1, 1000, undefined, true);
       if (res.success) {
-        setEmployees((res.rows ?? []).map((e) => ({ id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})` })));
+        // V_26.0 — department · designation in the label, so two people with
+        // the same name can be told apart when assigning.
+        setEmployees((res.rows ?? []).map((e) => {
+          const role = [e.department, e.designation].filter(Boolean).join(' · ');
+          return { id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})${role ? ` — ${role}` : ''}` };
+        }));
       } else {
         toast.error('Failed to load employees for assignment.');
       }
@@ -701,6 +708,27 @@ const CustomerDetailsListPage: React.FC = () => {
   }, [page, limit, debouncedCustomerNameFilter, selectedBuilding?.id, selectedWing?.id, flatNoFilter, selectedFloor, fromDate, toDate, assignmentStatusFilter, assignedKindFilter]);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
+
+  // V_26.0 — an employee's own customers still waiting for Admin approval
+  // are listed (greyed) at the top, so a submission never just vanishes.
+  // Reloaded with the list and when the tab is focused again.
+  const [pendingCreates, setPendingCreates] = useState<ChangeRequestRow[]>([]);
+  const loadPendingCreates = useCallback(() => {
+    if (paths.isAdmin) return;
+    fetchMyChangeRequests({ module: 'customer', action: 'create', status: 'pending' })
+      .then(setPendingCreates)
+      .catch(() => { /* the list itself still shows; this is extra */ });
+  }, [paths.isAdmin]);
+  useEffect(() => { loadPendingCreates(); }, [loadPendingCreates, allCustomers]);
+  useEffect(() => { window.addEventListener('focus', loadPendingCreates); return () => window.removeEventListener('focus', loadPendingCreates); }, [loadPendingCreates]);
+  const pendingName = (r: ChangeRequestRow) => {
+    const v = { ...r.new_values, ...(r.admin_values ?? {}) } as Record<string, unknown>;
+    return [v.name, v.middle_name, v.last_name].filter(Boolean).join(' ') || `Request #${r.id}`;
+  };
+  const pendingMobile = (r: ChangeRequestRow) => {
+    const v = { ...r.new_values, ...(r.admin_values ?? {}) } as Record<string, unknown>;
+    return v.mobile_number ? `${v.mobile_country_code ?? ''} ${v.mobile_number}`.trim() : '';
+  };
   const flatNoOptions = useMemo(() => Array.from(new Set(flatsInScope.map((fl) => fl.flat_no))), [flatsInScope]);
   // "A-101" -> "A-101 · 2 BHK · 850 Sqft" for the Flat No dropdown's option
   // text — filtering/selection still work off the bare flat_no.
@@ -820,8 +848,10 @@ const CustomerDetailsListPage: React.FC = () => {
     }
     setAssigning(true);
     try {
-      await assignCustomersToEmployee({ customer_ids: Array.from(selectedIds), employee_id: employee.id });
-      toast.success('Customer(s) Assigned Successfully');
+      const res = await assignCustomersToEmployee({ customer_ids: Array.from(selectedIds), employee_id: employee.id });
+      // V_26.0 — a Head's change waits for Admin approval (Pending Approvals).
+      if (res.pending) toast.success(res.message || 'Sent to Admin for approval.');
+      else toast.success('Customer(s) Assigned Successfully');
       setSelectedIds(new Set());
       setEmployeeSearch('');
       fetchCustomers();
@@ -897,7 +927,8 @@ const CustomerDetailsListPage: React.FC = () => {
       // Same fix as openPaymentHistory above — Pending Amount is the flat
       // cost minus what this customer has actually paid, not the separate
       // "currently overdue" figure fetchCustomerDue used to supply here.
-      const totalPaid = historyRes.value.rows.reduce((s, p) => s + p.amount, 0);
+      // V_26.0 — approved payments only.
+      const totalPaid = historyRes.value.rows.filter((p) => p.is_approved).reduce((s, p) => s + p.amount, 0);
       const pendingAmount = totalFlatCost != null ? Math.max(0, totalFlatCost - totalPaid) : null;
       await exportPaymentHistoryPdf(c, historyRes.value.rows, totalFlatCost, pendingAmount);
     } catch {
@@ -1191,12 +1222,11 @@ const CustomerDetailsListPage: React.FC = () => {
       </div>
 
       {/* ── Toolbar — Search Employee + Assign to Employee together on the
-          left, Add Customer / Grid-List / Export CSV / Refresh always on
-          the right, all in one single row — flex-nowrap (not flex-wrap)
-          so this never splits into two rows on desktop; the row scrolls
-          horizontally instead of wrapping if the viewport is too narrow
-          to fit everything (e.g. on mobile). ───────────────────────────── */}
-      <div className="cust-toolbar-row flex items-end justify-between gap-3 mb-2" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+          left, Add Customer / Grid-List / Export CSV / Refresh on the
+          right — one row whenever it fits. V_26.0: when it doesn't (e.g. a
+          1024px laptop), the right group wraps onto its own row instead of
+          scrolling out of sight (Export CSV / Refresh were cut off). ───── */}
+      <div className="cust-toolbar-row flex items-end justify-between gap-3 mb-2" style={{ flexWrap: 'wrap' }}>
         {canAssignCustomers && (
           <div className="cust-toolbar-left flex items-end gap-3" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
             <div className="cust-assign-select" style={{ width: 240 }}>
@@ -1230,7 +1260,7 @@ const CustomerDetailsListPage: React.FC = () => {
           </div>
         )}
 
-        <div className="cust-toolbar-right flex items-center gap-2.5" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
+        <div className="cust-toolbar-right flex items-center gap-2.5" style={{ flexWrap: 'wrap', flexShrink: 0, marginLeft: 'auto' }}>
           <button type="button" onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
             title={view === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
             className="cust-view-toggle-btn flex items-center justify-center rounded-xl"
@@ -1269,6 +1299,12 @@ const CustomerDetailsListPage: React.FC = () => {
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         {view === 'grid' ? (
           <div className="p-5">
+            {pendingCreates.length > 0 && (
+              <div className="mb-4 rounded-xl p-3" role="note" style={{ background: isDark ? 'rgba(234,179,8,0.12)' : '#fefce8', border: `1px solid ${t.surfaceBorder}`, fontSize: 12, color: t.textPrimary }}>
+                <b>Waiting for Admin approval:</b>{' '}
+                {pendingCreates.map((r) => `${pendingName(r)} (sent ${formatDate(r.requested_at)})`).join(', ')}
+              </div>
+            )}
             {loading ? (
               <div className="cust-empty-state">Loading customers...</div>
             ) : pageRows.length === 0 ? (
@@ -1307,7 +1343,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     checked={activePageRows.length > 0 && activePageRows.every((c) => selectedIds.has(c.id))} onChange={toggleSelectAllOnPage} />
                 </th>
                 )}
-                {['Action', 'Customer ID', 'Customer Name', ...(showSplitAssign ? ['Assigned (Head)', 'Sub-assigned (Executive)'] : ['Employee Name']), 'Contact Details', 'Company / Project', 'Building Details', 'Unit Type / Area', 'Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
+                {['Action', 'Customer ID', 'Customer Name', ...(showSplitAssign ? ['Assigned by Admin', 'Assigned by Head'] : ['Employee Name']), 'Contact Details', 'Company / Project', 'Building Details', 'Unit Type / Area', 'Booking Date', 'Monthly EMI Amount', 'Monthly Installment Date'].map((h) => (
                   <th key={h}
                     style={h === 'Action'
                       // V_24.0 fix — this column holds 3 separate controls
@@ -1330,10 +1366,23 @@ const CustomerDetailsListPage: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr><td colSpan={tableCols} className="cust-empty-state">Loading customers...</td></tr>
-              ) : pageRows.length === 0 ? (
+              ) : pageRows.length === 0 && pendingCreates.length === 0 ? (
                 <tr><td colSpan={tableCols} className="cust-empty-state">No customers found.</td></tr>
-              ) : (
-                pageRows.map((c) => (
+              ) : (<>
+                {pendingCreates.map((r) => (
+                  <tr key={`pending-${r.id}`} className="cust-divider-top" style={{ opacity: 0.65 }} title="Waiting for Admin approval — see My Requests">
+                    {showCheckboxes && <td style={{ padding: '10px 12px' }} />}
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                      <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 20, fontSize: 10.5, fontWeight: 600, background: '#fef3c7', color: '#92400e' }}>Waiting for Admin approval</span>
+                    </td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary }}>—</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textPrimary, fontWeight: 600 }}>{pendingName(r)}</td>
+                    <td colSpan={tableCols - (showCheckboxes ? 4 : 3)} style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary }}>
+                      {[pendingMobile(r), r.new_values?.booking_date ? `Booking ${formatDate(String(r.new_values.booking_date))}` : '', `Sent ${formatDate(r.requested_at)}`].filter(Boolean).join(' · ')}
+                    </td>
+                  </tr>
+                ))}
+                {pageRows.map((c) => (
                   <tr key={c.id} className="cust-divider-top master-table-row-hover">
                     {showCheckboxes && (
                     <td style={{ padding: '10px 12px' }}>
@@ -1384,7 +1433,9 @@ const CustomerDetailsListPage: React.FC = () => {
                         <span style={{ fontSize: 11.5, fontWeight: 600, color: isDark ? '#ffffff' : '#000000' }}>—</span>
                       )}
                     </td>
-                    <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
+                    {/* V_26.0 — long names wrap inside a fixed band instead of
+                        stretching the table; the badge drops below the name. */}
+                    <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'normal', minWidth: 190, maxWidth: 260 }}>
                       <div className="flex items-center gap-2">
                         {c.customer_photo_url ? (
                           <img src={resolveFileUrl(c.customer_photo_url)} alt="" className="rounded-full flex-shrink-0" style={{ width: 30, height: 30, objectFit: 'cover' }} />
@@ -1393,7 +1444,7 @@ const CustomerDetailsListPage: React.FC = () => {
                             {(c.customer_name || '—').slice(0, 1).toUpperCase()}
                           </div>
                         )}
-                        <span>
+                        <span style={{ overflowWrap: 'anywhere', lineHeight: 1.35 }}>
                           {c.customer_name}
                           {c.cancellation_pending && (
                             <span title="Cancel Booking request is waiting for admin approval"
@@ -1406,9 +1457,11 @@ const CustomerDetailsListPage: React.FC = () => {
                       </div>
                     </td>
                     {showSplitAssign ? [c.assigned_head, c.assigned_sub].map((a, idx) => (
-                      <td key={idx} style={{ padding: '10px 12px', fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
-                        <div style={{ fontWeight: 600 }}>{a?.name || '—'}</div>
-                        {a?.code && <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{a.code}</div>}
+                      <td key={idx} style={{ padding: '10px 12px', fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'normal', minWidth: 130, maxWidth: 180 }}>
+                        <div style={{ fontWeight: 600, overflowWrap: 'anywhere', lineHeight: 1.35 }}>{a?.name || '—'}</div>
+                        {a?.code && <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>{a.code}{idx === 0 && <span title="Assigned by Admin" style={{ marginLeft: 6, padding: '0 6px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, lineHeight: 1.6, color: isDark ? '#bfdbfe' : '#1d4ed8', background: isDark ? 'rgba(59,130,246,0.25)' : '#dbeafe', whiteSpace: 'nowrap' }}>by Admin</span>}</div>}
+                        {/* V_26.0 — who made the assignment, at a glance. */}
+                        {!a?.code && idx === 0 && a && <div style={{ marginTop: 1 }}><span title="Assigned by Admin" style={{ marginLeft: 6, padding: '0 6px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, lineHeight: 1.6, color: isDark ? '#bfdbfe' : '#1d4ed8', background: isDark ? 'rgba(59,130,246,0.25)' : '#dbeafe', whiteSpace: 'nowrap' }}>by Admin</span></div>}
                       </td>
                     )) : (
                     <td style={{ padding: '10px 12px' }}>
@@ -1420,13 +1473,13 @@ const CustomerDetailsListPage: React.FC = () => {
                             {c.assigned_employee_name.slice(0, 1).toUpperCase()}
                           </div>
                         ) : null}
-                        <span style={{ fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{c.assigned_employee_name || '—'}</span>
+                        <span style={{ fontSize: 12, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: 160, lineHeight: 1.35 }}>{c.assigned_employee_name || '—'}</span>
                       </div>
                     </td>
                     )}
                     <td style={{ padding: '10px 12px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
                       <div className="flex items-center gap-1.5"><MdPhone size={13} /> {c.mobile_number}</div>
-                      <div className="flex items-center gap-1.5 mt-0.5"><MdEmail size={13} /> {c.email}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5" title={c.email || undefined}><MdEmail size={13} className="flex-shrink-0" /> <span className="master-cell-truncate" style={{ ['--master-cell-truncate-width' as string]: '190px' }}>{c.email}</span></div>
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11, color: isDark ? '#ffffff' : '#000000' }}>
                       <div style={{ fontWeight: 700 }}>{c.company_name || '—'}</div>
@@ -1454,8 +1507,8 @@ const CustomerDetailsListPage: React.FC = () => {
                       {c.monthly_installment_date ? formatDate(c.monthly_installment_date) : '—'}
                     </td>
                   </tr>
-                ))
-              )}
+                ))}
+              </>)}
             </tbody>
           </table>
         </div>
@@ -1487,12 +1540,15 @@ const CustomerDetailsListPage: React.FC = () => {
               })}
               property={(() => {
                 const c = infoModal.customer;
-                const paid = (infoModal.payments ?? []).reduce((s, p) => s + p.amount, 0);
+                // V_26.0 — Paid / Pending count approved payments only.
+                const all = infoModal.payments ?? [];
+                const paid = all.filter((p) => p.is_approved).reduce((s, p) => s + p.amount, 0);
+                const awaiting = all.reduce((s, p) => s + p.amount, 0) - paid;
                 const cost = infoModal.totalFlatCost;
                 return propertyInfoItems({
                   project: c.project_name, building: c.building_name, wing: c.unit_type === 'shop' ? null : c.wing_name,
                   unitType: c.unit_type === 'shop' ? 'shop' : 'flat', unitNo: c.unit_type === 'shop' ? c.shop_no : c.flat_no,
-                  flatAmount: cost, paid, pending: cost != null ? Math.max(0, cost - paid) : null,
+                  flatAmount: cost, paid, pending: cost != null ? Math.max(0, cost - paid) : null, awaiting,
                 });
               })()}>
               <HistorySection t={t} title="Payment Details"

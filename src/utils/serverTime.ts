@@ -70,6 +70,15 @@ export const serverYmdPlusDays = (days: number): string => {
   return toYmd(d);
 };
 
+/** V_26.0 — earliest Received Date a non-Admin's Payment Received shows:
+ * the same date two months ago (end-of-month safe) — the exact rule the
+ * server applies (payment.service.ts clampReceivedFilters / addMonthsYmd). */
+export const employeeReceivedMinYmd = (): string => {
+  const [y, m, d] = serverTodayYmd().split('-').map(Number);
+  const last = new Date(y, m - 1 - 2 + 1, 0).getDate();
+  return toYmd(new Date(y, m - 1 - 2, Math.min(d, last)));
+};
+
 /** V_25.0 — earliest Received Date an employee may pick: today or up to 4 days back, but
  * never into the previous month (same rule the server enforces). */
 export const employeeBackdateMinYmd = (): string => {

@@ -25,6 +25,7 @@ import { exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport.la
 import { PaymentReceipt } from '../../../../types';
 import { formatDate } from '../../../../utils';
 import DateInput from '../../../../components/common/DateInput';
+import { PENDING_APPROVALS_CHANGED } from '../../../../services/pendingApprovalsService';
 
 const rupee = (n: number): string => `₹${(n || 0).toLocaleString('en-IN')}`;
 const unitText = (r: GivenRefundRow): string => r.shop_no
@@ -61,6 +62,16 @@ const RefundDetailsPage: React.FC = () => {
   }, [dateFrom, dateTo, search, status]);
   // Search is typed, so wait for a pause before asking the server.
   useEffect(() => { const id = setTimeout(load, 300); return () => clearTimeout(id); }, [load]);
+  // V_26.0 — also reload when the browser tab is focused again, and right
+  // after a refund is approved/rejected elsewhere in the app.
+  useEffect(() => {
+    window.addEventListener('focus', load);
+    window.addEventListener(PENDING_APPROVALS_CHANGED, load);
+    return () => {
+      window.removeEventListener('focus', load);
+      window.removeEventListener(PENDING_APPROVALS_CHANGED, load);
+    };
+  }, [load]);
 
   const anyFilter = !!(search || dateFrom || dateTo || status !== 'all');
   const clearFilters = () => { setSearch(''); setDateFrom(''); setDateTo(''); setStatus('all'); };

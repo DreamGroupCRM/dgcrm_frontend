@@ -210,6 +210,10 @@ export interface DueListDetailRow {
   carried_forward_amount?: number;
   /** EMI groups: already part-paid towards the current EMI. */
   part_paid_amount?: number;
+  /** V_26.0 — EMI groups: the part of that credit still awaiting Admin approval. */
+  part_paid_awaiting_amount?: number;
+  /** V_26.0 — EMI groups: each EMI (number in its phase, date, amount, what is left). */
+  emi_lines?: { n: number; date: string; amount: number; left: number }[];
   // Unused part of the customer's Extra Payment(s) (same on every row of that customer).
   extra_payment_balance?: number;
   // Total the customer paid today (Received Date = today, approved or not).
@@ -320,6 +324,12 @@ export interface CustomerDueGrid {
   customer_name: string;
   company_name: string | null;
   rows: DueGridRow[];
+  /** Unused Extra Pay — counts as paid in the summary (same as the portal). */
+  extra_pay_total?: number;
+  /** V_26.0 — approved payments (Extra Pay included): what the tiles count as paid. */
+  approved_paid_total?: number;
+  /** V_26.0 — entered but still awaiting Admin approval (not counted as paid). */
+  awaiting_approval_total?: number;
 }
 /** GET /api/payments/customer/:customerId/due-grid */
 export const fetchCustomerDueGrid = async (customerId: string | number): Promise<CustomerDueGrid> => {
@@ -461,7 +471,7 @@ export const approvePayment = async (id: string | number): Promise<{ success: bo
 };
 
 /** PUT /api/payments/bulk-approve */
-export const bulkApprovePayments = async (ids: (string | number)[]): Promise<{ success: boolean; approved: number; message: string }> => {
+export const bulkApprovePayments = async (ids: (string | number)[]): Promise<{ success: boolean; approved: number; skipped_delete_requested?: number; message: string }> => {
   const res = await axiosInstance.put('/payments/bulk-approve', { ids: ids.map(Number) });
   return res.data;
 };

@@ -37,6 +37,8 @@ export const propertyInfoItems = (p: {
   project?: string | null; building?: string | null; wing?: string | null;
   unitType?: 'flat' | 'shop' | null; unitNo?: string | null;
   flatAmount?: number | null; paid?: number | null; pending?: number | null;
+  /** V_26.0 — entered but not yet approved (not in Paid). */
+  awaiting?: number | null;
 }): HistoryInfoItem[] => [
   { label: 'Project', value: p.project || '—' },
   { label: 'Building', value: [p.building, p.wing && `${p.wing} Wing`].filter(Boolean).join(' · ') || '—' },
@@ -44,6 +46,7 @@ export const propertyInfoItems = (p: {
   { label: 'Flat Amount', value: rupee(p.flatAmount), tone: 'green' },
   { label: 'Paid Amount', value: rupee(p.paid), tone: 'green' },
   ...(p.pending !== undefined ? [{ label: 'Pending Amount', value: rupee(p.pending), tone: 'red' as const }] : []),
+  ...(p.awaiting ? [{ label: 'Awaiting Approval', value: `${rupee(p.awaiting)} (not in Paid yet)` }] : []),
 ];
 
 const InfoPanel: React.FC<{ t: AppTheme; title: string; items: HistoryInfoItem[]; columns?: 1 | 2 }> = ({ t, title, items, columns = 1 }) => (

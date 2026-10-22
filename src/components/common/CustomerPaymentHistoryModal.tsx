@@ -57,6 +57,9 @@ const CustomerPaymentHistoryModal: React.FC<{
   });
   const sorted = [...(rows ?? [])].sort((a, b) => String(b.paid_on ?? '').localeCompare(String(a.paid_on ?? '')));
   const total = sorted.reduce((s, p) => s + p.amount, 0);
+  // V_26.0 — Paid / Pending count approved payments only.
+  const approvedPaid = sorted.filter((p) => p.is_approved).reduce((s, p) => s + p.amount, 0);
+  const awaiting = total - approvedPaid;
 
   const cost = full?.total_cost ?? null;
   const rupeeOf = (n: number) => `₹ ${n.toLocaleString('en-IN')}`;
@@ -68,7 +71,7 @@ const CustomerPaymentHistoryModal: React.FC<{
         property={propertyInfoItems({
           project: full?.project_name, building: full?.building_name, wing: full?.wing_name,
           unitType: full?.unit_type === 'shop' ? 'shop' : 'flat', unitNo: full?.unit_type === 'shop' ? full?.shop_no : full?.flat_no,
-          flatAmount: cost, paid: total, pending: cost != null ? Math.max(0, cost - total) : null,
+          flatAmount: cost, paid: approvedPaid, pending: cost != null ? Math.max(0, cost - approvedPaid) : null, awaiting,
         })}>
         <HistorySection t={t} title="Payment Details" total={sorted.length ? { label: 'Grand Total:', value: rupeeOf(total) } : undefined}>
           {sorted.length === 0 ? (

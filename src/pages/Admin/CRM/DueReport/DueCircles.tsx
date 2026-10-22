@@ -6,8 +6,8 @@
 //   red    = overdue
 //   green  = due today (unpaid)
 //   yellow = upcoming (not due yet — never counted in red)
-// Large amounts are shortened inside the box (₹13.95L); the full amount
-// and its meaning are in the tooltip and the accessible label.
+// V_26.0 — only the boxes that have an amount are shown, each with the
+// full amount (₹2,50,000); the meaning is in the tooltip and the label.
 import React from 'react';
 import { DUE_STATUS, DueStatus } from './dueColors';
 
@@ -26,7 +26,7 @@ export type DueCircleAmounts = Record<DueStatus, number>;
 
 const DueCircles: React.FC<{ amounts: DueCircleAmounts; size?: number; children?: React.ReactNode }> = ({ amounts, size = 38, children }) => (
   <div role="group" aria-label="Payment status" className="flex items-center" style={{ gap: 4, flexWrap: 'nowrap' }}>
-    {ORDER.map((k) => {
+    {ORDER.filter((k) => amounts[k] > 0).map((k) => {
       const c = DUE_STATUS[k];
       const v = amounts[k];
       const text = `${c.label}: ${fullRupee(v)}`;
@@ -39,7 +39,7 @@ const DueCircles: React.FC<{ amounts: DueCircleAmounts; size?: number; children?
             fontSize: size < 36 ? 10 : 10.5, fontWeight: 800, letterSpacing: -0.2, whiteSpace: 'nowrap',
             fontVariantNumeric: 'tabular-nums', lineHeight: 1, cursor: 'default',
           }}>
-          {compactRupee(v)}
+          {fullRupee(v)}
         </span>
       );
     })}

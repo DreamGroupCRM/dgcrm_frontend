@@ -771,3 +771,5 @@ html.dark .cp-empty-error, html.dark .cp-doc-card-pdf { color: #fca5a5; }
 }
 .cp-cancelled-banner strong { color: #fff; background: #b91c1c; padding: 2px 8px; border-radius: 999px; font-size: 11px; letter-spacing: 0.4px; }
 html.dark .cp-cancelled-banner { color: #fff; background: rgba(185, 28, 28, 0.35); border-color: rgba(248, 113, 113, 0.5); }
+
+html.dark .cp-awaiting-note { color: #fcd34d !important; }

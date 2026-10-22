@@ -28,8 +28,19 @@ export interface DashboardRecentLead {
   created_at: string;
 }
 
-export interface DashboardSummary {
-  totals: DashboardTotals;
+// V_26.0 — Admin Console extras (GET /dashboard/stats).
+export interface AdminApprovalQueue { key: string; label: string; count: number; oldest: string | null }
+export interface DashboardPerson { id: number; name: string; designation: string | null; level: string | null; photo_url?: string | null }
+export interface AdminDashboardExtras {
+  month: { received: number; awaiting_approval: number; awaiting_approval_count: number };
+  approvals: { total: number; queues: AdminApprovalQueue[] };
+  recovery_team: (DashboardPerson & { collected: number })[];
+  departments: { name: string; count: number; people: DashboardPerson[] }[];
+  hr_requests: { id: number; action: string; requested_at: string; requested_by_name: string | null; employee_name: string | null }[];
+}
+
+export interface DashboardSummary extends Partial<AdminDashboardExtras> {
+  totals: DashboardTotals & { overdue_customers?: number };
   category_breakdown: { category: string; count: string }[];
   source_breakdown: { source: string; count: string }[];
   monthly_leads: { month: string; count: string }[];
@@ -43,7 +54,26 @@ export const fetchDashboardSummary = async (): Promise<DashboardSummary> => {
 };
 
 // ── Employee Dashboard — scoped to the caller's own employee record ─────
-export interface EmployeeDashboardSummary {
+// V_26.0 — My Workspace (GET /dashboard/employee-stats).
+export interface WorkspaceExtras {
+  workspace: {
+    name: string; employee_code: string | null; photo_url: string | null; is_head: boolean; team_size: number; areas: string[];
+    departments: { name: string; designation: string | null; level: 'head' | 'executive' | null; reports_to: string | null }[];
+  };
+  figures: {
+    customers: number; leads: number; due_now: number; due_customers: number;
+    collected_this_month: number; collected_count: number; awaiting_approval: number; awaiting_approval_count: number;
+  };
+  open_tasks: { id: number; title: string; status: string; due_date: string | null }[];
+  open_tasks_count: number;
+  followups: { id: number; title: string; due_date: string | null; customer_name: string; customer_code: string | null }[];
+  requests: { id: string; module: string; action: string; status: string; requested_at: string; name: string | null }[];
+  requests_pending: number;
+  leave_this_month: number;
+  team: { id: number; name: string; photo_url: string | null; designation: string | null; customers: number; collected: number }[];
+}
+
+export interface EmployeeDashboardSummary extends Partial<WorkspaceExtras> {
   employee: { id: number; name: string };
   my_leads: number;
   my_customers: number;

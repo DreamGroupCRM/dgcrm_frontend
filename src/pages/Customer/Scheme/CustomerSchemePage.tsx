@@ -17,7 +17,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CircularProgress } from '@mui/material';
 import {
-  MdEventNote, MdListAlt, MdCheckCircle, MdErrorOutline, MdSchedule,
+  MdEventNote, MdListAlt,
   MdTrendingUp, MdAccountBalanceWallet, MdHourglassEmpty, MdDownload,
 } from 'react-icons/md';
 import { formatDate } from '../../../utils';
@@ -28,13 +28,8 @@ import { DueGridRow } from '../../../services/paymentService';
 import { CustomerSchemeData, CustomerSchemeSummaryRow } from '../../../types/index';
 import { exportPaymentSchedulePdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport.lazy';
 import { useCustomerPortal } from '../CustomerPortalContext';
-import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
+import { PageHead, Stat, STAT_GRADIENTS, STATUS_META, AwaitingNote, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
 
-const STATUS_META = {
-  paid: { label: 'Paid', icon: MdCheckCircle, color: '#047857', bg: 'rgba(5,150,105,0.12)' },
-  due: { label: 'Due', icon: MdErrorOutline, color: '#dc2626', bg: 'rgba(220,38,38,0.12)' },
-  upcoming: { label: 'Upcoming', icon: MdSchedule, color: '#1f2937', bg: '#FFFF00' },
-} as const;
 
 // Before / After Possession totals each get their own colour band so they
 // stand out at a glance (same colours as the downloaded PDF). The colours
@@ -175,7 +170,7 @@ const CustomerSchemePage: React.FC = () => {
         if (cancelled) return;
         setScheme(schemeData);
         setGridRows(grid.rows);
-        setTotals(totalsFromDueGrid(grid.rows, grid.extra_pay_total ?? 0));
+        setTotals(totalsFromDueGrid(grid));
       } catch {
         if (!cancelled) setError(true);
       } finally {
@@ -197,6 +192,7 @@ const CustomerSchemePage: React.FC = () => {
         <Stat icon={<MdAccountBalanceWallet size={19} />} label="Payment Completed" value={rupee(totals?.paid)} gradient={STAT_GRADIENTS.paid} />
         <Stat icon={<MdHourglassEmpty size={19} />} label="Payment Pending" value={rupee(totals?.pending)} gradient={STAT_GRADIENTS.pending} />
       </div>
+      <AwaitingNote amount={totals?.awaiting} />
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
         <button type="button" className="cp-btn cp-btn-primary" onClick={() => exportPaymentSchedulePdf(scheme)}>

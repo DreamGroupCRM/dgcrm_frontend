@@ -51,8 +51,10 @@ import { Building, PaymentReceipt } from '../../../../types/index';
 import { showAlert } from '../../../../utils';
 import './PaymentReceived.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
-import { serverToday, toYmd } from '../../../../utils/serverTime';
+import { serverToday, toYmd, employeeReceivedMinYmd } from '../../../../utils/serverTime';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
+import { ReceiptEmailSwitch } from '../../../../components/common/ReceiptEmailSwitch';
+import { DataScope, setDataScope } from '../../../../utils/dataScope';
 import DateInput from '../../../../components/common/DateInput';
 import { useAccessProfile } from '../../../../hooks/useAccessProfile';
 
@@ -207,6 +209,9 @@ const PaymentReceivedPage: React.FC = () => {
   const paths = useRoleBasePath();
   // V_25.0 — a Head (set-up department) may request deleting a team payment.
   const { profile: access } = useAccessProfile();
+  // V_26.0 — a non-Admin's Payment Received reaches back to the same date
+  // two months ago (enforced server-side); the date filter stops there too.
+  const receivedMinYmd = paths.isAdmin ? undefined : employeeReceivedMinYmd();
   const canRequestDelete = !paths.isAdmin && Boolean(access && !access.legacy && access.head_of.length > 0);
   const [approvalView, setApprovalView] = useState<ApprovalView>('all');
   const [approvalCounts, setApprovalCounts] = useState<{ approved: number; pending: number } | null>(null);
@@ -529,6 +534,20 @@ const PaymentReceivedPage: React.FC = () => {
 
   const refreshAll = () => { fetchRows(); fetchCategorySummary(); fetchReceivedSummary(); fetchApprovalCounts(); };
 
+  // V_26.0 — a Head's My Data / Team Data on this page too (same switch as
+  // Payment Due): every request carries the choice (X-Data-Scope); the
+  // server narrows rows, totals, search and filters. Leaving the page puts
+  // it back to Team.
+  const viewerIsHead = !paths.isAdmin && Boolean(access && access.head_of.length > 0);
+  const [dataScope, setScopeState] = useState<DataScope>('team');
+  useEffect(() => () => setDataScope('team'), []);
+  const switchDataScope = (next: DataScope) => {
+    if (next === dataScope) return;
+    setDataScope(next);
+    setScopeState(next);
+    refreshAll();
+  };
+
   // Approve actions — admin only (PUT /payments/:id/approve and
   // /bulk-approve are requireAdmin server-side too).
   const handleApprove = async (row: PaymentListRow) => {
@@ -537,8 +556,8 @@ const PaymentReceivedPage: React.FC = () => {
       await approvePayment(row.id);
       toast.success(`Payment for ${row.customer_name || 'customer'} approved.`);
       refreshAll();
-    } catch {
-      toast.error('Failed to approve payment.');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to approve payment.');
     } finally {
       setApprovingId(null);
     }
@@ -549,7 +568,7 @@ const PaymentReceivedPage: React.FC = () => {
     setBulkApproving(true);
     try {
       const res = await bulkApprovePayments(selectedPendingIds);
-      toast.success(`${res.approved} payment(s) approved.`);
+      toast.success(res.message || `${res.approved} payment(s) approved.`);
       setSelectedIds(new Set());
       refreshAll();
     } catch {
@@ -729,11 +748,11 @@ const PaymentReceivedPage: React.FC = () => {
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
             <label style={labelStyle}>Received Date From</label>
-            <DateInput t={t} value={draftFromDate} onChange={(v) => { setDraftFromDate(v); setDraftDateRange(''); }} style={inputStyle} />
+            <DateInput t={t} value={draftFromDate} min={receivedMinYmd} onChange={(v) => { setDraftFromDate(v); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>Received Date To</label>
-            <DateInput t={t} value={draftToDate} onChange={(v) => { setDraftToDate(v); setDraftDateRange(''); }} style={inputStyle} />
+            <DateInput t={t} value={draftToDate} min={receivedMinYmd} onChange={(v) => { setDraftToDate(v); setDraftDateRange(''); }} style={inputStyle} />
           </div>
           <div className="pr-filter-actions flex items-center gap-2 flex-wrap" style={{ gridColumn: 'span 2 / span 2' }}>
             <button type="button" onClick={handleFilter}
@@ -750,6 +769,11 @@ const PaymentReceivedPage: React.FC = () => {
 
       {/* ── Toolbar — Search (left), All/Approved/UnApproved (center),
           Approve Selected/Payment Upcoming/Export CSV/Refresh (right). ── */}
+      {receivedMinYmd && (
+        <div role="note" className="mb-3" style={{ fontSize: 12, color: t.textSecondary }}>
+          Showing payments from {receivedMinYmd.split('-').reverse().join('/')} (last 2 months).
+        </div>
+      )}
       <div className="pr-toolbar rounded-2xl mb-5 p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="pr-toolbar-row flex items-center justify-between gap-3" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
           <div className="pr-toolbar-search flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, width: 260, flexShrink: 0 }}>
@@ -797,6 +821,25 @@ const PaymentReceivedPage: React.FC = () => {
                 <MdCheckCircle size={16} /> {bulkApproving ? 'Approving…' : `Approve Selected (${selectedPendingIds.length})`}
               </button>
             )}
+            {viewerIsHead && (
+              <div role="radiogroup" aria-label="Show data" className="flex items-center gap-2" style={{ flexShrink: 0 }}>
+                {([['mine', 'My Data', '#2563eb'], ['team', 'Team Data', '#15803d']] as const).map(([key, label, color]) => {
+                  const active = dataScope === key;
+                  return (
+                    <button key={key} type="button" role="radio" aria-checked={active} onClick={() => switchDataScope(key)}
+                      className="flex items-center gap-2 rounded-xl"
+                      style={{
+                        padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                        background: active ? color : t.inputBg, color: active ? '#fff' : t.textPrimary,
+                        border: `1px solid ${active ? color : t.inputBorder}`,
+                      }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {paths.isAdmin && <ReceiptEmailSwitch t={t} />}
             {/* V_25.0 — Export CSV is Admin-only. */}
             {paths.isAdmin && (
             <button type="button" onClick={handleExportCsv} disabled={exportingCsv}
@@ -850,7 +893,7 @@ const PaymentReceivedPage: React.FC = () => {
                           .master-table-scroll's overflow:auto. */}
                       <button type="button" title="Actions"
                         ref={rowMenu.openId === r.id ? rowMenu.buttonRef : undefined}
-                        onClick={rowMenu.toggle(r.id, (r.is_approved ? 2 : 1) + (paths.isAdmin ? (r.is_approved ? 1 : 2) : canRequestDelete ? 1 : 0))}
+                        onClick={rowMenu.toggle(r.id, (r.is_approved ? 2 : 1) + (paths.isAdmin ? (r.is_approved ? 1 : 2) : canRequestDelete && !r.is_approved ? 1 : 0))}
                         className="flex items-center justify-center rounded-lg"
                         style={{ width: 28, height: 28, background: 'transparent', border: 'none', color: t.textSecondary, cursor: 'pointer' }}>
                         <MdMoreVert size={18} />
@@ -873,8 +916,9 @@ const PaymentReceivedPage: React.FC = () => {
                           // this via requireAdmin, so this is UI-side only —
                           // an employee must not even see the option.
                           // V_25.0 — a Head may REQUEST a delete (Admin approves);
-                          // Executives still never see it.
-                          ...(paths.isAdmin || canRequestDelete ? [{ key: 'delete', label: paths.isAdmin ? 'Delete' : 'Request Delete', icon: <MdDelete size={14} />, danger: true, disabled: deletingId === r.id, onClick: () => { rowMenu.close(); handleDelete(r); } }] : []),
+                          // Executives still never see it. V_26.0 — only for an
+                          // unapproved payment (approved: Admin only).
+                          ...(paths.isAdmin || (canRequestDelete && !r.is_approved) ? [{ key: 'delete', label: paths.isAdmin ? 'Delete' : 'Request Delete', icon: <MdDelete size={14} />, danger: true, disabled: deletingId === r.id, onClick: () => { rowMenu.close(); handleDelete(r); } }] : []),
                         ]} />
                       )}
                     </td>

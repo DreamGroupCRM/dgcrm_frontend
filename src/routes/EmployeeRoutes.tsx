@@ -38,6 +38,8 @@ const LeadCrudPage = lazyPage(() => import('../pages/Employee/Leads/LeadCrudPage
 const AttendancePage = lazyPage(() => import('../pages/Employee/Attendance/AttendancePage'));
 // Leave — first real frontend for the leave module, self-scoped (V_21.0).
 const LeavePage = lazyPage(() => import('../pages/Employee/Leaves/LeavePage'));
+const MyTasksPage = lazyPage(() => import('../pages/Employee/Tasks/MyTasksPage'));
+const MyRequestsPage = lazyPage(() => import('../pages/Employee/MyRequests/MyRequestsPage'));
 // V_25.0 — HR pages (same components as the admin ones; add/edit goes to
 // Admin approval server-side, admin-only actions are hidden).
 const EmployeeDetailsListPage = lazyPage(() => import('../pages/Admin/Employee/Employee-Details/EmployeeDetailsListPage'));
@@ -82,6 +84,8 @@ const EmployeeRoutes: React.FC = () => (
       <Route path="building-2d-view" element={<Building2DViewPage />} />
       <Route path="attendance" element={<AttendancePage />} />
       <Route path="leaves" element={<LeavePage />} />
+      <Route path="tasks" element={<MyTasksPage />} />
+      <Route path="my-requests" element={<MyRequestsPage />} />
       <Route path="employee-details" element={<EmployeeDetailsListPage />} />
       <Route path="employee-details/add" element={<EmployeeDetailsCrudPage mode="add" />} />
       <Route path="employee-details/view/:id" element={<EmployeeDetailsCrudPage mode="view" />} />

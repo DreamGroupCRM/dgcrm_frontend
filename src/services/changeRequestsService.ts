@@ -8,6 +8,7 @@
 // applied to the real table until an admin approves them. Admin/
 // superadmin only, enforced server-side.
 import axiosInstance from './axiosConfig';
+import { notifyPendingApprovalsChanged } from './pendingApprovalsService';
 
 export type ChangeRequestModule = 'lead' | 'customer' | 'employee' | 'payment';
 
@@ -16,7 +17,8 @@ export type ChangeRequestStatus = 'pending' | 'approved' | 'rejected';
 export interface ChangeRequestRow {
   id: string;
   module: ChangeRequestModule;
-  action: 'create' | 'edit' | 'cancel_booking' | 'delete';
+  // V_26.0 — 'reassign': a Head's customer assignment change.
+  action: 'create' | 'edit' | 'cancel_booking' | 'delete' | 'reassign';
   entity_id: string | null;
   old_values: Record<string, unknown> | null;
   new_values: Record<string, unknown>;
@@ -34,7 +36,35 @@ export interface ChangeRequestRow {
   reviewed_by_name: string | null;
   reviewed_at: string | null;
   admin_remarks: string | null;
+  /** V_26.0 — Admin's corrections before approving (laid over new_values). */
+  admin_values?: Record<string, unknown> | null;
+  // V_26.0 — which customer / unit a customer or payment request is about.
+  record_customer_name?: string | null;
+  record_customer_code?: string | null;
+  record_unit?: string | null;
 }
+
+/** V_26.0 — what an Admin may correct on a customer request before approving
+ * (same list the server enforces in changeRequests.service.ts). */
+export const ADMIN_EDITABLE_CUSTOMER_FIELDS = [
+  'name', 'middle_name', 'last_name', 'email', 'address', 'date_of_birth', 'business_profile_name',
+  'mobile_country_code', 'mobile_number', 'mobile_is_whatsapp', 'whatsapp_country_code', 'whatsapp_number',
+  'alternate_number', 'alternate_contact_name', 'alternate_contact_country_code', 'alternate_contact_mobile',
+  'aadhar_card_no', 'pan_card_no', 'has_parking', 'parking_no',
+] as const;
+export const ADMIN_BOOLEAN_FIELDS = ['mobile_is_whatsapp', 'has_parking'];
+export const CUSTOMER_DOC_FIELDS = ['customer_image', 'application_form', 'declaration_form', 'aadhar_card', 'pan_card', 'allotment_letter'] as const;
+
+/** PUT /api/change-requests/:id/admin-edit (multipart) — Admin's corrections. */
+export const adminEditChangeRequest = async (
+  id: string, fields: Record<string, string>, files: Partial<Record<(typeof CUSTOMER_DOC_FIELDS)[number], File>>,
+): Promise<Record<string, unknown>> => {
+  const form = new FormData();
+  Object.entries(fields).forEach(([k, v]) => form.append(k, v));
+  Object.entries(files).forEach(([k, f]) => { if (f) form.append(k, f); });
+  const res = await axiosInstance.put(`/change-requests/${id}/admin-edit`, form);
+  return res.data.admin_values ?? {};
+};
 
 /** GET /api/change-requests/:module?status= */
 export const fetchChangeRequests = async (module: ChangeRequestModule, status?: ChangeRequestStatus): Promise<ChangeRequestRow[]> => {
@@ -42,12 +72,20 @@ export const fetchChangeRequests = async (module: ChangeRequestModule, status?: 
   return res.data.rows;
 };
 
+/** V_26.0 — GET /api/change-requests/mine: the logged-in user's own requests. */
+export const fetchMyChangeRequests = async (filters: { module?: ChangeRequestModule; action?: ChangeRequestRow['action']; status?: ChangeRequestStatus } = {}): Promise<ChangeRequestRow[]> => {
+  const res = await axiosInstance.get('/change-requests/mine', { params: filters });
+  return res.data.rows ?? [];
+};
+
 /** PUT /api/change-requests/:id/approve — applies the proposed change */
 export const approveChangeRequest = async (id: string): Promise<void> => {
   await axiosInstance.put(`/change-requests/${id}/approve`);
+  notifyPendingApprovalsChanged();
 };
 
 /** PUT /api/change-requests/:id/reject — discards the proposed change */
 export const rejectChangeRequest = async (id: string, remarks?: string): Promise<void> => {
   await axiosInstance.put(`/change-requests/${id}/reject`, remarks ? { remarks } : undefined);
+  notifyPendingApprovalsChanged();
 };

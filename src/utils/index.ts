@@ -261,6 +261,18 @@ export const showAlert = {
     });
     return { isConfirmed: !!result.isConfirmed, reason: (result.value as string | undefined)?.trim() || '' };
   },
+  /**
+   * V_26.0 — confirm with an optional note (e.g. why a request was
+   * rejected, shown to the employee). Returns the note, '' when left blank.
+   */
+  confirmWithNote: async (message: string, title: string, confirmButtonText = 'Confirm', placeholder = 'Add a note (optional)'): Promise<{ isConfirmed: boolean; note: string }> => {
+    const result = await Swal.fire({
+      icon: 'question', title, text: message, input: 'textarea', inputPlaceholder: placeholder,
+      showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#6c757d',
+      confirmButtonText, cancelButtonText: 'Back',
+    });
+    return { isConfirmed: !!result.isConfirmed, note: (result.value as string | undefined)?.trim() || '' };
+  },
   /** Shows "Super Admin/Admin/Employee Logged in Successfully" based on base_role */
   loginSuccess: (baseRole: BaseRole) => {
     const roleLabel = roleLabelFor(baseRole);

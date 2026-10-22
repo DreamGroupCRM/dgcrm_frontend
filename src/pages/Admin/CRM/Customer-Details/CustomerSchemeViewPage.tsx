@@ -15,13 +15,18 @@ import { toast } from '@/utils/toast';
 import {
   MdArrowBack, MdCalculate, MdListAlt, MdPerson, MdApartment, MdPhone,
   MdEmail, MdChat, MdLocationOn, MdBadge, MdExpandMore, MdExpandLess,
+  MdTrendingUp, MdAccountBalanceWallet, MdHourglassEmpty, MdWarningAmber,
 } from 'react-icons/md';
+// V_26.0 — the portal's own summary tiles and totals (scoped .cp- styles).
+import { Stat, STAT_GRADIENTS, StatusChip, AwaitingNote, totalsFromDueGrid } from '../../../Customer/CustomerPortalUi';
+import '../../../Customer/CustomerPortal.css';
+import './CustomerDetails.css';
 
 import { AppTheme } from '../../../../styles/theme';
 import { resolveFileUrl } from '../../../../utils';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { fetchCustomerScheme } from '../../../../services/customerDetailsService';
-import { fetchCustomerDueGrid, DueGridRow } from '../../../../services/paymentService';
+import { fetchCustomerDueGrid, DueGridRow, CustomerDueGrid } from '../../../../services/paymentService';
 import { CustomerSchemeData, CustomerSchemeSummaryRow, CustomerScheduleRow } from '../../../../types/index';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 
@@ -91,7 +96,7 @@ const SummaryTable: React.FC<{ t: Theme; accent: string; heading: string; rows: 
   <div className="mb-5">
     <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>{heading}</div>
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
+      <table className="csv-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr className="master-table-header-gradient" style={{ background: t.insetBg }}>
             <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 40 }}>#</th>
@@ -104,12 +109,12 @@ const SummaryTable: React.FC<{ t: Theme; accent: string; heading: string; rows: 
             <tr key={i} style={{ borderTop: i === 0 ? 'none' : `1px solid ${t.divider}` }}>
               <td style={{ padding: '8px 12px', fontSize: 11.5, color: t.textSecondary }}>{i + 1}</td>
               <td style={{ padding: '8px 12px', fontSize: 12, color: t.textPrimary }}>{r.label}</td>
-              <td style={{ padding: '8px 12px', fontSize: 12, color: t.textPrimary, textAlign: 'right', fontWeight: 600 }}>{formatINR(r.amount)}</td>
+              <td style={{ padding: '8px 12px', fontSize: 12, color: t.textPrimary, textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>{formatINR(r.amount)}</td>
             </tr>
           ))}
           <tr style={{ borderTop: `1px solid ${t.surfaceBorder}`, background: t.insetBg }}>
             <td colSpan={2} style={{ padding: '9px 12px', fontSize: 12, fontWeight: 700, color: t.textPrimary }}>{totalLabel}</td>
-            <td style={{ padding: '9px 12px', fontSize: 12, fontWeight: 800, color: accent, textAlign: 'right' }}>{formatINR(total)}</td>
+            <td style={{ padding: '9px 12px', fontSize: 12, fontWeight: 800, color: accent, textAlign: 'right', whiteSpace: 'nowrap' }}>{formatINR(total)}</td>
           </tr>
         </tbody>
       </table>
@@ -126,18 +131,19 @@ const SummaryTable: React.FC<{ t: Theme; accent: string; heading: string; rows: 
 const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; rows: CustomerScheduleRow[]; total: number; totalLabel: string; gridRows?: DueGridRow[] }> = ({ t, accent, section, rows, total, totalLabel, gridRows }) => (
   <div className="mb-5">
     <div style={{ overflowX: 'auto', border: `1px solid ${t.surfaceBorder}`, borderRadius: 10 }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
+      <table className="csv-table csv-sched" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr className="master-table-header-gradient" style={{ background: t.insetBg }}>
             <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 56 }}>Sr No</th>
             <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 110 }}>Inst Date</th>
             <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>({section}) Mode Of Payment</th>
             <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}` }}>Amount</th>
+            {gridRows && <th className="csv-status-col" style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, borderBottom: `1px solid ${t.surfaceBorder}`, width: 110 }}>Status</th>}
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr><td colSpan={4} style={{ padding: 20, textAlign: 'center', fontSize: 11.5, color: t.textSecondary }}>No installments in this phase.</td></tr>
+            <tr><td colSpan={gridRows ? 5 : 4} style={{ padding: 20, textAlign: 'center', fontSize: 11.5, color: t.textSecondary }}>No installments in this phase.</td></tr>
           ) : rows.map((r, i) => {
             const settled = !!gridRows?.[i]?.settled_via_extra_pay;
             const dueAmount = gridRows?.[i]?.due_amount;
@@ -155,7 +161,9 @@ const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; ro
                   )}
                 </td>
                 <td style={{ padding: '7px 12px', fontSize: 11.5, textAlign: 'right', fontWeight: 600 }}>
-                  <span style={{ color: settled ? t.textSecondary : t.textPrimary, textDecoration: settled ? 'line-through' : 'none' }}>{formatINR(r.amount)}</span>
+                  <span style={{ color: settled ? t.textSecondary : t.textPrimary, textDecoration: settled ? 'line-through' : 'none', whiteSpace: 'nowrap' }}>{formatINR(r.amount)}</span>
+                  {/* On a phone the status sits under the amount (no Status column). */}
+                  {gridRows && <div className="csv-status-inline" style={{ marginTop: 3 }}><StatusChip row={gridRows[i]} /></div>}
                   {partiallyCredited && (() => {
                     // V_25.0 — say where the already-paid part came from:
                     // an earlier over-payment carried forward, or a part payment.
@@ -170,6 +178,7 @@ const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; ro
                     );
                   })()}
                 </td>
+                {gridRows && <td className="csv-status-col" style={{ padding: '7px 12px' }}><StatusChip row={gridRows[i]} /></td>}
               </tr>
             );
           })}
@@ -202,6 +211,8 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
   // loading/error state, and silently stays null (no strikethrough shown)
   // if it fails, rather than treating it as fatal.
   const [gridRows, setGridRows] = useState<DueGridRow[] | null>(null);
+  const [grid, setGrid] = useState<CustomerDueGrid | null>(null);
+  const [gridFailed, setGridFailed] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -231,8 +242,8 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
     if (!id) return;
     let cancelled = false;
     fetchCustomerDueGrid(id)
-      .then((grid) => { if (!cancelled) setGridRows(grid.rows); })
-      .catch(() => { if (!cancelled) setGridRows(null); });
+      .then((g) => { if (!cancelled) { setGridRows(g.rows); setGrid(g); } })
+      .catch(() => { if (!cancelled) { setGridRows(null); setGridFailed(true); } });
     return () => { cancelled = true; };
   }, [id]);
 
@@ -327,6 +338,35 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
           </div>
         </div>
       </SectionCard>
+
+      {/* V_26.0 — the same summary tiles the customer sees on their portal,
+          from the same due grid and the same calculation (totalsFromDueGrid),
+          so Admin, employee and customer always see identical figures. Due
+          Now = what is past its date and still unpaid. */}
+      {gridRows && (() => {
+        const totals = totalsFromDueGrid(grid ?? { rows: gridRows });
+        const dueNow = gridRows.filter((r) => r.status === 'due').reduce((sum, r) => sum + r.due_amount, 0);
+        // ₹0 rows (e.g. an unused Remaining Booking Amount) aren't instalments.
+        const instalments = gridRows.filter((r) => r.amount > 0);
+        const paidRows = instalments.filter((r) => r.status === 'paid').length;
+        return (
+          <div className="cp-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, marginBottom: 16 }}>
+            <Stat icon={<MdTrendingUp size={19} />} label="Total Flat Cost" value={formatINR(totals.totalCost)} gradient={STAT_GRADIENTS.total} />
+            <Stat icon={<MdAccountBalanceWallet size={19} />} label="Payment Completed" value={formatINR(totals.paid)} gradient={STAT_GRADIENTS.paid} />
+            <Stat icon={<MdHourglassEmpty size={19} />} label="Payment Pending" value={formatINR(totals.pending)} gradient={STAT_GRADIENTS.pending} />
+            <Stat icon={<MdWarningAmber size={19} />} label={`Due Now · ${paidRows}/${instalments.length} paid`} value={formatINR(dueNow)} gradient="linear-gradient(135deg, #b45309, #d97706)" />
+            <div style={{ gridColumn: '1 / -1' }}><AwaitingNote amount={totals.awaiting} staff /></div>
+          </div>
+        );
+      })()}
+
+      {!gridRows && gridFailed && (
+        <div className="rounded-2xl mb-4 px-4 py-3" style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textSecondary, fontSize: 12 }}>
+          {from === 'cancelled'
+            ? 'This booking is cancelled, so paid / pending totals and instalment status are not shown here. See Cancelled Booking for payments and refunds.'
+            : 'The paid / pending totals and instalment status could not be loaded. Please refresh the page.'}
+        </div>
+      )}
 
       {/* ── EMI Scheme summary — accordion, background now matches EMI
           Schedule's green (was its own blue). ──────────────────────── */}

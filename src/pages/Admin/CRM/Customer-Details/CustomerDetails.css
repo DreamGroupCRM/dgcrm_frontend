@@ -422,3 +422,14 @@
   .cust-add-btn { padding: 6px 8px !important; }
   .cust-export-btn { padding: 6px 8px !important; }
 }
+
+/* V_26.0 — Customer Scheme view: the Status column on wide screens; on a
+   phone the status sits under the amount and cells get tighter padding,
+   so the Amount column never goes off-screen. */
+.csv-status-inline { display: none; }
+@media (max-width: 640px) {
+  .csv-sched .csv-status-col { display: none; }
+  .csv-sched .csv-status-inline { display: block; }
+  .csv-table th, .csv-table td { padding-left: 6px !important; padding-right: 6px !important; }
+  .csv-sched th:first-child, .csv-sched td:first-child { width: 28px !important; }
+}

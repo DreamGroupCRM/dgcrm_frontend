@@ -24,7 +24,7 @@ import { PaymentReceipt } from '../../../types/index';
 import { HistoryCard, HistorySection, customerInfoItems, propertyInfoItems } from '../../../components/common/HistoryPopup';
 import RefundHistoryTable from '../../../components/common/RefundHistoryTable';
 import { useCustomerPortal } from '../CustomerPortalContext';
-import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals } from '../CustomerPortalUi';
+import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals, AwaitingNote } from '../CustomerPortalUi';
 
 const CustomerPaymentHistoryPage: React.FC = () => {
   const { selectedId, selected, cancelled, detail } = useCustomerPortal();
@@ -54,8 +54,10 @@ const CustomerPaymentHistoryPage: React.FC = () => {
         if (stale) return;
         setRows(payments);
         setTotals(grid
-          ? totalsFromDueGrid(grid.rows, grid.extra_pay_total ?? 0)
-          : { totalCost: Number(selected?.flat_amount || 0), paid: payments.reduce((n, r) => n + Number(r.amount || 0), 0), pending: 0 });
+          ? totalsFromDueGrid(grid)
+          // V_26.0 — approved payments only, as everywhere else.
+          : { totalCost: Number(selected?.flat_amount || 0), paid: payments.filter((r) => r.is_approved).reduce((n, r) => n + Number(r.amount || 0), 0), pending: 0,
+              awaiting: payments.filter((r) => !r.is_approved).reduce((n, r) => n + Number(r.amount || 0), 0) });
       } catch {
         if (!stale) setError(true);
       } finally {
@@ -141,6 +143,7 @@ const CustomerPaymentHistoryPage: React.FC = () => {
           )}
         </div>
       )}
+      {selectedId != null && <AwaitingNote amount={totals?.awaiting} />}
 
       {selectedId != null && (
         <HistoryCard t={t} title={`Payments History - Total Transaction (${sorted.length})`} customer={customer} property={property} extra={extra}>

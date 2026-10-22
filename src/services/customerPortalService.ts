@@ -129,6 +129,10 @@ export interface PortalDueGrid {
   rows: DueGridRow[];
   /** V_25.0 — Extra Pay total (kept out of the rows). */
   extra_pay_total?: number;
+  /** V_26.0 — approved payments (Extra Pay included): what the tiles count as paid. */
+  approved_paid_total?: number;
+  /** V_26.0 — entered but still awaiting Admin approval (not counted as paid). */
+  awaiting_approval_total?: number;
 }
 
 /** GET /api/customer-portal/bookings */

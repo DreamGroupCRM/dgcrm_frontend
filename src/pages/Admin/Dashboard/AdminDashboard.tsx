@@ -1,46 +1,42 @@
 // ==========================================
-// DREAM GROUP CRM - ADMIN DASHBOARD
+// DREAM GROUP CRM - ADMIN DASHBOARD — "ADMIN CONSOLE" (V_26.0)
 // ==========================================
-// Every number here comes from GET /api/dashboard/stats (dashboard.service.ts
-// in dgcrm_backend) — this page used to render entirely hardcoded demo
-// values (24 employees, 147 leads, fake "Recent Leads" rows, ...) with no
-// API call at all; wired to the real, company-scoped data so it reflects
-// whatever is actually in the database, including an empty one.
+// Company-wide monitoring for Admin / Super Admin: who is waiting on an
+// Admin, this month's money, the Recovery team, the team by department,
+// HR requests and shortcuts. Opens with the dark-teal Admin Console band
+// (see components/dashboard/DashboardParts.tsx) so it is never confused
+// with an employee's My Workspace. Data: GET /api/dashboard/stats.
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from '@/utils/toast';
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
-import { AppTheme } from '../../../styles/theme';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
-import { formatDate } from '../../../utils';
 import { fetchDashboardSummary, DashboardSummary } from '../../../services/dashboardService';
+import { ROUTES } from '../../../constants';
+import { formatDate } from '../../../utils';
+import { serverToday } from '../../../utils/serverTime';
 import {
-  MdPeople, MdLeaderboard, MdPayment, MdAttachMoney,
-  MdHome, MdEventAvailable,
-} from 'react-icons/md';
+  IdentityBand, KpiTile, plural, Panel, Avatar, Empty, rupeeCompact, waitingFor,
+} from '../../../components/dashboard/DashboardParts';
 import './AdminDashboard.css';
 
-type Theme = AppTheme;
-
-const rupeeCompact = (n: number): string => {
-  const v = Math.round(n);
-  if (v >= 10000000) return `₹${(v / 10000000).toFixed(1).replace(/\.0$/, '')}Cr`;
-  if (v >= 100000) return `₹${(v / 100000).toFixed(1).replace(/\.0$/, '')}L`;
-  if (v >= 1000) return `₹${(v / 1000).toFixed(1).replace(/\.0$/, '')}K`;
-  return `₹${v.toLocaleString('en-IN')}`;
-};
-
-interface CardDef { label: string; value: string; icon: React.ReactNode; color: string; caption?: string }
-
-const statusMap: Record<string, { bg: string; text: string }> = {
+// Lead category chips (same colours as the Leads pages).
+const LEAD_STATUS: Record<string, { bg: string; text: string }> = {
   hot: { bg: '#fee2e2', text: '#b91c1c' },
   warm: { bg: '#fef9c3', text: '#92400e' },
   cold: { bg: '#dbeafe', text: '#1d4ed8' },
 };
 
+const greeting = (): string => {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+};
+
 const AdminDashboard: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { isDark, t, tintColor } = useAppearanceTokens();
+  const { t, isDark } = useAppearanceTokens();
+  const { user, role } = useAppSelector((s) => s.auth);
 
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,8 +46,7 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetchDashboardSummary();
-        setData(res);
+        setData(await fetchDashboardSummary());
       } catch {
         toast.error('Failed to load dashboard data.');
       } finally {
@@ -61,121 +56,173 @@ const AdminDashboard: React.FC = () => {
   }, []);
 
   const totals = data?.totals;
-  // Real subtext only where a genuine second number exists — no fabricated
-  // "+2 this month" style deltas (no history is tracked for these totals).
-  const cards: CardDef[] = totals ? [
-    { label: 'Total Employees', value: String(totals.employees), icon: <MdPeople />, color: tintColor('#3b82f6') },
-    { label: 'Active Leads', value: String(totals.leads), icon: <MdLeaderboard />, color: tintColor('#22c55e'),
-      caption: `${totals.hot_leads} hot` },
-    { label: 'Payment Due', value: rupeeCompact(totals.payment_due), icon: <MdPayment />, color: tintColor('#ef4444'),
-      caption: 'Outstanding across all customers' },
-    { label: 'Payment Received', value: rupeeCompact(totals.payment_received), icon: <MdAttachMoney />, color: tintColor('#10b981'),
-      caption: 'All-time total' },
-    { label: 'Total Customers', value: String(totals.customers), icon: <MdHome />, color: tintColor('#8b5cf6') },
-    { label: 'Today Attendance', value: `${totals.attendance_present_today}/${totals.attendance_total_active}`, icon: <MdEventAvailable />, color: tintColor('#f97316'),
-      caption: totals.attendance_total_active > 0
-        ? `${Math.round((totals.attendance_present_today / totals.attendance_total_active) * 100)}% present`
-        : 'No active employees' },
-  ] : [];
+  const waiting = data?.approvals?.total ?? 0;
+  const oldest = (data?.approvals?.queues ?? []).map((q) => q.oldest).filter(Boolean).sort()[0] ?? null;
+  const today = serverToday().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const name = [user?.first_name, user?.last_name].filter(Boolean).join(' ');
+  const rowBg = isDark ? t.insetBg : '#f8fafc';
+  const red = isDark ? '#fca5a5' : '#b42318';
+  const amber = isDark ? '#fcd34d' : '#92400e';
+
+  const kpis = [
+    { label: 'Customers', value: String(totals?.customers ?? 0), to: ROUTES.ADMIN.CUSTOMER_DETAILS },
+    { label: 'Employees', value: String(totals?.employees ?? 0), note: totals ? `${totals.attendance_present_today} present today` : undefined, to: ROUTES.ADMIN.EMPLOYEE_DETAILS },
+    { label: 'Active leads', value: String(totals?.leads ?? 0), note: totals ? `${totals.hot_leads} hot` : undefined, noteColor: red, to: ROUTES.ADMIN.LEADS },
+    { label: 'Received this month', value: rupeeCompact(data?.month?.received ?? 0), note: 'approved payments', to: ROUTES.ADMIN.PAYMENT_RECEIVED },
+    { label: 'Overdue', value: rupeeCompact(totals?.payment_due ?? 0), note: totals?.overdue_customers != null ? plural(totals.overdue_customers, 'customer') : undefined, noteColor: red, to: ROUTES.ADMIN.PAYMENT_DUES },
+    { label: 'Waiting for you', value: String(waiting), note: oldest ? `oldest ${waitingFor(oldest)}` : undefined, noteColor: amber, to: ROUTES.ADMIN.PENDING_APPROVALS },
+  ];
+
+  const shortcuts = [
+    { label: 'Add customer', to: `${ROUTES.ADMIN.CUSTOMER_DETAILS}/add` },
+    { label: 'Add employee', to: `${ROUTES.ADMIN.EMPLOYEE_DETAILS}/add` },
+    { label: 'Payment Received', to: ROUTES.ADMIN.PAYMENT_RECEIVED },
+    { label: 'Payment Dues', to: ROUTES.ADMIN.PAYMENT_DUES },
+    { label: 'Assign task', to: ROUTES.ADMIN.TASKS },
+    { label: 'Reports', to: ROUTES.ADMIN.EXECUTIVE_DASHBOARD },
+  ];
+
+  const bandButton: React.CSSProperties = { textDecoration: 'none', fontWeight: 700, fontSize: 13, padding: '11px 16px', borderRadius: 12, minHeight: 44, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center' };
 
   return (
-    <div className="admin-dash-page space-y-6" style={{ fontFamily: t.fontFamily }}>
-
-      {/* ── Stat Cards ── */}
-      <div className="admin-dash-stat-grid grid grid-cols-2 lg:grid-cols-3 gap-4 stat-card-grid">
-        {(loading ? Array.from({ length: 6 }) : cards).map((card, i) => (
-          <div
-            key={i}
-            className="admin-dash-card rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
-            style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = t.hoverBorder)}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = t.surfaceBorder)}
-          >
-            {loading || !card ? (
-              <div className="animate-pulse" style={{ height: 84 }}>
-                <div className="rounded-xl" style={{ width: 44, height: 44, background: t.insetBg, marginBottom: 16 }} />
-                <div style={{ width: '50%', height: 20, background: t.insetBg, borderRadius: 6 }} />
-              </div>
-            ) : (
-              <>
-                <div className="flex items-start justify-between mb-4">
-                  <div className="p-3 rounded-xl" style={{ background: isDark ? t.insetBg : `${(card as CardDef).color}18` }}>
-                    <span className="text-2xl" style={{ color: (card as CardDef).color }}>{(card as CardDef).icon}</span>
-                  </div>
-                </div>
-                <p className="text-2xl font-bold" style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>
-                  {(card as CardDef).value}
-                </p>
-                <p className="text-sm mt-1" style={{ color: t.textSecondary }}>{(card as CardDef).label}</p>
-                {(card as CardDef).caption && (
-                  <p className="text-xs mt-1" style={{ color: t.textMuted }}>{(card as CardDef).caption}</p>
-                )}
-              </>
-            )}
+    <div className="admin-dash-page" style={{ fontFamily: t.fontFamily, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <IdentityBand
+        kind="admin"
+        eyebrow="ADMIN CONSOLE · DREAM GROUP CRM"
+        title={`${greeting()}${name ? `, ${name}` : ''}`}
+        subtitle={`${today} · Company-wide view · ${role === 'superadmin' ? 'Super Admin' : 'Admin'}`}
+        right={
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <Link to={ROUTES.ADMIN.PENDING_APPROVALS} style={{ ...bandButton, background: '#ffffff', color: '#073b3b' }}>
+              {waiting > 0 ? `Review ${waiting} approval${waiting === 1 ? '' : 's'}` : 'No approvals waiting'}
+            </Link>
+            <Link to={ROUTES.ADMIN.TASKS} style={{ ...bandButton, color: '#ffffff', border: '1px solid #5fb3b3' }}>Assign task</Link>
           </div>
-        ))}
+        }
+      />
+
+      <section aria-label="Key figures" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
+        {kpis.map((k) => <KpiTile key={k.label} t={t} loading={loading} {...k} />)}
+      </section>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18 }}>
+        <Panel t={t} title="Pending Admin Approval" action={{ label: 'Open queue', to: ROUTES.ADMIN.PENDING_APPROVALS }}>
+          {loading ? <Empty t={t}>Loading…</Empty>
+            : !data?.approvals?.queues.length ? <Empty t={t}>Nothing is waiting for an Admin.</Empty>
+            : data.approvals.queues.map((q) => (
+              <div key={q.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, background: rowBg }}>
+                <span style={{ flex: '1 1 auto', fontSize: 13, fontWeight: 600, color: t.textPrimary }}>{q.label}</span>
+                {q.oldest && <span style={{ fontSize: 11.5, color: t.textSecondary }}>oldest {waitingFor(q.oldest)}</span>}
+                <span style={{ minWidth: 30, textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#ffffff', background: '#0A7474', borderRadius: 10, padding: '3px 8px' }}>{q.count}</span>
+              </div>
+            ))}
+        </Panel>
+
+        <Panel t={t} title="Payments & Recovery — this month" action={{ label: 'Payment Received', to: ROUTES.ADMIN.PAYMENT_RECEIVED }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+            {[
+              ['Received', rupeeCompact(data?.month?.received ?? 0), isDark ? '#5eead4' : '#0A7474'],
+              ['Overdue', rupeeCompact(totals?.payment_due ?? 0), isDark ? '#fca5a5' : '#b42318'],
+              ['Awaiting approval', rupeeCompact(data?.month?.awaiting_approval ?? 0), isDark ? '#fcd34d' : '#92400e'],
+            ].map(([label, value, color]) => (
+              <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 11.5, color: t.textSecondary }}>{label}</span>
+                <span style={{ fontSize: 19, fontWeight: 800, color }}>{loading ? '…' : value}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ borderTop: `1px solid ${t.divider}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: t.textSecondary }}>Recovery team — collected on their customers</span>
+            {!loading && !data?.recovery_team?.length && <Empty t={t}>No Recovery department set up yet.</Empty>}
+            {(data?.recovery_team ?? []).map((r) => (
+              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12.5, color: t.textPrimary }}>
+                <span>{r.name} <span style={{ color: t.textSecondary }}>· {r.designation ?? (r.level === 'head' ? 'Recovery Head' : 'Recovery')}</span></span>
+                <span style={{ fontWeight: 700 }}>{rupeeCompact(r.collected)}</span>
+              </div>
+            ))}
+          </div>
+        </Panel>
       </div>
 
-      {/* ── Recent Leads ── */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-        <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: `1px solid ${t.divider}` }}>
-          <h2 className="font-semibold text-lg" style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>
-            Recent Leads
-          </h2>
+      <Panel t={t} title="Team by department" action={{ label: 'Employee Details', to: ROUTES.ADMIN.EMPLOYEE_DETAILS }}>
+        <span style={{ fontSize: 12, color: t.textSecondary, marginTop: -4 }}>
+          {totals ? `${totals.employees} active · ${totals.attendance_present_today} present today` : ''}
+        </span>
+        {!loading && !data?.departments?.length && <Empty t={t}>No departments set up yet.</Empty>}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14 }}>
+          {(data?.departments ?? []).map((d) => (
+            <div key={d.name} style={{ border: `1px solid ${t.surfaceBorder}`, borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: t.textPrimary }}>{d.name}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#5eead4' : '#0A7474', background: isDark ? '#0f2b2b' : '#e6f2f2', borderRadius: 20, padding: '2px 9px' }}>{d.count} {d.count === 1 ? 'person' : 'people'}</span>
+              </div>
+              {d.people.map((p) => (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  <Avatar name={p.name} photo={p.photo_url} bg={p.level === 'head' ? '#0A7474' : '#2563eb'} />
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: t.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                    <span style={{ fontSize: 11.5, color: t.textSecondary }}>{p.designation ?? d.name}</span>
+                  </div>
+                </div>
+              ))}
+              {d.count > d.people.length && <span style={{ fontSize: 11.5, color: t.textSecondary }}>+{d.count - d.people.length} more</span>}
+            </div>
+          ))}
         </div>
+      </Panel>
 
-        {loading ? (
-          <div className="px-6 py-8 text-center" style={{ fontSize: 12.5, color: t.textMuted }}>Loading…</div>
-        ) : !data || data.recent_leads.length === 0 ? (
-          <div className="px-6 py-8 text-center" style={{ fontSize: 12.5, color: t.textMuted }}>No leads yet.</div>
-        ) : (
-          <div className="overflow-x-auto responsive-table">
-            <table className="w-full">
-              <thead>
-                <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                  {['#', 'Name', 'Mobile', 'Status', 'Date'].map((h) => (
-                    <th key={h} className="text-left px-6 py-3 text-xs uppercase font-semibold tracking-wider" style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.recent_leads.map((lead, i) => {
-                  const statusKey = (lead.category || '').toLowerCase();
-                  const status = statusMap[statusKey] ?? { bg: t.insetBg, text: t.textSecondary };
-                  return (
-                    <tr
-                      key={lead.id}
-                      className="transition-colors"
-                      style={{ borderTop: `1px solid ${t.tableRowBorder}` }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.tableRowHover)}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
-                    >
-                      <td className="px-6 py-3.5 text-sm" style={{ color: t.textPrimary }}>
-                        {String(i + 1).padStart(2, '0')}
-                      </td>
-                      <td className="px-6 py-3.5 text-sm font-semibold" style={{ color: t.textPrimary, fontFamily: t.fontFamily }}>
-                        {lead.name}
-                      </td>
-                      <td className="px-6 py-3.5 text-sm font-mono" style={{ color: t.textSecondary }}>
-                        {lead.mobile_number || '—'}
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: status.bg, color: status.text, textTransform: 'capitalize' }}>
-                          {lead.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3.5 text-sm" style={{ color: t.textSecondary }}>
-                        {formatDate(lead.created_at)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      <Panel t={t} title="Recent leads" action={{ label: 'All leads', to: ROUTES.ADMIN.LEADS }}>
+        {loading ? <Empty t={t}>Loading…</Empty>
+          : !data?.recent_leads.length ? <Empty t={t}>No leads yet.</Empty>
+          : (
+            <div className="master-table-scroll">
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
+                <thead>
+                  <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
+                    {['Name', 'Mobile', 'Status', 'Date'].map((h) => (
+                      <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.recent_leads.map((lead) => {
+                    const st = LEAD_STATUS[(lead.category || '').toLowerCase()] ?? { bg: t.insetBg, text: t.textSecondary };
+                    return (
+                      <tr key={lead.id} style={{ borderTop: `1px solid ${t.divider}` }}>
+                        <td style={{ padding: '10px 14px', fontSize: 12.5, fontWeight: 600, color: t.textPrimary }}>{lead.name}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 12.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{lead.mobile_number || '—'}</td>
+                        <td style={{ padding: '10px 14px' }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 20, background: st.bg, color: st.text, textTransform: 'capitalize' }}>{lead.category || '—'}</span>
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: 12.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatDate(lead.created_at)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </Panel>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18 }}>
+        <Panel t={t} title="HR approvals" action={{ label: 'Review', to: ROUTES.ADMIN.PENDING_APPROVALS }}>
+          {!loading && !data?.hr_requests?.length && <Empty t={t}>No HR requests waiting.</Empty>}
+          {(data?.hr_requests ?? []).map((h) => (
+            <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12.5, padding: '8px 0', borderTop: `1px solid ${t.divider}`, color: t.textPrimary }}>
+              <span>{h.action === 'create' ? 'New employee' : 'Edit'} — {h.employee_name ?? 'employee'}</span>
+              <span style={{ color: t.textSecondary, whiteSpace: 'nowrap' }}>{h.requested_by_name ?? ''} · {formatDate(h.requested_at)}</span>
+            </div>
+          ))}
+        </Panel>
+        <Panel t={t} title="Shortcuts">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+            {shortcuts.map((s) => (
+              <Link key={s.label} to={s.to} style={{ textDecoration: 'none', color: isDark ? '#99f6e4' : '#073b3b', background: isDark ? '#0f2b2b' : '#e6f2f2', borderRadius: 12, padding: 12, fontSize: 12.5, fontWeight: 700, textAlign: 'center', minHeight: 44, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {s.label}
+              </Link>
+            ))}
           </div>
-        )}
+        </Panel>
       </div>
     </div>
   );
