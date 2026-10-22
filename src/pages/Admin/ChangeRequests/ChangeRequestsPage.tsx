@@ -25,6 +25,7 @@ import {
   fetchChangeRequests, approveChangeRequest, rejectChangeRequest,
   ChangeRequestRow, ChangeRequestModule,
   adminEditChangeRequest, ADMIN_EDITABLE_CUSTOMER_FIELDS, ADMIN_BOOLEAN_FIELDS, CUSTOMER_DOC_FIELDS,
+  ADMIN_EDITABLE_EMPLOYEE_FIELDS, EMPLOYEE_DOC_FIELDS,
 } from '../../../services/changeRequestsService';
 import { AppTheme } from '../../../styles/theme';
 import { RequestValuesTable, fieldLabel } from '../../../components/common/RequestValuesTable';
@@ -62,8 +63,12 @@ function summarize(row: ChangeRequestRow): string {
   const old = row.old_values || {};
   // Customers keep the first name in `name`, employees in `first_name`.
   const oldName = [old.first_name ?? old.name, old.last_name].filter(Boolean).join(' ');
-  const newName = [v.name, v.middle_name, v.last_name].filter(Boolean).join(' ');
-  const candidate = (v.customer_name || newName || personName || old.customer_name || oldName || v.title || v.mobile_number || v.email) as string | undefined;
+  // V_26.0 — customers keep the first name in `name` (only then is this a
+  // customer's name); an edit is named by who the record is now.
+  const newName = v.name ? [v.name, v.middle_name, v.last_name].filter(Boolean).join(' ') : '';
+  const candidate = (row.action === 'edit'
+    ? (old.customer_name || oldName || v.customer_name || newName || personName)
+    : (v.customer_name || newName || personName || old.customer_name || oldName)) || v.title || v.mobile_number || v.email;
   return candidate ? String(candidate) : `Request #${row.id}`;
 }
 
@@ -73,16 +78,26 @@ const recordContext = (row: ChangeRequestRow): string =>
   [row.record_customer_name && row.module === 'payment' ? row.record_customer_name : null, row.record_customer_code, row.record_unit]
     .filter(Boolean).join(' · ');
 
-// V_26.0 — Admin corrects a customer add / edit request before approving:
-// contact / identity fields and the six documents (never prices or the
-// payment plan — the server enforces the same list). Saved separately from
-// the employee's submission, which stays as sent.
+// V_26.0 — Admin corrects a customer or employee add / edit request
+// before approving: contact / identity fields and the documents (never
+// prices, the payment plan, department, salary or bank details — the
+// server enforces the same lists). Saved separately from the employee's
+// submission, which stays as sent.
+const DATE_FIELDS = ['date_of_birth', 'joining_date'];
+// Upload field → label; for a customer the upload field is the stored key.
+const docFieldsFor = (row: ChangeRequestRow): [string, string][] => row.module === 'employee'
+  ? Object.entries(EMPLOYEE_DOC_FIELDS).map(([field, key]) => [field, fieldLabel(key)])
+  : CUSTOMER_DOC_FIELDS.map((k) => [k, fieldLabel(k)]);
+const canAdminEdit = (row: ChangeRequestRow) =>
+  (row.module === 'customer' || row.module === 'employee') && (row.action === 'create' || row.action === 'edit') && row.status === 'pending';
 const AdminEditForm: React.FC<{ t: AppTheme; row: ChangeRequestRow; onSaved: (adminValues: Record<string, unknown>) => void; onCancel: () => void }> = ({ t, row, onSaved, onCancel }) => {
-  const current = { ...row.new_values, ...(row.admin_values ?? {}) };
+  // An edit starts from the record as it is now, so unchanged details show too.
+  const current = { ...(row.action === 'edit' ? row.old_values ?? {} : {}), ...row.new_values, ...(row.admin_values ?? {}) };
+  const editable: readonly string[] = row.module === 'employee' ? ADMIN_EDITABLE_EMPLOYEE_FIELDS : ADMIN_EDITABLE_CUSTOMER_FIELDS;
   const asText = (v: unknown) => (v === null || v === undefined ? '' : String(v));
   const [fields, setFields] = useState<Record<string, string>>(() =>
-    Object.fromEntries(ADMIN_EDITABLE_CUSTOMER_FIELDS.map((k) => [k, asText(current[k])])));
-  const [files, setFiles] = useState<Partial<Record<(typeof CUSTOMER_DOC_FIELDS)[number], File>>>({});
+    Object.fromEntries(editable.map((k) => [k, asText(current[k])])));
+  const [files, setFiles] = useState<Partial<Record<string, File>>>({});
   const [saving, setSaving] = useState(false);
   const input: React.CSSProperties = { width: '100%', padding: '6px 8px', fontSize: 12, borderRadius: 8, border: `1px solid ${t.inputBorder}`, background: t.inputBg, color: t.textPrimary };
 
@@ -90,7 +105,7 @@ const AdminEditForm: React.FC<{ t: AppTheme; row: ChangeRequestRow; onSaved: (ad
     if (saving) return;
     // Only what the Admin actually changed is sent.
     const changed = Object.fromEntries(Object.entries(fields).filter(([k, v]) =>
-      k === 'date_of_birth' ? v.slice(0, 10) !== asText(current[k]).slice(0, 10) : v !== asText(current[k])));
+      DATE_FIELDS.includes(k) ? v.slice(0, 10) !== asText(current[k]).slice(0, 10) : v !== asText(current[k])));
     if (Object.keys(changed).length === 0 && Object.keys(files).length === 0) { toast.error('Nothing changed.'); return; }
     setSaving(true);
     try {
@@ -107,18 +122,24 @@ const AdminEditForm: React.FC<{ t: AppTheme; row: ChangeRequestRow; onSaved: (ad
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ fontSize: 12, color: t.textSecondary }}>
-        Correct contact details or replace documents. Prices and the payment plan can't be changed here — reject the request instead.
+        {row.module === 'employee'
+          ? "Correct contact details or replace documents. Department, designation, salary and bank details can't be changed here — reject the request instead."
+          : "Correct contact details or replace documents. Prices and the payment plan can't be changed here — reject the request instead."}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {ADMIN_EDITABLE_CUSTOMER_FIELDS.map((k) => (
+        {editable.map((k) => (
           <label key={k} style={{ fontSize: 11, color: t.textSecondary, fontWeight: 600 }}>
             {fieldLabel(k)}
             {ADMIN_BOOLEAN_FIELDS.includes(k) ? (
               <select value={fields[k] === 'true' ? 'true' : 'false'} onChange={(e) => setFields((f) => ({ ...f, [k]: e.target.value }))} style={input}>
                 <option value="true">Yes</option><option value="false">No</option>
               </select>
-            ) : k === 'date_of_birth' ? (
-              <DateInput t={t} value={fields[k].slice(0, 10)} max={serverTodayYmd()} onChange={(v) => setFields((f) => ({ ...f, [k]: v }))} style={input} />
+            ) : k === 'gender' ? (
+              <select value={fields[k]} onChange={(e) => setFields((f) => ({ ...f, [k]: e.target.value }))} style={input}>
+                <option value="">—</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
+              </select>
+            ) : DATE_FIELDS.includes(k) ? (
+              <DateInput t={t} value={fields[k].slice(0, 10)} max={k === 'date_of_birth' ? serverTodayYmd() : undefined} onChange={(v) => setFields((f) => ({ ...f, [k]: v }))} style={input} />
             ) : (
               <input value={fields[k]} onChange={(e) => setFields((f) => ({ ...f, [k]: e.target.value }))} style={input} />
             )}
@@ -126,9 +147,9 @@ const AdminEditForm: React.FC<{ t: AppTheme; row: ChangeRequestRow; onSaved: (ad
         ))}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {CUSTOMER_DOC_FIELDS.map((k) => (
+        {docFieldsFor(row).map(([k, label]) => (
           <label key={k} style={{ fontSize: 11, color: t.textSecondary, fontWeight: 600 }}>
-            Replace {fieldLabel(k)}
+            Replace {label}
             <input type="file" accept="image/*,application/pdf"
               onChange={(e) => { const f = e.target.files?.[0]; setFiles((p) => { const n = { ...p }; if (f) n[k] = f; else delete n[k]; return n; }); }}
               style={{ ...input, padding: 4 }} />
@@ -187,7 +208,8 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
 
   useEffect(() => { load(); }, [load]);
 
-  const handleApprove = async (row: ChangeRequestRow) => {
+  // V_26.0 — both return true when the request was decided (the popup closes).
+  const handleApprove = async (row: ChangeRequestRow): Promise<boolean> => {
     const result = await showAlert.confirm(
       row.action === 'delete'
         ? `This will permanently delete the payment ${summarize(row)}.`
@@ -200,7 +222,7 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
           : `This will create the proposed ${MODULE_LABEL[row.module]} record ("${summarize(row)}").`,
       'Approve Request?'
     );
-    if (!result.isConfirmed) return;
+    if (!result.isConfirmed) return false;
     setBusyKey(row.id);
     try {
       await approveChangeRequest(row.id);
@@ -212,26 +234,30 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
         : `The delete request for ${MODULE_LABEL[row.module]} "${summarize(row)}" was approved.`;
       showAlert.approved(what);
       await load();
+      return true;
     } catch (e) {
       toast.error(errMessage(e, 'Failed to approve request.'));
+      return false;
     } finally {
       setBusyKey(null);
     }
   };
 
-  const handleReject = async (row: ChangeRequestRow) => {
+  const handleReject = async (row: ChangeRequestRow): Promise<boolean> => {
     // V_26.0 — the note is shown to the employee on My Requests.
     const { isConfirmed, note } = await showAlert.confirmWithNote(
       `Reject this ${MODULE_LABEL[row.module]} ${ACTION_LABEL[row.action].toLowerCase()} request ("${summarize(row)}")?`,
       'Reject Request?', 'Reject', 'Reason for the employee (optional)');
-    if (!isConfirmed) return;
+    if (!isConfirmed) return false;
     setBusyKey(row.id);
     try {
       await rejectChangeRequest(row.id, note || undefined);
       toast.success('Request rejected.');
       await load();
+      return true;
     } catch (e) {
       toast.error(errMessage(e, 'Failed to reject request.'));
+      return false;
     } finally {
       setBusyKey(null);
     }
@@ -332,15 +358,21 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} className="rounded-2xl"
             style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxWidth: 760, width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
-            <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>
-                Proposed {MODULE_LABEL[detailsRow.module]} {ACTION_LABEL[detailsRow.action]}
+            <div className="flex items-center justify-between px-4 py-3" style={{ background: 'var(--grad-table-header)', borderRadius: '16px 16px 0 0', position: 'sticky', top: 0, zIndex: 1 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: '#fff', margin: 0 }}>
+                {MODULE_LABEL[detailsRow.module]} — {ACTION_LABEL[detailsRow.action].toLowerCase()} request
               </h3>
-              <button type="button" onClick={() => { setDetailsRow(null); setAdminEditing(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.textSecondary }}>
+              <button type="button" aria-label="Close" onClick={() => { setDetailsRow(null); setAdminEditing(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', display: 'flex' }}>
                 <MdClose size={18} />
               </button>
             </div>
             <div className="p-4" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {detailsRow.module === 'employee' && (
+                <div style={{ fontSize: 13, color: t.textPrimary, fontWeight: 700 }}>
+                  Employee: {summarize(detailsRow)}
+                  {detailsRow.old_values?.employee_code ? <span style={{ fontWeight: 500, color: t.textSecondary }}> · {String(detailsRow.old_values.employee_code)}</span> : null}
+                </div>
+              )}
               {(detailsRow.record_customer_name || recordContext(detailsRow)) && (
                 <div style={{ fontSize: 13, color: t.textPrimary, fontWeight: 700 }}>
                   {detailsRow.module === 'payment' ? 'Payment of ' : 'Customer: '}
@@ -355,7 +387,13 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
                 {' '}on {formatLastLogin(detailsRow.requested_at)} · Status: <b style={{ color: t.textPrimary }}>{detailsRow.status}</b>
               </div>
               <RequestValuesTable t={t} isDark={isDark} row={detailsRow} onPreview={setPreviewDoc} />
-              {detailsRow.module === 'customer' && (detailsRow.action === 'create' || detailsRow.action === 'edit') && detailsRow.status === 'pending' && (
+              {detailsRow.reason && (
+                <div style={{ fontSize: 12 }}>
+                  <span style={{ color: t.textSecondary, fontWeight: 600 }}>Reason: </span>
+                  <span style={{ color: t.textPrimary }}>{detailsRow.reason}</span>
+                </div>
+              )}
+              {canAdminEdit(detailsRow) && adminEditing && (
                 <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${t.divider}` }}>
                   {adminEditing ? (
                     <AdminEditForm t={t} row={detailsRow} onCancel={() => setAdminEditing(false)}
@@ -365,17 +403,32 @@ const ChangeRequestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false
                         setRows((rs) => rs.map((r) => (r.id === updated.id ? updated : r)));
                         setAdminEditing(false);
                       }} />
-                  ) : (
-                    <button type="button" onClick={() => setAdminEditing(true)} className="rounded-xl" style={{ padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: t.inputBg, color: t.textPrimary, border: `1px solid ${t.inputBorder}` }}>
-                      Edit before approving
-                    </button>
-                  )}
+                  ) : null}
                 </div>
               )}
-              {detailsRow.reason && (
-                <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${t.divider}`, fontSize: 12 }}>
-                  <span style={{ color: t.textSecondary, fontWeight: 600 }}>Reason: </span>
-                  <span style={{ color: t.textPrimary }}>{detailsRow.reason}</span>
+              {/* V_26.0 — decide right here: Approve / Reject (with a note for
+                  the employee), or correct it first. */}
+              {detailsRow.status === 'pending' && !adminEditing && (
+                <div className="flex items-center justify-between flex-wrap gap-2" style={{ marginTop: 8, paddingTop: 12, borderTop: `1px solid ${t.divider}` }}>
+                  <div>
+                    {canAdminEdit(detailsRow) && (
+                      <button type="button" onClick={() => setAdminEditing(true)} className="rounded-xl" style={{ padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: t.inputBg, color: t.textPrimary, border: `1px solid ${t.inputBorder}` }}>
+                        Edit before approving
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" disabled={busyKey === detailsRow.id}
+                      onClick={async () => { if (await handleReject(detailsRow)) setDetailsRow(null); }}
+                      className="flex items-center gap-1.5 rounded-xl" style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: t.surfaceBg, color: '#b91c1c', border: '1px solid #fca5a5' }}>
+                      <MdCancel size={15} /> Reject
+                    </button>
+                    <button type="button" disabled={busyKey === detailsRow.id}
+                      onClick={async () => { if (await handleApprove(detailsRow)) setDetailsRow(null); }}
+                      className="flex items-center gap-1.5 rounded-xl" style={{ padding: '8px 18px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: 'var(--brand-gradient)', color: '#fff', border: 'none' }}>
+                      <MdCheckCircle size={15} /> {busyKey === detailsRow.id ? 'Working…' : 'Approve'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

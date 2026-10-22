@@ -52,12 +52,20 @@ export const ADMIN_EDITABLE_CUSTOMER_FIELDS = [
   'alternate_number', 'alternate_contact_name', 'alternate_contact_country_code', 'alternate_contact_mobile',
   'aadhar_card_no', 'pan_card_no', 'has_parking', 'parking_no',
 ] as const;
+// V_26.0 — an employee add / edit request: contact and identity only.
+export const ADMIN_EDITABLE_EMPLOYEE_FIELDS = [
+  'first_name', 'middle_name', 'last_name', 'email', 'gender', 'date_of_birth', 'joining_date', 'residential_address',
+  'mobile_country_code', 'mobile_number', 'mobile_is_whatsapp', 'whatsapp_country_code', 'whatsapp_number',
+  'alternate_country_code', 'alternate_number', 'aadhaar_card_number', 'pan_card_number',
+] as const;
+/** Upload field → the key the request stores it under. */
+export const EMPLOYEE_DOC_FIELDS: Record<string, string> = { photo: 'photo_url', aadhaar_card_img: 'aadhaar_card_img', pan_card_img: 'pan_card_img' };
 export const ADMIN_BOOLEAN_FIELDS = ['mobile_is_whatsapp', 'has_parking'];
 export const CUSTOMER_DOC_FIELDS = ['customer_image', 'application_form', 'declaration_form', 'aadhar_card', 'pan_card', 'allotment_letter'] as const;
 
 /** PUT /api/change-requests/:id/admin-edit (multipart) — Admin's corrections. */
 export const adminEditChangeRequest = async (
-  id: string, fields: Record<string, string>, files: Partial<Record<(typeof CUSTOMER_DOC_FIELDS)[number], File>>,
+  id: string, fields: Record<string, string>, files: Partial<Record<string, File>>,
 ): Promise<Record<string, unknown>> => {
   const form = new FormData();
   Object.entries(fields).forEach(([k, v]) => form.append(k, v));
