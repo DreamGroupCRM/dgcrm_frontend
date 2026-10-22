@@ -19,7 +19,7 @@ import { fetchPendingApprovalCounts, PENDING_APPROVALS_CHANGED } from '../../ser
 
 import {
   MdDashboard, MdBusiness, MdPeople, MdContactPage,
-  MdHistory, MdCalculate, MdStorage,
+  MdHistory, MdCalculate, MdStorage, MdPhoneAndroid,
   MdEventAvailable, MdLeaderboard, MdPayment, MdAttachMoney,
   MdApartment, MdAccountBalance, MdAccountTree,
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
@@ -133,6 +133,8 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null, pendi
   // the 'reports' permission still can't pull data even if this link is
   // somehow reached directly.
   { label: 'Reports', path: ROUTES.ADMIN.EXECUTIVE_DASHBOARD, icon: <MdAssessment /> },
+  // V_27.0 — phones running the DGCRM Calls app; Block is requireAdmin server-side.
+  { label: 'Call Sync Phones', path: ROUTES.ADMIN.CALL_DEVICES, icon: <MdPhoneAndroid /> },
   // Backup Database — Admin may create/download backups (requireAdmin
   // server-side); Super Admin reaches it from the Super Admin group below.
   ...(role === 'admin' ? [{ label: 'Backup Database', path: ROUTES.ADMIN.BACKUP_DATABASE, icon: <MdStorage /> }] : []),

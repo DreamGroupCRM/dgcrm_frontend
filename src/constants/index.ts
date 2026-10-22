@@ -67,6 +67,8 @@ export const ROUTES = {
     CUSTOMIZE_SCHEME: '/admin/customize-scheme',
     BUILDING_2D_VIEW: '/admin/building-2d-view',
     BACKUP_DATABASE: '/admin/backup-database',
+    // V_27.0 — phones running the DGCRM Calls app (Admin / Super Admin).
+    CALL_DEVICES: '/admin/call-devices',
     EXECUTIVE_DASHBOARD: '/admin/reports/executive-dashboard',
     PENDING_APPROVALS: '/admin/pending-approvals',
     TASKS: '/admin/tasks',

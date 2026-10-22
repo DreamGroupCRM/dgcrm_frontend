@@ -24,6 +24,8 @@ import { Lead, LeadActivity, LeadStatus, LEAD_STATUSES, LEAD_STATUS_LABELS, Crea
 import { formatDate } from '../../utils';
 import LeadStatusBadge from './LeadStatusBadge';
 import DateInput from '../common/DateInput';
+import CallHistoryCard from '../calls/CallHistoryCard';
+import { fetchLeadCalls } from '../../services/callService';
 
 export type LeadCrudMode = 'add' | 'edit' | 'view';
 
@@ -332,7 +334,7 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
           <div style={gridStyle}>
             <FormField label="Source" t={t}>
               <select disabled={isView} value={form.source ?? 'other'} onChange={(e) => set('source', e.target.value)} style={getFormInputStyle(t)}>
-                {['website', 'facebook', 'referral', 'walk-in', 'channel-partner', 'other'].map((s) => <option key={s} value={s}>{s}</option>)}
+                {['website', 'facebook', 'referral', 'walk-in', 'channel-partner', 'phone-call', 'other'].map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </FormField>
             <FormField label="Temperature" t={t}>
@@ -485,6 +487,9 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
               )}
             </div>
           </div>
+
+          {/* ── Calls synced by the DGCRM Calls phone app (V_27.0) ───────── */}
+          {id && <CallHistoryCard key={id} load={() => fetchLeadCalls(id)} />}
         </>
       )}
     </div>

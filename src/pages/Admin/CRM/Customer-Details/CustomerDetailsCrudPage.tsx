@@ -52,6 +52,8 @@ import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { serverToday, serverTodayYmd } from '../../../../utils/serverTime';
 import { cssRect } from '../../../../utils/appZoom';
 import DateInput from '../../../../components/common/DateInput';
+import CallHistoryCard from '../../../../components/calls/CallHistoryCard';
+import { fetchCustomerCalls } from '../../../../services/callService';
 
 type Mode = 'add' | 'edit' | 'view';
 interface Props {
@@ -2399,6 +2401,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
           </Field>
         </div>
       </AccordionSection>
+
+      {/* ── Calls synced by the DGCRM Calls phone app (V_27.0) ─────────── */}
+      {isView && id && <CallHistoryCard key={id} load={() => fetchCustomerCalls(id)} />}
 
       {/* ── Footer — same shared `master-crud-footer` class every other
           CRUD page (Building/Employee/Company/...) uses: a floating card
