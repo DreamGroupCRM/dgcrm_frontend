@@ -627,7 +627,6 @@ const DocumentCard: React.FC<{
 // enforces for a Head / an Executive on those pages, and every action that
 // goes to Admin approval is tagged so. Nothing here grants or changes
 // anything.
-const LEGACY_PAGES: AccessArea[] = ['leads', 'customers', 'payment_dues', 'payment_received', 'cancelled_booking', 'customize_scheme', 'building_view'];
 const PAGE_LABELS: Record<AccessArea, string> = {
   leads: 'Leads', customers: 'Customer Details', payment_dues: 'Payment Due', payment_received: 'Payment Received',
   cancelled_booking: 'Cancelled Booking', customize_scheme: 'Customize Scheme', building_view: 'Building View',
@@ -645,7 +644,8 @@ function roleAccess(
   const cfg = config.find((d) => d.id === r.deptId);
   const configured = cfg ? (cfg.effective_areas !== undefined ? cfg.effective_areas : cfg.access_areas) : null;
   const legacy = configured == null;
-  const pages = configured ?? LEGACY_PAGES;
+  // V_26.0 — a department not set up yet adds no pages.
+  const pages = configured ?? [];
   const has = (a: AccessArea) => pages.includes(a);
   const actions: AccessItem[] = [];
   const add = (label: string, approval = false) => actions.push({ label, approval });
@@ -682,7 +682,7 @@ function roleAccess(
     key: r.deptId,
     title: `${r.deptName}${title ? ` · ${title}` : ''}`,
     reportsTo: r.level ? (r.isSales && head ? 'Admin' : (reportingHeadName(r.deptId) ?? 'Admin')) : null,
-    note: legacy ? `${r.deptName}'s pages are not set up yet, so this employee gets the standard employee pages below. ${r.deptName}'s pages can be set in Department Setup.` : undefined,
+    note: legacy ? `${r.deptName}'s pages are not set up yet, so it gives this employee no extra pages for now.` : undefined,
     pages: ['Dashboard', ...pages.map((a) => PAGE_LABELS[a]), 'Attendance & Leave (own)'],
     actions,
   };
