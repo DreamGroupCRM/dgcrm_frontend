@@ -351,6 +351,8 @@ export interface PaymentListRow {
   mode_of_payment: string | null;
   received_by: string | null;
   is_approved: boolean;
+  // V_26.0 — a delete request is waiting for Admin (still counts as paid).
+  delete_requested?: boolean;
   approved_by_name: string | null;
   approved_at: string | null;
   created_at: string;

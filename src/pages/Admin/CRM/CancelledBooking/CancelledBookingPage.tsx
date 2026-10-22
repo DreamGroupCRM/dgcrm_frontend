@@ -48,6 +48,7 @@ import { CustomerPaymentRecord, PaymentReceipt } from '../../../../types';
 import { SearchableSelect } from '../../../../components/common/SearchableSelect';
 import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
 import './CancelledBooking.css';
+import CancelBookingPicker from './CancelBookingPicker';
 
 const rupee = (n: number): string => `₹ ${(n || 0).toLocaleString('en-IN')}`;
 const errMessage = (e: unknown, fallback: string) =>
@@ -666,7 +667,11 @@ const CancelledBookingPage: React.FC = () => {
             <SearchableSelect t={t} placeholder="Search employee name" options={employees.map((e) => e.label)} value={empFilterText}
               onChange={handleEmployeeFilterChange} clearLabel="Clear employee filter" />
           </div>
-          {/* V_25.0 — "Cancel a Booking" removed from this page; Refund Details sits here instead (admin). */}
+          {/* V_25.0 — Refund Details sits here (admin). V_26.0 — the Refund
+              employee starts a cancellation here (they have no Customer
+              Details); it goes to Admin approval. Admin cancels from
+              Customer Details. */}
+          {!isAdmin && <CancelBookingPicker t={t} isAdmin={false} onDone={refreshAll} />}
           {isAdmin && (
             <button type="button" onClick={() => navigate(`${paths.cancelledBooking}/refund-details`)}
               className="flex items-center gap-1.5 px-4 rounded-xl text-sm font-bold"

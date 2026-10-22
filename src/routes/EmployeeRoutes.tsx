@@ -6,6 +6,26 @@ import { lazyPage } from './lazyPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ROUTES } from '../constants';
 import ProtectedRoute from './ProtectedRoute';
+import { useAccessProfile } from '../hooks/useAccessProfile';
+import { AccessArea } from '../services/accessService';
+import { toast } from '@/utils/toast';
+
+// V_26.0 — a page the employee's departments don't give (typed or
+// bookmarked address) sends them to their Dashboard instead of an empty
+// page. `any`: the page opens with any one of these areas (detail pages
+// are linked from several pages). The server still checks every request;
+// if the access lookup fails, the page opens and the server decides.
+const AreaRoute: React.FC<{ any: AccessArea[]; children: React.ReactElement }> = ({ any, children }) => {
+  const { has, loading, failed } = useAccessProfile();
+  const allowed = failed || any.some(has);
+  React.useEffect(() => {
+    if (!loading && !allowed) toast.error("You don't have access to this page.");
+  }, [loading, allowed]);
+  if (loading) return null;
+  return allowed ? children : <Navigate to={ROUTES.EMPLOYEE.DASHBOARD} replace />;
+};
+const CUSTOMER_LINKED: AccessArea[] = ['customers', 'payment_dues', 'payment_received', 'building_view'];
+const area = (any: AccessArea[], el: React.ReactElement) => <AreaRoute any={any}>{el}</AreaRoute>;
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const EmployeeDashboard = lazyPage(() => import('../pages/Employee/Dashboard/EmployeeDashboard'));
@@ -57,39 +77,39 @@ const EmployeeRoutes: React.FC = () => (
     >
       <Route index element={<Navigate to={ROUTES.EMPLOYEE.DASHBOARD} replace />} />
       <Route path="dashboard" element={<EmployeeDashboard />} />
-      <Route path="customer-details" element={<CustomerDetailsListPage />} />
+      <Route path="customer-details" element={area(['customers'], <CustomerDetailsListPage />)} />
       {/* Read-only for an employee. The list's own row menu hides Edit and
           Delete for non-admins (see CustomerDetailsListPage), so these are
           the only two detail routes it can link to — no menu entry leads
           to a route that does not exist here. */}
-      <Route path="customer-details/view/:id" element={<CustomerDetailsCrudPage mode="view" />} />
+      <Route path="customer-details/view/:id" element={area(CUSTOMER_LINKED, <CustomerDetailsCrudPage mode="view" />)} />
       {/* V_25.0 — a Head with "Can Add Customer" (goes to Admin approval). */}
-      <Route path="customer-details/add" element={<CustomerDetailsCrudPage mode="add" />} />
+      <Route path="customer-details/add" element={area(CUSTOMER_LINKED, <CustomerDetailsCrudPage mode="add" />)} />
       {/* V_25.0 — a Head's edit goes to Admin approval (enforced server-side). */}
-      <Route path="customer-details/edit/:id" element={<CustomerDetailsCrudPage mode="edit" />} />
-      <Route path="customer-details/scheme/:id" element={<CustomerSchemeViewPage />} />
+      <Route path="customer-details/edit/:id" element={area(['customers'], <CustomerDetailsCrudPage mode="edit" />)} />
+      <Route path="customer-details/scheme/:id" element={area(CUSTOMER_LINKED, <CustomerSchemeViewPage />)} />
       {/* Scoped server-side to the employee's assigned customers; admin-only
           parts (summary boxes, approvals) are hidden and refused by the API. */}
-      <Route path="cancelled-booking" element={<CancelledBookingPage />} />
+      <Route path="cancelled-booking" element={area(['cancelled_booking'], <CancelledBookingPage />)} />
       {/* View / Show Scheme opened from Cancelled Booking stay under it; Go Back returns here. */}
-      <Route path="cancelled-booking/view/:id" element={<CustomerDetailsCrudPage mode="view" from="cancelled" />} />
-      <Route path="cancelled-booking/scheme/:id" element={<CustomerSchemeViewPage from="cancelled" />} />
-      <Route path="leads" element={<LeadListPage />} />
-      <Route path="leads/add" element={<LeadCrudPage mode="add" />} />
-      <Route path="leads/view/:id" element={<LeadCrudPage mode="view" />} />
-      <Route path="leads/edit/:id" element={<LeadCrudPage mode="edit" />} />
-      <Route path="payment-received" element={<PaymentReceivedPage />} />
-      <Route path="payment-dues" element={<DueReportPage />} />
-      <Route path="customize-scheme" element={<CustomizeSchemePage />} />
-      <Route path="building-2d-view" element={<Building2DViewPage />} />
+      <Route path="cancelled-booking/view/:id" element={area(['cancelled_booking'], <CustomerDetailsCrudPage mode="view" from="cancelled" />)} />
+      <Route path="cancelled-booking/scheme/:id" element={area(['cancelled_booking'], <CustomerSchemeViewPage from="cancelled" />)} />
+      <Route path="leads" element={area(['leads'], <LeadListPage />)} />
+      <Route path="leads/add" element={area(['leads'], <LeadCrudPage mode="add" />)} />
+      <Route path="leads/view/:id" element={area(['leads'], <LeadCrudPage mode="view" />)} />
+      <Route path="leads/edit/:id" element={area(['leads'], <LeadCrudPage mode="edit" />)} />
+      <Route path="payment-received" element={area(['payment_received'], <PaymentReceivedPage />)} />
+      <Route path="payment-dues" element={area(['payment_dues'], <DueReportPage />)} />
+      <Route path="customize-scheme" element={area(['customize_scheme'], <CustomizeSchemePage />)} />
+      <Route path="building-2d-view" element={area(['building_view'], <Building2DViewPage />)} />
       <Route path="attendance" element={<AttendancePage />} />
       <Route path="leaves" element={<LeavePage />} />
       <Route path="tasks" element={<MyTasksPage />} />
       <Route path="my-requests" element={<MyRequestsPage />} />
-      <Route path="employee-details" element={<EmployeeDetailsListPage />} />
-      <Route path="employee-details/add" element={<EmployeeDetailsCrudPage mode="add" />} />
-      <Route path="employee-details/view/:id" element={<EmployeeDetailsCrudPage mode="view" />} />
-      <Route path="employee-details/edit/:id" element={<EmployeeDetailsCrudPage mode="edit" />} />
+      <Route path="employee-details" element={area(['employee_details'], <EmployeeDetailsListPage />)} />
+      <Route path="employee-details/add" element={area(['employee_details'], <EmployeeDetailsCrudPage mode="add" />)} />
+      <Route path="employee-details/view/:id" element={area(['employee_details'], <EmployeeDetailsCrudPage mode="view" />)} />
+      <Route path="employee-details/edit/:id" element={area(['employee_details'], <EmployeeDetailsCrudPage mode="edit" />)} />
       <Route path="team-attendance" element={<TeamAttendancePage />} />
     </Route>
   </Routes>

@@ -69,7 +69,7 @@ const AdminDashboard: React.FC = () => {
     { label: 'Employees', value: String(totals?.employees ?? 0), note: totals ? `${totals.attendance_present_today} present today` : undefined, to: ROUTES.ADMIN.EMPLOYEE_DETAILS },
     { label: 'Active leads', value: String(totals?.leads ?? 0), note: totals ? `${totals.hot_leads} hot` : undefined, noteColor: red, to: ROUTES.ADMIN.LEADS },
     { label: 'Received this month', value: rupeeCompact(data?.month?.received ?? 0), note: 'approved payments', to: ROUTES.ADMIN.PAYMENT_RECEIVED },
-    { label: 'Overdue', value: rupeeCompact(totals?.payment_due ?? 0), note: totals?.overdue_customers != null ? plural(totals.overdue_customers, 'customer') : undefined, noteColor: red, to: ROUTES.ADMIN.PAYMENT_DUES },
+    { label: 'Due now', value: rupeeCompact(totals?.payment_due ?? 0), note: totals?.overdue_customers != null ? plural(totals.overdue_customers, 'customer') : undefined, noteColor: red, to: ROUTES.ADMIN.PAYMENT_DUES },
     { label: 'Waiting for you', value: String(waiting), note: oldest ? `oldest ${waitingFor(oldest)}` : undefined, noteColor: amber, to: ROUTES.ADMIN.PENDING_APPROVALS },
   ];
 
@@ -122,7 +122,7 @@ const AdminDashboard: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
             {[
               ['Received', rupeeCompact(data?.month?.received ?? 0), isDark ? '#5eead4' : '#0A7474'],
-              ['Overdue', rupeeCompact(totals?.payment_due ?? 0), isDark ? '#fca5a5' : '#b42318'],
+              ['Due now', rupeeCompact(totals?.payment_due ?? 0), isDark ? '#fca5a5' : '#b42318'],
               ['Awaiting approval', rupeeCompact(data?.month?.awaiting_approval ?? 0), isDark ? '#fcd34d' : '#92400e'],
             ].map(([label, value, color]) => (
               <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
