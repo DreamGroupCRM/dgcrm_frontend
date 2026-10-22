@@ -221,7 +221,7 @@ const BackupDatabasePage: React.FC = () => {
                     <td style={{ padding: '12px 14px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{formatBytes(s.size_bytes)}</td>
                     <td style={{ padding: '12px 14px' }}>
                       {!isSuperAdmin ? (
-                        <div style={{ textAlign: 'center', fontSize: 11, color: t.textSecondary }} title="Restore and Delete are Super Admin only">—</div>
+                        <div style={{ textAlign: 'center', fontSize: 11, color: t.textSecondary }} title="Restore and Delete are not available for your account">—</div>
                       ) : (
                       <div className="flex items-center justify-center">
                         <button type="button" title="Actions" className="master-icon-btn"

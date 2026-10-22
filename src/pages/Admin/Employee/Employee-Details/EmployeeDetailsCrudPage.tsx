@@ -682,7 +682,7 @@ function roleAccess(
     key: r.deptId,
     title: `${r.deptName}${title ? ` · ${title}` : ''}`,
     reportsTo: r.level ? (r.isSales && head ? 'Admin' : (reportingHeadName(r.deptId) ?? 'Admin')) : null,
-    note: legacy ? `${r.deptName}'s pages are not set up yet, so this employee gets the standard employee pages below. A Super Admin can choose ${r.deptName}'s pages in Department Setup.` : undefined,
+    note: legacy ? `${r.deptName}'s pages are not set up yet, so this employee gets the standard employee pages below. ${r.deptName}'s pages can be set in Department Setup.` : undefined,
     pages: ['Dashboard', ...pages.map((a) => PAGE_LABELS[a]), 'Attendance & Leave (own)'],
     actions,
   };
