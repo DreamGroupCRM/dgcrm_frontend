@@ -95,3 +95,68 @@ export const callRecordingUrl = (callId: string): string => {
   const fk = getFileToken();
   return `${apiBase}/call-sync/recordings/${encodeURIComponent(callId)}${fk ? `?fk=${encodeURIComponent(fk)}` : ''}`;
 };
+
+// ── Per-employee call report ────────────────────────────────────────────
+
+export interface CallReportEmployee {
+  employee_id: number;
+  employee_name: string;
+  calls: number;
+  incoming: number;
+  outgoing: number;
+  missed: number;
+  talk_sec: number;
+  new_leads: number;
+  missed_not_called_back: number;
+}
+
+export interface CallReportDay {
+  employee_id: number;
+  employee_name: string;
+  day: string;
+  calls: number;
+  incoming: number;
+  outgoing: number;
+  missed: number;
+  talk_sec: number;
+  new_leads: number;
+}
+
+export interface CallReport {
+  from: string;
+  to: string;
+  employees: CallReportEmployee[];
+  days: CallReportDay[];
+}
+
+/** GET /api/call-sync/report — admin: everyone; Sales Head: team; others: own. Max 3 months. */
+export const fetchCallReport = async (from: string, to: string): Promise<CallReport> =>
+  (await axiosInstance.get<{ data: CallReport }>('/call-sync/report', { params: { from, to } })).data.data;
+
+// ── WhatsApp brochure messages (Admin) ──────────────────────────────────
+
+export interface ProjectWhatsapp {
+  id: number;
+  project_name: string;
+  brochure_url: string | null;
+  whatsapp_message: string | null;
+}
+
+export interface WhatsappSettings {
+  default_message: string | null;
+  projects: ProjectWhatsapp[];
+}
+
+export const fetchWhatsappSettings = async (): Promise<WhatsappSettings> =>
+  (await axiosInstance.get<{ data: WhatsappSettings }>('/call-sync/settings/whatsapp')).data.data;
+
+export const saveWhatsappDefault = async (message: string): Promise<void> => {
+  await axiosInstance.put('/call-sync/settings/whatsapp/default', { message });
+};
+
+export const saveProjectWhatsapp = async (id: number, brochure_url: string, message: string): Promise<void> => {
+  await axiosInstance.put(`/call-sync/settings/whatsapp/projects/${id}`, {
+    brochure_url: brochure_url.trim() || null,
+    message: message.trim() || null,
+  });
+};

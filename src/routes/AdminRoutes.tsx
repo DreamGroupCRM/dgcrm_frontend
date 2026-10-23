@@ -69,6 +69,8 @@ const ExecutiveDashboardPage = lazyPage(() => import('../pages/Admin/Reports/Exe
 // database snapshot/restore. User Management — new Super Admin lobby page.
 const BackupDatabasePage = lazyPage(() => import('../pages/Admin/Backup/BackupDatabasePage'));
 const CallDevicesPage = lazyPage(() => import('../pages/Admin/CallDevices/CallDevicesPage'));
+const CallReportPage = lazyPage(() => import('../pages/Admin/Reports/CallReportPage'));
+const DuplicateLeadsPage = lazyPage(() => import('../pages/Admin/CRM/DuplicateLeads/DuplicateLeadsPage'));
 const UserManagementPage = lazyPage(() => import('../pages/Admin/UserManagement/UserManagementPage'));
 // Pending Approvals — shared delete-request review queue (see
 // pendingApprovals module in dgcrm_backend). Admin/superadmin, same as
@@ -150,6 +152,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="crm/payment-approvals" element={<Navigate to={ROUTES.ADMIN.PAYMENT_RECEIVED} replace />} />
       <Route path="crm/payment-upcoming" element={<PaymentUpcomingPage />} />
       <Route path="crm/leads" element={<LeadListPage />} />
+      <Route path="crm/leads/duplicates" element={<ProtectedRoute allowedRoles={['superadmin', 'admin']}><DuplicateLeadsPage /></ProtectedRoute>} />
       <Route path="crm/leads/add" element={<LeadCrudPage mode="add" />} />
       <Route path="crm/leads/view/:id" element={<LeadCrudPage mode="view" />} />
       <Route path="crm/leads/edit/:id" element={<LeadCrudPage mode="edit" />} />
@@ -170,6 +173,7 @@ const AdminRoutes: React.FC = () => (
 
       {/* Backup: Admin + Super Admin (Restore/Delete Super Admin only, server-side). User Management: Super Admin only. */}
       <Route path="backup-database" element={<ProtectedRoute allowedRoles={['superadmin', 'admin']}><BackupDatabasePage /></ProtectedRoute>} />
+      <Route path="reports/calls" element={<CallReportPage />} />
       <Route path="call-devices" element={<ProtectedRoute allowedRoles={['superadmin', 'admin']}><CallDevicesPage /></ProtectedRoute>} />
       <Route path="user-management" element={<UserManagementPage />} />
     </Route>

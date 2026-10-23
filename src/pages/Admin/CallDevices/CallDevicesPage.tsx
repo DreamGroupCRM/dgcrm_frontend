@@ -6,11 +6,13 @@
 //  * Phones: a phone that entered the PIN waits here as "Waiting" until an
 //    admin approves it once. "Block" stops a lost phone or a departed
 //    employee's phone at once; a blocked phone can never re-join.
+//  * WhatsApp: brochure link + message per project, sent from the phone
+//    after a call ({name} {employee} {project} {brochure} are filled in).
 //  * Retention: when old calls are archived / deleted and recordings removed.
 import React, { useCallback, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { toast } from '@/utils/toast';
-import { MdPhoneAndroid, MdRefresh, MdBlock, MdCheckCircle, MdPin, MdHistory } from 'react-icons/md';
+import { MdPhoneAndroid, MdRefresh, MdBlock, MdCheckCircle, MdPin, MdHistory, MdChat } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
@@ -18,8 +20,8 @@ import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { getAccordionCardStyle, getAccordionHeaderStyle, getFormInputStyle } from '../../../components/common/MasterListUI';
 import { formatLastLogin } from '../../../utils';
 import {
-  CallDevice, CallSyncSettings, approveCallDevice, blockCallDevice, fetchCallDevices, fetchCallSyncSettings,
-  saveCallRetention, saveCallSyncPin,
+  CallDevice, CallSyncSettings, ProjectWhatsapp, approveCallDevice, blockCallDevice, fetchCallDevices, fetchCallSyncSettings,
+  fetchWhatsappSettings, saveCallRetention, saveCallSyncPin, saveProjectWhatsapp, saveWhatsappDefault,
 } from '../../../services/callService';
 
 interface ErrLike { response?: { data?: { message?: string; errors?: { message?: string }[] } } }
@@ -40,15 +42,19 @@ const CallDevicesPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [pin, setPin] = useState('');
   const [retention, setRetention] = useState({ archive_after_months: 12, delete_after_years: 3, recording_days: 180 });
+  const [waDefault, setWaDefault] = useState('');
+  const [waProjects, setWaProjects] = useState<ProjectWhatsapp[]>([]);
 
   useEffect(() => { dispatch(setPageTitle('Call Sync Phones')); }, [dispatch]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [d, s] = await Promise.all([fetchCallDevices(), fetchCallSyncSettings()]);
+      const [d, s, wa] = await Promise.all([fetchCallDevices(), fetchCallSyncSettings(), fetchWhatsappSettings()]);
       setDevices(d);
       setSettings(s);
+      setWaDefault(wa.default_message ?? '');
+      setWaProjects(wa.projects);
       setRetention({ archive_after_months: s.archive_after_months, delete_after_years: s.delete_after_years, recording_days: s.recording_days });
     } catch (e) {
       toast.error(errMessage(e, 'Failed to load call sync settings.'));
@@ -99,6 +105,28 @@ const CallDevicesPage: React.FC = () => {
       toast.error(errMessage(e, 'Failed to block the phone.'));
     }
   };
+
+  const saveWaDefault = async () => {
+    if (!waDefault.trim()) { toast.error('Enter a message.'); return; }
+    try {
+      await saveWhatsappDefault(waDefault.trim());
+      toast.success('Default WhatsApp message saved.');
+    } catch (e) {
+      toast.error(errMessage(e, 'Failed to save the message.'));
+    }
+  };
+
+  const saveWaProject = async (p: ProjectWhatsapp) => {
+    try {
+      await saveProjectWhatsapp(p.id, p.brochure_url ?? '', p.whatsapp_message ?? '');
+      toast.success(`Saved for ${p.project_name}.`);
+    } catch (e) {
+      toast.error(errMessage(e, 'Failed to save.'));
+    }
+  };
+
+  const setWaField = (id: number, field: 'brochure_url' | 'whatsapp_message', value: string) =>
+    setWaProjects((list) => list.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
 
   const saveRetention = async () => {
     try {
@@ -204,6 +232,36 @@ const CallDevicesPage: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* ── WhatsApp after a call ───────────────────────────────────── */}
+      <div style={card}>
+        <div style={header}><span className="flex items-center gap-2" style={title}><MdChat size={18} /> WhatsApp brochure message</span></div>
+        <div style={{ padding: 16 }}>
+          <div style={{ ...muted, marginBottom: 12 }}>
+            After a call, the employee can tap WhatsApp in the app to send this message to the lead. Use {'{name}'}, {'{employee}'},
+            {' {project}'} and {'{brochure}'}; the lead's project message is used, or the default when the project has none.
+          </div>
+          <label style={{ display: 'block', fontSize: 12, color: t.textSecondary, marginBottom: 4 }}>Default message (max 255 characters)</label>
+          <div className="flex gap-2" style={{ flexWrap: 'wrap', marginBottom: 16 }}>
+            <input value={waDefault} maxLength={255} onChange={(e) => setWaDefault(e.target.value)} style={{ ...getFormInputStyle(t), flex: 1, minWidth: 260 }}
+              placeholder="Hello {name}, thank you for speaking with {employee} from Dream Group. Here is the project brochure: {brochure}" />
+            <button type="button" className="master-btn-primary" onClick={saveWaDefault}>Save</button>
+          </div>
+          {waProjects.length === 0 && <div style={muted}>No projects yet.</div>}
+          {waProjects.map((p) => (
+            <div key={p.id} style={{ borderTop: `1px solid ${t.surfaceBorder}`, padding: '10px 0' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: t.textPrimary, marginBottom: 6 }}>{p.project_name}</div>
+              <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                <input value={p.brochure_url ?? ''} maxLength={500} placeholder="Brochure link (https://...)"
+                  onChange={(e) => setWaField(p.id, 'brochure_url', e.target.value)} style={{ ...getFormInputStyle(t), flex: '1 1 240px' }} />
+                <input value={p.whatsapp_message ?? ''} maxLength={1000} placeholder="Message (blank = default)"
+                  onChange={(e) => setWaField(p.id, 'whatsapp_message', e.target.value)} style={{ ...getFormInputStyle(t), flex: '2 1 320px' }} />
+                <button type="button" className="master-btn-primary" onClick={() => saveWaProject(p)}>Save</button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

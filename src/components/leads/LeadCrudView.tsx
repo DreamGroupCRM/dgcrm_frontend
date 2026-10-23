@@ -277,6 +277,7 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
             <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
               <LeadStatusBadge status={lead.status} isDark={isDark} />
               {lead.is_duplicate && <span style={{ fontSize: 11, color: duplicateIcon, fontWeight: 600 }}>Possible duplicate</span>}
+              {lead.no_recent_call && <span style={{ fontSize: 11, color: '#DC2626', fontWeight: 600 }}>No call in 7 days</span>}
             </div>
           )}
         </div>

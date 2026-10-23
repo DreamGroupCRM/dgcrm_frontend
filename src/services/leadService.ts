@@ -162,4 +162,37 @@ export const leadService = {
   importCsv: importLeadsCSV,
 };
 
+// ── V_27.0 — Duplicate Leads screen (Admin) ─────────────────────────────
+
+export interface DuplicateLeadSide {
+  id: string;
+  name: string;
+  mobile_country_code: string | null;
+  mobile_number: string | null;
+  email: string | null;
+  city: string | null;
+  source: string;
+  category: string;
+  status: string;
+  created_at: string;
+  last_call_at: string | null;
+}
+
+export interface DuplicatePair {
+  duplicate: DuplicateLeadSide;
+  original: DuplicateLeadSide | null;
+}
+
+/** GET /api/leads/duplicates — flagged duplicates beside the lead they duplicate. */
+export const fetchDuplicateLeads = async (): Promise<DuplicatePair[]> =>
+  (await axiosInstance.get<{ data: DuplicatePair[] }>('/leads/duplicates')).data.data ?? [];
+
+/**
+ * POST /api/leads/:id/merge — merges the duplicate into its original: the
+ * original keeps its values, blank fields are filled, calls / comments /
+ * tasks / assignments move, the duplicate is soft-deleted.
+ */
+export const mergeDuplicateLead = async (duplicateId: string): Promise<{ original_id: number; filled: string[] }> =>
+  (await axiosInstance.post<{ data: { original_id: number; filled: string[] } }>(`/leads/${duplicateId}/merge`)).data.data;
+
 export type { Lead };
