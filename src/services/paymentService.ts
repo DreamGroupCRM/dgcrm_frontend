@@ -218,6 +218,8 @@ export interface DueListDetailRow {
   extra_payment_balance?: number;
   // Total the customer paid today (Received Date = today, approved or not).
   received_today?: number;
+  /** V_26.0 — the latest payment reminder per channel. */
+  reminders?: { channel: 'email' | 'whatsapp'; status: 'sent' | 'failed' | 'skipped' | 'upcoming'; sent_at: string }[];
 }
 /** GET /api/payments/due-list-detailed */
 export const fetchDueListDetailed = async (): Promise<{ success: boolean; rows: DueListDetailRow[]; total: number }> => {

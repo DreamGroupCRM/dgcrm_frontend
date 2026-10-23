@@ -26,6 +26,7 @@ import {
   MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
   MdAdminPanelSettings, MdManageAccounts, MdPendingActions, MdBeachAccess, MdAssignment,
   MdGridView, MdEventBusy,
+  MdNotificationsActive,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -127,6 +128,8 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null, pendi
   { label: 'Pending Admin Approval', path: ROUTES.ADMIN.PENDING_APPROVALS, icon: <MdPendingActions />, badge: pendingCount },
   // V_26.0 — general tasks (e.g. HR work) Admin assigns to employees.
   { label: 'Tasks', path: ROUTES.ADMIN.TASKS, icon: <MdAssignment /> },
+  // V_26.0 — automatic payment reminders to customers.
+  { label: 'Payment Reminders', path: ROUTES.ADMIN.PAYMENT_REMINDERS, icon: <MdNotificationsActive /> },
   // Executive Dashboard — visible to Admin/SuperAdmin here same as the rest
   // of this nav tree; the real gate is server-side (checkPermission
   // ('reports','view') on GET /api/dashboard/executive) so a role without
