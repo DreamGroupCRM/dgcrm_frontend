@@ -18,7 +18,7 @@ import {
   MdPayments, MdRefresh, MdDownload, MdClose, MdKeyboardArrowDown,
   MdReceiptLong, MdSchedule, MdVpnKey, MdAccountBalanceWallet, MdNoteAdd,
   MdSearch, MdStars, MdWorkspacePremium, MdForum, MdEvent, MdPerson, MdAccessTime,
-  MdEventAvailable, MdUpcoming, MdExpandMore, MdChevronRight, MdHistory, MdErrorOutline, MdToday } from 'react-icons/md';
+  MdEventAvailable, MdUpcoming, MdExpandMore, MdChevronRight, MdHistory, MdErrorOutline, MdToday, MdNotificationsActive } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
@@ -423,6 +423,7 @@ interface CustomerGroup {
   total: number;
   statusColor: string; statusTextColor: string;
   extraBalance: number;
+  reminders: NonNullable<DueListDetailRow['reminders']>;
 }
 const STATUS_RANK: Record<string, number> = { overdue: 3, due_today: 2, upcoming: 1 };
 // Is this due assigned to `name` — as the Head (Admin's assignment), the
@@ -850,6 +851,7 @@ const DueReportPage: React.FC = () => {
           building_name: r.building_name, wing_name: r.wing_name, flat_no: r.flat_no,
           items: [], total: 0, statusColor: r.statusColor, statusTextColor: r.statusTextColor,
           extraBalance: r.dueRow?.extra_payment_balance ?? 0,
+          reminders: r.dueRow?.reminders ?? [],
         };
         map.set(r.customer_id, g);
       }
@@ -1597,6 +1599,17 @@ const DueReportPage: React.FC = () => {
                                   emiWise={emiWiseOpen.has(r.key)} onToggleEmiWise={() => toggleEmiWise(r.key)} />
                               ))}
                               </div>
+                              {/* V_26.0 — the latest payment reminder per channel. */}
+                              {g.reminders.length > 0 && (
+                                <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 11, color: t.textSecondary, marginTop: 6 }}>
+                                  <MdNotificationsActive size={13} /> Reminders:
+                                  {g.reminders.map((m) => (
+                                    <span key={m.channel} style={{ fontWeight: 600, color: m.status === 'failed' ? '#dc2626' : m.status === 'sent' ? (isDark ? '#86efac' : '#15803d') : t.textSecondary }}>
+                                      {m.channel === 'email' ? 'Email' : 'WhatsApp'} {m.status === 'sent' ? `sent ${formatDate(m.sent_at)}` : m.status === 'upcoming' ? 'upcoming' : `${m.status} ${formatDate(m.sent_at)}`}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>
