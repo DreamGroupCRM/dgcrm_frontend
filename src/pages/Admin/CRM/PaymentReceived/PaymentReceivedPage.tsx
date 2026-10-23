@@ -32,6 +32,7 @@ import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
 import CustomerPaymentHistoryModal from '../../../../components/common/CustomerPaymentHistoryModal';
+import { DeleteRequestedTag } from '../../../../components/common/PaymentHistoryTable';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import StatCard from '../../../../components/masters/StatCard';
 import { useInfiniteScroll } from '../../../../hooks/useInfiniteScroll';
@@ -933,6 +934,7 @@ const PaymentReceivedPage: React.FC = () => {
                           <MdHourglassEmpty size={12} /> UnApproved
                         </span>
                       )}
+                      {r.delete_requested && <div><DeleteRequestedTag /></div>}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number || '—'}</td>
                     <td style={{ padding: '10px 12px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>

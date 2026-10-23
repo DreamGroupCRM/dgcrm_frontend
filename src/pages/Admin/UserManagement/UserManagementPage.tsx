@@ -327,7 +327,7 @@ const UserManagementPage: React.FC = () => {
                   const locked = isSelf || isProtectedSuperAdmin;
                   const superOnlyRow = !viewerIsSuper && (row.base_role === 'admin' || row.base_role === 'superadmin');
                   const lockReason = isProtectedSuperAdmin
-                    ? 'The Super Admin account is protected'
+                    ? 'This account is protected'
                     : 'Not available for your own account';
                   const linkedTo = row.linked_employee_name ? `${row.linked_employee_name} (Employee)`
                     : row.linked_customer_name ? `${row.linked_customer_name} (Customer)` : '—';
@@ -377,8 +377,8 @@ const UserManagementPage: React.FC = () => {
                           </button>
                           {rowMenu.openId === row.id && rowMenu.pos && (
                             <RowActionMenu t={t} pos={rowMenu.pos} actions={superOnlyRow ? [{
-                                key: 'super-only', label: 'Super Admin only', icon: <MdLock size={14} />, disabled: true,
-                                title: 'Only the Super Admin can change an Admin account', onClick: () => rowMenu.close(),
+                                key: 'super-only', label: 'No actions available', icon: <MdLock size={14} />, disabled: true,
+                                title: 'You cannot change an Admin account', onClick: () => rowMenu.close(),
                               }] : [
                               ...(row.base_role === 'admin' ? [{
                                 key: 'edit', label: 'Edit admin details', icon: <MdEdit size={14} color="var(--brand-ink)" />,

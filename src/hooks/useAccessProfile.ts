@@ -15,11 +15,13 @@ const FULL: AccessProfile = {
 
 let cached: { token: string | null; promise: Promise<AccessProfile> } | null = null;
 
-export function useAccessProfile(): { profile: AccessProfile | null; loading: boolean; has: (area: AccessArea) => boolean } {
+export function useAccessProfile(): { profile: AccessProfile | null; loading: boolean; failed: boolean; has: (area: AccessArea) => boolean } {
   const role = useAppSelector((s) => s.auth.role);
   const token = useAppSelector((s) => s.auth.token);
   const admin = isAdminRole(role);
   const [profile, setProfile] = useState<AccessProfile | null>(admin ? FULL : null);
+  // V_26.0 — the request failed: pages fall back to the server's own checks.
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (admin) { setProfile(FULL); return; }
@@ -29,13 +31,14 @@ export function useAccessProfile(): { profile: AccessProfile | null; loading: bo
       cached.promise.catch(() => { cached = null; });
     }
     let alive = true;
-    cached.promise.then((p) => { if (alive) setProfile(p); }).catch(() => { /* keep null: pages fall back to server checks */ });
+    cached.promise.then((p) => { if (alive) { setProfile(p); setFailed(false); } }).catch(() => { if (alive) setFailed(true); /* keep null: pages fall back to server checks */ });
     return () => { alive = false; };
   }, [admin, token]);
 
   return {
     profile,
-    loading: !admin && profile == null,
+    loading: !admin && profile == null && !failed,
+    failed,
     has: (area) => admin || Boolean(profile?.areas.includes(area)),
   };
 }

@@ -35,7 +35,12 @@ const CancelBookingPicker: React.FC<{ t: AppTheme; isAdmin: boolean; onDone: () 
 
   const pick = (c: CancellableCustomer) => {
     setOpen(false);
-    setTarget({ id: String(c.id), customer_code: c.customer_code ?? '', customer_name: fullName(c) } as unknown as Customer);
+    setTarget({
+      id: String(c.id), customer_code: c.customer_code ?? '', customer_name: fullName(c),
+      // Flat Details in the popup.
+      building_name: c.building_name ?? '', wing_name: c.wing_name ?? '', flat_no: c.flat_no ?? '',
+      shop_no: c.shop_no ?? '', unit_type: c.shop_no ? 'shop' : 'flat',
+    } as unknown as Customer);
   };
 
   return (
