@@ -1219,6 +1219,9 @@ export interface Lead {
   remark: string;
   status: LeadStatus;
   is_duplicate: boolean;
+  /** V_27.0 — last call synced by the DGCRM Calls app, and the "no call in 7 days" flag (open leads only). */
+  last_call_at?: string | null;
+  no_recent_call?: boolean;
   duplicate_of_lead_id: string | null;
   project_id: string;
   project_name: string;
@@ -1242,6 +1245,8 @@ export interface LeadListFilters {
   project_id?: string;
   employee_id?: string;
   is_duplicate?: boolean;
+  /** V_27.0 — open leads with no call in 7 days. */
+  no_recent_call?: boolean;
   sort?: 'name' | 'mobile_number' | 'status' | 'category' | 'budget' | 'created_at';
   sort_dir?: 'asc' | 'desc';
 }

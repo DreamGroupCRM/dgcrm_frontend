@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/utils/toast';
 import {
-  MdAdd, MdDownload, MdUpload, MdRefresh, MdSearch, MdPerson, MdContentCopy, MdClose,
+  MdAdd, MdDownload, MdUpload, MdRefresh, MdSearch, MdPerson, MdContentCopy, MdClose, MdPhoneDisabled, MdMergeType,
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../hooks';
@@ -55,7 +55,7 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
   // Debounced so typing a search term doesn't fire a real backend request
   // on every keystroke.
   const debouncedSearch = useDebouncedValue(search, 400);
-  const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all' | 'duplicate'>('all');
+  const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all' | 'duplicate' | 'no_recent_call'>('all');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('');
   const [employeeOptions, setEmployeeOptions] = useState<{ id: string; name: string }[]>([]);
@@ -83,8 +83,9 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
           search: debouncedSearch.trim() || undefined,
           category: categoryFilter || undefined,
           employee_id: isAdmin ? (employeeFilter || undefined) : undefined,
-          status: statusFilter !== 'all' && statusFilter !== 'duplicate' ? statusFilter : undefined,
+          status: statusFilter !== 'all' && statusFilter !== 'duplicate' && statusFilter !== 'no_recent_call' ? statusFilter : undefined,
           is_duplicate: statusFilter === 'duplicate' ? true : undefined,
+          no_recent_call: statusFilter === 'no_recent_call' ? true : undefined,
           sort: sortKey,
           sort_dir: sortDir,
         }),
@@ -274,6 +275,16 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
         <div style={pillStyle(statusFilter === 'duplicate')} onClick={() => setStatusFilter('duplicate')}>
           <MdContentCopy size={13} /> Duplicates <span style={{ opacity: 0.75 }}>({duplicateCount})</span>
         </div>
+        {/* V_27.0 — open leads nobody has called for 7 days (DGCRM Calls app). */}
+        <div style={pillStyle(statusFilter === 'no_recent_call')} onClick={() => setStatusFilter('no_recent_call')}
+          title="Open leads with no call in the last 7 days">
+          <MdPhoneDisabled size={13} /> No call 7 days
+        </div>
+        {isAdmin && statusFilter === 'duplicate' && duplicateCount > 0 && (
+          <button type="button" className="master-btn-primary" onClick={() => navigate(`${basePath}/duplicates`)}>
+            <MdMergeType size={15} /> Review &amp; merge
+          </button>
+        )}
       </div>
 
       <div className="master-table-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
@@ -323,6 +334,11 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
                         {l.is_duplicate && (
                           <span title="Possible duplicate lead" style={{ color: duplicateIcon, display: 'inline-flex' }}>
                             <MdContentCopy size={13} />
+                          </span>
+                        )}
+                        {l.no_recent_call && (
+                          <span title="No call in the last 7 days" style={{ color: '#DC2626', display: 'inline-flex' }}>
+                            <MdPhoneDisabled size={13} />
                           </span>
                         )}
                       </div>
