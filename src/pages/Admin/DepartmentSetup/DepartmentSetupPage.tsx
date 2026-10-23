@@ -7,8 +7,8 @@
 // added here under Recovery is offered there without code changes.
 //
 // Departments and designations themselves are still added in Masters →
-// Department. A department left "Not set up" keeps today's access for its
-// employees (e.g. Maintenance). Nothing here bypasses Admin approval:
+// Department. A department left "Not set up" gives its employees no pages
+// (e.g. Maintenance; V_26.0). Nothing here bypasses Admin approval:
 // customer/employee adds and edits by employees still go to Pending Admin
 // Approval.
 import React, { useCallback, useEffect, useState } from 'react';
@@ -113,7 +113,7 @@ const DepartmentSetupPage: React.FC = () => {
           <span>
             Choose which pages each department&apos;s employees get, and which designation is the <b>Head</b> and which the{' '}
             <b>Executive</b>. The Employee Add/Edit screen follows this automatically. Add departments and designations in{' '}
-            <b>Masters → Department</b>. A department left <b>Not set up</b> keeps today&apos;s access for its employees.
+            <b>Masters → Department</b>. A department left <b>Not set up</b> gives its employees no extra pages (Dashboard, own Attendance and Leave stay on).
           </span>
         </div>
         <button type="button" onClick={load} title="Refresh" className="master-btn-icon"
@@ -150,7 +150,7 @@ const DepartmentSetupPage: React.FC = () => {
                     background: d.access_areas != null ? '#dcfce7' : '#fef3c7',
                     color: d.access_areas != null ? '#15803d' : '#92400e',
                   }}>
-                    {d.access_areas != null ? <><MdCheckCircle size={12} /> Set up</> : 'Not set up — today’s access'}
+                    {d.access_areas != null ? <><MdCheckCircle size={12} /> Set up</> : 'Not set up — no pages yet'}
                   </span>
                 </div>
 

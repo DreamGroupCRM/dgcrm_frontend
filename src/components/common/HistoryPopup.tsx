@@ -76,7 +76,7 @@ export const HistoryCard: React.FC<{
   children: React.ReactNode;
 }> = ({ t, title, onClose, loading, customer, property, extra, children }) => (
   <div className="rounded-2xl w-full" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-    <div className="flex items-center justify-between px-5 py-3.5" style={{ background: '#6d28d9', borderRadius: '16px 16px 0 0' }}>
+    <div className="flex items-center justify-between px-5 py-3.5" style={{ background: 'var(--grad-table-header)', borderRadius: '16px 16px 0 0' }}>
       <div style={{ fontSize: 13.5, fontWeight: 800, color: '#fff' }}>{title}</div>
       {onClose && (
         <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#fff', padding: 4, display: 'flex' }}>

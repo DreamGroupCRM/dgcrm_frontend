@@ -627,7 +627,6 @@ const DocumentCard: React.FC<{
 // enforces for a Head / an Executive on those pages, and every action that
 // goes to Admin approval is tagged so. Nothing here grants or changes
 // anything.
-const LEGACY_PAGES: AccessArea[] = ['leads', 'customers', 'payment_dues', 'payment_received', 'cancelled_booking', 'customize_scheme', 'building_view'];
 const PAGE_LABELS: Record<AccessArea, string> = {
   leads: 'Leads', customers: 'Customer Details', payment_dues: 'Payment Due', payment_received: 'Payment Received',
   cancelled_booking: 'Cancelled Booking', customize_scheme: 'Customize Scheme', building_view: 'Building View',
@@ -645,7 +644,8 @@ function roleAccess(
   const cfg = config.find((d) => d.id === r.deptId);
   const configured = cfg ? (cfg.effective_areas !== undefined ? cfg.effective_areas : cfg.access_areas) : null;
   const legacy = configured == null;
-  const pages = configured ?? LEGACY_PAGES;
+  // V_26.0 — a department not set up yet adds no pages.
+  const pages = configured ?? [];
   const has = (a: AccessArea) => pages.includes(a);
   const actions: AccessItem[] = [];
   const add = (label: string, approval = false) => actions.push({ label, approval });
@@ -682,7 +682,7 @@ function roleAccess(
     key: r.deptId,
     title: `${r.deptName}${title ? ` · ${title}` : ''}`,
     reportsTo: r.level ? (r.isSales && head ? 'Admin' : (reportingHeadName(r.deptId) ?? 'Admin')) : null,
-    note: legacy ? 'Department not set up yet — keeps the standard employee pages.' : undefined,
+    note: legacy ? `${r.deptName}'s pages are not set up yet, so it gives this employee no extra pages for now.` : undefined,
     pages: ['Dashboard', ...pages.map((a) => PAGE_LABELS[a]), 'Attendance & Leave (own)'],
     actions,
   };
@@ -1184,7 +1184,12 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       .filter((d) => {
         const held = heldDesignationIds.includes(d.value);
         if (offeredDesignations == null) return d.departmentId == null || form.department_ids.includes(d.departmentId);
-        return held || (d.departmentId != null && form.department_ids.includes(d.departmentId) && isOfferedDesignation(d));
+        // V_26.0 — a designation the employee already holds stays listed
+        // (marked "not configured" if Department Setup no longer offers it),
+        // but only while its department is ticked: after moving someone
+        // from Recovery to HR, "Recovery executive" must not show under HR.
+        const deptTicked = d.departmentId != null && form.department_ids.includes(d.departmentId);
+        return deptTicked && (held || isOfferedDesignation(d));
       })
       .map((d) => (offeredDesignations && !isOfferedDesignation(d) ? { ...d, label: `${d.label} (not configured)` } : d)),
     [designationOptions, form.department_ids, heldDesignationIds, offeredDesignations, isOfferedDesignation]
@@ -1998,6 +2003,11 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </button>
         )}
       </div>
+      {/* V_26.0 — the eye icon on an uploaded file (Add / Edit) opens the
+          same preview as View mode; the popup used to exist only there. */}
+      {preview && (
+        <DocumentViewerModal t={t} label={preview.label} url={preview.url} onClose={() => setPreview(null)} />
+      )}
     </div>
   );
 };

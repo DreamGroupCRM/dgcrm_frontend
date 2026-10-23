@@ -470,7 +470,10 @@ const CompactFileUpload: React.FC<{
       return () => URL.revokeObjectURL(url);
     }
     if (typeof value === 'string' && value && !/\.pdf($|\?)/i.test(value)) {
-      setPreviewUrl(value);
+      // V_26.0 — a saved file needs the full address and file token
+      // (resolveFileUrl), same as the employee form; the bare stored path
+      // was refused, so the thumbnail showed broken.
+      setPreviewUrl(resolveFileUrl(value));
     } else {
       setPreviewUrl(null);
     }
@@ -557,7 +560,10 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
       return () => URL.revokeObjectURL(url);
     }
     if (typeof value === 'string' && value && !/\.pdf($|\?)/i.test(value)) {
-      setPreviewUrl(value);
+      // V_26.0 — a saved file needs the full address and file token
+      // (resolveFileUrl), same as the employee form; the bare stored path
+      // was refused, so the thumbnail showed broken.
+      setPreviewUrl(resolveFileUrl(value));
     } else {
       setPreviewUrl(null);
     }
@@ -800,7 +806,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   // at page level so closing the preview leaves the record exactly where
   // the user left it.
   const [preview, setPreview] = useState<{ label: string; url: string } | null>(null);
-  const openPreview = useCallback((label: string, url: string) => setPreview({ label, url }), []);
+  // V_26.0 — the viewer loads through the API client, so it needs the full
+  // address; the bare stored path became /api/api/files/... and failed.
+  const openPreview = useCallback((label: string, url: string) => setPreview({ label, url: resolveFileUrl(url) }), []);
 
   // A customer's email is their portal login credential, so only an Admin
   // may change it on an existing record. Same rule (and same message) as
@@ -2502,6 +2510,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             boosterIntervalAfterPossession: Number(boosterIntervalAfterPossession) || 0,
           }}
         />
+      )}
+      {/* V_26.0 — the eye icon on an uploaded document (Add / Edit) opens
+          the same preview as View mode; the popup used to exist only there. */}
+      {preview && (
+        <DocumentViewerModal t={t} label={preview.label} url={preview.url} onClose={() => setPreview(null)} />
       )}
     </div>
   );

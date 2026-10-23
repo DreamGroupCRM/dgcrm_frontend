@@ -1,7 +1,7 @@
 // ==========================================
 // DREAM GROUP CRM - DASHBOARD LAYOUT
 // ==========================================
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useLayoutEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAppSelector } from '../hooks';
 import Sidebar from '../components/common/Sidebar';
@@ -28,6 +28,17 @@ const DashboardLayout: React.FC = () => {
   // redundant — a descendant re-declaring an identical CSS var value is a
   // no-op).
   const { cssVars } = useAppearanceTokens();
+  // V_26.0 — popups render outside this div (createPortal to <body>), so
+  // they never inherited these vars and fell back to master.css's old
+  // defaults (orange-purple table header, blue icons). Also set them on
+  // <html> while the dashboard is open, so every popup matches the theme.
+  const cssVarsKey = JSON.stringify(cssVars);
+  useLayoutEffect(() => {
+    const root = document.documentElement.style;
+    const entries = Object.entries(JSON.parse(cssVarsKey) as Record<string, string>);
+    for (const [k, v] of entries) root.setProperty(k, String(v));
+    return () => { for (const [k] of entries) root.removeProperty(k); };
+  }, [cssVarsKey]);
 
   // Uploaded files are no longer publicly readable (see the backend's
   // shared/fileAccess.ts). A browser cannot put an Authorization header on

@@ -170,6 +170,7 @@ interface BackendAmountTransaction {
   annual_amount: number | null;
   annual_amount1: number | null;
   is_approved: boolean;
+  delete_requested?: boolean;
   created_at: string;
   company: string | null;
   maintanance1: number | null;
@@ -361,6 +362,7 @@ const mapTransactionToPaymentRecord = (t: BackendAmountTransaction): CustomerPay
   mode: t.mode_of_payment ?? undefined,
   reference_no: t.receipt_number || t.cheque_number || undefined,
   is_approved: t.is_approved,
+  delete_requested: Boolean(t.delete_requested),
   payment_type: t.payment_type,
   payment_tag: t.payment_tag,
   receipt_number: t.receipt_number || undefined,
@@ -912,6 +914,7 @@ export interface CancellableCustomer {
   id: string | number; customer_code: string | null;
   name: string | null; middle_name: string | null; last_name: string | null;
   mobile_number: string | null; building_name: string | null; wing_name: string | null; flat_no: string | null;
+  shop_no?: string | null;
 }
 /** GET /api/customers/cancellable?search= — active customers Refund/Admin may start a cancellation for. */
 export const fetchCancellableCustomers = async (search: string): Promise<CancellableCustomer[]> => {

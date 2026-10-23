@@ -789,6 +789,7 @@ export interface CustomerPaymentRecord {
   reference_no?  : string;
   notes?         : string;
   is_approved    : boolean;
+  delete_requested?: boolean; // V_26.0 — delete request waiting for Admin
   payment_type   : string;
   // "Extra Pay" for an advance-pay EMI transaction (see backend
   // payment.service.ts's computeAdvancePay) — an Extra Pay transaction still

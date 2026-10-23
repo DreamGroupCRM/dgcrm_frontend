@@ -129,7 +129,7 @@ const CancelBookingModal: React.FC<{
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
       <div className="rounded-2xl w-full" style={{ maxWidth: 820, maxHeight: '90vh', overflowY: 'auto', background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}
         onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3.5" style={{ background: '#b91c1c', borderRadius: '16px 16px 0 0' }}>
+        <div className="flex items-center justify-between px-5 py-3.5" style={{ background: 'var(--grad-table-header)', borderRadius: '16px 16px 0 0' }}>
           <div className="flex items-center gap-2" style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>
             <MdEventBusy size={18} /> Cancel Booking
           </div>
@@ -206,7 +206,7 @@ const CancelBookingModal: React.FC<{
             </button>
             <button type="button" onClick={handleSubmit} disabled={submitting || !ready}
               className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-              style={{ background: submitting || !ready ? '#6b7280' : '#b91c1c', border: 'none', cursor: submitting || !ready ? 'not-allowed' : 'pointer' }}>
+              style={{ background: submitting || !ready ? '#6b7280' : 'var(--brand-gradient)', border: 'none', cursor: submitting || !ready ? 'not-allowed' : 'pointer' }}>
               {submitting ? 'Submitting...' : isAdmin ? 'Cancel Booking' : 'Submit for Approval'}
             </button>
           </div>

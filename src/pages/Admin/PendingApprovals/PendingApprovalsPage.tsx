@@ -75,19 +75,23 @@ const rupee = (n: number) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
 const DetailsModal: React.FC<{ t: AppTheme; title: string; onClose: () => void; children: React.ReactNode }> = ({ t, title, onClose, children }) => (
   <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
     <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, maxWidth: 760, width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
-      <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>{title}</h3>
-        <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.textSecondary }}><MdClose size={18} /></button>
+      <div className="flex items-center justify-between px-4 py-3" style={{ background: 'var(--grad-table-header)', borderRadius: '16px 16px 0 0' }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: '#fff', margin: 0 }}>{title}</h3>
+        <button type="button" aria-label="Close" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', display: 'flex' }}><MdClose size={18} /></button>
       </div>
       <div className="p-4" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{children}</div>
     </div>
   </div>
 );
 
-// A record's filled-in fields, documents previewable.
+// A record's filled-in fields, documents previewable. V_26.0 — internal
+// ids and bookkeeping columns are left out; yes/no columns read Yes / No.
+const INTERNAL_KEY = /(^|_)ids?$|^(is_approved|approved_by|approved_at|created_by|updated_by|created_at|updated_at|is_delete|pending_delete.*|password.*|active_session_id)$/;
+const isYesNoKey = (k: string) => /^(is_|has_)|_is_/.test(k);
 const RecordTable: React.FC<{ t: AppTheme; record: Record<string, unknown>; onPreview: (d: { label: string; url: string }) => void }> = ({ t, record, onPreview }) => {
   const cell: React.CSSProperties = { padding: '7px 8px', fontSize: 12, borderTop: `1px solid ${t.divider}`, verticalAlign: 'top', wordBreak: 'break-word', color: t.textPrimary };
-  const entries = Object.entries(record).filter(([, v]) => !isBlank(v));
+  const entries = Object.entries(record).filter(([k, v]) => !isBlank(v) && !INTERNAL_KEY.test(k))
+    .map(([k, v]): [string, unknown] => [k, isYesNoKey(k) && (v === 0 || v === 1 || v === '0' || v === '1') ? Number(v) === 1 : v]);
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <tbody>

@@ -565,9 +565,9 @@ const ExecutiveDashboardPage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Overdue payments */}
               <div>
-                <div className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>🔴 Overdue Payments</div>
+                <div className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary, marginBottom: 8 }}>🔴 Payments Due Now</div>
                 {data.needs_attention.overdue_payments.length === 0 ? (
-                  <EmptyState t={t} text="No overdue payments." />
+                  <EmptyState t={t} text="Nothing due now." />
                 ) : data.needs_attention.overdue_payments.map((r) => (
                   <button key={r.customer_id} type="button" onClick={() => navigate(`/admin/crm/customer-details/view/${r.customer_id}`)}
                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg"

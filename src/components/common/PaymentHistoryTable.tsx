@@ -10,7 +10,7 @@
 // look the same. Each caller supplies its own Actions (what an office user
 // may do differs from what a customer may do).
 import React from 'react';
-import { MdCheckCircle, MdHourglassEmpty } from 'react-icons/md';
+import { MdDeleteOutline, MdCheckCircle, MdHourglassEmpty } from 'react-icons/md';
 import { AppTheme } from '../../styles/theme';
 import { paymentForLabel } from '../../services/paymentService';
 import { formatDate } from '../../utils';
@@ -31,6 +31,7 @@ export interface PaymentHistoryRow {
   company?: string | null;
   received_by?: string | null;
   is_approved: boolean;
+  delete_requested?: boolean;
 }
 
 // V_25.0 — the one mapping from a customer's payment record to a history
@@ -39,7 +40,18 @@ export const toPaymentHistoryRow = (p: CustomerPaymentRecord): PaymentHistoryRow
   id: p.id, receipt_number: p.receipt_number, payment_type: p.payment_type, payment_tag: p.payment_tag,
   is_after_possession_emi: p.is_after_possession_emi, mode: p.mode, amount: p.amount, inst_date: p.inst_date,
   payment_date: p.paid_on, created_at: p.created_at, company: p.company, received_by: p.received_by, is_approved: p.is_approved,
+  delete_requested: p.delete_requested,
 });
+
+// V_26.0 — a delete request is waiting for Admin. The payment still counts
+// as paid until the Admin approves the delete.
+export const DeleteRequestedTag: React.FC = () => (
+  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold"
+    title="A delete request is waiting for Admin approval. It still counts as paid until approved."
+    style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', fontSize: 10, whiteSpace: 'nowrap', marginTop: 3 }}>
+    <MdDeleteOutline size={11} /> Delete requested
+  </span>
+);
 
 const HEADERS = ['Actions', 'Status', 'Receipt No.', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'];
 
@@ -83,6 +95,7 @@ const PaymentHistoryTable: React.FC<{
                     <MdHourglassEmpty size={12} /> UnApproved
                   </span>
                 )}
+                {r.delete_requested && <div><DeleteRequestedTag /></div>}
               </td>
               <td style={{ ...td, fontWeight: 600 }}>{r.receipt_number || '—'}</td>
               <td style={{ padding: '8px 12px' }}>
