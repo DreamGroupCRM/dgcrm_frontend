@@ -1,14 +1,14 @@
 // src/components/calls/CallHistoryCard.tsx
 // V_27.0 — "Calls" card on the Lead and Customer pages: SIM calls synced
-// from employee phones by the DGCRM Calls app. Recording playback arrives
-// in a later phase; until then each call states why there is no recording,
-// and no Play control is ever shown for a call without a usable recording.
+// from employee phones by the DGCRM Calls app, with the after-call outcome
+// the employee tapped. A player appears only for a recording the server
+// validated and stored; otherwise the card says why there is none.
 import React, { useEffect, useState } from 'react';
 import { MdCallMade, MdCallReceived, MdCallMissed, MdCallEnd, MdCall, MdFiberNew } from 'react-icons/md';
 import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import { getAccordionCardStyle, getAccordionHeaderStyle } from '../common/MasterListUI';
 import { formatLastLogin } from '../../utils';
-import { CallDirection, CallLog, RecordingStatus } from '../../services/callService';
+import { CallDirection, CallLog, CallOutcome, RecordingStatus, callRecordingUrl } from '../../services/callService';
 
 const DIRECTION: Record<CallDirection, { label: string; color: string; Icon: React.ComponentType<{ size?: number; color?: string }> }> = {
   incoming: { label: 'Incoming', color: '#047857', Icon: MdCallReceived },
@@ -19,11 +19,20 @@ const DIRECTION: Record<CallDirection, { label: string; color: string; Icon: Rea
 };
 
 const RECORDING_TEXT: Record<RecordingStatus, string> = {
-  completed: 'Recording available',
-  pending: 'Recording uploading',
+  completed: 'Recording',
+  none: 'No recording',
+  pending: 'Recording is being uploaded',
   recording: 'Recording in progress',
-  failed: 'Recording failed',
-  unsupported: 'No recording (not supported on this phone yet)',
+  failed: 'Recording failed on the phone',
+  unsupported: 'No recording: this phone cannot record calls',
+  deleted: 'Recording deleted (retention period ended)',
+};
+
+const OUTCOME: Record<CallOutcome, { label: string; color: string }> = {
+  interested: { label: 'Interested', color: '#047857' },
+  not_interested: { label: 'Not interested', color: '#64748B' },
+  call_later: { label: 'Call later', color: '#B45309' },
+  wrong_number: { label: 'Wrong number', color: '#DC2626' },
 };
 
 export const formatTalkTime = (seconds: number): string => {
@@ -91,9 +100,18 @@ const CallHistoryCard: React.FC<Props> = ({ load }) => {
                       {c.phone_number ? ` · ${c.country_code ?? ''} ${c.phone_number}` : ''}
                       {c.device_label ? ` · ${c.device_label}` : ''}
                     </div>
-                    {c.direction !== 'missed' && c.direction !== 'rejected' && c.duration_sec > 0 && (
-                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 2 }}>{RECORDING_TEXT[c.recording_status]}</div>
+                    {c.outcome && OUTCOME[c.outcome] && (
+                      <span style={{
+                        display: 'inline-block', marginTop: 4, padding: '1px 8px', borderRadius: 8, fontSize: 10.5, fontWeight: 700,
+                        color: '#fff', background: OUTCOME[c.outcome].color,
+                      }}>{OUTCOME[c.outcome].label}</span>
                     )}
+                    {/* A player only for a recording the server validated and stored. */}
+                    {c.recording_status === 'completed' ? (
+                      <audio controls preload="none" src={callRecordingUrl(c.id)} style={{ display: 'block', marginTop: 6, width: '100%', maxWidth: 360, height: 32 }} />
+                    ) : c.direction !== 'missed' && c.direction !== 'rejected' && c.duration_sec > 0 ? (
+                      <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 2 }}>{RECORDING_TEXT[c.recording_status] ?? 'No recording'}</div>
+                    ) : null}
                   </div>
                 </div>
               );

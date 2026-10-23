@@ -3,9 +3,11 @@
 // (backend modules/callSync). Read-only here: calls are written only by
 // the phone app.
 import axiosInstance from './axiosConfig';
+import { getFileToken } from './fileAccessService';
 
 export type CallDirection = 'incoming' | 'outgoing' | 'missed' | 'rejected' | 'other';
-export type RecordingStatus = 'pending' | 'recording' | 'completed' | 'failed' | 'unsupported';
+export type RecordingStatus = 'none' | 'pending' | 'recording' | 'completed' | 'failed' | 'unsupported' | 'deleted';
+export type CallOutcome = 'interested' | 'not_interested' | 'call_later' | 'wrong_number';
 
 export interface CallLog {
   id: string;
@@ -18,24 +20,33 @@ export interface CallLog {
   lead_id: string | null;
   customer_id: string | null;
   lead_created: boolean;
+  outcome: CallOutcome | null;
   recording_status: RecordingStatus;
+  recording_duration_ms: number | null;
   employee_id: string;
   employee_name: string | null;
   device_label: string | null;
 }
 
+export type CallDeviceStatus = 'pending' | 'approved' | 'blocked';
+
 export interface CallDevice {
   id: string;
   label: string | null;
   app_version: string | null;
-  is_active: boolean;
+  status: CallDeviceStatus;
   last_seen_at: string | null;
   created_at: string;
+  approved_at: string | null;
   revoked_at: string | null;
-  employee_id: string | null;
-  employee_name: string | null;
-  signed_in_at: string | null;
   call_count: number;
+}
+
+export interface CallSyncSettings {
+  pin_set: boolean;
+  archive_after_months: number;
+  delete_after_years: number;
+  recording_days: number;
 }
 
 /** GET /api/leads/:id/calls */
@@ -50,7 +61,37 @@ export const fetchCustomerCalls = async (customerId: string): Promise<CallLog[]>
 export const fetchCallDevices = async (): Promise<CallDevice[]> =>
   (await axiosInstance.get<{ data: CallDevice[] }>('/call-sync/devices')).data.data ?? [];
 
-/** POST /api/call-sync/devices/:id/revoke — Admin only. Blocks the phone at once. */
-export const revokeCallDevice = async (id: string): Promise<void> => {
-  await axiosInstance.post(`/call-sync/devices/${id}/revoke`);
+/** POST /api/call-sync/devices/:id/approve — Admin only. */
+export const approveCallDevice = async (id: string): Promise<void> => {
+  await axiosInstance.post(`/call-sync/devices/${id}/approve`);
+};
+
+/** POST /api/call-sync/devices/:id/block — Admin only. Stops the phone at once. */
+export const blockCallDevice = async (id: string): Promise<void> => {
+  await axiosInstance.post(`/call-sync/devices/${id}/block`);
+};
+
+/** GET /api/call-sync/settings — Admin only. */
+export const fetchCallSyncSettings = async (): Promise<CallSyncSettings> =>
+  (await axiosInstance.get<{ data: CallSyncSettings }>('/call-sync/settings')).data.data;
+
+/** PUT /api/call-sync/settings/pin — Admin only. 4–8 digits; stored hashed. */
+export const saveCallSyncPin = async (pin: string): Promise<void> => {
+  await axiosInstance.put('/call-sync/settings/pin', { pin });
+};
+
+/** PUT /api/call-sync/settings/retention — Admin only. */
+export const saveCallRetention = async (v: Omit<CallSyncSettings, 'pin_set'>): Promise<void> => {
+  await axiosInstance.put('/call-sync/settings/retention', v);
+};
+
+/**
+ * URL an <audio> element can play. Like uploaded files, it carries the
+ * short-lived file token (an <audio> request cannot send the session
+ * header); the backend checks who may play which recording.
+ */
+export const callRecordingUrl = (callId: string): string => {
+  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+  const fk = getFileToken();
+  return `${apiBase}/call-sync/recordings/${encodeURIComponent(callId)}${fk ? `?fk=${encodeURIComponent(fk)}` : ''}`;
 };
