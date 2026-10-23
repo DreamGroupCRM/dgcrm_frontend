@@ -68,6 +68,7 @@ const ExecutiveDashboardPage = lazyPage(() => import('../pages/Admin/Reports/Exe
 // Backup Database — replaces its former PlaceholderPage with real whole-
 // database snapshot/restore. User Management — new Super Admin lobby page.
 const BackupDatabasePage = lazyPage(() => import('../pages/Admin/Backup/BackupDatabasePage'));
+const PaymentRemindersPage = lazyPage(() => import('../pages/Admin/Reminders/PaymentRemindersPage'));
 const UserManagementPage = lazyPage(() => import('../pages/Admin/UserManagement/UserManagementPage'));
 // Pending Approvals — shared delete-request review queue (see
 // pendingApprovals module in dgcrm_backend). Admin/superadmin, same as
@@ -169,6 +170,7 @@ const AdminRoutes: React.FC = () => (
 
       {/* Backup: Admin + Super Admin (Restore/Delete Super Admin only, server-side). User Management: Super Admin only. */}
       <Route path="backup-database" element={<ProtectedRoute allowedRoles={['superadmin', 'admin']}><BackupDatabasePage /></ProtectedRoute>} />
+      <Route path="payment-reminders" element={<PaymentRemindersPage />} />
       <Route path="user-management" element={<UserManagementPage />} />
     </Route>
   </Routes>
