@@ -185,7 +185,7 @@ export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => v
             <Blank value={f.bank} flex={0.9} />
           </Row>
 
-          {/* ── Footer: ₹ box (left), signatory (right) ── */}
+          {/* ── Footer: ₹ box (left), "For DREAMS BUILDERS" (right) ── */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: 4 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'stretch', border: `2.5px solid ${BLUE}`, width: 320, height: 60 }}>
@@ -201,9 +201,11 @@ export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => v
                 <span style={{ fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 16 }}>For </span>
                 <span style={{ fontFamily: TITLE_FONT, fontSize: 22, letterSpacing: 1 }}>{PRINTED.signFor}</span>
               </div>
-              <div style={{ height: 56 }} />
-              <div style={{ color: '#1e293b', fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 13, letterSpacing: 0.3 }}>AUTHORISED SIGNATORY</div>
             </div>
+          </div>
+          {/* V_26.0 — system generated: no signature line. */}
+          <div style={{ textAlign: 'center', color: '#475569', fontFamily: LABEL_FONT, fontStyle: 'italic', fontSize: 13, marginTop: 18 }}>
+            This is a system-generated receipt and does not require a signature.
           </div>
         </div>
       </div>

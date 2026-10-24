@@ -247,6 +247,8 @@ const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   booking_date: bc.booking_date ?? '',
   monthly_emi: bc.installment_amount,
   monthly_installment_date: nextMonthlyInstallmentDate(bc.installment_date),
+  // V_26.0 — the EMI's own day of the month (the next date can be clamped to a shorter month).
+  installment_day: bc.installment_date ? Number(String(bc.installment_date).slice(8, 10)) || null : null,
   assigned_employee_id: bc.assigned_employee_id != null ? String(bc.assigned_employee_id) : undefined,
   assigned_employee_code: bc.assigned_employee_code ?? undefined,
   assigned_employee_name: bc.assigned_employee_name ?? undefined,

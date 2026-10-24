@@ -23,6 +23,9 @@ import { AiOutlineInstagram, AiOutlineWhatsApp } from 'react-icons/ai';
 import { FaFacebookF } from 'react-icons/fa';
 import { MdLogout, MdCheckBox, MdCheckBoxOutlineBlank, MdAssignment } from 'react-icons/md';
 import { fetchTasks } from '../../services/tasksService';
+import { useLocation } from 'react-router-dom';
+import { useAccessProfile } from '../../hooks/useAccessProfile';
+import { pageRoleLabel } from '../../utils/pageRole';
 import { useNavigate } from 'react-router-dom';
 // Same runtime check the Sidebar uses to decide desktop-rail vs mobile-drawer
 // mode. Importing it (instead of re-declaring `lg:hidden` here) guarantees
@@ -76,6 +79,10 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   // top-bar icon (with the open count) and the dashboard.
   const headerRole = useAppSelector((st) => st.auth.role);
   const isEmployee = headerRole === 'employee';
+  // V_26.0 — department · designation for the page being opened.
+  const { profile: accessProfile } = useAccessProfile();
+  const { pathname } = useLocation();
+  const roleTag = isEmployee ? pageRoleLabel(accessProfile, pathname) : null;
   const [openTasks, setOpenTasks] = useState(0);
   useEffect(() => {
     if (!isEmployee) return;
@@ -440,6 +447,14 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             )}
           </div>
         </div>
+        )}
+
+        {roleTag && (
+          <span title="Your department and designation on this page" className="rounded-full"
+            style={{ padding: '4px 10px', marginRight: 4, fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis',
+              background: isDark ? 'rgba(20,184,166,0.18)' : '#e6f2f2', color: isDark ? '#99f6e4' : '#0a5c5c', border: `1px solid ${isDark ? 'rgba(20,184,166,0.4)' : '#b7dada'}`, flexShrink: 1 }}>
+            {roleTag}
+          </span>
         )}
 
         {/* ── Profile button — always visible ─────────────────────── */}

@@ -265,6 +265,15 @@ const computeCustomerMenuPos = (rect: DOMRect): { top: number; left: number } =>
 // for every shop customer on the grid view. The table's own Building
 // Details cell already branched on unit_type; this gives the card the same
 // treatment from one place.
+// V_26.0 — "2026-05-05" → "5th of every month".
+const dayOfMonthLabel = (ymd: string, day?: number | null): string => {
+  const d = day || Number(String(ymd).slice(8, 10));
+  if (!d) return formatDate(ymd);
+  const v = d % 100;
+  const suffix = v >= 11 && v <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[d % 10] ?? 'th';
+  return `${d}${suffix} of every month`;
+};
+
 const unitLabel = (c: Customer): string => {
   if (!c.building_name) return '—';
   return c.unit_type === 'shop'
@@ -1122,7 +1131,7 @@ const CustomerDetailsListPage: React.FC = () => {
           ? `Shop${c.shop_area != null ? ` / ${c.shop_area} Sqft` : ''}`
           : `${c.flat_type || ''}${c.area_sqft != null ? ` / ${c.area_sqft} Sqft` : ''}`,
         formatDate(c.booking_date), c.monthly_emi ?? '',
-        c.monthly_installment_date ? formatDate(c.monthly_installment_date) : '',
+        c.monthly_installment_date ? dayOfMonthLabel(c.monthly_installment_date, c.installment_day) : '',
       ]);
       const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1549,7 +1558,13 @@ const CustomerDetailsListPage: React.FC = () => {
                       {c.monthly_emi != null ? `₹ ${c.monthly_emi.toLocaleString('en-IN')}` : '—'}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
-                      {c.monthly_installment_date ? formatDate(c.monthly_installment_date) : '—'}
+                      {/* V_26.0 — the EMI falls on the same day each month: "5th of every month". */}
+                      {c.monthly_installment_date ? (
+                        <span title={`Next EMI on ${formatDate(c.monthly_installment_date)}`} className="rounded-full"
+                          style={{ display: 'inline-block', padding: '2px 10px', fontSize: 11, fontWeight: 800, background: isDark ? 'rgba(20,184,166,0.2)' : '#e6f2f2', color: isDark ? '#99f6e4' : '#0a5c5c' }}>
+                          {dayOfMonthLabel(c.monthly_installment_date, c.installment_day)}
+                        </span>
+                      ) : '—'}
                     </td>
                   </tr>
                 ))}
