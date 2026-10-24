@@ -26,6 +26,9 @@ export interface CallLog {
   employee_id: string;
   employee_name: string | null;
   device_label: string | null;
+  /** V_28.0 — note the employee typed or spoke on the phone after the call. */
+  note: string | null;
+  note_at: string | null;
 }
 
 export type CallDeviceStatus = 'pending' | 'approved' | 'blocked';
@@ -40,6 +43,17 @@ export interface CallDevice {
   approved_at: string | null;
   revoked_at: string | null;
   call_count: number;
+  /** V_28.0 — set only while the phone is in personal mode (sync paused). */
+  paused_at: string | null;
+  paused_until: string | null;
+}
+
+export interface CallWorkHours {
+  enabled: boolean;
+  /** 0 = Sunday … 6 = Saturday. */
+  days: number[];
+  start: string;
+  end: string;
 }
 
 export interface CallSyncSettings {
@@ -47,6 +61,7 @@ export interface CallSyncSettings {
   archive_after_months: number;
   delete_after_years: number;
   recording_days: number;
+  work_hours: CallWorkHours;
 }
 
 /** GET /api/leads/:id/calls */
@@ -81,9 +96,13 @@ export const saveCallSyncPin = async (pin: string): Promise<void> => {
 };
 
 /** PUT /api/call-sync/settings/retention — Admin only. */
-export const saveCallRetention = async (v: Omit<CallSyncSettings, 'pin_set'>): Promise<void> => {
+export const saveCallRetention = async (v: Omit<CallSyncSettings, 'pin_set' | 'work_hours'>): Promise<void> => {
   await axiosInstance.put('/call-sync/settings/retention', v);
 };
+
+/** PUT /api/call-sync/settings/work-hours — Admin only. Phones skip calls outside these hours. */
+export const saveCallWorkHours = async (v: CallWorkHours): Promise<CallWorkHours> =>
+  (await axiosInstance.put<{ data: CallWorkHours }>('/call-sync/settings/work-hours', v)).data.data;
 
 /**
  * URL an <audio> element can play. Like uploaded files, it carries the
