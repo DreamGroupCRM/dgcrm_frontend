@@ -1539,9 +1539,6 @@ const DueReportPage: React.FC = () => {
                             {Object.values(circles).filter((v) => v > 0).length > 1 && (
                               <span style={{ fontSize: 10.5, fontWeight: 600, color: t.textSecondary, marginLeft: 4, whiteSpace: 'nowrap' }}>Total {rupee(g.total)}</span>
                             )}
-                            {g.extraBalance > 0 && (
-                              <span title="Extra Payment — kept separate from EMIs" style={{ fontSize: 10.5, fontWeight: 700, color: isDark ? '#7dd3fc' : '#0369a1', marginLeft: 4, whiteSpace: 'nowrap' }}>Extra Pay {rupee(g.extraBalance)}</span>
-                            )}
                           </DueCircles>
                         </td>
 <td style={{ padding: '4px 8px' }}>
@@ -1599,6 +1596,14 @@ const DueReportPage: React.FC = () => {
                                   emiWise={emiWiseOpen.has(r.key)} onToggleEmiWise={() => toggleEmiWise(r.key)} />
                               ))}
                               </div>
+                              {/* V_26.0 — Extra Pay is money already paid, not a due:
+                                  only a grey note here (it never reduces the dues above). */}
+                              {g.extraBalance > 0 && (
+                                <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 6 }}
+                                  title="Paid with Payment For = Extra Pay. Kept separate from EMIs, so the dues above are unchanged.">
+                                  Already paid separately: <b>Extra Pay {rupee(g.extraBalance)}</b> (not used for these dues)
+                                </div>
+                              )}
                               {/* V_26.0 — the latest payment reminder per channel. */}
                               {g.reminders.length > 0 && (
                                 <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 11, color: t.textSecondary, marginTop: 6 }}>
