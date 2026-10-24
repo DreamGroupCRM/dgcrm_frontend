@@ -67,6 +67,10 @@ export const ROUTES = {
     CUSTOMIZE_SCHEME: '/admin/customize-scheme',
     BUILDING_2D_VIEW: '/admin/building-2d-view',
     BACKUP_DATABASE: '/admin/backup-database',
+    // V_27.0 — phones running the DGCRM Calls app (Admin / Super Admin).
+    CALL_DEVICES: '/admin/call-devices',
+    CALL_REPORT: '/admin/reports/calls',
+    DUPLICATE_LEADS: '/admin/crm/leads/duplicates',
     EXECUTIVE_DASHBOARD: '/admin/reports/executive-dashboard',
     PENDING_APPROVALS: '/admin/pending-approvals',
     TASKS: '/admin/tasks',
@@ -92,6 +96,8 @@ export const ROUTES = {
     LEAVES: '/employee/leaves',
     TASKS: '/employee/tasks',
     MY_REQUESTS: '/employee/my-requests',
+    // V_27.0 — own calls (Sales Head: team) from the DGCRM Calls app.
+    CALL_REPORT: '/employee/call-report',
     // The employee sidebar mirrors the admin one for the pages an employee
     // legitimately works in. These reuse the SAME page components as the
     // admin routes — the difference is server-side: every list is scoped

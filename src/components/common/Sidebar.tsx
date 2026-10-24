@@ -19,7 +19,7 @@ import { fetchPendingApprovalCounts, PENDING_APPROVALS_CHANGED } from '../../ser
 
 import {
   MdDashboard, MdBusiness, MdPeople, MdContactPage,
-  MdHistory, MdCalculate, MdStorage,
+  MdHistory, MdCalculate, MdStorage, MdPhoneAndroid, MdPhoneInTalk,
   MdEventAvailable, MdLeaderboard, MdPayment, MdAttachMoney,
   MdApartment, MdAccountBalance, MdAccountTree,
   MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
@@ -136,6 +136,9 @@ const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null, pendi
   // the 'reports' permission still can't pull data even if this link is
   // somehow reached directly.
   { label: 'Reports', path: ROUTES.ADMIN.EXECUTIVE_DASHBOARD, icon: <MdAssessment /> },
+  // V_27.0 — phones running the DGCRM Calls app; Block is requireAdmin server-side.
+  { label: 'Call Report', path: ROUTES.ADMIN.CALL_REPORT, icon: <MdPhoneInTalk /> },
+  { label: 'Call Sync Phones', path: ROUTES.ADMIN.CALL_DEVICES, icon: <MdPhoneAndroid /> },
   // Backup Database — Admin may create/download backups (requireAdmin
   // server-side); Super Admin reaches it from the Super Admin group below.
   ...(role === 'admin' ? [{ label: 'Backup Database', path: ROUTES.ADMIN.BACKUP_DATABASE, icon: <MdStorage /> }] : []),
@@ -201,6 +204,7 @@ const buildEmployeeNavItems = (has: (area: AccessArea) => boolean): NavItem[] =>
     { label: 'Leave', path: ROUTES.EMPLOYEE.LEAVES, icon: <MdBeachAccess /> },
     // V_26.0 — tasks an Admin assigned to this employee.
     { label: 'My Tasks', path: ROUTES.EMPLOYEE.TASKS, icon: <MdAssignment /> },
+    ...(has('leads') ? [{ label: 'Call Report', path: ROUTES.EMPLOYEE.CALL_REPORT, icon: <MdPhoneInTalk /> }] : []),
     // V_26.0 — requests this employee sent for Admin approval.
     { label: 'My Requests', path: ROUTES.EMPLOYEE.MY_REQUESTS, icon: <MdPendingActions /> },
   ];
