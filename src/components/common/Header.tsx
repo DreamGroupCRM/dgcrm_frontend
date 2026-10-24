@@ -169,6 +169,22 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   // ── Settings Panel content (reused in both desktop and mobile) ─────────
   const SettingsMenuContent = () => (
     <>
+      {/* V_26.0 — the Settings page (setup pages), Admin only. */}
+      {(role === 'admin' || role === 'superadmin') && (
+        <>
+          <button
+            type="button"
+            style={dropdownItemStyle}
+            onClick={() => { setSettingsOpen(false); navigate(ROUTES.ADMIN.SETTINGS); }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.hoverBg)}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+          >
+            <FiSettings size={16} style={{ color: 'var(--brand-ink)', flexShrink: 0 }} />
+            All settings
+          </button>
+          <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
+        </>
+      )}
       <button
         type="button"
         style={dropdownItemStyle}
