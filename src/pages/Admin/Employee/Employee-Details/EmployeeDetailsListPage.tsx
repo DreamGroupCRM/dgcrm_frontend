@@ -24,7 +24,7 @@ import DraftsButton from '../../../../components/common/DraftsButton';
 import { RowActionMenu, useRowActionMenu, RowMenuAction } from '../../../../components/common/RowActionMenu';
 import './EmployeeDetails.css';
 import { serverToday } from '../../../../utils/serverTime';
-import { usePendingRequests, usePendingDeletes, RequestReviewModal, RequestTag, PendingRequestsList } from '../../../../components/approvals/RequestReview';
+import { usePendingRequests, usePendingDeletes, RequestReviewModal, RequestTag, PendingRequestsList, reviewFormPath } from '../../../../components/approvals/RequestReview';
 import { ChangeRequestRow } from '../../../../services/changeRequestsService';
 
 type Theme = AppTheme;
@@ -258,6 +258,8 @@ const EmployeeDetailsListPage: React.FC = () => {
     try { return new URLSearchParams(window.location.search).get('approvals') === '1'; } catch { return false; }
   });
   const [reviewRow, setReviewRow] = useState<ChangeRequestRow | null>(null);
+  // Add / edit requests open in the real form; the rest in the review popup.
+  const openReview = (r: ChangeRequestRow) => { const to = reviewFormPath(r); if (to) navigate(to); else setReviewRow(r); };
 
   useEffect(() => { dispatch(setPageTitle('Employees')); }, [dispatch]);
 
@@ -406,7 +408,7 @@ const EmployeeDetailsListPage: React.FC = () => {
     const waiting = requestsFor(emp.id);
     const actions: RowMenuAction[] = [
       { key: 'view', label: 'View', icon: <MdVisibility size={14} color="var(--brand-gradient)" />, onClick: () => { rowMenu.close(); navigate(`${employeeDetailsBasePath()}/view/${emp.id}`); } },
-      ...(waiting.length ? [{ key: 'review', label: 'Review request', icon: <MdVisibility size={14} color="#92400e" />, onClick: () => { rowMenu.close(); setReviewRow(waiting[0]); } }] : []),
+      ...(waiting.length ? [{ key: 'review', label: 'Review request', icon: <MdVisibility size={14} color="#92400e" />, onClick: () => { rowMenu.close(); openReview(waiting[0]); } }] : []),
       { key: 'edit', label: 'Edit', icon: <MdEdit size={13} color="#7c3aed" />, onClick: () => { rowMenu.close(); navigate(`${employeeDetailsBasePath()}/edit/${emp.id}`); } },
       // Delete / Activate stay Admin-only (HR only adds/edits, via approval).
       ...(canDeleteImmediately ? [
@@ -500,7 +502,7 @@ const EmployeeDetailsListPage: React.FC = () => {
       {showRequests && canDeleteImmediately && (
         <PendingRequestsList t={t} isDark={isDark} rows={pending.rows} loading={pending.loading} noun="employees"
           deletes={pendingDeletes.rows} onDeleteDecided={() => { pendingDeletes.reload(); fetchEmployees(); }}
-          onReview={setReviewRow} onShowAll={() => setShowRequests(false)} />
+          onReview={openReview} onShowAll={() => setShowRequests(false)} />
       )}
       {reviewRow && (
         <RequestReviewModal t={t} isDark={isDark} row={reviewRow} onClose={() => setReviewRow(null)}
@@ -586,7 +588,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                               </div>
                             )}
                             <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{emp.first_name} {emp.last_name}</span>
-                            {requestsFor(emp.id).map((r) => <RequestTag key={r.id} action={r.action} onClick={() => setReviewRow(r)} />)}
+                            {requestsFor(emp.id).map((r) => <RequestTag key={r.id} action={r.action} onClick={() => openReview(r)} />)}
                             {deleteWaiting(emp.id) && <RequestTag action="delete" onClick={() => setShowRequests(true)} />}
                           </div>
                         </td>

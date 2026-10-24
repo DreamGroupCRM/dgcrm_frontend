@@ -22,7 +22,7 @@ import { formatDate, showAlert } from '../../utils';
 import MasterIconButtons from '../../components/masters/MasterIconButtons';
 import SortableTh, { SortDir } from '../../components/masters/SortableTh';
 import LeadStatusBadge from './LeadStatusBadge';
-import { usePendingRequests, usePendingDeletes, RequestReviewModal, RequestTag, PendingRequestsList } from '../approvals/RequestReview';
+import { usePendingRequests, usePendingDeletes, RequestReviewModal, RequestTag, PendingRequestsList, reviewFormPath } from '../approvals/RequestReview';
 import { ChangeRequestRow } from '../../services/changeRequestsService';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -52,6 +52,8 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
     try { return new URLSearchParams(window.location.search).get('approvals') === '1'; } catch { return false; }
   });
   const [reviewRow, setReviewRow] = useState<ChangeRequestRow | null>(null);
+  // Add / edit requests open in the real form; the rest in the review popup.
+  const openReview = (r: ChangeRequestRow) => { const to = reviewFormPath(r); if (to) navigate(to); else setReviewRow(r); };
   const waitingCount = pending.rows.length + pendingDeletes.rows.length;
 
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
@@ -307,7 +309,7 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
       {showRequests && isAdmin && (
         <PendingRequestsList t={t} isDark={isDark} rows={pending.rows} loading={pending.loading} noun="leads"
           deletes={pendingDeletes.rows} onDeleteDecided={() => { pendingDeletes.reload(); fetchLeads(); }}
-          onReview={setReviewRow} onShowAll={() => setShowRequests(false)} />
+          onReview={openReview} onShowAll={() => setShowRequests(false)} />
       )}
       {reviewRow && (
         <RequestReviewModal t={t} isDark={isDark} row={reviewRow} onClose={() => setReviewRow(null)} onDecided={() => { pending.reload(); fetchLeads(); }} />
@@ -356,7 +358,7 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
                       <div className="flex items-center gap-2">
                         <MdPerson size={16} className="master-row-icon" />
                         <span style={{ fontWeight: 700 }}>{l.name}</span>
-                        {pending.rows.filter((r) => String(r.entity_id) === String(l.id)).map((r) => <RequestTag key={r.id} action={r.action} onClick={() => setReviewRow(r)} />)}
+                        {pending.rows.filter((r) => String(r.entity_id) === String(l.id)).map((r) => <RequestTag key={r.id} action={r.action} onClick={() => openReview(r)} />)}
                         {pendingDeletes.rows.some((d) => String(d.id) === String(l.id)) && <RequestTag action="delete" onClick={() => setShowRequests(true)} />}
                         {l.is_duplicate && (
                           <span title="Possible duplicate lead" style={{ color: duplicateIcon, display: 'inline-flex' }}>

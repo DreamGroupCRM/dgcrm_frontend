@@ -17,7 +17,7 @@ import { AppTheme } from '../../../../styles/theme';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { ROUTES } from '../../../../constants';
 import {
-  fetchCustomerFullDetails,
+  fetchCustomerFullDetails, mapCustomerFullDetail, BackendCustomer,
   fetchNextCustomerCode,
   createCustomerWithDetails,
   updateCustomerWithDetails,
@@ -54,6 +54,8 @@ import { cssRect } from '../../../../utils/appZoom';
 import DateInput from '../../../../components/common/DateInput';
 import CallHistoryCard from '../../../../components/calls/CallHistoryCard';
 import { fetchCustomerCalls } from '../../../../services/callService';
+import { fetchRequestRecord, RequestRecord, rejectChangeRequest } from '../../../../services/changeRequestsService';
+import { ReviewBanner } from '../../../../components/approvals/ReviewBanner';
 
 type Mode = 'add' | 'edit' | 'view';
 interface Props {
@@ -801,6 +803,13 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   const paths = useRoleBasePath();
   const backPath = from === 'cancelled' ? paths.cancelledBooking : paths.customerDetails;
   const isView = mode === 'view';
+  // V_26.0 — ?review=<request id> (Admin): the form opens filled with an
+  // employee's add / edit request; any field can be changed, and saving
+  // approves the request with those changes (Reject sends it back).
+  const [reviewParams] = useSearchParams();
+  const reviewId = paths.isAdmin && !isView ? reviewParams.get('review') : null;
+  const [review, setReview] = useState<RequestRecord | null>(null);
+  const afterReview = `${paths.customerDetails}?approvals=1`;
 
   // Quick View — which document the shared viewer is showing, if any. Kept
   // at page level so closing the preview leaves the record exactly where
@@ -817,7 +826,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   const canEditEmail = useCanChangeEmail();
   const emailLocked = !isView && mode !== 'add' && !canEditEmail;
 
-  const [fetching, setFetching] = useState(mode !== 'add');
+  const [fetching, setFetching] = useState(mode !== 'add' || !!reviewId);
   const [saving, setSaving] = useState(false);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [customerCode, setCustomerCode] = useState('');
@@ -1058,11 +1067,13 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   const [cancellation, setCancellation] = useState<CustomerFullDetail['cancellation']>(null);
 
   useEffect(() => {
-    if (mode === 'add' || !id) return;
+    if (!reviewId && (mode === 'add' || !id)) return;
     (async () => {
       setFetching(true);
       try {
-        const res = await fetchCustomerFullDetails(id);
+        const res = reviewId
+          ? await fetchRequestRecord(reviewId).then((rr) => { setReview(rr); return { success: true, data: mapCustomerFullDetail(rr.record as unknown as BackendCustomer) }; })
+          : await fetchCustomerFullDetails(id!);
         if (res.success && res.data) {
           const c = res.data;
           setCustomerCode(c.customer_code || '');
@@ -1133,12 +1144,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
           toast.error('Failed to load customer details.');
         }
       } catch {
-        toast.error('Failed to load customer details.');
+        toast.error(reviewId ? 'This request could not be opened. It may already be approved or rejected.' : 'Failed to load customer details.');
       } finally {
         setFetching(false);
       }
     })();
-  }, [mode, id]);
+  }, [mode, id, reviewId]);
 
   // ── cascading Project -> Building -> Wing -> Floor -> Flat ──────────────
   // FetchBuildingList (used for Project/Building Name options below) is a
@@ -1543,7 +1554,20 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
     }
   };
 
+  const handleRejectReview = async () => {
+    if (!reviewId) return;
+    const { isConfirmed, note } = await showAlert.confirmWithNote('Reject this request? Nothing is saved; the employee sees your note on My Requests.',
+      'Reject Request?', 'Reject', 'Reason for the employee (optional)');
+    if (!isConfirmed) return;
+    try {
+      await rejectChangeRequest(reviewId, note || undefined);
+      toast.success('Request rejected.');
+      navigate(afterReview);
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed to reject the request.'); }
+  };
+
   const handleSubmit = async () => {
+    if (reviewId && !review) return;
     setSubmitAttempted(true);
     const invalid = getFirstInvalid();
     if (invalid) {
@@ -1691,6 +1715,14 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
 
       formData.append('is_active', String(isActive));
 
+      if (reviewId) {
+        // V_26.0 — this save approves the employee's request (with any changes made here).
+        if (mode === 'edit' && id) await updateCustomerWithDetails(id, formData, reviewId);
+        else await createCustomerWithDetails(formData, null, reviewId);
+        showAlert.approved(mode === 'edit' ? 'The customer changes were approved.' : 'The new customer was approved and added.');
+        navigate(afterReview);
+        return;
+      }
       if (mode === 'edit' && id) {
         const res = await updateCustomerWithDetails(id, formData);
         if (res.pending) showAlert.pendingApproval('The customer changes were saved successfully.');
@@ -1924,7 +1956,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
           </button>
           <div>
             <h1 className="cust-crud-title">
-              {mode === 'add' ? 'Create Customer' : mode === 'edit' ? 'Edit Customer' : 'View Customer'}
+              {reviewId ? (mode === 'add' ? 'Review New Customer' : 'Review Customer Changes') : mode === 'add' ? 'Create Customer' : mode === 'edit' ? 'Edit Customer' : 'View Customer'}
               {draftId != null && <span className="draft-badge" style={{ marginLeft: 10, verticalAlign: 'middle' }}>DRAFT</span>}
             </h1>
           </div>
@@ -1941,6 +1973,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
           </div>
         )}
       </div>
+
+      {review && <ReviewBanner t={t} isDark={isDark} review={review} noun="customer" />}
 
       <ValidationErrorSummary
         t={t}
@@ -2422,10 +2456,17 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
           Building/Employee CRUD's footer layout. ─────────────────────── */}
       <div className="master-crud-footer flex items-center justify-center gap-3 z-10"
         style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
-        <button type="button" onClick={() => navigate(paths.customerDetails)} disabled={saving}
+        <button type="button" onClick={() => navigate(reviewId ? afterReview : paths.customerDetails)} disabled={saving}
           className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
-          <MdClose size={16} /> Cancel
+          <MdClose size={16} /> {reviewId ? 'Back' : 'Cancel'}
         </button>
+        {reviewId && review && (
+          <button type="button" onClick={handleRejectReview} disabled={saving}
+            className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-bold"
+            style={{ background: t.surfaceBg, color: '#b91c1c', border: '1px solid #fca5a5', cursor: saving ? 'not-allowed' : 'pointer' }}>
+            <MdClose size={16} /> Reject
+          </button>
+        )}
         {!isView && (
           <>
             {/* Item 9: same place as Submit — right beside Create/Update,
@@ -2435,7 +2476,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               style={{ background: t.insetBg, color: 'var(--brand-ink)', border: `1px solid ${t.inputBorder}`, cursor: saving ? 'not-allowed' : 'pointer' }}>
               <MdVisibility size={16} /> Preview
             </button>
-            {mode === 'add' && (
+            {mode === 'add' && !reviewId && (
               <button type="button" onClick={handleSaveDraft} disabled={saving || savingDraft}
                 title="Keep this partly filled form and finish it later — no validation, no approval yet."
                 className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-semibold"
@@ -2450,7 +2491,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
                 background: !isFormValid && !saving ? '#9ca3af' : 'var(--brand-gradient)',
                 cursor: saving ? 'not-allowed' : 'pointer',
               }}>
-              <MdSave size={17} /> {saving ? 'Saving...' : mode === 'edit' ? 'Update Customer' : 'Create Customer'}
+              <MdSave size={17} /> {saving ? 'Saving...' : reviewId ? (review ? 'Approve' : 'Loading…') : mode === 'edit' ? 'Update Customer' : 'Create Customer'}
             </button>
           </>
         )}

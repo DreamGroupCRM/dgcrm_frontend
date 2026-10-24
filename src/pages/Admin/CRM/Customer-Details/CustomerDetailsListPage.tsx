@@ -49,7 +49,7 @@ import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 import { cssRect, viewportWidth, viewportHeight } from '../../../../utils/appZoom';
 import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
 import DateInput from '../../../../components/common/DateInput';
-import { usePendingRequests, RequestReviewModal, RequestTag, PendingRequestsList } from '../../../../components/approvals/RequestReview';
+import { usePendingRequests, RequestReviewModal, RequestTag, PendingRequestsList, reviewFormPath } from '../../../../components/approvals/RequestReview';
 
 type Theme = AppTheme;
 
@@ -459,6 +459,8 @@ const CustomerDetailsListPage: React.FC = () => {
     try { return new URLSearchParams(window.location.search).get('approvals') === '1'; } catch { return false; }
   });
   const [reviewRow, setReviewRow] = useState<ChangeRequestRow | null>(null);
+  // Add / edit requests open in the real form; the rest in the review popup.
+  const openReview = (r: ChangeRequestRow) => { const to = reviewFormPath(r); if (to) navigate(to); else setReviewRow(r); };
   // The old customers.assign permission counts only for Admin and for
   // employees whose department is not set up yet (same rule as the API);
   // otherwise only a Head assigns, to their own Executives.
@@ -1332,7 +1334,7 @@ const CustomerDetailsListPage: React.FC = () => {
       </div>
       {/* ── V_26.0 — Admin: the requests waiting for approval ─────────── */}
       {showRequests && paths.isAdmin && (
-        <PendingRequestsList t={t} isDark={isDark} rows={pending.rows} loading={pending.loading} onReview={setReviewRow} onShowAll={() => setShowRequests(false)} />
+        <PendingRequestsList t={t} isDark={isDark} rows={pending.rows} loading={pending.loading} onReview={openReview} onShowAll={() => setShowRequests(false)} />
       )}
       {/* ── Table / Grid ──────────────────────────────────────────────── */}
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, display: showRequests && paths.isAdmin ? 'none' : undefined }}>
@@ -1451,7 +1453,7 @@ const CustomerDetailsListPage: React.FC = () => {
                               onCancelBooking={c.cancellation_pending || !canCancelBooking ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
                               onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                               onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
-                              onReview={pendingByCustomer.has(c.id) ? () => { setOpenMenuId(null); setReviewRow(pendingByCustomer.get(c.id)![0]); } : undefined}
+                              onReview={pendingByCustomer.has(c.id) ? () => { setOpenMenuId(null); openReview(pendingByCustomer.get(c.id)![0]); } : undefined}
                             />
                           )}
                         </div>
@@ -1487,7 +1489,7 @@ const CustomerDetailsListPage: React.FC = () => {
                         <span style={{ overflowWrap: 'anywhere', lineHeight: 1.35 }}>
                           {c.customer_name}
                           {(pendingByCustomer.get(c.id) ?? []).map((r) => (
-                            <span key={r.id} className="ml-1.5" style={{ verticalAlign: 'middle' }}><RequestTag action={r.action} onClick={() => setReviewRow(r)} /></span>
+                            <span key={r.id} className="ml-1.5" style={{ verticalAlign: 'middle' }}><RequestTag action={r.action} onClick={() => openReview(r)} /></span>
                           ))}
                           {c.cancellation_pending && !paths.isAdmin && (
                             <span title="Cancel Booking request is waiting for admin approval"

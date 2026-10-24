@@ -5,7 +5,9 @@
 // ParentCommentId — see leads.service.ts on the backend for how a comment
 // row's parent_id makes it a reply).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { fetchRequestRecord, RequestRecord, rejectChangeRequest } from '../../services/changeRequestsService';
+import { ReviewBanner } from '../approvals/ReviewBanner';
 import { toast } from '@/utils/toast';
 import { MdSave, MdArrowBack, MdReply, MdSend, MdPersonAdd } from 'react-icons/md';
 
@@ -22,7 +24,7 @@ import { fetchEmployeeIdsWithArea } from '../../services/accessService';
 import { FetchEmployeeDetails } from '../../services/employeeDetailsService';
 import { useAccessProfile } from '../../hooks/useAccessProfile';
 import { Lead, LeadActivity, LeadStatus, LEAD_STATUSES, LEAD_STATUS_LABELS, CreateLeadPayload } from '../../types/index';
-import { formatDate } from '../../utils';
+import { formatDate, showAlert } from '../../utils';
 import LeadStatusBadge from './LeadStatusBadge';
 import DateInput from '../common/DateInput';
 import CallHistoryCard from '../calls/CallHistoryCard';
@@ -63,6 +65,11 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
   const { isDark, t, accent, duplicateIcon, systemBorder, cssVars } = useAppearanceTokens();
   const isView = mode === 'view';
   const isAdd = mode === 'add';
+  // V_26.0 — ?review=<request id> (Admin, Add): the form opens filled with
+  // an employee's lead request; saving approves it with any changes.
+  const [reviewParams] = useSearchParams();
+  const reviewId = isAdd && basePath.startsWith('/admin') ? reviewParams.get('review') : null;
+  const [review, setReview] = useState<RequestRecord | null>(null);
   // V_24.0 — the "Assigned Employees" card is only shown to a caller who
   // actually has the new Leads.assign permission (admin/superadmin
   // always do, per usePermission's own bypass) — matches the backend's
@@ -152,6 +159,22 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
   }, [id, isAdd]);
 
   useEffect(() => { loadLead(); }, [loadLead]);
+  useEffect(() => {
+    if (!reviewId) return;
+    fetchRequestRecord(reviewId).then((rr) => {
+      setReview(rr);
+      const v = rr.record as Partial<CreateLeadPayload>;
+      setForm((f) => ({ ...f, ...Object.fromEntries(Object.entries(v).filter(([k, val]) => k in EMPTY_FORM && val !== undefined)) }));
+    }).catch(() => toast.error('This request could not be opened. It may already be approved or rejected.'));
+  }, [reviewId]);
+  const handleRejectReview = async () => {
+    if (!reviewId) return;
+    const { isConfirmed, note } = await showAlert.confirmWithNote('Reject this request? Nothing is saved; the employee sees your note on My Requests.',
+      'Reject Request?', 'Reject', 'Reason for the employee (optional)');
+    if (!isConfirmed) return;
+    try { await rejectChangeRequest(reviewId, note || undefined); toast.success('Request rejected.'); navigate(`${basePath}?approvals=1`); }
+    catch (e: any) { toast.error(e?.response?.data?.message || 'Failed to reject the request.'); }
+  };
 
   useEffect(() => {
     if (leadTeam.length > 0) {
@@ -191,6 +214,12 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
     if (invalid) { revealInvalidField(invalid.field); return; }
     setSaving(true);
     try {
+      if (reviewId) {
+        await createLead(form, reviewId);
+        showAlert.approved('The new lead was approved and added.');
+        navigate(`${basePath}?approvals=1`);
+        return;
+      }
       if (isAdd) {
         const res = await createLead(form);
         if (res.pending) {
@@ -278,7 +307,7 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
         </button>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700, color: t.textPrimary }}>
-            {isAdd ? 'Add Lead' : isView ? form.name || 'Lead' : `Edit — ${form.name}`}
+            {reviewId ? 'Review New Lead' : isAdd ? 'Add Lead' : isView ? form.name || 'Lead' : `Edit — ${form.name}`}
           </div>
           {!isAdd && lead && (
             <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
@@ -296,6 +325,7 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
         onErrorClick={revealInvalidField}
       />
 
+      {review && <ReviewBanner t={t} isDark={isDark} review={review} noun="lead" />}
       <form onSubmit={handleSubmit}>
         <div style={cardStyle}>
           <div style={headerStyle}><span style={{ fontWeight: 700, fontSize: 13.5, color: t.textPrimary }}>Basic Info</span></div>
@@ -387,8 +417,14 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
         {!isView && (
           <div className="flex items-center gap-2" style={{ marginBottom: 24 }}>
             <button type="submit" disabled={saving} className="master-btn-primary">
-              <MdSave size={17} /> {saving ? 'Saving...' : isAdd ? 'Create Lead' : 'Update Lead'}
+              <MdSave size={17} /> {saving ? 'Saving...' : reviewId ? 'Approve' : isAdd ? 'Create Lead' : 'Update Lead'}
             </button>
+            {reviewId && (
+              <button type="button" onClick={handleRejectReview} disabled={saving} className="master-btn-icon"
+                style={{ background: t.surfaceBg, border: '1px solid #fca5a5', color: '#b91c1c', padding: '9px 16px', fontWeight: 700 }}>
+                Reject
+              </button>
+            )}
             <button type="button" onClick={() => navigate(basePath)} className="master-btn-icon"
               style={{ background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: t.textPrimary, padding: '9px 16px' }}>
               Cancel

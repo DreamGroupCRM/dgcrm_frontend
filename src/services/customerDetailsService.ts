@@ -89,7 +89,7 @@ interface BackendFloor { id: number | string; name: string; }
 interface BackendFlat { id: number | string; flat_number: string; flat_type: string | null; area_sqft: number | string | null; floor: BackendFloor | null; }
 // V_22.0 item 9 — commercial shop, sibling of BackendFlat (no floor/wing).
 interface BackendShop { id: number | string; shop_no: string; area_sqft: number | string | null; }
-interface BackendCustomer {
+export interface BackendCustomer {
   id: number | string;
   customer_code: string;
   name: string | null;
@@ -277,7 +277,7 @@ const mapCancellation = (bc: BackendCustomer): CustomerFullDetail['cancellation'
   };
 };
 
-const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
+export const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
   cancellation: mapCancellation(bc),
   id: String(bc.id),
   customer_code: bc.customer_code,
@@ -583,23 +583,29 @@ export const updateCustomer = async (id: string, payload: UpdateCustomerPayload)
 // back as `{ pending: true }` with no `data` — callers must check
 // `pending` before touching the response's `data`.
 /** POST /api/customers (multipart/form-data) */
-export const createCustomerWithDetails = async (formData: FormData, draftId?: number | null): Promise<CustomerCreateEditResponse> => {
+export const createCustomerWithDetails = async (formData: FormData, draftId?: number | null, approveRequestId?: string | null): Promise<CustomerCreateEditResponse> => {
   const res = await axiosInstance.post('/customers', toBackendCustomerFormData(formData), {
     headers: { 'Content-Type': 'multipart/form-data' },
     // V_25.0 — submitting a saved draft: its uploaded files are re-used
     // server-side and the draft is removed once this succeeds.
-    params: draftId ? { draft_id: draftId } : undefined,
+    // V_26.0 — approve_request: the Admin's review form approves that request.
+    params: { ...(draftId ? { draft_id: draftId } : {}), ...(approveRequestId ? { approve_request: approveRequestId } : {}) },
   });
+  // The review form approved a request: no customer row comes back (shaped like pending).
+  if (res.data.approved) return { success: true, pending: true, message: res.data.message };
   if (res.data.pending) return { success: res.data.success, pending: true, message: res.data.message };
   return { success: res.data.success, pending: false, message: res.data.message, data: mapCustomerRow(res.data.data as BackendCustomer) };
 };
 
 // ── Update existing customer — full Create-Customer form, multipart/form-data ─
 /** PUT /api/customers/:id (multipart/form-data) */
-export const updateCustomerWithDetails = async (id: string, formData: FormData): Promise<CustomerCreateEditResponse> => {
+export const updateCustomerWithDetails = async (id: string, formData: FormData, approveRequestId?: string | null): Promise<CustomerCreateEditResponse> => {
   const res = await axiosInstance.put(`/customers/${id}`, toBackendCustomerFormData(formData), {
     headers: { 'Content-Type': 'multipart/form-data' },
+    params: approveRequestId ? { approve_request: approveRequestId } : undefined,
   });
+  // The review form approved a request: no customer row comes back (shaped like pending).
+  if (res.data.approved) return { success: true, pending: true, message: res.data.message };
   if (res.data.pending) return { success: res.data.success, pending: true, message: res.data.message };
   return { success: res.data.success, pending: false, message: res.data.message, data: mapCustomerRow(res.data.data as BackendCustomer) };
 };

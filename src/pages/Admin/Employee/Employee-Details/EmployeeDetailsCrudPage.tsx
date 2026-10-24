@@ -3,6 +3,8 @@
 // ==========================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { fetchRequestRecord, RequestRecord, rejectChangeRequest } from '../../../../services/changeRequestsService';
+import { ReviewBanner } from '../../../../components/approvals/ReviewBanner';
 import { toast } from '@/utils/toast';
 import {
   MdArrowBack, MdCloudUpload, MdPerson, MdBusinessCenter, MdAccountBalance,
@@ -16,7 +18,7 @@ import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
 import DocumentViewerModal from '../../../../components/common/DocumentViewerModal';
 import { previewKindFor, downloadDocument } from '../../../../services/documentService';
 import {
-  ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee,
+  ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee, normalizeEmployee,
   fetchEmployeePermissions,
   EmployeeFormValues, EmployeeFileValues, EmployeeStatus, EMPLOYEE_FILE_FIELD_MAP,
 } from '../../../../services/employeeDetailsService';
@@ -753,6 +755,12 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const actorRole = useAppSelector((st) => st.auth.role);
   const actorIsAdmin = actorRole === 'admin' || actorRole === 'superadmin';
   const actorIsSuperAdmin = actorRole === 'superadmin';
+  // V_26.0 — ?review=<request id> (Admin): the form opens filled with HR's
+  // add / edit request; saving approves it with any changes made here.
+  const [reviewParams] = useSearchParams();
+  const reviewId = actorIsAdmin && !isView ? reviewParams.get('review') : null;
+  const [review, setReview] = useState<RequestRecord | null>(null);
+  const afterReview = `${employeeDetailsBasePath()}?approvals=1`;
   const [showLegacyPermissions, setShowLegacyPermissions] = useState(false);
   // Department Setup (Super Admin): Head / Executive designations,
   // "designation required", each department's pages.
@@ -814,7 +822,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   const [preview, setPreview] = useState<{ label: string; url: string } | null>(null);
   const openPreview = useCallback((label: string, url: string) => setPreview({ label, url }), []);
 
-  const [fetching, setFetching] = useState(mode !== 'add');
+  const [fetching, setFetching] = useState(mode !== 'add' || !!reviewId);
 
   // Accordion (item 2.1) — each CRUD section can independently collapse;
   // all start open since every section holds required fields on a fresh
@@ -1077,11 +1085,13 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
   // ── load for edit/view ───────────────────────────────────────────────
   useEffect(() => {
-    if (mode === 'add' || !id) return;
+    if (!reviewId && (mode === 'add' || !id)) return;
     (async () => {
       setFetching(true);
       try {
-        const res = await ViewEmployee(id);
+        const res = reviewId
+          ? await fetchRequestRecord(reviewId).then((rr) => { setReview(rr); return { success: true, data: normalizeEmployee(rr.record) }; })
+          : await ViewEmployee(id!);
         if (res.success && res.data) {
           const e = res.data;
           setEmployeeCode(e.employee_code);
@@ -1119,13 +1129,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           toast.error('Failed to load employee details.');
         }
       } catch {
-        toast.error('Failed to load employee details.');
+        toast.error(reviewId ? 'This request could not be opened. It may already be approved or rejected.' : 'Failed to load employee details.');
       } finally {
         setFetching(false);
       }
 
-      // Admin-only below (HR never sees or sends these).
-      if (!actorIsAdmin) { setLoadingModules(false); return; }
+      // Admin-only below (HR never sees or sends these); a new employee
+      // under review has no permissions yet.
+      if (!actorIsAdmin || !id) { setLoadingModules(false); return; }
 
       // Assign Actions & Modules grid, pre-checked — one call gives both the
       // full assignable list AND which ones are currently assigned, already
@@ -1155,7 +1166,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       }
 
     })();
-  }, [mode, id]);
+  }, [mode, id, reviewId]);
 
   const toggleIdInArray = (key: 'department_ids' | 'designation_ids' | 'module_action_ids', value: number) => {
     setForm((prev) => {
@@ -1353,7 +1364,20 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     }
   };
 
+  const handleRejectReview = async () => {
+    if (!reviewId) return;
+    const { isConfirmed, note } = await showAlert.confirmWithNote('Reject this request? Nothing is saved; the employee sees your note on My Requests.',
+      'Reject Request?', 'Reject', 'Reason for the employee (optional)');
+    if (!isConfirmed) return;
+    try {
+      await rejectChangeRequest(reviewId, note || undefined);
+      toast.success('Request rejected.');
+      navigate(afterReview);
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed to reject the request.'); }
+  };
+
   const handleSubmit = async () => {
+    if (reviewId && !review) return;
     setSubmitAttempted(true);
     const invalid = getFirstInvalid();
     if (invalid) {
@@ -1371,6 +1395,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         can_add_customer: isHeadAnywhere && form.can_add_customer,
       };
       let pending = false;
+      if (reviewId) {
+        // V_26.0 — this save approves HR's request (with any changes made here).
+        if (mode === 'edit' && id) await EditEmployee(id, payload, files, reviewId);
+        else await createEmployee(payload, files, null, reviewId);
+        showAlert.approved(mode === 'edit' ? 'The employee changes were approved.' : 'The new employee was approved and added.');
+        navigate(afterReview);
+        return;
+      }
       if (mode === 'edit' && id) {
         const res = await EditEmployee(id, payload, files);
         pending = Boolean(res.pending);
@@ -1649,7 +1681,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </button>
           <div>
             <h1 className="emp-crud-title">
-              {mode === 'add' ? 'Create Employee' : 'Edit Employee'}
+              {reviewId ? (mode === 'add' ? 'Review New Employee' : 'Review Employee Changes') : mode === 'add' ? 'Create Employee' : 'Edit Employee'}
               {draftId != null && <span className="draft-badge" style={{ marginLeft: 10, verticalAlign: 'middle' }}>DRAFT</span>}
             </h1>
           </div>
@@ -1659,6 +1691,8 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <span className="emp-id-value">Employee ID - {employeeCode || '—'}</span>
         </div>
       </div>
+
+      {review && <ReviewBanner t={t} isDark={isDark} review={review} noun="employee" />}
 
       <ValidationErrorSummary
         t={t}
@@ -1962,16 +1996,23 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
 
       {/* ── Sticky footer — Go Back (always) + Create/Update (add/edit only), centered ──────── */}
       <div className="master-crud-footer flex items-center justify-center gap-3" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
+        {reviewId && review && (
+          <button type="button" onClick={handleRejectReview} disabled={saving}
+            className="px-6 py-2.5 rounded-xl text-sm font-bold"
+            style={{ background: t.surfaceBg, color: '#b91c1c', border: '1px solid #fca5a5', cursor: saving ? 'not-allowed' : 'pointer' }}>
+            Reject
+          </button>
+        )}
         <button
           type="button"
-          onClick={() => navigate(employeeDetailsBasePath())}
+          onClick={() => navigate(reviewId ? afterReview : employeeDetailsBasePath())}
           disabled={saving}
           className="px-6 py-2.5 rounded-xl text-sm font-semibold"
           style={{ background: t.surfaceBg, color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, cursor: 'pointer' }}
         >
           Go Back
         </button>
-        {mode === 'add' && (
+        {mode === 'add' && !reviewId && (
           <button
             type="button"
             onClick={handleSaveDraft}
@@ -1994,7 +2035,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.8 : 1,
             }}
           >
-            {saving ? 'Saving...' : mode === 'edit' ? 'Update' : 'Create'}
+            {saving ? 'Saving...' : reviewId ? (review ? 'Approve' : 'Loading…') : mode === 'edit' ? 'Update' : 'Create'}
           </button>
         )}
       </div>

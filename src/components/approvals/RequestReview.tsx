@@ -11,6 +11,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from '@/utils/toast';
 import { MdCheckCircle, MdCancel, MdClose } from 'react-icons/md';
 import { showAlert, formatLastLogin } from '../../utils';
+import { ROUTES } from '../../constants';
 import DocumentViewerModal from '../common/DocumentViewerModal';
 import DateInput from '../common/DateInput';
 import { serverTodayYmd } from '../../utils/serverTime';
@@ -260,6 +261,17 @@ export const RequestFormView: React.FC<{ t: AppTheme; isDark: boolean; row: Chan
     </div>
   );
 };
+
+/** V_26.0 — the Admin's review form for an add / edit request, or null (popup). */
+export function reviewFormPath(row: ChangeRequestRow): string | null {
+  const q = `?review=${row.id}`;
+  if (row.module === 'customer' && row.action === 'create') return `${ROUTES.ADMIN.CUSTOMER_DETAILS}/add${q}`;
+  if (row.module === 'customer' && row.action === 'edit' && row.entity_id) return `${ROUTES.ADMIN.CUSTOMER_DETAILS}/edit/${row.entity_id}${q}`;
+  if (row.module === 'employee' && row.action === 'create') return `${ROUTES.ADMIN.EMPLOYEE_DETAILS}/add${q}`;
+  if (row.module === 'employee' && row.action === 'edit' && row.entity_id) return `${ROUTES.ADMIN.EMPLOYEE_DETAILS}/edit/${row.entity_id}${q}`;
+  if (row.module === 'lead' && row.action === 'create') return `${ROUTES.ADMIN.LEADS}/add${q}`;
+  return null;
+}
 
 const usesForm = (row: ChangeRequestRow) => (row.module === 'customer' || row.module === 'employee') && (row.action === 'create' || row.action === 'edit');
 

@@ -123,7 +123,7 @@ export interface Employee {
 // the database, and the List page's location column (derived from address)
 // was blank for every employee. Every GET response (list rows and single)
 // is normalized through this before being handed back to callers.
-const normalizeEmployee = (raw: Record<string, unknown>): Employee => ({
+export const normalizeEmployee = (raw: Record<string, unknown>): Employee => ({
   ...(raw as unknown as Employee),
   address: (raw.residential_address as string) ?? '',
   aadhar_number: (raw.aadhaar_card_number as string) ?? '',
@@ -418,11 +418,14 @@ export const createEmployee = async (
   // V_25.0 — submitting a saved draft: the server re-uses the draft's
   // uploaded files and removes the draft once this succeeds.
   draftId?: number | null,
+  // V_26.0 — the Admin's review form: this save approves that request.
+  approveRequestId?: string | null,
 ): Promise<EmployeeSingleResponse> => {
   const res = await axiosInstance.post('/employees', toBackendEmployeeFormData(await buildEmployeeFormData(values, files)), {
     headers: { 'Content-Type': 'multipart/form-data' },
-    params: draftId ? { draft_id: draftId } : undefined,
+    params: { ...(draftId ? { draft_id: draftId } : {}), ...(approveRequestId ? { approve_request: approveRequestId } : {}) },
   });
+  if (res.data.approved) return { success: true, message: res.data.message } as EmployeeSingleResponse;
   // V_25.0 — HR's request goes to Admin approval (202, no employee yet).
   if (res.data.pending) return { success: res.data.success, message: res.data.message, pending: true } as EmployeeSingleResponse;
   return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
@@ -433,11 +436,14 @@ export const createEmployee = async (
 export const EditEmployee = async (
   id: string,
   values: EmployeeFormValues,
-  files: EmployeeFileValues
+  files: EmployeeFileValues,
+  approveRequestId?: string | null,
 ): Promise<EmployeeSingleResponse> => {
   const res = await axiosInstance.put(`/employees/${id}`, toBackendEmployeeFormData(await buildEmployeeFormData(values, files)), {
     headers: { 'Content-Type': 'multipart/form-data', [API_NAME_HEADER]: 'EditEmployee' },
+    params: approveRequestId ? { approve_request: approveRequestId } : undefined,
   });
+  if (res.data.approved) return { success: true, message: res.data.message } as EmployeeSingleResponse;
   if (res.data.pending) return { success: res.data.success, message: res.data.message, pending: true } as EmployeeSingleResponse;
   return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
 };
