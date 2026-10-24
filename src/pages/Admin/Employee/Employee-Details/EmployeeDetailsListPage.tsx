@@ -8,7 +8,7 @@ import {
   MdAdd, MdDelete, MdDownload, MdEdit, MdRefresh, MdSearch, MdVisibility,
   MdFilterList, MdGroups, MdLayers, MdPersonOff, MdMoreVert,
   MdGridView, MdViewList, MdEmail, MdPhone, MdLocationOn, MdChevronLeft, MdChevronRight,
-  MdToggleOn, MdToggleOff,
+  MdToggleOn, MdToggleOff, MdPendingActions,
 } from 'react-icons/md';
 
 import { employeeDetailsBasePath } from '../../../../hooks/useRoleBasePath';
@@ -24,6 +24,8 @@ import DraftsButton from '../../../../components/common/DraftsButton';
 import { RowActionMenu, useRowActionMenu, RowMenuAction } from '../../../../components/common/RowActionMenu';
 import './EmployeeDetails.css';
 import { serverToday } from '../../../../utils/serverTime';
+import { usePendingRequests, usePendingDeletes, RequestReviewModal, RequestTag, PendingRequestsList } from '../../../../components/approvals/RequestReview';
+import { ChangeRequestRow } from '../../../../services/changeRequestsService';
 
 type Theme = AppTheme;
 
@@ -247,6 +249,16 @@ const EmployeeDetailsListPage: React.FC = () => {
   // see components/common/RowActionMenu.tsx.
   const rowMenu = useRowActionMenu<string>();
 
+  // V_26.0 — Admin approves HR's employee add / edit / delete requests here.
+  const pending = usePendingRequests('employee', canDeleteImmediately);
+  const pendingDeletes = usePendingDeletes('employee', canDeleteImmediately);
+  const requestsFor = (id: string) => pending.rows.filter((r) => String(r.entity_id) === String(id));
+  const deleteWaiting = (id: string) => pendingDeletes.rows.some((d) => String(d.id) === String(id));
+  const [showRequests, setShowRequests] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('approvals') === '1'; } catch { return false; }
+  });
+  const [reviewRow, setReviewRow] = useState<ChangeRequestRow | null>(null);
+
   useEffect(() => { dispatch(setPageTitle('Employees')); }, [dispatch]);
 
   // Real server pagination + search (see employees.repository.ts's
@@ -391,8 +403,10 @@ const EmployeeDetailsListPage: React.FC = () => {
   // button's own bounding rect — never clipped by the table's scroll
   // container, and opens toward whichever side actually has room. ────────
   const renderActionMenu = (emp: Employee) => {
+    const waiting = requestsFor(emp.id);
     const actions: RowMenuAction[] = [
       { key: 'view', label: 'View', icon: <MdVisibility size={14} color="var(--brand-gradient)" />, onClick: () => { rowMenu.close(); navigate(`${employeeDetailsBasePath()}/view/${emp.id}`); } },
+      ...(waiting.length ? [{ key: 'review', label: 'Review request', icon: <MdVisibility size={14} color="#92400e" />, onClick: () => { rowMenu.close(); setReviewRow(waiting[0]); } }] : []),
       { key: 'edit', label: 'Edit', icon: <MdEdit size={13} color="#7c3aed" />, onClick: () => { rowMenu.close(); navigate(`${employeeDetailsBasePath()}/edit/${emp.id}`); } },
       // Delete / Activate stay Admin-only (HR only adds/edits, via approval).
       ...(canDeleteImmediately ? [
@@ -426,17 +440,22 @@ const EmployeeDetailsListPage: React.FC = () => {
       {/* ── Summary cards — same compact sizing/spacing as Building master's
           boxes; font sizes come from the shared StatCard CSS class, same as
           every other list page. ──────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+      <div className={`grid grid-cols-1 gap-3 mb-5 ${canDeleteImmediately ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
         {([
           { filterKey: 'all', label: 'Total Employees', value: summary.total_employees, icon: MdGroups, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.12)' : '#f5f3ff' },
           { filterKey: 'active', label: 'Active Employees', value: summary.active_employees, icon: MdLayers, color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4' },
           { filterKey: 'inactive', label: 'Inactive Employees', value: summary.inactive_employees, icon: MdPersonOff, color: '#ea580c', bg: isDark ? 'rgba(234,88,12,0.12)' : '#fff7ed' },
         ] as const).map(({ filterKey, ...card }) => (
           <StatCard key={filterKey} {...card} loading={loading} compact
-            active={statusFilter === filterKey}
-            onClick={() => setStatusFilter(filterKey)}
+            active={!showRequests && statusFilter === filterKey}
+            onClick={() => { setShowRequests(false); setStatusFilter(filterKey); }}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
+        {canDeleteImmediately && (
+          <StatCard label="Waiting for your approval" value={pending.rows.length + pendingDeletes.rows.length} icon={MdPendingActions} color="#b45309" fill={pending.rows.length + pendingDeletes.rows.length ? "linear-gradient(135deg, #d97706, #b45309)" : undefined}
+            bg={isDark ? 'rgba(180,83,9,0.15)' : '#fff7ed'} compact active={showRequests} onClick={() => setShowRequests((v) => !v)}
+            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        )}
       </div>
 
       {/* ── Search (left) | Add + Export + Refresh (right) — same
@@ -478,8 +497,18 @@ const EmployeeDetailsListPage: React.FC = () => {
         </div>
       </div>
 
+      {showRequests && canDeleteImmediately && (
+        <PendingRequestsList t={t} isDark={isDark} rows={pending.rows} loading={pending.loading} noun="employees"
+          deletes={pendingDeletes.rows} onDeleteDecided={() => { pendingDeletes.reload(); fetchEmployees(); }}
+          onReview={setReviewRow} onShowAll={() => setShowRequests(false)} />
+      )}
+      {reviewRow && (
+        <RequestReviewModal t={t} isDark={isDark} row={reviewRow} onClose={() => setReviewRow(null)}
+          onDecided={() => { pending.reload(); fetchEmployees(); }}
+          onUpdated={(u) => pending.setRows((rs) => rs.map((r) => (r.id === u.id ? u : r)))} />
+      )}
       {/* ── All Employees panel ──────────────────────────────────────── */}
-      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, display: showRequests && canDeleteImmediately ? 'none' : undefined }}>
 
         {view === 'grid' ? (
           <div className="p-5">
@@ -557,6 +586,8 @@ const EmployeeDetailsListPage: React.FC = () => {
                               </div>
                             )}
                             <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{emp.first_name} {emp.last_name}</span>
+                            {requestsFor(emp.id).map((r) => <RequestTag key={r.id} action={r.action} onClick={() => setReviewRow(r)} />)}
+                            {deleteWaiting(emp.id) && <RequestTag action="delete" onClick={() => setShowRequests(true)} />}
                           </div>
                         </td>
                         <td>

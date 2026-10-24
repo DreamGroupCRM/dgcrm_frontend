@@ -10,7 +10,7 @@ import {
   MdGroups, MdPersonAddAlt1, MdPersonOff, MdClose,
   MdKeyboardArrowDown, MdMoreVert, MdHistory, MdCalendarMonth, MdPhone, MdEmail,
   MdPayments, MdPrint, MdDescription,
-  MdGridView, MdViewList, MdLocationOn, MdBadge, MdEventBusy,
+  MdGridView, MdViewList, MdLocationOn, MdBadge, MdEventBusy, MdPendingActions,
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
@@ -49,6 +49,7 @@ import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 import { cssRect, viewportWidth, viewportHeight } from '../../../../utils/appZoom';
 import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
 import DateInput from '../../../../components/common/DateInput';
+import { usePendingRequests, RequestReviewModal, RequestTag, PendingRequestsList } from '../../../../components/approvals/RequestReview';
 
 type Theme = AppTheme;
 
@@ -247,7 +248,7 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 // flips to the left when there isn't enough room on the right, and clamps
 // vertically so it never runs off the bottom of the screen.
 const CUSTOMER_MENU_WIDTH = 186;
-const CUSTOMER_MENU_HEIGHT = 212; // up to 6 rows incl. borders/padding (V_23.0 added Cancel Booking)
+const CUSTOMER_MENU_HEIGHT = 240; // up to 6 rows incl. borders/padding (V_23.0 added Cancel Booking)
 const computeCustomerMenuPos = (rect: DOMRect): { top: number; left: number } => {
   const spaceRight = viewportWidth() - rect.right;
   const left = spaceRight >= CUSTOMER_MENU_WIDTH + 8
@@ -275,7 +276,9 @@ const RowActionMenu: React.FC<{
   t: Theme; pos: { top: number; left: number };
   onView: () => void; onEdit?: () => void; onCancelBooking?: () => void;
   onDownloadHistory: () => void; onDownloadSchedule: () => void;
-}> = ({ t, pos, onView, onEdit, onCancelBooking, onDownloadHistory, onDownloadSchedule }) => createPortal(
+  /** V_26.0 — Admin: a request waits on this customer. */
+  onReview?: () => void;
+}> = ({ t, pos, onView, onEdit, onCancelBooking, onDownloadHistory, onDownloadSchedule, onReview }) => createPortal(
   <div
     data-customer-row-menu
     style={{
@@ -289,6 +292,13 @@ const RowActionMenu: React.FC<{
       style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
       <MdVisibility size={14} color="var(--brand-gradient)" /> View
     </button>
+    {onReview && (
+      <button type="button" onClick={onReview}
+        className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap"
+        style={{ background: '#fffbeb', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: '#92400e', fontWeight: 700, fontFamily: t.fontFamily }}>
+        <MdVisibility size={14} /> Review request
+      </button>
+    )}
     {/* Edit is only rendered when a handler was supplied — an employee is
         not given it. There is no Delete entry: customers are never deleted
         from this list (use Cancel Booking instead). */}
@@ -436,6 +446,19 @@ const CustomerDetailsListPage: React.FC = () => {
   // only a Head with "Can Add Customer" gets the Add button (the customer
   // still goes to Admin approval).
   const access = useAccessProfile();
+  // V_26.0 — Admin approves employees' customer requests right here: the
+  // "Waiting for your approval" box, a tag on each customer with one, and
+  // the Review popup (no separate Pending Approval page).
+  const pending = usePendingRequests('customer', paths.isAdmin);
+  const pendingByCustomer = useMemo(() => {
+    const m = new Map<string, ChangeRequestRow[]>();
+    for (const r of pending.rows) if (r.entity_id != null) m.set(String(r.entity_id), [...(m.get(String(r.entity_id)) ?? []), r]);
+    return m;
+  }, [pending.rows]);
+  const [showRequests, setShowRequests] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('approvals') === '1'; } catch { return false; }
+  });
+  const [reviewRow, setReviewRow] = useState<ChangeRequestRow | null>(null);
   // The old customers.assign permission counts only for Admin and for
   // employees whose department is not set up yet (same rule as the API);
   // otherwise only a Head assigns, to their own Executives.
@@ -1138,7 +1161,7 @@ const CustomerDetailsListPage: React.FC = () => {
           "inactive customer" concept anyway (see getCustomerListSummary's
           comment) and duplicated the separate Assigned/Unassigned toggle
           that used to sit further down this page. ─────────────────────── */}
-      <div className="cust-stat-grid grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+      <div className={`cust-stat-grid grid grid-cols-1 gap-3 mb-5 ${paths.isAdmin ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
         {setUpEmployee ? ([
           { filterKey: 'all', label: 'All Customers', value: summary.total_customers, icon: MdGroups, color: '#7c3aed' },
           { filterKey: 'by_head', label: 'Assigned by Head', value: summary.assigned_by_head ?? 0, icon: MdPersonAddAlt1, color: '#16a34a' },
@@ -1154,10 +1177,15 @@ const CustomerDetailsListPage: React.FC = () => {
           { filterKey: 'unassigned', label: 'Un Assigned Customers', value: summary.unassigned_customers, icon: MdPersonOff, color: '#ea580c' },
         ] as const).map(({ filterKey, ...card }) => (
           <StatCard key={filterKey} {...card} bg="" loading={loading} compact
-            active={assignmentStatusFilter === filterKey}
-            onClick={() => setAssignmentStatusFilter(filterKey)}
+            active={!showRequests && assignmentStatusFilter === filterKey}
+            onClick={() => { setShowRequests(false); setAssignmentStatusFilter(filterKey); }}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
+        {paths.isAdmin && (
+          <StatCard label="Waiting for your approval" value={pending.rows.length} icon={MdPendingActions} color="#b45309" bg="" fill={pending.rows.length ? "linear-gradient(135deg, #d97706, #b45309)" : undefined} loading={pending.loading && pending.rows.length === 0} compact
+            active={showRequests} onClick={() => setShowRequests((v) => !v)}
+            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        )}
       </div>
 
       {/* ── Filters row ───────────────────────────────────────────────── */}
@@ -1302,8 +1330,12 @@ const CustomerDetailsListPage: React.FC = () => {
           </button>
         </div>
       </div>
+      {/* ── V_26.0 — Admin: the requests waiting for approval ─────────── */}
+      {showRequests && paths.isAdmin && (
+        <PendingRequestsList t={t} isDark={isDark} rows={pending.rows} loading={pending.loading} onReview={setReviewRow} onShowAll={() => setShowRequests(false)} />
+      )}
       {/* ── Table / Grid ──────────────────────────────────────────────── */}
-      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, display: showRequests && paths.isAdmin ? 'none' : undefined }}>
         {view === 'grid' ? (
           <div className="p-5">
             {pendingCreates.length > 0 && (
@@ -1419,6 +1451,7 @@ const CustomerDetailsListPage: React.FC = () => {
                               onCancelBooking={c.cancellation_pending || !canCancelBooking ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
                               onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                               onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
+                              onReview={pendingByCustomer.has(c.id) ? () => { setOpenMenuId(null); setReviewRow(pendingByCustomer.get(c.id)![0]); } : undefined}
                             />
                           )}
                         </div>
@@ -1453,7 +1486,10 @@ const CustomerDetailsListPage: React.FC = () => {
                         )}
                         <span style={{ overflowWrap: 'anywhere', lineHeight: 1.35 }}>
                           {c.customer_name}
-                          {c.cancellation_pending && (
+                          {(pendingByCustomer.get(c.id) ?? []).map((r) => (
+                            <span key={r.id} className="ml-1.5" style={{ verticalAlign: 'middle' }}><RequestTag action={r.action} onClick={() => setReviewRow(r)} /></span>
+                          ))}
+                          {c.cancellation_pending && !paths.isAdmin && (
                             <span title="Cancel Booking request is waiting for admin approval"
                               className="inline-flex items-center rounded-full px-2 ml-1.5"
                               style={{ background: '#b45309', color: '#fff', fontSize: 9.5, fontWeight: 700, lineHeight: '16px', verticalAlign: 'middle' }}>
@@ -1524,6 +1560,11 @@ const CustomerDetailsListPage: React.FC = () => {
         <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={total} pageBtns={pageBtns} />
       </div>
 
+      {reviewRow && (
+        <RequestReviewModal t={t} isDark={isDark} row={reviewRow} onClose={() => setReviewRow(null)}
+          onDecided={() => { pending.reload(); fetchCustomers(); }}
+          onUpdated={(u) => pending.setRows((rs) => rs.map((r) => (r.id === u.id ? u : r)))} />
+      )}
       {cancelTarget && (
         <CancelBookingModal t={t} customer={cancelTarget} isAdmin={paths.isAdmin}
           onClose={() => setCancelTarget(null)}

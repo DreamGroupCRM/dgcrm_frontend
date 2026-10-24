@@ -2,14 +2,14 @@
 // DGCRM — SETTINGS (Admin)
 // ==========================================
 // V_26.0 — one page of tiles for the setup pages used now and then
-// (Masters, Payment Reminders, Call Sync Phones, User Management, Backup),
+// (Tasks, Masters, Payment Reminders, Call Sync Phones, User Management, Backup),
 // so the sidebar stays short. The Super Admin tools show only for that
 // login. Masters follow the header's "Enable Master" switch.
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MdBusiness, MdAccountTree, MdAccountBalance, MdApartment, MdNotificationsActive, MdPhoneAndroid,
-  MdManageAccounts, MdStorage, MdSettings, MdGridOn, MdSecurity,
+  MdManageAccounts, MdStorage, MdSettings, MdGridOn, MdSecurity, MdAssignment,
 } from 'react-icons/md';
 import { IconType } from 'react-icons';
 import { useAppDispatch, useAppSelector } from '../../../hooks';
@@ -50,6 +50,8 @@ const SettingsPage: React.FC = () => {
     { icon: MdApartment, title: 'Building', text: 'Projects, buildings, wings and flats', path: ROUTES.ADMIN.BUILDING },
   ];
   const general: Tile[] = [
+    // V_26.0 — moved here from the left menu.
+    { icon: MdAssignment, title: 'Tasks', text: 'Assign general tasks to employees and track them', path: ROUTES.ADMIN.TASKS },
     { icon: MdNotificationsActive, title: 'Payment Reminders', text: 'Automatic reminders to customers about their dues', path: ROUTES.ADMIN.PAYMENT_REMINDERS, tag: whatsappUpcoming ? 'WhatsApp upcoming' : undefined },
     { icon: MdPhoneAndroid, title: 'Call Sync Phones', text: 'Phones that sync calls, and WhatsApp brochure settings', path: ROUTES.ADMIN.CALL_DEVICES },
     { icon: MdManageAccounts, title: 'User Management', text: 'Logins: unlock, allow / block, sign out, set password', path: ROUTES.ADMIN.USER_MANAGEMENT },

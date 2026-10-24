@@ -95,6 +95,11 @@ const EmployeeDashboard: React.FC = () => {
       { label: 'Collected this month', value: rupeeCompact(fig?.collected_this_month ?? 0), note: fig ? `${plural(fig.collected_count, 'approved receipt')}` : undefined, noteColor: isDark ? '#86efac' : '#166534', to: ROUTES.EMPLOYEE.PAYMENT_RECEIVED },
       { label: 'Waiting for approval', value: rupeeCompact(fig?.awaiting_approval ?? 0), note: fig ? plural(fig.awaiting_approval_count, 'payment') : undefined, noteColor: isDark ? '#fcd34d' : '#92400e', to: ROUTES.EMPLOYEE.PAYMENT_RECEIVED },
     ] : []),
+    // V_26.0 — Refund: their refund cases and what is still to pay back.
+    ...(data?.refund ? [
+      { label: 'My refund cases', value: String(data.refund.cases), note: `${rupeeCompact(data.refund.refunded)} refunded so far`, noteColor: isDark ? '#86efac' : '#166534', to: ROUTES.EMPLOYEE.CANCELLED_BOOKING },
+      { label: 'Still to refund', value: rupeeCompact(data.refund.balance), note: data.refund.pending ? `${rupeeCompact(data.refund.pending)} waiting for approval` : `of ${rupeeCompact(data.refund.paid)} paid`, noteColor: isDark ? '#fcd34d' : '#92400e', to: ROUTES.EMPLOYEE.CANCELLED_BOOKING },
+    ] : []),
     ...(has('leads') ? [{ label: ownLeads ? 'My leads' : 'Leads (me + team)', value: String(fig?.leads ?? data?.my_leads ?? 0), to: ROUTES.EMPLOYEE.LEADS }] : []),
     { label: 'My tasks open', value: String(data?.open_tasks_count ?? 0), to: ROUTES.EMPLOYEE.TASKS },
     { label: 'Requests waiting', value: String(data?.requests_pending ?? 0), to: ROUTES.EMPLOYEE.MY_REQUESTS },
@@ -130,7 +135,7 @@ const EmployeeDashboard: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <span style={{ fontSize: 12.5, fontWeight: 700 }}>Only my own customers</span>
+              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{data?.refund ? 'My refund cases' : customersArea ? 'Only my own customers' : has('leads') ? 'Only my own leads' : 'My work'}</span>
             )}
             <span style={{ fontSize: 12, color: band.sub }}>{today}</span>
           </div>

@@ -58,6 +58,8 @@ import { ReceiptEmailSwitch } from '../../../../components/common/ReceiptEmailSw
 import { DataScope, setDataScope } from '../../../../utils/dataScope';
 import DateInput from '../../../../components/common/DateInput';
 import { useAccessProfile } from '../../../../hooks/useAccessProfile';
+import { usePendingRequests, RequestReviewModal, PendingRequestsList } from '../../../../components/approvals/RequestReview';
+import { ChangeRequestRow } from '../../../../services/changeRequestsService';
 
 type Theme = AppTheme;
 
@@ -210,6 +212,10 @@ const PaymentReceivedPage: React.FC = () => {
   const paths = useRoleBasePath();
   // V_25.0 — a Head (set-up department) may request deleting a team payment.
   const { profile: access } = useAccessProfile();
+  // V_26.0 — Admin decides a Head's payment delete requests on this page.
+  const deleteRequests = usePendingRequests('payment', paths.isAdmin, (r) => r.action === 'delete');
+  const [showRequests, setShowRequests] = useState(false);
+  const [reviewRow, setReviewRow] = useState<ChangeRequestRow | null>(null);
   // V_26.0 — a non-Admin's Payment Received reaches back to the same date
   // two months ago (enforced server-side); the date filter stops there too.
   const receivedMinYmd = paths.isAdmin ? undefined : employeeReceivedMinYmd();
@@ -826,6 +832,17 @@ const PaymentReceivedPage: React.FC = () => {
               );
             })}
           </div>
+          {paths.isAdmin && (
+            <button type="button" onClick={() => setShowRequests((v) => !v)} aria-pressed={showRequests}
+              className="flex items-center gap-2 rounded-xl" title="Payment delete requests waiting for your approval"
+              style={{ padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                background: showRequests ? '#b91c1c' : t.inputBg, color: showRequests ? '#fff' : t.textPrimary, border: `1px solid ${showRequests ? '#b91c1c' : '#fca5a5'}` }}>
+              Delete requests
+              <span style={{ minWidth: 22, padding: '1px 7px', borderRadius: 999, fontSize: 11, fontWeight: 800, textAlign: 'center', background: showRequests ? 'rgba(255,255,255,0.25)' : '#b91c1c', color: '#fff' }}>
+                {deleteRequests.rows.length}
+              </span>
+            </button>
+          )}
           <div className="pr-toolbar-actions flex items-center gap-2.5" style={{ flexShrink: 0 }}>
             {paths.isAdmin && selectedPendingIds.length > 0 && (
               <button type="button" onClick={handleBulkApprove} disabled={bulkApproving}
@@ -870,7 +887,15 @@ const PaymentReceivedPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="pr-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      {showRequests && paths.isAdmin && (
+        <PendingRequestsList t={t} isDark={isDark} rows={deleteRequests.rows} loading={deleteRequests.loading} noun="payments"
+          onReview={setReviewRow} onShowAll={() => setShowRequests(false)} />
+      )}
+      {reviewRow && (
+        <RequestReviewModal t={t} isDark={isDark} row={reviewRow} onClose={() => setReviewRow(null)}
+          onDecided={() => { deleteRequests.reload(); refreshAll(); }} />
+      )}
+      <div className="pr-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, display: showRequests && paths.isAdmin ? 'none' : undefined }}>
         <div className="master-table-scroll">
           <table className="pr-table master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
             <thead>
@@ -953,7 +978,10 @@ const PaymentReceivedPage: React.FC = () => {
                           <MdHourglassEmpty size={12} /> UnApproved
                         </span>
                       )}
-                      {r.delete_requested && <div><DeleteRequestedTag /></div>}
+                      {r.delete_requested && <div
+                        role={paths.isAdmin ? 'button' : undefined}
+                        style={{ cursor: paths.isAdmin ? 'pointer' : undefined }} title={paths.isAdmin ? 'Review the delete request' : undefined}
+                        onClick={() => { const cr = deleteRequests.rows.find((x) => String(x.entity_id) === String(r.id)); if (paths.isAdmin && cr) setReviewRow(cr); }}><DeleteRequestedTag /></div>}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number || '—'}</td>
                     <td style={{ padding: '10px 12px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>

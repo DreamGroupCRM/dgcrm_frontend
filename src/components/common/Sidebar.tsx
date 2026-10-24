@@ -21,7 +21,7 @@ import {
   MdDashboard, MdPeople, MdContactPage, MdHistory, MdCalculate, MdPhoneInTalk,
   MdEventAvailable, MdLeaderboard, MdPayment, MdAttachMoney, MdExpandMore, MdExpandLess,
   MdChevronLeft, MdChevronRight, MdPersonAdd, MdSettings, MdAssessment, MdPendingActions,
-  MdBeachAccess, MdAssignment, MdGridView, MdEventBusy,
+  MdBeachAccess, MdGridView, MdEventBusy,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -72,26 +72,26 @@ interface NavItem {
 // (Masters, Payment Reminders, Call Sync Phones, User Management, Backup,
 // and the Super Admin tools) on one Settings page instead of the sidebar.
 const SETTINGS_PAGES = [
-  '/admin/masters', ROUTES.ADMIN.PAYMENT_REMINDERS, ROUTES.ADMIN.CALL_DEVICES, ROUTES.ADMIN.USER_MANAGEMENT,
+  '/admin/masters', ROUTES.ADMIN.TASKS, ROUTES.ADMIN.PAYMENT_REMINDERS, ROUTES.ADMIN.CALL_DEVICES, ROUTES.ADMIN.USER_MANAGEMENT,
   ROUTES.ADMIN.BACKUP_DATABASE, ROUTES.ADMIN.DEPARTMENT_SETUP,
 ];
-const buildAdminNavItems = (pendingCount = 0): NavItem[] => [
+// V_26.0 — no Pending Approval page: each request is approved on its own
+// page, and that page's menu entry shows how many wait there. Tasks moved
+// to the Settings page.
+type AdminCounts = { customer: number; lead: number; employee: number; payment: number; refunds: number };
+const NO_COUNTS: AdminCounts = { customer: 0, lead: 0, employee: 0, payment: 0, refunds: 0 };
+const buildAdminNavItems = (c: AdminCounts = NO_COUNTS): NavItem[] => ([
   { label: 'Dashboard', path: ROUTES.ADMIN.DASHBOARD, icon: <MdDashboard /> },
-  // Admin/superadmin (requireAdmin server-side): delete / change requests
-  // employees couldn't complete themselves.
-  { label: 'Pending Approval', path: ROUTES.ADMIN.PENDING_APPROVALS, icon: <MdPendingActions />, badge: pendingCount },
-  // V_26.0 — general tasks (e.g. HR work) Admin assigns to employees.
-  { label: 'Tasks', path: ROUTES.ADMIN.TASKS, icon: <MdAssignment /> },
   {
     label: 'CRM', icon: <MdLeaderboard />,
     children: [
-      { label: 'Leads', path: ROUTES.ADMIN.LEADS, icon: <MdLeaderboard /> },
-      { label: 'Customer Details', path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage /> },
+      { label: 'Leads', path: ROUTES.ADMIN.LEADS, icon: <MdLeaderboard />, badge: c.lead },
+      { label: 'Customer Details', path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage />, badge: c.customer },
       { label: 'Payment Dues', path: ROUTES.ADMIN.PAYMENT_DUES, icon: <MdPayment /> },
       // Payment Approval is merged into Payment Received (All/Approved/
       // UnApproved buttons); Payment Upcoming opens from its toolbar button.
-      { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
-      { label: 'Cancelled Booking', path: ROUTES.ADMIN.CANCELLED_BOOKING, icon: <MdEventBusy /> },
+      { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney />, badge: c.payment },
+      { label: 'Cancelled Booking', path: ROUTES.ADMIN.CANCELLED_BOOKING, icon: <MdEventBusy />, badge: c.refunds },
       { label: 'Customize Scheme', path: ROUTES.ADMIN.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
       { label: 'Building View', path: ROUTES.ADMIN.BUILDING_2D_VIEW, icon: <MdGridView /> },
     ],
@@ -99,7 +99,7 @@ const buildAdminNavItems = (pendingCount = 0): NavItem[] => [
   {
     label: 'Employee', icon: <MdPeople />,
     children: [
-      { label: 'Employee Details', path: ROUTES.ADMIN.EMPLOYEE_DETAILS, icon: <MdPersonAdd /> },
+      { label: 'Employee Details', path: ROUTES.ADMIN.EMPLOYEE_DETAILS, icon: <MdPersonAdd />, badge: c.employee },
       // Leave Requests lives inside the Attendance page (one merged
       // Attendance + Leave experience).
       { label: 'Attendance', path: ROUTES.ADMIN.ATTENDANCE, icon: <MdEventAvailable /> },
@@ -117,7 +117,7 @@ const buildAdminNavItems = (pendingCount = 0): NavItem[] => [
     ],
   },
   { label: 'Settings', path: ROUTES.ADMIN.SETTINGS, icon: <MdSettings />, activePaths: SETTINGS_PAGES },
-];
+] as NavItem[]).map((item) => (item.children ? { ...item, badge: item.children.reduce((n, ch) => n + (ch.badge ?? 0), 0) } : item));
 
 // Employee sidebar — same shape as the admin tree above (a CRM group
 // holding the customer/payment pages, then the standalone tools), so the
@@ -162,7 +162,6 @@ const buildEmployeeNavItems = (has: (area: AccessArea) => boolean): NavItem[] =>
     { label: 'Attendance', path: ROUTES.EMPLOYEE.ATTENDANCE, icon: <MdEventAvailable /> },
     { label: 'Leave', path: ROUTES.EMPLOYEE.LEAVES, icon: <MdBeachAccess /> },
     // V_26.0 — tasks an Admin assigned to this employee.
-    { label: 'My Tasks', path: ROUTES.EMPLOYEE.TASKS, icon: <MdAssignment /> },
     ...(has('leads') ? [{ label: 'Call Report', path: ROUTES.EMPLOYEE.CALL_REPORT, icon: <MdPhoneInTalk /> }] : []),
     // V_26.0 — requests this employee sent for Admin approval.
     { label: 'My Requests', path: ROUTES.EMPLOYEE.MY_REQUESTS, icon: <MdPendingActions /> },
@@ -211,6 +210,12 @@ const NavItemComponent: React.FC<{
           {!collapsed && (
             <>
               <span className="flex-1 text-left font-medium" style={{ fontSize: 12 }}>{item.label}</span>
+              {!open && !!item.badge && (
+                <span aria-label={`${item.badge} waiting`} className="rounded-full text-center"
+                  style={{ minWidth: 18, padding: '1px 6px', fontSize: 10, fontWeight: 700, lineHeight: '16px', background: '#dc2626', color: '#fff' }}>
+                  {item.badge > 99 ? '99+' : item.badge}
+                </span>
+              )}
               <span style={{ color: t.sidebarTextMuted }}>
                 {open ? <MdExpandLess size={16} /> : <MdExpandMore size={16} />}
               </span>
@@ -340,16 +345,23 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
   }, [mobileOpen]);
 
   const access = useAccessProfile();
-  // V_26.0 — Pending Admin Approval count: reloaded on every page change,
-  // when the browser tab is focused again, and right after an approve/reject.
-  const [pendingCount, setPendingCount] = useState(0);
+  // V_26.0 — requests waiting on the Admin, per page: reloaded on every page
+  // change, when the browser tab is focused again, and right after an
+  // approve/reject.
+  const [counts, setCounts] = useState<AdminCounts>(NO_COUNTS);
   const isAdmin = isAdminRole(role);
   useEffect(() => {
     if (!isAdmin) return;
     let alive = true;
     const load = () => {
       fetchPendingApprovalCounts()
-        .then((c) => { if (alive) setPendingCount(c.total); })
+        .then((c) => { if (alive) setCounts({
+          customer: c.changes_by_module.customer ?? 0,
+          lead: (c.changes_by_module.lead ?? 0) + (c.deletes_by_type.lead ?? 0),
+          employee: (c.changes_by_module.employee ?? 0) + (c.deletes_by_type.employee ?? 0),
+          payment: c.changes_by_module.payment ?? 0,
+          refunds: c.refunds,
+        }); })
         .catch(() => { /* badge only — never block the sidebar */ });
     };
     load();
@@ -362,7 +374,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
     };
   }, [isAdmin, location.pathname]);
 
-  const navItems = isAdmin ? buildAdminNavItems(pendingCount) : buildEmployeeNavItems(access.has);
+  const navItems = isAdmin ? buildAdminNavItems(counts) : buildEmployeeNavItems(access.has);
 
   const shellStyle: React.CSSProperties = {
     background: t.sidebarBg,
