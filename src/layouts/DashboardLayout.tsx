@@ -7,6 +7,7 @@ import { useAppSelector } from '../hooks';
 import Sidebar from '../components/common/Sidebar';
 import Header from '../components/common/Header';
 import ProfileModal from '../components/common/ProfileModal';
+import WhoStrip from '../components/common/WhoStrip';
 import { getTheme } from '../styles/theme';
 import { useAppearanceTokens } from '../styles/appearanceTokens';
 import { ensureFileToken } from '../services/fileAccessService';
@@ -96,6 +97,8 @@ const DashboardLayout: React.FC = () => {
             fontFamily : t.fontFamily,
           }}
         >
+          {/* V_26.0 — who is logged in, on every page (not the dashboard). */}
+          <WhoStrip />
           <div className="animate-fade-in">
             {/* A page whose code is still loading shows a small spinner in
                 the content area only — sidebar and header stay in place. */}

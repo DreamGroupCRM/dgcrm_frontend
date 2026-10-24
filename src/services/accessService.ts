@@ -50,6 +50,8 @@ export interface AccessProfile {
   can_add_customer: boolean;
   customer_team: TeamMember[];
   lead_team: TeamMember[];
+  /** V_26.0 — the logged-in employee (name, code, photo), for the strip on every page. */
+  me?: { name: string; employee_code: string | null; photo_url: string | null } | null;
 }
 
 export interface ConfigDesignation { id: number; name: string; level: DesignationLevel; is_active: boolean }
