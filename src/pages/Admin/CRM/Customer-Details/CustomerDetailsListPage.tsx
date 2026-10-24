@@ -35,6 +35,7 @@ import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceipt
 import PaymentHistoryTable, { toPaymentHistoryRow } from '../../../../components/common/PaymentHistoryTable';
 import { HistoryCard, HistorySection, customerInfoItems, propertyInfoItems } from '../../../../components/common/HistoryPopup';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
+import { fetchEmployeeIdsWithArea } from '../../../../services/accessService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
   Customer, Building, CustomerPaymentRecord, CustomerListSummary, CustomerListFilters,
@@ -453,11 +454,11 @@ const CustomerDetailsListPage: React.FC = () => {
   const viewOnly = setUpEmployee && !isHead;
   const canEditCustomer = paths.isAdmin || (setUpEmployee && isHead);
   const showSplitAssign = paths.isAdmin || isHead;
-  // V_26.0 — Cancel Booking: Admin and Refund only (a department not set up
-  // yet keeps it, as before); no other Head, e.g. the Recovery Head, and no
-  // Executive. An employee's request goes to Admin approval. Same rule the
-  // server applies.
-  const canCancelBooking = access.has('cancelled_booking');
+  // V_26.0 — Cancel Booking: Admin, Refund (a department not set up yet
+  // keeps it, as before) and a Head, for their own and team's customers; no
+  // other Executive. An employee's request goes to Admin approval. Same rule
+  // the server applies.
+  const canCancelBooking = access.has('cancelled_booking') || (setUpEmployee && isHead);
 
   // allCustomers now holds ONLY the current server page (see fetchCustomers
   // below) — previously this held up to 1000 rows fetched once, with
@@ -571,11 +572,17 @@ const CustomerDetailsListPage: React.FC = () => {
     try {
       // activeOnly=true — don't offer a deactivated employee as an
       // assignee for a customer.
-      const res = await FetchEmployeeDetails(1, 1000, undefined, true);
+      // V_26.0 — only employees whose department has Customer Details
+      // (Recovery), not e.g. Sales. If that list can't load, everyone is
+      // offered as before and the server still checks.
+      const [res, withCustomers] = await Promise.all([
+        FetchEmployeeDetails(1, 1000, undefined, true),
+        fetchEmployeeIdsWithArea('customers').catch(() => null),
+      ]);
       if (res.success) {
         // V_26.0 — department · designation in the label, so two people with
         // the same name can be told apart when assigning.
-        setEmployees((res.rows ?? []).map((e) => {
+        setEmployees((res.rows ?? []).filter((e) => !withCustomers || withCustomers.has(String(e.id))).map((e) => {
           const role = [e.department, e.designation].filter(Boolean).join(' · ');
           return { id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})${role ? ` — ${role}` : ''}` };
         }));

@@ -1051,9 +1051,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   }, [form.department_ids, form.designation_ids, designationOptions, departmentOptions, accessConfig, isOfferedDesignation]);
   // V_25.0 — an Executive or a Head may have a Reporting Head (a Head of
   // the same department; Head → Head makes a multi-level hierarchy). It is
-  // optional: none means they report to Admin directly. Sales differs: a
-  // Sales Executive MUST pick a Sales Head, and a Sales Head gets no list
-  // (they are the Head) — the server keeps any Head saved earlier as is.
+  // optional: none means they report to Admin directly (V_26.0: a Sales
+  // Executive too). A Sales Head gets no list (they are the Head) — the
+  // server keeps any Head saved earlier as is.
   const reportingDeptIds = deptRoles
     .filter((r) => r.level === 'executive' || (r.level === 'head' && !r.isSales && !r.isRecovery))
     .map((r) => r.deptId);
@@ -1279,11 +1279,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     (() => {
       const missing = deptRoles.find((r) => r.designationRequired && r.hasDesignations && r.desigId == null);
       return { field: 'designation_ids', section: 'assign' as SectionKey, message: `Please select a Designation for ${missing?.deptName ?? 'each department'}.`, failed: () => Boolean(missing) };
-    })(),
-    // V_25.0 — a Sales Executive must have a Reporting Head (a Sales Head).
-    (() => {
-      const missing = deptRoles.find((r) => r.isSales && r.level === 'executive' && !form.department_heads[String(r.deptId)]);
-      return { field: 'department_heads', section: 'assign' as SectionKey, message: `Please select the Reporting Head (a ${missing?.deptName ?? 'Sales'} Head) for this Sales Executive.`, failed: () => Boolean(missing) };
     })(),
     // One designation per department (older records may still have two).
     { field: 'designation_ids', section: 'assign', message: 'Only one designation can be selected per department.', failed: () => {
@@ -1884,7 +1879,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             />
           </div>
           <div className="emp-assign-box" ref={setFieldRef('department_heads') as React.Ref<HTMLDivElement>}>
-            <label className="emp-label">Reporting Head{deptRoles.some((r) => r.isSales && r.level === 'executive') && <span className="emp-required"> *</span>}</label>
+            <label className="emp-label">Reporting Head</label>
             {deptRoles.filter((r) => r.level).length === 0 ? (
               <div style={{ fontSize: 11.5, color: t.textSecondary }}>Select a designation to see its Heads.</div>
             ) : (
@@ -1898,8 +1893,8 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                     {!reportingDeptIds.includes(r.deptId) ? (
                       <div style={{ fontSize: 11.5, color: t.textSecondary }}>{r.desigName ?? 'Head'} — no Reporting Head (reports to Admin).</div>
                     ) : (
-                      <div role="radiogroup" aria-label={`Reporting Head for ${r.deptName}`} aria-required={r.isSales && r.level === 'executive'} className="flex flex-col" style={{ gap: 3 }}>
-                        {[...(r.isSales && r.level === 'executive' ? [] : [{ id: '', label: 'None (reports to Admin)' }]),
+                      <div role="radiogroup" aria-label={`Reporting Head for ${r.deptName}`} className="flex flex-col" style={{ gap: 3 }}>
+                        {[{ id: '', label: 'None (reports to Admin)' },
                           ...(headsByDept[r.deptId] ?? []).map((h) => ({
                             id: String(h.id),
                             label: `${h.name}${h.employee_code ? ` (${h.employee_code})` : ''}${h.inactive ? ' (inactive)' : ''}`,

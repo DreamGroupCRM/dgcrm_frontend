@@ -1,7 +1,9 @@
 // V_25.0 — the logged-in employee's access (pages, Head team, "Can Add
 // Customer"), from GET /api/access/me. Fetched fresh once per page load
 // (not stored with the login), so a Super Admin's Department Setup change
-// shows up on the employee's next page load without logging out.
+// shows up on the employee's next page load without logging out. V_26.0 —
+// also fetched again when the tab comes back into focus and every few
+// minutes, so a new page shows in the menu without reloading.
 // Admin / Super Admin: everything allowed, no request made.
 import { useEffect, useState } from 'react';
 import { useAppSelector } from './index';
@@ -13,7 +15,18 @@ const FULL: AccessProfile = {
   head_of: [], can_add_customer: true, customer_team: [], lead_team: [],
 };
 
-let cached: { token: string | null; promise: Promise<AccessProfile> } | null = null;
+const REFRESH_MS = 5 * 60 * 1000;
+const FOCUS_MIN_MS = 60 * 1000;
+let cached: { token: string | null; promise: Promise<AccessProfile>; at: number } | null = null;
+
+function load(token: string, force = false): Promise<AccessProfile> {
+  if (force || !cached || cached.token !== token) {
+    const promise = fetchMyAccess();
+    cached = { token, promise, at: Date.now() };
+    promise.catch(() => { if (cached?.promise === promise) cached = null; });
+  }
+  return cached.promise;
+}
 
 export function useAccessProfile(): { profile: AccessProfile | null; loading: boolean; failed: boolean; has: (area: AccessArea) => boolean } {
   const role = useAppSelector((s) => s.auth.role);
@@ -26,13 +39,26 @@ export function useAccessProfile(): { profile: AccessProfile | null; loading: bo
   useEffect(() => {
     if (admin) { setProfile(FULL); return; }
     if (!token) { setProfile(null); return; }
-    if (!cached || cached.token !== token) {
-      cached = { token, promise: fetchMyAccess() };
-      cached.promise.catch(() => { cached = null; });
-    }
     let alive = true;
-    cached.promise.then((p) => { if (alive) { setProfile(p); setFailed(false); } }).catch(() => { if (alive) setFailed(true); /* keep null: pages fall back to server checks */ });
-    return () => { alive = false; };
+    const apply = (force: boolean) => load(token, force)
+      .then((p) => { if (alive) { setProfile(p); setFailed(false); } })
+      .catch(() => { if (alive && !force) setFailed(true); /* keep the last profile; pages fall back to server checks */ });
+    apply(false);
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      // Several hooks are mounted (menu, page): the first one fetches, the
+      // others pick up that same fresh request.
+      apply(!(cached && Date.now() - cached.at < FOCUS_MIN_MS));
+    };
+    const timer = window.setInterval(refresh, REFRESH_MS);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, [admin, token]);
 
   return {

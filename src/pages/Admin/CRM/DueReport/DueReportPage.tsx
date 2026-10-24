@@ -244,13 +244,15 @@ interface PaymentForUiOption { key: string; label: string; value: PaymentFor; is
 // (payment.service.ts's getDueListDetailed), but collectPayment itself
 // has no before/after concept — it just settles whichever EMI
 // installment is next due regardless of which label was picked here.
+// V_26.0 — in the order the dues fall: Booking, Remaining Booking, EMI
+// Before, Booster Before, Possession, EMI After, Booster After.
 const PAYMENT_FOR_UI_OPTIONS: PaymentForUiOption[] = [
-  { key: 'emi_before', label: 'EMI Before', value: 'EMIAmount' },
-  { key: 'emi_after', label: 'EMI After', value: 'EMIAmount' },
   { key: 'booking', label: 'Booking Amount', value: 'BookingAmount' },
   { key: 'pay_after_booking', label: 'Remaining Booking Amount', value: 'PayAfterbooking' },
-  { key: 'possession', label: 'Possession Amount', value: 'PossessionAmount' },
+  { key: 'emi_before', label: 'EMI Before', value: 'EMIAmount' },
   { key: 'booster_before', label: 'Booster Before Possession', value: 'AnnualAmount' },
+  { key: 'possession', label: 'Possession Amount', value: 'PossessionAmount' },
+  { key: 'emi_after', label: 'EMI After', value: 'EMIAmount' },
   { key: 'booster_after', label: 'Booster After Possession', value: 'AnnualAmount1' },
   { key: 'extra_pay', label: 'Extra Pay', value: 'EMIAmount', isAdvance: true },
 ];
@@ -277,12 +279,17 @@ const PAYMENT_FOR_KEY_META: Record<PaymentFor, { label: string; color: string; i
   AnnualAmount: { label: 'Booster Before Possession', color: '#16a34a', icon: MdStars },
   AnnualAmount1: { label: 'Booster After Possession', color: '#0d9488', icon: MdWorkspacePremium },
 };
-const PAYMENT_FOR_KEY_ORDER: Exclude<PaymentFor, 'EMIAmount'>[] = ['BookingAmount', 'PayAfterbooking', 'PossessionAmount', 'AnnualAmount', 'AnnualAmount1'];
+
+// V_26.0 — the order dues are shown in (cards, top boxes).
+const DUE_ORDER = ['BookingAmount', 'PayAfterbooking', 'EMI Before', 'AnnualAmount', 'PossessionAmount', 'EMI After', 'AnnualAmount1'];
+const dueRank = (r: { payment_for_key: PaymentFor; payment_for: string }): number =>
+  DUE_ORDER.indexOf(r.payment_for_key === 'EMIAmount' ? (r.payment_for === 'EMI After' ? 'EMI After' : 'EMI Before') : r.payment_for_key);
 
 // A row's displayed Payment-For label/color — EMI rows show "EMI Before"/
 // "EMI After" (from the backend's own payment_for label) instead of the
 // generic EMIAmount fallback, while keeping the SAME color for both so the
 // pair reads as one grouped/background treatment.
+
 const getPaymentForDisplay = (r: { payment_for_key: PaymentFor; payment_for: string }): { label: string; color: string } => {
   if (r.payment_for_key === 'EMIAmount') {
     return { label: r.payment_for === 'EMI After' ? 'EMI After' : 'EMI Before', color: PAYMENT_FOR_KEY_META.EMIAmount.color };
@@ -434,8 +441,9 @@ const wingLabel = (w: string | null | undefined): string | null => (w ? (/wing/i
 const assignedTo = (r: { assigned_employee_name?: string | null; assigned_head?: AssigneeRef | null; assigned_sub?: AssigneeRef | null }, name: string): boolean =>
   r.assigned_employee_name === name || r.assigned_head?.name === name || r.assigned_sub?.name === name;
 
-// Booking Amount and Booster show only their due date(s), no From/To range.
-const showsDueDateOnly = (k: PaymentFor) => k === 'BookingAmount' || k === 'AnnualAmount' || k === 'AnnualAmount1';
+// Every due but the EMI shows only its due date(s), no From/To range
+// (V_26.0: Remaining Booking and Possession too — they fall due once).
+const showsDueDateOnly = (k: PaymentFor) => k !== 'EMIAmount';
 const dueDateText = (r: DisplayRow): string => {
   const from = r.dueRow?.due_date_from || '';
   const to = r.dueRow?.due_date_to || '';
@@ -456,15 +464,15 @@ const ordinal = (n: number): string => {
 type EmiLine = { n: number; date: string; amount: number; left: number };
 type CardLine = { key: string; title: string; sub: string; left: number; paid?: number; awaiting?: number };
 
-function emiCardLines(lines: EmiLine[], awaiting: number, emiWise: boolean): CardLine[] {
+function emiCardLines(lines: EmiLine[], awaiting: number, emiWise: boolean, unit = 'EMI'): CardLine[] {
   const out: CardLine[] = [];
   let run: EmiLine[] = [];
   const flush = () => {
     if (run.length === 0) return;
     const first = run[0]; const last = run[run.length - 1];
     out.push(run.length === 1
-      ? { key: `e${first.n}`, title: `${ordinal(first.n)} EMI · due ${first.date}`, sub: 'nothing paid yet', left: first.left }
-      : { key: `e${first.n}-${last.n}`, title: `${ordinal(first.n)} – ${ordinal(last.n)} EMI · ${run.length} × ${rupee(first.amount)}`,
+      ? { key: `e${first.n}`, title: `${ordinal(first.n)} ${unit} · due ${first.date}`, sub: 'nothing paid yet', left: first.left }
+      : { key: `e${first.n}-${last.n}`, title: `${ordinal(first.n)} – ${ordinal(last.n)} ${unit} · ${run.length} × ${rupee(first.amount)}`,
           sub: `due ${first.date} to ${last.date} · nothing paid yet`, left: run.reduce((s, l) => s + l.left, 0) });
     run = [];
   };
@@ -474,9 +482,9 @@ function emiCardLines(lines: EmiLine[], awaiting: number, emiWise: boolean): Car
     if (paid <= 0 && !emiWise && (run.length === 0 || run[0].amount === l.amount)) { run.push(l); continue; }
     flush();
     if (paid > 0) {
-      out.push({ key: `e${l.n}`, title: `${ordinal(l.n)} EMI · due ${l.date}`, sub: '', left: l.left, paid, awaiting: Math.min(paid, awaiting) });
+      out.push({ key: `e${l.n}`, title: `${ordinal(l.n)} ${unit} · due ${l.date}`, sub: '', left: l.left, paid, awaiting: Math.min(paid, awaiting) });
     } else {
-      out.push({ key: `e${l.n}`, title: `${ordinal(l.n)} EMI · due ${l.date}`, sub: 'nothing paid yet', left: l.left });
+      out.push({ key: `e${l.n}`, title: `${ordinal(l.n)} ${unit} · due ${l.date}`, sub: 'nothing paid yet', left: l.left });
     }
   }
   flush();
@@ -488,12 +496,14 @@ const DueCard: React.FC<{ t: AppTheme; r: DisplayRow; textColor: string; emiWise
   const Icon = meta.icon;
   const category = r.dueRow?.due_category;
   const lines = r.dueRow?.emi_lines ?? [];
-  const isEmi = r.payment_for_key === 'EMIAmount' && lines.length > 0;
+  const isBooster = r.payment_for_key === 'AnnualAmount' || r.payment_for_key === 'AnnualAmount1';
+  // V_26.0 — several pending boosters are listed like EMIs (with "Show all").
+  const isEmi = (r.payment_for_key === 'EMIAmount' || isBooster) && lines.length > 0;
   const count = r.months_pending ?? 0;
-  const cardLines = isEmi ? emiCardLines(lines, r.dueRow?.part_paid_awaiting_amount ?? 0, emiWise) : [];
+  const unit = isBooster ? 'booster' : 'EMI';
+  const cardLines = isEmi ? emiCardLines(lines, r.dueRow?.part_paid_awaiting_amount ?? 0, emiWise, isBooster ? 'Booster' : 'EMI') : [];
   const groupedAway = isEmi && !emiWise && cardLines.length < lines.length;
   const verb = category === 'upcoming' ? 'upcoming' : category === 'due_today' ? 'due today' : 'overdue';
-  const unit = r.payment_for_key === 'AnnualAmount' || r.payment_for_key === 'AnnualAmount1' ? 'booster' : 'EMI';
   const lineStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 8, padding: '4px 0', borderTop: `1px dashed ${t.surfaceBorder}`, fontSize: 11.5 };
   const muted: React.CSSProperties = { color: t.textSecondary, fontSize: 10.5, fontWeight: 500 };
   return (
@@ -526,7 +536,7 @@ const DueCard: React.FC<{ t: AppTheme; r: DisplayRow; textColor: string; emiWise
                       return (
                         <>
                           {rupee(l.paid + l.left)}
-                          {carried > 0 && <> − <span style={green}>{rupee(carried)} carried forward</span></>}
+                          {carried > 0 && <> − <span style={green}>{rupee(carried)} already paid</span></>}
                           {part > 0 && <> − <span style={green}>{rupee(part)} paid</span></>}
                           {(l.awaiting ?? 0) > 0 && <div style={{ color: '#b45309', fontWeight: 600 }}>{rupee(l.awaiting!)} awaiting approval</div>}
                         </>
@@ -541,7 +551,7 @@ const DueCard: React.FC<{ t: AppTheme; r: DisplayRow; textColor: string; emiWise
           {(groupedAway || emiWise) && lines.length > 1 && (
             <button type="button" onClick={onToggleEmiWise}
               style={{ background: 'none', border: 'none', padding: '3px 0 0', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: 'var(--brand-ink)' }}>
-              {emiWise ? '▾ Show grouped' : `▸ Show EMI-wise (${lines.length})`}
+              {emiWise ? '▾ Show grouped' : isBooster ? `▸ Show all (${lines.length})` : `▸ Show EMI-wise (${lines.length})`}
             </button>
           )}
         </>
@@ -861,7 +871,10 @@ const DueReportPage: React.FC = () => {
       const top = g.items.find((it) => (STATUS_RANK[it.dueRow?.due_category ?? 'upcoming'] ?? 0) === cur) ?? r;
       g.statusColor = top.statusColor; g.statusTextColor = top.statusTextColor;
     }
-    return Array.from(map.values());
+    const groups = Array.from(map.values());
+    // Stable: same kind keeps the list's own order (overdue before upcoming).
+    for (const g of groups) g.items = g.items.map((it, i) => ({ it, i })).sort((a, b) => dueRank(a.it) - dueRank(b.it) || a.i - b.i).map((x) => x.it);
+    return groups;
   }, [filteredDueRows]);
   const [expandedCustomers, setExpandedCustomers] = useState<Set<number>>(new Set());
   // V_26.0 — cards opened to "Show EMI-wise".
@@ -1185,12 +1198,16 @@ const DueReportPage: React.FC = () => {
 
   // EMI Before/After lead the row, sharing PAYMENT_FOR_KEY_META.EMIAmount's
   // color so the pair reads as one grouped/background treatment (V_23.0).
+  // V_26.0 — boxes in the order the dues fall (DUE_ORDER).
+  const box = (key: Exclude<PaymentFor, 'EMIAmount'>) => ({
+    key, label: PAYMENT_FOR_KEY_META[key].label, value: boxSums[key], color: PAYMENT_FOR_KEY_META[key].color, icon: PAYMENT_FOR_KEY_META[key].icon,
+  });
   const statBoxSpecs: (StatBoxSpec & { key: CategoryFilterKey | 'total' })[] = [
+    box('BookingAmount'), box('PayAfterbooking'),
     { key: 'EMI Before' as const, label: 'EMI Before', value: boxSums.emiBefore, color: PAYMENT_FOR_KEY_META.EMIAmount.color, icon: MdPayments },
+    box('AnnualAmount'), box('PossessionAmount'),
     { key: 'EMI After' as const, label: 'EMI After', value: boxSums.emiAfter, color: PAYMENT_FOR_KEY_META.EMIAmount.color, icon: MdPayments },
-    ...PAYMENT_FOR_KEY_ORDER.map((key) => ({
-      key, label: PAYMENT_FOR_KEY_META[key].label, value: boxSums[key], color: PAYMENT_FOR_KEY_META[key].color, icon: PAYMENT_FOR_KEY_META[key].icon,
-    })),
+    box('AnnualAmount1'),
     { key: 'total' as const, label: 'Total', value: boxSums.total, color: '#0891b2', icon: MdAccountBalanceWallet },
   ];
 

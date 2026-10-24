@@ -18,6 +18,7 @@ import { phoneNumberError } from '../../utils/phoneValidation';
 import {
   fetchLeadById, createLead, updateLead, assignLead, fetchLeadActivities, addLeadComment,
 } from '../../services/leadService';
+import { fetchEmployeeIdsWithArea } from '../../services/accessService';
 import { FetchEmployeeDetails } from '../../services/employeeDetailsService';
 import { useAccessProfile } from '../../hooks/useAccessProfile';
 import { Lead, LeadActivity, LeadStatus, LEAD_STATUSES, LEAD_STATUS_LABELS, CreateLeadPayload } from '../../types/index';
@@ -157,8 +158,14 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
       setEmployeeOptions(leadTeam.map((m) => ({ id: String(m.id), name: m.name })));
       return;
     }
-    FetchEmployeeDetails(1, 500, undefined, true)
-      .then((res) => { if (res.success) setEmployeeOptions(res.rows.map((e) => ({ id: e.id, name: `${e.first_name} ${e.last_name}`.trim() }))); })
+    // V_26.0 — only employees whose department has Leads (Sales), not e.g.
+    // Recovery; if that list can't load, everyone is offered as before.
+    Promise.all([FetchEmployeeDetails(1, 500, undefined, true), fetchEmployeeIdsWithArea('leads').catch(() => null)])
+      .then(([res, withLeads]) => {
+        if (res.success) setEmployeeOptions(res.rows
+          .filter((e) => !withLeads || withLeads.has(String(e.id)))
+          .map((e) => ({ id: e.id, name: `${e.first_name} ${e.last_name}`.trim() })));
+      })
       .catch(() => { /* dropdown staying empty is a harmless degrade */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadTeam.map((m) => m.id).join(',')]);

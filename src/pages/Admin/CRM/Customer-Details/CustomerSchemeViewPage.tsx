@@ -171,7 +171,7 @@ const ScheduleTable: React.FC<{ t: Theme; accent: string; section: 'A' | 'B'; ro
                     const partPaid = gridRows?.[i]?.part_paid ?? 0;
                     return (
                       <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
-                        {carried > 0 && <div>{formatINR(carried)} carried forward from previous payment</div>}
+                        {carried > 0 && <div>{formatINR(carried)} already paid (earlier payment)</div>}
                         {partPaid > 0 && <div>{formatINR(partPaid)} part-paid</div>}
                         <div style={{ color: '#b45309' }}>{formatINR(dueAmount as number)} pending</div>
                       </div>

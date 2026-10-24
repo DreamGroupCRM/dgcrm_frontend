@@ -630,6 +630,10 @@ export interface CancelledCustomerRow extends Customer {
   pending_refund: number;   // refunds entered, awaiting admin approval
   /** Approved refunds' cancelled receipts (C_FY_MM_n), oldest first. */
   cancelled_receipts: { refund_id: string; receipt_number: string }[];
+  /** V_26.0 — the Refund employee handling this refund. */
+  refund_employee_id: string | null;
+  refund_employee_name: string | null;
+  refund_employee_code: string | null;
 }
 
 type RawCancelledCustomer = BackendCustomer & {
@@ -647,6 +651,9 @@ type RawCancelledCustomer = BackendCustomer & {
   last_refund_mode: string | null;
   pending_refund?: number | string | null;
   cancelled_receipts?: { refund_id: string; receipt_number: string }[] | null;
+  refund_employee_id?: number | string | null;
+  refund_employee_name?: string | null;
+  refund_employee_code?: string | null;
 };
 
 export interface CancelBookingPayload {
@@ -714,8 +721,24 @@ export const fetchCancelledCustomers = async (
       last_refund_mode: c.last_refund_mode,
       pending_refund: Number(c.pending_refund ?? 0),
       cancelled_receipts: c.cancelled_receipts ?? [],
+      refund_employee_id: c.refund_employee_id != null ? String(c.refund_employee_id) : null,
+      refund_employee_name: c.refund_employee_name ?? null,
+      refund_employee_code: c.refund_employee_code ?? null,
     })),
   };
+};
+
+export interface RefundEmployee { id: string; name: string; code: string | null }
+
+/** V_26.0 — GET /api/customers/refund-employees (Admin): who can be given a refund. */
+export const fetchRefundEmployees = async (): Promise<RefundEmployee[]> => {
+  const res = await axiosInstance.get('/customers/refund-employees');
+  return (res.data.data ?? []).map((e: { id: number | string; name: string; code: string | null }) => ({ id: String(e.id), name: e.name, code: e.code }));
+};
+
+/** V_26.0 — PUT /api/customers/:id/refund-assignee (Admin). null removes it. */
+export const setRefundAssignee = async (customerId: string, employeeId: string | null): Promise<void> => {
+  await axiosInstance.put(`/customers/${customerId}/refund-assignee`, { employee_id: employeeId });
 };
 
 export interface CancelledBookingSummary {

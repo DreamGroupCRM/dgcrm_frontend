@@ -82,6 +82,12 @@ export async function fetchDepartmentHeads(departmentId: number, includeId?: num
   return res.data.data;
 }
 
+/** V_26.0 — ids of active employees whose department gives `area` (assign pickers). */
+export async function fetchEmployeeIdsWithArea(area: AccessArea): Promise<Set<string>> {
+  const res = await axiosInstance.get('/access/employees', { params: { area } });
+  return new Set(((res.data.data ?? []) as (number | string)[]).map(String));
+}
+
 export async function fetchAccessConfig(): Promise<ConfigDepartment[]> {
   const res = await axiosInstance.get('/access/config');
   return res.data.data.departments;
