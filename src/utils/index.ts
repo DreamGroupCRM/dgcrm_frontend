@@ -70,6 +70,16 @@ const toServedPath = (path: string): string =>
     ? FILES_PREFIX + path.slice(LEGACY_FILES_PREFIX.length)
     : path;
 
+/**
+ * V_26.0 — a profile photo for an avatar (lists, cards, strips): asks for
+ * the server's ~200 px preview; photos without one get the full file.
+ */
+export const resolveThumbUrl = (url: string | null | undefined): string => {
+  const full = resolveFileUrl(url);
+  if (!full || /^(blob|data):/i.test(full) || !full.includes(FILES_PREFIX)) return full;
+  return full + (full.includes('?') ? '&' : '?') + 'size=thumb';
+};
+
 export const resolveFileUrl = (url: string | null | undefined): string => {
   if (!url) return '';
 

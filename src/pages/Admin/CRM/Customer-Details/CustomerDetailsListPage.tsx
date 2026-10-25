@@ -10,7 +10,7 @@ import {
   MdGroups, MdPersonAddAlt1, MdPersonOff, MdClose,
   MdKeyboardArrowDown, MdMoreVert, MdHistory, MdCalendarMonth, MdPhone, MdEmail,
   MdPayments, MdPrint, MdDescription,
-  MdGridView, MdViewList, MdLocationOn, MdBadge, MdEventBusy,
+  MdGridView, MdViewList, MdLocationOn, MdBadge, MdEventBusy, MdPendingActions,
 } from 'react-icons/md';
 
 import { useAppDispatch, useAppSelector } from '../../../../hooks';
@@ -35,12 +35,13 @@ import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceipt
 import PaymentHistoryTable, { toPaymentHistoryRow } from '../../../../components/common/PaymentHistoryTable';
 import { HistoryCard, HistorySection, customerInfoItems, propertyInfoItems } from '../../../../components/common/HistoryPopup';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
+import { fetchEmployeeIdsWithArea } from '../../../../services/accessService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
   Customer, Building, CustomerPaymentRecord, CustomerListSummary, CustomerListFilters,
   PaymentFor, PaymentReceipt, CollectPaymentPayload, isAdminRole,
 } from '../../../../types/index';
-import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
+import { formatDate, showAlert, resolveFileUrl, resolveThumbUrl } from '../../../../utils';
 import { fetchMyChangeRequests, ChangeRequestRow } from '../../../../services/changeRequestsService';
 import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
@@ -48,6 +49,7 @@ import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 import { cssRect, viewportWidth, viewportHeight } from '../../../../utils/appZoom';
 import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
 import DateInput from '../../../../components/common/DateInput';
+import { usePendingRequests, RequestReviewModal, RequestTag, PendingRequestsList, reviewFormPath } from '../../../../components/approvals/RequestReview';
 
 type Theme = AppTheme;
 
@@ -246,7 +248,7 @@ const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
 // flips to the left when there isn't enough room on the right, and clamps
 // vertically so it never runs off the bottom of the screen.
 const CUSTOMER_MENU_WIDTH = 186;
-const CUSTOMER_MENU_HEIGHT = 212; // up to 6 rows incl. borders/padding (V_23.0 added Cancel Booking)
+const CUSTOMER_MENU_HEIGHT = 240; // up to 6 rows incl. borders/padding (V_23.0 added Cancel Booking)
 const computeCustomerMenuPos = (rect: DOMRect): { top: number; left: number } => {
   const spaceRight = viewportWidth() - rect.right;
   const left = spaceRight >= CUSTOMER_MENU_WIDTH + 8
@@ -263,6 +265,15 @@ const computeCustomerMenuPos = (rect: DOMRect): { top: number; left: number } =>
 // for every shop customer on the grid view. The table's own Building
 // Details cell already branched on unit_type; this gives the card the same
 // treatment from one place.
+// V_26.0 — "2026-05-05" → "5th of every month".
+const dayOfMonthLabel = (ymd: string, day?: number | null): string => {
+  const d = day || Number(String(ymd).slice(8, 10));
+  if (!d) return formatDate(ymd);
+  const v = d % 100;
+  const suffix = v >= 11 && v <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[d % 10] ?? 'th';
+  return `${d}${suffix} of every month`;
+};
+
 const unitLabel = (c: Customer): string => {
   if (!c.building_name) return '—';
   return c.unit_type === 'shop'
@@ -274,7 +285,9 @@ const RowActionMenu: React.FC<{
   t: Theme; pos: { top: number; left: number };
   onView: () => void; onEdit?: () => void; onCancelBooking?: () => void;
   onDownloadHistory: () => void; onDownloadSchedule: () => void;
-}> = ({ t, pos, onView, onEdit, onCancelBooking, onDownloadHistory, onDownloadSchedule }) => createPortal(
+  /** V_26.0 — Admin: a request waits on this customer. */
+  onReview?: () => void;
+}> = ({ t, pos, onView, onEdit, onCancelBooking, onDownloadHistory, onDownloadSchedule, onReview }) => createPortal(
   <div
     data-customer-row-menu
     style={{
@@ -288,6 +301,13 @@ const RowActionMenu: React.FC<{
       style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: t.textPrimary, fontFamily: t.fontFamily }}>
       <MdVisibility size={14} color="var(--brand-gradient)" /> View
     </button>
+    {onReview && (
+      <button type="button" onClick={onReview}
+        className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap"
+        style={{ background: '#fffbeb', border: 'none', borderBottom: `1px solid ${t.divider}`, cursor: 'pointer', color: '#92400e', fontWeight: 700, fontFamily: t.fontFamily }}>
+        <MdVisibility size={14} /> Review request
+      </button>
+    )}
     {/* Edit is only rendered when a handler was supplied — an employee is
         not given it. There is no Delete entry: customers are never deleted
         from this list (use Cancel Booking instead). */}
@@ -340,7 +360,7 @@ const CustomerCard: React.FC<{
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex flex-col items-center flex-shrink-0" style={{ gap: 4 }}>
             {c.customer_photo_url ? (
-              <img src={resolveFileUrl(c.customer_photo_url)} alt="" className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
+              <img src={resolveThumbUrl(c.customer_photo_url)} alt="" className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
             ) : (
               <div className="flex items-center justify-center rounded-full text-white font-bold"
                 style={{ width: 48, height: 48, background: 'var(--grad-purple)', fontSize: 15 }}>
@@ -435,6 +455,21 @@ const CustomerDetailsListPage: React.FC = () => {
   // only a Head with "Can Add Customer" gets the Add button (the customer
   // still goes to Admin approval).
   const access = useAccessProfile();
+  // V_26.0 — Admin approves employees' customer requests right here: the
+  // "Waiting for your approval" box, a tag on each customer with one, and
+  // the Review popup (no separate Pending Approval page).
+  const pending = usePendingRequests('customer', paths.isAdmin);
+  const pendingByCustomer = useMemo(() => {
+    const m = new Map<string, ChangeRequestRow[]>();
+    for (const r of pending.rows) if (r.entity_id != null) m.set(String(r.entity_id), [...(m.get(String(r.entity_id)) ?? []), r]);
+    return m;
+  }, [pending.rows]);
+  const [showRequests, setShowRequests] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('approvals') === '1'; } catch { return false; }
+  });
+  const [reviewRow, setReviewRow] = useState<ChangeRequestRow | null>(null);
+  // Add / edit requests open in the real form; the rest in the review popup.
+  const openReview = (r: ChangeRequestRow) => { const to = reviewFormPath(r); if (to) navigate(to); else setReviewRow(r); };
   // The old customers.assign permission counts only for Admin and for
   // employees whose department is not set up yet (same rule as the API);
   // otherwise only a Head assigns, to their own Executives.
@@ -453,11 +488,11 @@ const CustomerDetailsListPage: React.FC = () => {
   const viewOnly = setUpEmployee && !isHead;
   const canEditCustomer = paths.isAdmin || (setUpEmployee && isHead);
   const showSplitAssign = paths.isAdmin || isHead;
-  // V_26.0 — Cancel Booking: Admin and Refund only (a department not set up
-  // yet keeps it, as before); no other Head, e.g. the Recovery Head, and no
-  // Executive. An employee's request goes to Admin approval. Same rule the
-  // server applies.
-  const canCancelBooking = access.has('cancelled_booking');
+  // V_26.0 — Cancel Booking: Admin, Refund (a department not set up yet
+  // keeps it, as before) and a Head, for their own and team's customers; no
+  // other Executive. An employee's request goes to Admin approval. Same rule
+  // the server applies.
+  const canCancelBooking = access.has('cancelled_booking') || (setUpEmployee && isHead);
 
   // allCustomers now holds ONLY the current server page (see fetchCustomers
   // below) — previously this held up to 1000 rows fetched once, with
@@ -571,11 +606,17 @@ const CustomerDetailsListPage: React.FC = () => {
     try {
       // activeOnly=true — don't offer a deactivated employee as an
       // assignee for a customer.
-      const res = await FetchEmployeeDetails(1, 1000, undefined, true);
+      // V_26.0 — only employees whose department has Customer Details
+      // (Recovery), not e.g. Sales. If that list can't load, everyone is
+      // offered as before and the server still checks.
+      const [res, withCustomers] = await Promise.all([
+        FetchEmployeeDetails(1, 1000, undefined, true),
+        fetchEmployeeIdsWithArea('customers').catch(() => null),
+      ]);
       if (res.success) {
         // V_26.0 — department · designation in the label, so two people with
         // the same name can be told apart when assigning.
-        setEmployees((res.rows ?? []).map((e) => {
+        setEmployees((res.rows ?? []).filter((e) => !withCustomers || withCustomers.has(String(e.id))).map((e) => {
           const role = [e.department, e.designation].filter(Boolean).join(' · ');
           return { id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})${role ? ` — ${role}` : ''}` };
         }));
@@ -1090,7 +1131,7 @@ const CustomerDetailsListPage: React.FC = () => {
           ? `Shop${c.shop_area != null ? ` / ${c.shop_area} Sqft` : ''}`
           : `${c.flat_type || ''}${c.area_sqft != null ? ` / ${c.area_sqft} Sqft` : ''}`,
         formatDate(c.booking_date), c.monthly_emi ?? '',
-        c.monthly_installment_date ? formatDate(c.monthly_installment_date) : '',
+        c.monthly_installment_date ? dayOfMonthLabel(c.monthly_installment_date, c.installment_day) : '',
       ]);
       const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1131,7 +1172,7 @@ const CustomerDetailsListPage: React.FC = () => {
           "inactive customer" concept anyway (see getCustomerListSummary's
           comment) and duplicated the separate Assigned/Unassigned toggle
           that used to sit further down this page. ─────────────────────── */}
-      <div className="cust-stat-grid grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+      <div className={`cust-stat-grid grid grid-cols-1 gap-3 mb-5 ${paths.isAdmin ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
         {setUpEmployee ? ([
           { filterKey: 'all', label: 'All Customers', value: summary.total_customers, icon: MdGroups, color: '#7c3aed' },
           { filterKey: 'by_head', label: 'Assigned by Head', value: summary.assigned_by_head ?? 0, icon: MdPersonAddAlt1, color: '#16a34a' },
@@ -1147,10 +1188,15 @@ const CustomerDetailsListPage: React.FC = () => {
           { filterKey: 'unassigned', label: 'Un Assigned Customers', value: summary.unassigned_customers, icon: MdPersonOff, color: '#ea580c' },
         ] as const).map(({ filterKey, ...card }) => (
           <StatCard key={filterKey} {...card} bg="" loading={loading} compact
-            active={assignmentStatusFilter === filterKey}
-            onClick={() => setAssignmentStatusFilter(filterKey)}
+            active={!showRequests && assignmentStatusFilter === filterKey}
+            onClick={() => { setShowRequests(false); setAssignmentStatusFilter(filterKey); }}
             surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         ))}
+        {paths.isAdmin && (
+          <StatCard label="Waiting for your approval" value={pending.rows.length} icon={MdPendingActions} color="#b45309" bg="" fill={pending.rows.length ? "linear-gradient(135deg, #d97706, #b45309)" : undefined} loading={pending.loading && pending.rows.length === 0} compact
+            active={showRequests} onClick={() => setShowRequests((v) => !v)}
+            surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
+        )}
       </div>
 
       {/* ── Filters row ───────────────────────────────────────────────── */}
@@ -1295,8 +1341,12 @@ const CustomerDetailsListPage: React.FC = () => {
           </button>
         </div>
       </div>
+      {/* ── V_26.0 — Admin: the requests waiting for approval ─────────── */}
+      {showRequests && paths.isAdmin && (
+        <PendingRequestsList t={t} isDark={isDark} rows={pending.rows} loading={pending.loading} onReview={openReview} onShowAll={() => setShowRequests(false)} />
+      )}
       {/* ── Table / Grid ──────────────────────────────────────────────── */}
-      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, display: showRequests && paths.isAdmin ? 'none' : undefined }}>
         {view === 'grid' ? (
           <div className="p-5">
             {pendingCreates.length > 0 && (
@@ -1412,6 +1462,7 @@ const CustomerDetailsListPage: React.FC = () => {
                               onCancelBooking={c.cancellation_pending || !canCancelBooking ? undefined : () => { setOpenMenuId(null); handleCancelBooking(c); }}
                               onDownloadHistory={() => { setOpenMenuId(null); handleDownloadPaymentHistoryPdf(c); }}
                               onDownloadSchedule={() => { setOpenMenuId(null); handleDownloadSchedulePdf(c); }}
+                              onReview={pendingByCustomer.has(c.id) ? () => { setOpenMenuId(null); openReview(pendingByCustomer.get(c.id)![0]); } : undefined}
                             />
                           )}
                         </div>
@@ -1438,7 +1489,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'normal', minWidth: 190, maxWidth: 260 }}>
                       <div className="flex items-center gap-2">
                         {c.customer_photo_url ? (
-                          <img src={resolveFileUrl(c.customer_photo_url)} alt="" className="rounded-full flex-shrink-0" style={{ width: 30, height: 30, objectFit: 'cover' }} />
+                          <img src={resolveThumbUrl(c.customer_photo_url)} alt="" className="rounded-full flex-shrink-0" style={{ width: 30, height: 30, objectFit: 'cover' }} />
                         ) : (
                           <div className="flex items-center justify-center rounded-full flex-shrink-0 text-white font-bold" style={{ width: 30, height: 30, fontSize: 11, background: 'var(--grad-purple)' }}>
                             {(c.customer_name || '—').slice(0, 1).toUpperCase()}
@@ -1446,7 +1497,10 @@ const CustomerDetailsListPage: React.FC = () => {
                         )}
                         <span style={{ overflowWrap: 'anywhere', lineHeight: 1.35 }}>
                           {c.customer_name}
-                          {c.cancellation_pending && (
+                          {(pendingByCustomer.get(c.id) ?? []).map((r) => (
+                            <span key={r.id} className="ml-1.5" style={{ verticalAlign: 'middle' }}><RequestTag action={r.action} onClick={() => openReview(r)} /></span>
+                          ))}
+                          {c.cancellation_pending && !paths.isAdmin && (
                             <span title="Cancel Booking request is waiting for admin approval"
                               className="inline-flex items-center rounded-full px-2 ml-1.5"
                               style={{ background: '#b45309', color: '#fff', fontSize: 9.5, fontWeight: 700, lineHeight: '16px', verticalAlign: 'middle' }}>
@@ -1467,7 +1521,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     <td style={{ padding: '10px 12px' }}>
                       <div className="flex items-center gap-2">
                         {c.assigned_employee_photo_url ? (
-                          <img src={resolveFileUrl(c.assigned_employee_photo_url)} alt="" className="rounded-full flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'cover' }} />
+                          <img src={resolveThumbUrl(c.assigned_employee_photo_url)} alt="" className="rounded-full flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'cover' }} />
                         ) : c.assigned_employee_name ? (
                           <div className="flex items-center justify-center rounded-full flex-shrink-0 text-white text-xs font-bold" style={{ width: 28, height: 28, background: 'var(--grad-sky)' }}>
                             {c.assigned_employee_name.slice(0, 1).toUpperCase()}
@@ -1504,7 +1558,13 @@ const CustomerDetailsListPage: React.FC = () => {
                       {c.monthly_emi != null ? `₹ ${c.monthly_emi.toLocaleString('en-IN')}` : '—'}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
-                      {c.monthly_installment_date ? formatDate(c.monthly_installment_date) : '—'}
+                      {/* V_26.0 — the EMI falls on the same day each month: "5th of every month". */}
+                      {c.monthly_installment_date ? (
+                        <span title={`Next EMI on ${formatDate(c.monthly_installment_date)}`} className="rounded-full"
+                          style={{ display: 'inline-block', padding: '2px 10px', fontSize: 11, fontWeight: 800, background: isDark ? 'rgba(20,184,166,0.2)' : '#e6f2f2', color: isDark ? '#99f6e4' : '#0a5c5c' }}>
+                          {dayOfMonthLabel(c.monthly_installment_date, c.installment_day)}
+                        </span>
+                      ) : '—'}
                     </td>
                   </tr>
                 ))}
@@ -1517,6 +1577,11 @@ const CustomerDetailsListPage: React.FC = () => {
         <PaginationFooter t={t} limit={limit} setLimit={setLimit} setPage={setPage} safePage={safePage} totalPages={totalPages} from={from} to={to} total={total} pageBtns={pageBtns} />
       </div>
 
+      {reviewRow && (
+        <RequestReviewModal t={t} isDark={isDark} row={reviewRow} onClose={() => setReviewRow(null)}
+          onDecided={() => { pending.reload(); fetchCustomers(); }}
+          onUpdated={(u) => pending.setRows((rs) => rs.map((r) => (r.id === u.id ? u : r)))} />
+      )}
       {cancelTarget && (
         <CancelBookingModal t={t} customer={cancelTarget} isAdmin={paths.isAdmin}
           onClose={() => setCancelTarget(null)}

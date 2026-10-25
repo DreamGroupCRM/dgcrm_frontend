@@ -672,6 +672,8 @@ export interface Customer {
   booking_date                           : string;
   monthly_emi                             : number | null;
   monthly_installment_date?               : string | null;
+  /** V_26.0 — day of the month the EMI falls on (1–31). */
+  installment_day?                        : number | null;
 
   assigned_employee_id?                    : string;
   assigned_employee_code?                   : string;

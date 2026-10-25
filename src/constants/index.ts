@@ -76,6 +76,8 @@ export const ROUTES = {
     TASKS: '/admin/tasks',
     // V_26.0 — automatic payment reminders (email live, WhatsApp upcoming).
     PAYMENT_REMINDERS: '/admin/payment-reminders',
+    // V_26.0 — one page of tiles for the setup pages.
+    SETTINGS: '/admin/settings',
     CHANGE_REQUESTS: '/admin/change-requests',
     // V_25.0 — Super Admin: departments' pages, Head / Executive designations.
     DEPARTMENT_SETUP: '/admin/department-setup',

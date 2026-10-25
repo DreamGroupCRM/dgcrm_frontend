@@ -78,8 +78,9 @@ function sanitizeLeadPayload<T extends Partial<CreateLeadPayload>>(payload: T): 
 // `{ pending: true }` with no `data` — callers must check `pending` before
 // touching `res.data`.
 /** POST /api/leads */
-export const createLead = async (payload: CreateLeadPayload): Promise<LeadCreateResponse> => {
-  const res = await axiosInstance.post('/leads', sanitizeLeadPayload(payload));
+export const createLead = async (payload: CreateLeadPayload, approveRequestId?: string | null): Promise<LeadCreateResponse> => {
+  // V_26.0 — approve_request: the Admin's review form approves that request.
+  const res = await axiosInstance.post('/leads', sanitizeLeadPayload(payload), { params: approveRequestId ? { approve_request: approveRequestId } : undefined });
   return res.data as LeadCreateResponse;
 };
 

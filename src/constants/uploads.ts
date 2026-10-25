@@ -30,6 +30,10 @@ export const DOCUMENT_TYPE_LABELS =
 // uploadTypes.ts, which this constant must be kept in sync with).
 export const DOCUMENT_MAX_MB = 5;
 
+/** Photos larger than the upload limit may still be picked: they are compressed first. */
+export const PHOTO_PICK_MAX_MB = 20;
+const PHOTO_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+
 export const unsupportedTypeMessage = (labels: string): string =>
   `This file type is not supported. Allowed file types: ${labels}.`;
 
@@ -57,7 +61,10 @@ export function validateFileSelection(
   if (!ext) return unsupportedTypeMessage(labels);
   const allowed = accept.split(',').map((e) => e.trim().toLowerCase());
   if (!allowed.includes(ext)) return unsupportedTypeMessage(labels);
-  if (file.size > maxMb * 1024 * 1024) return tooLargeMessage(maxMb);
+  // V_26.0 — a photo is shrunk before upload (utils/imageCompress.ts), so a
+  // large phone photo is fine to pick.
+  const limitMb = PHOTO_EXTENSIONS.includes(ext) ? Math.max(maxMb, PHOTO_PICK_MAX_MB) : maxMb;
+  if (file.size > limitMb * 1024 * 1024) return tooLargeMessage(limitMb);
   if (file.size === 0) return 'That file is empty. Please choose a different file.';
   return null;
 }

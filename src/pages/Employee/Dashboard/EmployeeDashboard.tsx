@@ -17,6 +17,7 @@ import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { fetchEmployeeDashboardSummary, EmployeeDashboardSummary } from '../../../services/dashboardService';
 import { useAccessProfile } from '../../../hooks/useAccessProfile';
+import { AccessArea } from '../../../services/accessService';
 import { DataScope, setDataScope } from '../../../utils/dataScope';
 import { ROUTES } from '../../../constants';
 import { formatDate } from '../../../utils';
@@ -82,15 +83,24 @@ const EmployeeDashboard: React.FC = () => {
   ];
 
   const customersArea = has('customers') || has('payment_dues') || has('payment_received');
-  const own = !isHead || scope === 'mine';
+  // V_26.0 — "me + team" only where they are a Head: a Recovery Head who is
+  // a Sales Executive sees "My leads".
+  const headFor = (area: AccessArea) => isHead && Boolean(profile?.departments.some((d) => d.level === 'head' && (d.areas == null || d.areas.includes(area))));
+  const ownCustomers = !headFor('customers') || scope === 'mine';
+  const ownLeads = !headFor('leads') || scope === 'mine';
   const kpis = [
     ...(customersArea ? [
-      { label: own ? 'My customers' : 'Customers (me + team)', value: String(fig?.customers ?? data?.my_customers ?? 0), to: ROUTES.EMPLOYEE.CUSTOMER_DETAILS },
+      { label: ownCustomers ? 'My customers' : 'Customers (me + team)', value: String(fig?.customers ?? data?.my_customers ?? 0), to: ROUTES.EMPLOYEE.CUSTOMER_DETAILS },
       { label: 'Due now', value: rupeeCompact(fig?.due_now ?? 0), note: fig ? plural(fig.due_customers, 'customer') : undefined, noteColor: isDark ? '#fca5a5' : '#b42318', to: ROUTES.EMPLOYEE.PAYMENT_DUES },
       { label: 'Collected this month', value: rupeeCompact(fig?.collected_this_month ?? 0), note: fig ? `${plural(fig.collected_count, 'approved receipt')}` : undefined, noteColor: isDark ? '#86efac' : '#166534', to: ROUTES.EMPLOYEE.PAYMENT_RECEIVED },
       { label: 'Waiting for approval', value: rupeeCompact(fig?.awaiting_approval ?? 0), note: fig ? plural(fig.awaiting_approval_count, 'payment') : undefined, noteColor: isDark ? '#fcd34d' : '#92400e', to: ROUTES.EMPLOYEE.PAYMENT_RECEIVED },
     ] : []),
-    ...(has('leads') ? [{ label: own ? 'My leads' : 'Leads (me + team)', value: String(fig?.leads ?? data?.my_leads ?? 0), to: ROUTES.EMPLOYEE.LEADS }] : []),
+    // V_26.0 — Refund: their refund cases and what is still to pay back.
+    ...(data?.refund ? [
+      { label: 'My refund cases', value: String(data.refund.cases), note: `${rupeeCompact(data.refund.refunded)} refunded so far`, noteColor: isDark ? '#86efac' : '#166534', to: ROUTES.EMPLOYEE.CANCELLED_BOOKING },
+      { label: 'Still to refund', value: rupeeCompact(data.refund.balance), note: data.refund.pending ? `${rupeeCompact(data.refund.pending)} waiting for approval` : `of ${rupeeCompact(data.refund.paid)} paid`, noteColor: isDark ? '#fcd34d' : '#92400e', to: ROUTES.EMPLOYEE.CANCELLED_BOOKING },
+    ] : []),
+    ...(has('leads') ? [{ label: ownLeads ? 'My leads' : 'Leads (me + team)', value: String(fig?.leads ?? data?.my_leads ?? 0), to: ROUTES.EMPLOYEE.LEADS }] : []),
     { label: 'My tasks open', value: String(data?.open_tasks_count ?? 0), to: ROUTES.EMPLOYEE.TASKS },
     { label: 'Requests waiting', value: String(data?.requests_pending ?? 0), to: ROUTES.EMPLOYEE.MY_REQUESTS },
   ];
@@ -125,7 +135,7 @@ const EmployeeDashboard: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <span style={{ fontSize: 12.5, fontWeight: 700 }}>Only my own customers</span>
+              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{data?.refund ? 'My refund cases' : customersArea ? 'Only my own customers' : has('leads') ? 'Only my own leads' : 'My work'}</span>
             )}
             <span style={{ fontSize: 12, color: band.sub }}>{today}</span>
           </div>

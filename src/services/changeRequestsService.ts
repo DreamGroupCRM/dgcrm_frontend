@@ -97,3 +97,8 @@ export const rejectChangeRequest = async (id: string, remarks?: string): Promise
   await axiosInstance.put(`/change-requests/${id}/reject`, remarks ? { remarks } : undefined);
   notifyPendingApprovalsChanged();
 };
+
+/** V_26.0 — GET /change-requests/:id/record: the request as a filled-in record (Admin's review form). */
+export interface RequestRecord { request: ChangeRequestRow; record: Record<string, unknown>; changed: string[] }
+export const fetchRequestRecord = async (id: string): Promise<RequestRecord> =>
+  (await axiosInstance.get(`/change-requests/${id}/record`)).data.data;
