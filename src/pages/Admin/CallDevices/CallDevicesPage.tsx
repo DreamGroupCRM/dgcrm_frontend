@@ -9,10 +9,13 @@
 //  * WhatsApp: brochure link + message per project, sent from the phone
 //    after a call ({name} {employee} {project} {brochure} are filled in).
 //  * Retention: when old calls are archived / deleted and recordings removed.
+//  * V_28.0 — Work hours (company-wide): the phone never sends a call made
+//    outside them. A phone in personal mode shows "Personal mode until …";
+//    nothing about the calls made meanwhile ever reaches the CRM.
 import React, { useCallback, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { toast } from '@/utils/toast';
-import { MdPhoneAndroid, MdRefresh, MdBlock, MdCheckCircle, MdPin, MdHistory, MdChat } from 'react-icons/md';
+import { MdPhoneAndroid, MdRefresh, MdBlock, MdCheckCircle, MdPin, MdHistory, MdChat, MdSchedule, MdPauseCircle } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
@@ -20,8 +23,9 @@ import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { getAccordionCardStyle, getAccordionHeaderStyle, getFormInputStyle } from '../../../components/common/MasterListUI';
 import { formatLastLogin } from '../../../utils';
 import {
-  CallDevice, CallSyncSettings, ProjectWhatsapp, approveCallDevice, blockCallDevice, fetchCallDevices, fetchCallSyncSettings,
-  fetchWhatsappSettings, saveCallRetention, saveCallSyncPin, saveProjectWhatsapp, saveWhatsappDefault,
+  CallDevice, CallSyncSettings, CallWorkHours, ProjectWhatsapp, approveCallDevice, blockCallDevice, fetchCallDevices,
+  fetchCallSyncSettings, fetchWhatsappSettings, saveCallRetention, saveCallSyncPin, saveCallWorkHours, saveProjectWhatsapp,
+  saveWhatsappDefault,
 } from '../../../services/callService';
 
 interface ErrLike { response?: { data?: { message?: string; errors?: { message?: string }[] } } }
@@ -34,6 +38,11 @@ const STATUS: Record<CallDevice['status'], { label: string; color: string }> = {
   blocked: { label: 'Blocked', color: '#DC2626' },
 };
 
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DEFAULT_HOURS: CallWorkHours = { enabled: false, days: [1, 2, 3, 4, 5, 6], start: '09:00', end: '20:00' };
+
+const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+
 const CallDevicesPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { t } = useAppearanceTokens();
@@ -44,6 +53,7 @@ const CallDevicesPage: React.FC = () => {
   const [retention, setRetention] = useState({ archive_after_months: 12, delete_after_years: 3, recording_days: 180 });
   const [waDefault, setWaDefault] = useState('');
   const [waProjects, setWaProjects] = useState<ProjectWhatsapp[]>([]);
+  const [hours, setHours] = useState<CallWorkHours>(DEFAULT_HOURS);
 
   useEffect(() => { dispatch(setPageTitle('Call Sync Phones')); }, [dispatch]);
 
@@ -56,6 +66,7 @@ const CallDevicesPage: React.FC = () => {
       setWaDefault(wa.default_message ?? '');
       setWaProjects(wa.projects);
       setRetention({ archive_after_months: s.archive_after_months, delete_after_years: s.delete_after_years, recording_days: s.recording_days });
+      setHours(s.work_hours ?? DEFAULT_HOURS);
     } catch (e) {
       toast.error(errMessage(e, 'Failed to load call sync settings.'));
     } finally {
@@ -127,6 +138,20 @@ const CallDevicesPage: React.FC = () => {
 
   const setWaField = (id: number, field: 'brochure_url' | 'whatsapp_message', value: string) =>
     setWaProjects((list) => list.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+
+  const toggleDay = (day: number) =>
+    setHours((h) => ({ ...h, days: h.days.includes(day) ? h.days.filter((d) => d !== day) : [...h.days, day].sort() }));
+
+  const saveHours = async () => {
+    if (hours.enabled && !hours.days.length) { toast.error('Pick at least one day.'); return; }
+    if (hours.start >= hours.end) { toast.error('Start time must be before the end time.'); return; }
+    try {
+      setHours(await saveCallWorkHours(hours));
+      toast.success(hours.enabled ? 'Work hours saved. Phones pick them up at their next sync.' : 'Work hours off. Phones sync calls at any time.');
+    } catch (e) {
+      toast.error(errMessage(e, 'Failed to save work hours.'));
+    }
+  };
 
   const saveRetention = async () => {
     try {
@@ -213,7 +238,15 @@ const CallDevicesPage: React.FC = () => {
                     <div style={{ fontWeight: 600 }}>{d.label || 'Unknown phone'}</div>
                     <div style={{ fontSize: 10.5, color: t.textSecondary }}>App {d.app_version || '—'} · added {formatLastLogin(d.created_at)}</div>
                   </td>
-                  <td style={cell}><span style={{ color: STATUS[d.status].color, fontWeight: 600 }}>{STATUS[d.status].label}</span></td>
+                  <td style={cell}>
+                    <span style={{ color: STATUS[d.status].color, fontWeight: 600 }}>{STATUS[d.status].label}</span>
+                    {d.status === 'approved' && d.paused_until && (
+                      <div className="flex items-center gap-1" style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}
+                        title={d.paused_at ? `Paused since ${formatLastLogin(d.paused_at)}` : undefined}>
+                        <MdPauseCircle size={13} /> Personal mode until {timeOf(d.paused_until)}
+                      </div>
+                    )}
+                  </td>
                   <td style={cell}>{formatLastLogin(d.last_seen_at)}</td>
                   <td style={cell}>{d.call_count}</td>
                   <td style={{ ...cell, textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -232,6 +265,52 @@ const CallDevicesPage: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* ── Work hours ──────────────────────────────────────────────── */}
+      <div style={card}>
+        <div style={header}>
+          <span className="flex items-center gap-2" style={title}><MdSchedule size={18} /> Work hours</span>
+          <span style={{ ...muted, fontWeight: 700, color: hours.enabled ? '#047857' : t.textSecondary }}>
+            {hours.enabled ? `${hours.days.map((d) => DAY_LABELS[d]).join(', ')} · ${hours.start}–${hours.end}` : 'Off — calls sync at any time'}
+          </span>
+        </div>
+        <div style={{ padding: 16 }}>
+          <div style={{ ...muted, marginBottom: 12 }}>
+            When on, phones send only calls made on these days between these times (phone's own clock). Calls outside them,
+            and calls made while an employee has turned on personal mode, stay on the phone and never reach the CRM.
+          </div>
+          <label className="flex items-center gap-2" style={{ fontSize: 13, color: t.textPrimary, marginBottom: 12 }}>
+            <input type="checkbox" checked={hours.enabled} onChange={(e) => setHours((h) => ({ ...h, enabled: e.target.checked }))} />
+            Only sync calls during work hours
+          </label>
+          <div className="flex items-center gap-2" style={{ flexWrap: 'wrap', marginBottom: 12, opacity: hours.enabled ? 1 : 0.5 }}>
+            {DAY_LABELS.map((label, day) => {
+              const on = hours.days.includes(day);
+              return (
+                <button key={label} type="button" disabled={!hours.enabled} onClick={() => toggleDay(day)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 14, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    border: `1px solid ${on ? 'transparent' : t.surfaceBorder}`,
+                    background: on ? 'var(--brand-gradient)' : t.insetBg, color: on ? '#fff' : t.textPrimary,
+                  }}>{label}</button>
+              );
+            })}
+          </div>
+          <div className="flex items-end gap-3" style={{ flexWrap: 'wrap', opacity: hours.enabled ? 1 : 0.5 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: t.textSecondary }}>
+              From
+              <input type="time" value={hours.start} disabled={!hours.enabled} onChange={(e) => setHours((h) => ({ ...h, start: e.target.value }))}
+                style={{ ...getFormInputStyle(t), width: 130 }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: t.textSecondary }}>
+              To
+              <input type="time" value={hours.end} disabled={!hours.enabled} onChange={(e) => setHours((h) => ({ ...h, end: e.target.value }))}
+                style={{ ...getFormInputStyle(t), width: 130 }} />
+            </label>
+            <button type="button" className="master-btn-primary" onClick={saveHours}>Save</button>
+          </div>
         </div>
       </div>
 

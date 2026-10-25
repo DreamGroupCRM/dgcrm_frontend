@@ -53,7 +53,7 @@ const SettingsPage: React.FC = () => {
     // V_26.0 — moved here from the left menu.
     { icon: MdAssignment, title: 'Tasks', text: 'Assign general tasks to employees and track them', path: ROUTES.ADMIN.TASKS },
     { icon: MdNotificationsActive, title: 'Payment Reminders', text: 'Automatic reminders to customers about their dues', path: ROUTES.ADMIN.PAYMENT_REMINDERS, tag: whatsappUpcoming ? 'WhatsApp upcoming' : undefined },
-    { icon: MdPhoneAndroid, title: 'Call Sync Phones', text: 'Phones that sync calls, and WhatsApp brochure settings', path: ROUTES.ADMIN.CALL_DEVICES },
+    { icon: MdPhoneAndroid, title: 'Call Sync Phones', text: 'Phones that sync calls, work hours, and WhatsApp brochure settings', path: ROUTES.ADMIN.CALL_DEVICES },
     { icon: MdManageAccounts, title: 'User Management', text: 'Logins: unlock, allow / block, sign out, set password', path: ROUTES.ADMIN.USER_MANAGEMENT },
     { icon: MdStorage, title: 'Backup Database', text: 'Create and download backups', path: ROUTES.ADMIN.BACKUP_DATABASE },
   ];

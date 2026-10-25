@@ -106,6 +106,12 @@ const CallHistoryCard: React.FC<Props> = ({ load }) => {
                         color: '#fff', background: OUTCOME[c.outcome].color,
                       }}>{OUTCOME[c.outcome].label}</span>
                     )}
+                    {c.note && (
+                      <div style={{
+                        marginTop: 6, padding: '6px 10px', borderRadius: 6, fontSize: 12, color: t.textPrimary,
+                        background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
+                      }} title="Note added on the phone after the call">{c.note}</div>
+                    )}
                     {/* A player only for a recording the server validated and stored. */}
                     {c.recording_status === 'completed' ? (
                       <audio controls preload="none" src={callRecordingUrl(c.id)} style={{ display: 'block', marginTop: 6, width: '100%', maxWidth: 360, height: 32 }} />
