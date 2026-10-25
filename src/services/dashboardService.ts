@@ -65,6 +65,8 @@ export interface WorkspaceExtras {
     collected_this_month: number; collected_count: number; awaiting_approval: number; awaiting_approval_count: number;
   };
   open_tasks: { id: number; title: string; status: string; due_date: string | null }[];
+  /** V_26.0 — Refund only: cancelled bookings assigned for refund. */
+  refund?: { cases: number; paid: number; refunded: number; balance: number; pending: number } | null;
   open_tasks_count: number;
   followups: { id: number; title: string; due_date: string | null; customer_name: string; customer_code: string | null }[];
   requests: { id: string; module: string; action: string; status: string; requested_at: string; name: string | null }[];

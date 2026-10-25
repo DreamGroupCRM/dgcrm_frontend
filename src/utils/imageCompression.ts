@@ -21,9 +21,11 @@
 // three layers (shared/uploadTypes.ts: extension, then mime, then real
 // magic bytes, all of which must agree):
 //
-//   * Output is always a genuine JPEG, named .jpg, typed image/jpeg — so
+//   * Output is a genuine JPEG, named .jpg, typed image/jpeg — so
 //     extension, mime and first bytes all match. Keeping a .png name on
-//     JPEG bytes would be rejected, correctly, as a forged file.
+//     JPEG bytes would be rejected, correctly, as a forged file. The one
+//     exception (V_26.0) is a PNG with transparency, which stays a real
+//     PNG with its own .png name.
 //   * PDFs and every non-image are returned untouched. This only ever
 //     touches raster images.
 //   * An image already smaller than the threshold is returned as-is —
@@ -57,18 +59,34 @@ const toJpegName = (name: string): string => {
   return `${base}.jpg`;
 };
 
+// Files this module produced (or chose to leave as they are), so a file
+// already handled by a form is not re-encoded a second time on its way out
+// through the upload request (see compressFormDataImages).
+const handled = new WeakSet<File>();
+
+const done = (file: File): File => { handled.add(file); return file; };
+
+/** True when any sampled pixel is see-through (a logo on a clear background). */
+function hasTransparency(ctx: CanvasRenderingContext2D, width: number, height: number): boolean {
+  const { data } = ctx.getImageData(0, 0, width, height);
+  for (let i = 3; i < data.length; i += 4 * 7) if (data[i] < 255) return true;
+  return false;
+}
+
 /**
- * Returns a smaller JPEG version of an image file, or the original file
+ * Returns a smaller version of an image file, or the original file
  * unchanged when it is not a compressible image, is already small, or
- * anything at all goes wrong.
+ * anything at all goes wrong. Photos and scans become JPEG; a PNG with
+ * transparency (V_26.0 — a company logo) stays a PNG, only scaled down.
  */
 export async function compressImageFile(file: File): Promise<File> {
-  if (!isCompressibleImage(file) || file.size <= SKIP_BELOW_BYTES) return file;
+  if (handled.has(file)) return file;
+  if (!isCompressibleImage(file) || file.size <= SKIP_BELOW_BYTES) return done(file);
 
   try {
     const img = await loadBitmap(file);
     const longest = Math.max(img.naturalWidth, img.naturalHeight);
-    if (!longest) return file;
+    if (!longest) return done(file);
 
     // Never upscale — a small-but-heavy image still gets re-encoded at its
     // own size, which is where most of the saving comes from anyway.
@@ -80,32 +98,58 @@ export async function compressImageFile(file: File): Promise<File> {
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return file;
-
-    // JPEG has no alpha channel, so a transparent PNG would otherwise
-    // composite onto black. Paint white first — the right background for
-    // the scanned documents and ID photos this actually handles.
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
+    if (!ctx) return done(file);
     ctx.drawImage(img, 0, 0, width, height);
 
+    const keepPng = /^image\/png$/i.test(file.type) && hasTransparency(ctx, width, height);
+    if (!keepPng) {
+      // JPEG has no alpha channel, so a transparent area would otherwise
+      // composite onto black. Paint white behind — the right background
+      // for the scanned documents and ID photos this mostly handles.
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+    }
+
     const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY);
+      if (keepPng) canvas.toBlob(resolve, 'image/png');
+      else canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY);
     });
     // A result that isn't actually smaller is no use — keep the original
     // rather than trading quality for nothing.
-    if (!blob || blob.size >= file.size) return file;
+    if (!blob || blob.size >= file.size) return done(file);
 
-    return new File([blob], toJpegName(file.name), {
-      type: 'image/jpeg',
+    return done(new File([blob], keepPng ? file.name : toJpegName(file.name), {
+      type: keepPng ? 'image/png' : 'image/jpeg',
       lastModified: Date.now(),
-    });
+    }));
   } catch {
-    return file;
+    return done(file);
   }
 }
 
 /** Runs every value through compressImageFile, leaving non-Files alone. */
 export async function compressImageFiles<T>(values: T[]): Promise<(T | File)[]> {
   return Promise.all(values.map((v) => (v instanceof File ? compressImageFile(v) : Promise.resolve(v))));
+}
+
+/**
+ * V_26.0 — the same for a whole upload request, so every form that sends
+ * files (leads, cancellation papers, the Admin's review form, logos …) gets
+ * it, not only the ones that call compressImageFile themselves. Applied in
+ * axiosConfig.ts. Files already handled pass through untouched.
+ */
+export async function compressFormDataImages(form: FormData): Promise<FormData> {
+  const entries = Array.from(form.entries());
+  if (!entries.some(([, v]) => v instanceof File && !handled.has(v) && isCompressibleImage(v))) return form;
+  const out = new FormData();
+  for (const [key, value] of entries) {
+    if (value instanceof File) {
+      const f = await compressImageFile(value);
+      out.append(key, f, f.name);
+    } else {
+      out.append(key, value);
+    }
+  }
+  return out;
 }

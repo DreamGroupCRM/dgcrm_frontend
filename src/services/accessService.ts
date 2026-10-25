@@ -50,6 +50,8 @@ export interface AccessProfile {
   can_add_customer: boolean;
   customer_team: TeamMember[];
   lead_team: TeamMember[];
+  /** V_26.0 — the logged-in employee (name, code, photo), for the strip on every page. */
+  me?: { name: string; employee_code: string | null; photo_url: string | null } | null;
 }
 
 export interface ConfigDesignation { id: number; name: string; level: DesignationLevel; is_active: boolean }
@@ -80,6 +82,12 @@ export async function fetchMyAccess(): Promise<AccessProfile> {
 export async function fetchDepartmentHeads(departmentId: number, includeId?: number | null): Promise<TeamMember[]> {
   const res = await axiosInstance.get('/access/heads', { params: { department_id: departmentId, ...(includeId ? { include_id: includeId } : {}) } });
   return res.data.data;
+}
+
+/** V_26.0 — ids of active employees whose department gives `area` (assign pickers). */
+export async function fetchEmployeeIdsWithArea(area: AccessArea): Promise<Set<string>> {
+  const res = await axiosInstance.get('/access/employees', { params: { area } });
+  return new Set(((res.data.data ?? []) as (number | string)[]).map(String));
 }
 
 export async function fetchAccessConfig(): Promise<ConfigDepartment[]> {

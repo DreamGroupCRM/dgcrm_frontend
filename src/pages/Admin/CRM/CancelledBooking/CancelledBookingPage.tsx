@@ -8,7 +8,8 @@
 //
 // Mounted for admin (/admin/cancelled-booking) and employee
 // (/employee/cancelled-booking). An employee sees only customers assigned to
-// them; the summary boxes and the approval queue are admin-only — all
+// them (V_26.0: Refund sees the bookings the Admin assigned to it for
+// refund — "Refund By"); the summary boxes and the approval queue are admin-only — all
 // enforced by the API, not just hidden here.
 import { createPortal } from 'react-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -21,7 +22,6 @@ import {
 } from 'react-icons/md';
 
 import { useAppDispatch } from '../../../../hooks';
-import { usePermission } from '../../../../hooks/usePermission';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
@@ -35,9 +35,9 @@ import {
   fetchCancelledCustomers, CancelledCustomerRow, CancelledCustomerFilters,
   fetchCancelledBookingSummary, CancelledBookingSummary,
   fetchCustomerPaymentHistory, fetchCustomerFullDetails, fetchCustomerScheme,
-  fetchRefundSummary, createRefund, RefundSummary, assignCustomersToEmployee,
+  fetchRefundSummary, createRefund, RefundSummary,
   fetchPendingRefunds, approveRefund, rejectRefund, PendingRefundRow, fetchCancelledReceipt,
-  revertCancellation,
+  revertCancellation, fetchRefundEmployees, setRefundAssignee,
 } from '../../../../services/customerDetailsService';
 import { fetchChangeRequests, approveChangeRequest, rejectChangeRequest, ChangeRequestRow } from '../../../../services/changeRequestsService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
@@ -88,7 +88,6 @@ const CancelledBookingPage: React.FC = () => {
   const { t, isDark, cssVars } = useAppearanceTokens();
   const paths = useRoleBasePath();
   const isAdmin = paths.isAdmin;
-  const canAssign = usePermission('customers', 'assign');
   const rowMenu = useRowActionMenu<string>();
 
   useEffect(() => { dispatch(setPageTitle('Cancelled Booking')); }, [dispatch]);
@@ -320,7 +319,18 @@ const CancelledBookingPage: React.FC = () => {
     return arr;
   };
 
-  // ── Search Employee + Assign (same flow as Customer Details) ─────────────
+  // ── Admin: Assign for Refund ─────────────────────────────────────────────
+  // V_26.0 — a cancelled booking's refund goes to one Refund employee, who
+  // then sees it here. The customer's own (Recovery) assignment is kept as
+  // it was; that is the "Assigned Employee" column.
+  const canAssignRefund = isAdmin;
+  const [refundEmployees, setRefundEmployees] = useState<{ id: string; label: string }[]>([]);
+  useEffect(() => {
+    if (!canAssignRefund) return;
+    fetchRefundEmployees()
+      .then((list) => setRefundEmployees(list.map((e) => ({ id: e.id, label: `${e.name}${e.code ? ` (${e.code})` : ''}` }))))
+      .catch(() => { /* picker stays empty */ });
+  }, [canAssignRefund]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [assigning, setAssigning] = useState(false);
@@ -328,17 +338,18 @@ const CancelledBookingPage: React.FC = () => {
   const allOnPage = rows.length > 0 && rows.every((r) => selected.has(r.id));
   const toggleAll = () => setSelected(allOnPage ? new Set() : new Set(rows.map((r) => r.id)));
   const handleAssign = async () => {
-    const employee = employees.find((e) => e.label === employeeSearch);
-    if (!employee) { toast.error('Select an employee to assign to.'); return; }
+    const employee = refundEmployees.find((e) => e.label === employeeSearch);
+    if (!employee) { toast.error('Select a Refund employee.'); return; }
     setAssigning(true);
     try {
-      await assignCustomersToEmployee({ customer_ids: Array.from(selected), employee_id: employee.id });
-      toast.success('Customer(s) Assigned Successfully');
+      for (const id of Array.from(selected)) await setRefundAssignee(id, employee.id);
+      toast.success(`Assigned for refund to ${employee.label}`);
       setSelected(new Set());
       setEmployeeSearch('');
       fetchRows(); loadAllCancelled();
-    } catch {
-      toast.error('Failed to assign customer(s).');
+    } catch (e) {
+      toast.error(errMessage(e, 'Failed to assign for refund.'));
+      fetchRows();
     } finally {
       setAssigning(false);
     }
@@ -636,16 +647,16 @@ const CancelledBookingPage: React.FC = () => {
       {/* One row on laptop/desktop; on phones and tablets the two groups
           stack and stretch to the full width (CancelledBooking.css). */}
       <div className="cb-toolbar flex items-end justify-between gap-3 mb-2">
-        {canAssign ? (
+        {canAssignRefund ? (
           <div className="cb-toolbar-group flex items-end gap-3">
             <div className="cb-toolbar-field" style={{ width: 260 }}>
-              <label style={labelStyle}>Employee to Assign</label>
+              <label style={labelStyle}>Refund Employee</label>
               <input list="cancelled-assign-employees" value={employeeSearch} disabled={selected.size === 0}
-                placeholder={selected.size === 0 ? 'Select customers' : 'Search employee'}
+                placeholder={selected.size === 0 ? 'Select bookings' : 'Search Refund employee'}
                 onChange={(e) => setEmployeeSearch(e.target.value)}
                 style={selected.size === 0 ? readOnlyStyle : inputStyle} />
               <datalist id="cancelled-assign-employees">
-                {employees.map((e) => <option key={e.id} value={e.label} />)}
+                {refundEmployees.map((e) => <option key={e.id} value={e.label} />)}
               </datalist>
             </div>
             <button type="button" onClick={handleAssign} disabled={selected.size === 0 || !employeeSearch || assigning}
@@ -656,7 +667,7 @@ const CancelledBookingPage: React.FC = () => {
                 border: `1px solid ${selected.size === 0 || !employeeSearch || assigning ? t.surfaceBorder : 'transparent'}`,
                 cursor: selected.size === 0 || !employeeSearch || assigning ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
               }}>
-              {assigning ? 'Assigning...' : 'Assign to Employee'}
+              {assigning ? 'Assigning...' : 'Assign for Refund'}
             </button>
           </div>
         ) : <div />}
@@ -694,22 +705,22 @@ const CancelledBookingPage: React.FC = () => {
             <thead>
               <tr className="master-table-header-gradient">
                 <th style={{ padding: '10px 12px', width: 40 }}>
-                  {canAssign && <input type="checkbox" checked={allOnPage} onChange={toggleAll} disabled={rows.length === 0} title="Select all on this page" />}
+                  {canAssignRefund && <input type="checkbox" checked={allOnPage} onChange={toggleAll} disabled={rows.length === 0} title="Select all on this page" />}
                 </th>
-                {['Action', 'Customer ID', 'Customer Name', 'Contact Details', 'Company / Project', 'Building Details', 'Cancellation Date', 'Refund Amount', 'Balance Amount', 'Refund Date', 'Mode of Payment', 'Assigned Employee'].map((h) => (
+                {['Action', 'Customer ID', 'Customer Name', 'Contact Details', 'Company / Project', 'Building Details', 'Cancellation Date', 'Refund Amount', 'Balance Amount', 'Refund Date', 'Mode of Payment', 'Assigned Employee', 'Refund By'].map((h) => (
                   <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', ...(h === 'Action' ? { minWidth: 120 } : {}) }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading...</td></tr>
+                <tr><td colSpan={14} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No cancelled bookings found.</td></tr>
+                <tr><td colSpan={14} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>{isAdmin ? 'No cancelled bookings found.' : 'No cancelled bookings assigned to you for refund yet.'}</td></tr>
               ) : rows.map((c) => (
                 <tr key={c.id} className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
                   <td style={{ padding: '10px 12px' }}>
-                    {canAssign && <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleRow(c.id)} />}
+                    {canAssignRefund && <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleRow(c.id)} />}
                   </td>
                   <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                     <div className="flex items-center gap-1.5">
@@ -777,6 +788,11 @@ const CancelledBookingPage: React.FC = () => {
                   <td style={td}>{c.last_refund_date ? formatDate(c.last_refund_date) : '—'}</td>
                   <td style={td}>{c.last_refund_mode || '—'}</td>
                   <td style={td}>{c.assigned_employee_name || '—'}</td>
+                  <td style={td}>
+                    {c.refund_employee_name
+                      ? <>{c.refund_employee_name}{c.refund_employee_code && <div style={{ fontSize: 10.5, color: t.textSecondary }}>{c.refund_employee_code}</div>}</>
+                      : <span style={{ fontSize: 11, fontWeight: 700, color: '#b45309' }}>Not assigned</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -799,6 +815,7 @@ const CancelledBookingPage: React.FC = () => {
           extra={{ title: 'Cancellation Details', items: [
             { label: 'Cancellation Date', value: refundFor.cancelled_at ? formatDate(refundFor.cancelled_at) : '—' },
             { label: 'Assigned Employee', value: refundFor.assigned_employee_name || '—' },
+            { label: 'Refund By', value: refundFor.refund_employee_name || 'Not assigned' },
             { label: 'Reason', value: refundFor.cancellation_reason || '—' },
             { label: 'Original Docs Returned', value: refundFor.original_documents_returned ? 'Yes' : 'No' },
             { label: 'Documents', value: docLinks(refundFor).length ? <span className="inline-flex gap-3 flex-wrap">{docLinks(refundFor)}</span> : '—' },

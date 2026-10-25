@@ -46,6 +46,9 @@ const UserManagementPage: React.FC = () => {
   const { isDark, t, cssVars } = useAppearanceTokens();
 
   const [rows, setRows] = useState<UserManagementRow[]>([]);
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'employee' | 'customer'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'disabled' | 'locked'>('all');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const rowMenu = useRowActionMenu<number>();
@@ -262,6 +265,13 @@ const UserManagementPage: React.FC = () => {
     );
   };
 
+  // V_26.0 — filters: role, status (the top boxes) and a name / email search.
+  const matchesRole = (r: UserManagementRow) => roleFilter === 'all' || (roleFilter === 'admin' ? r.base_role === 'admin' || r.base_role === 'superadmin' : r.base_role === roleFilter);
+  const matchesStatus = (r: UserManagementRow) => statusFilter === 'all' || (statusFilter === 'active' ? r.is_active && !r.is_locked : statusFilter === 'disabled' ? !r.is_active : r.is_locked);
+  const q = search.trim().toLowerCase();
+  const matchesSearch = (r: UserManagementRow) => !q || [r.first_name, r.last_name, r.email, r.linked_employee_name, r.linked_customer_name]
+    .some((v) => String(v ?? '').toLowerCase().includes(q));
+  const shownRows = rows.filter((r) => matchesRole(r) && matchesStatus(r) && matchesSearch(r));
   const activeCount = rows.filter((r) => r.is_active).length;
   const disabledCount = rows.filter((r) => !r.is_active).length;
   const lockedCount = rows.filter((r) => r.is_locked).length;
@@ -270,18 +280,34 @@ const UserManagementPage: React.FC = () => {
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
       <div className="um-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Users" value={rows.length} icon={MdPeople} color="#0000FF" bg="" loading={loading}
+          compact active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Active" value={activeCount} icon={MdCheckCircle} color="#16a34a" bg="" loading={loading}
+          compact active={statusFilter === 'active'} onClick={() => setStatusFilter('active')}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Disabled" value={disabledCount} icon={MdCancel} color="#dc2626" bg="" loading={loading}
+          compact active={statusFilter === 'disabled'} onClick={() => setStatusFilter('disabled')}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
         <StatCard label="Locked" value={lockedCount} icon={MdLock} color="#d97706" bg="" loading={loading}
+          compact active={statusFilter === 'locked'} onClick={() => setStatusFilter('locked')}
           surfaceBg={t.surfaceBg} surfaceBorder={t.surfaceBorder} textPrimary={t.textPrimary} textSecondary={t.textSecondary} />
       </div>
 
       <div className="rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
         <div className="um-toolbar flex items-center justify-between gap-3 flex-wrap p-4" style={{ borderBottom: `1px solid ${t.divider}` }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Login Accounts</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, margin: 0, marginRight: 6 }}>Login Accounts</h3>
+            {([['all', 'All'], ['admin', 'Admin'], ['employee', 'Employee'], ['customer', 'Customer']] as const).map(([key, label]) => (
+              <button key={key} type="button" onClick={() => setRoleFilter(key)} aria-pressed={roleFilter === key} className="rounded-lg"
+                style={{ padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  background: roleFilter === key ? 'var(--brand-gradient)' : t.insetBg, color: roleFilter === key ? '#fff' : t.textPrimary,
+                  border: `1px solid ${roleFilter === key ? 'transparent' : t.surfaceBorder}` }}>
+                {label} <span style={{ opacity: 0.75 }}>({rows.filter((r) => key === 'all' || (key === 'admin' ? r.base_role === 'admin' || r.base_role === 'superadmin' : r.base_role === key)).length})</span>
+              </button>
+            ))}
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or email" aria-label="Search users"
+              style={{ padding: '6px 10px', fontSize: 12, borderRadius: 8, border: `1px solid ${t.inputBorder}`, background: t.inputBg, color: t.textPrimary, width: 200 }} />
+          </div>
           <div className="um-toolbar-actions flex items-center gap-2">
             {viewerIsSuper && <button type="button" onClick={() => setShowCreate(true)}
               className="um-create-btn flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold"
@@ -307,10 +333,10 @@ const UserManagementPage: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr><td colSpan={7} style={{ padding: 28, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>Loading users...</td></tr>
-              ) : rows.length === 0 ? (
+              ) : shownRows.length === 0 ? (
                 <tr><td colSpan={7} style={{ padding: 28, textAlign: 'center', color: t.textSecondary, fontSize: 12 }}>No users found.</td></tr>
               ) : (
-                rows.map((row) => {
+                shownRows.map((row) => {
                   const isSelf = currentUser?.id === row.id;
                   // The Super Admin account is protected: it is created by
                   // the backend and the whole authorization model leans on

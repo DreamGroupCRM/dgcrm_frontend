@@ -107,7 +107,7 @@ const ScheduleList: React.FC<{ scheme: CustomerSchemeData; gridRows: DueGridRow[
                     {rupee(r.amount)}
                     {partial && (
                       <div className="cp-due-note">
-                        {(grid!.carried_forward ?? 0) > 0 && <div>{rupee(grid!.carried_forward!)} carried forward from previous payment</div>}
+                        {(grid!.carried_forward ?? 0) > 0 && <div>{rupee(grid!.carried_forward!)} already paid (earlier payment)</div>}
                         {(grid!.part_paid ?? 0) > 0 && <div>{rupee(grid!.part_paid!)} part-paid</div>}
                         <div>{rupee(grid!.due_amount)} due</div>
                       </div>

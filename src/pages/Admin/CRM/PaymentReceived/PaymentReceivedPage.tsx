@@ -27,7 +27,7 @@ import {
   MdCheckCircle, MdMoreVert, MdHourglassEmpty, MdEventBusy,
   MdHomeWork, MdPendingActions, MdHistory } from 'react-icons/md';
 
-import { useAppDispatch } from '../../../../hooks';
+import { useAppDispatch, useAppSelector } from '../../../../hooks';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { AppTheme } from '../../../../styles/theme';
@@ -58,6 +58,8 @@ import { ReceiptEmailSwitch } from '../../../../components/common/ReceiptEmailSw
 import { DataScope, setDataScope } from '../../../../utils/dataScope';
 import DateInput from '../../../../components/common/DateInput';
 import { useAccessProfile } from '../../../../hooks/useAccessProfile';
+import { usePendingRequests, RequestReviewModal, PendingRequestsList } from '../../../../components/approvals/RequestReview';
+import { ChangeRequestRow } from '../../../../services/changeRequestsService';
 
 type Theme = AppTheme;
 
@@ -210,6 +212,10 @@ const PaymentReceivedPage: React.FC = () => {
   const paths = useRoleBasePath();
   // V_25.0 — a Head (set-up department) may request deleting a team payment.
   const { profile: access } = useAccessProfile();
+  // V_26.0 — Admin decides a Head's payment delete requests on this page.
+  const deleteRequests = usePendingRequests('payment', paths.isAdmin, (r) => r.action === 'delete');
+  const [showRequests, setShowRequests] = useState(false);
+  const [reviewRow, setReviewRow] = useState<ChangeRequestRow | null>(null);
   // V_26.0 — a non-Admin's Payment Received reaches back to the same date
   // two months ago (enforced server-side); the date filter stops there too.
   const receivedMinYmd = paths.isAdmin ? undefined : employeeReceivedMinYmd();
@@ -243,16 +249,16 @@ const PaymentReceivedPage: React.FC = () => {
   // backend route is requireAdmin too, so an employee never fetches them. ──
   const [receivedSummary, setReceivedSummary] = useState<PaymentReceivedSummary | null>(null);
   const [receivedSummaryError, setReceivedSummaryError] = useState(false);
-  // V_25.0 — every viewer gets these boxes, for their own scope (Admin:
-  // company-wide; an Executive: their customers; a Head: theirs + team's).
+  // V_26.0 — the top boxes are Admin only (company-wide).
   const fetchReceivedSummary = useCallback(async () => {
+    if (!paths.isAdmin) return;
     setReceivedSummaryError(false);
     try {
       setReceivedSummary(await fetchPaymentReceivedSummary());
     } catch {
       setReceivedSummaryError(true);
     }
-  }, []);
+  }, [paths.isAdmin]);
   useEffect(() => { fetchReceivedSummary(); }, [fetchReceivedSummary]);
 
   // ── Filter panel data sources ────────────────────────────────────────
@@ -269,7 +275,9 @@ const PaymentReceivedPage: React.FC = () => {
         if (res.success) setBuildings(res.rows ?? []);
       } catch { /* filter just stays empty if this fails */ }
     })();
-    (async () => {
+    // V_26.0 — Received By: Admin picks from every employee; an employee's
+    // list is set below from their own name and team.
+    if (paths.isAdmin) (async () => {
       try {
         const res = await FetchEmployeeDetails(1, 1000, undefined, true);
         if (res.success) setEmployeeNameOptions(Array.from(new Set((res.rows ?? []).map((e) => [e.first_name, e.last_name].filter(Boolean).join(' ')))));
@@ -281,7 +289,17 @@ const PaymentReceivedPage: React.FC = () => {
         if (res.success) setCompanyNameOptions(Array.from(new Set((res.rows ?? []).map((c: { name: string }) => c.name))));
       } catch { /* filter just stays empty if this fails */ }
     })();
-  }, [dispatch]);
+  }, [dispatch, paths.isAdmin]);
+
+  // V_26.0 — an Executive: only their own name; a Head: theirs and their
+  // team's (the people whose customers they see).
+  const authUser = useAppSelector((st) => st.auth.user);
+  useEffect(() => {
+    if (paths.isAdmin || !access) return;
+    const me = [authUser?.first_name, authUser?.last_name].filter(Boolean).join(' ').trim();
+    const team = access.head_of.length > 0 ? access.customer_team.map((m) => m.name.trim()) : [];
+    setEmployeeNameOptions(Array.from(new Set([me, ...team].filter(Boolean))));
+  }, [paths.isAdmin, access, authUser]);
 
   // ── Draft filter fields — bound to the panel's own inputs, only take
   // effect when "Filter" is clicked. "Reset" clears both the draft fields
@@ -516,8 +534,9 @@ const PaymentReceivedPage: React.FC = () => {
     setAppliedFilters((prev) => ({ search: prev.search }));
   };
 
-  const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
-  const toggleSelectAll = () => setSelectedIds(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
+  const pendingRows = rows.filter((r) => !r.is_approved);
+  const allSelected = pendingRows.length > 0 && pendingRows.every((r) => selectedIds.has(r.id));
+  const toggleSelectAll = () => setSelectedIds(allSelected ? new Set() : new Set(pendingRows.map((r) => r.id)));
   const toggleSelectRow = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -695,11 +714,10 @@ const PaymentReceivedPage: React.FC = () => {
           </div>
       </div>
 
-      {/* ── Top stat boxes — Admin: company-wide; an employee: their own
-          customers (a Head: theirs + their team's). They do not follow the
-          filter panel (the per-category totals for the filtered rows live
-          in the table's footer row instead). ────────────────────────────── */}
-      {(
+      {/* ── Top stat boxes — Admin only (V_26.0), company-wide. They do not
+          follow the filter panel (the per-category totals for the filtered
+          rows live in the table's footer row instead). ─────────────────── */}
+      {paths.isAdmin && (
         <>
           <div className="pr-stat-grid grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
             <StatCard label="Total Flat Sold" value={rupee(receivedSummary?.total_flat_sold ?? 0)} icon={MdHomeWork} color="#2563eb"
@@ -814,6 +832,17 @@ const PaymentReceivedPage: React.FC = () => {
               );
             })}
           </div>
+          {paths.isAdmin && (
+            <button type="button" onClick={() => setShowRequests((v) => !v)} aria-pressed={showRequests}
+              className="flex items-center gap-2 rounded-xl" title="Payment delete requests waiting for your approval"
+              style={{ padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                background: showRequests ? '#b91c1c' : t.inputBg, color: showRequests ? '#fff' : t.textPrimary, border: `1px solid ${showRequests ? '#b91c1c' : '#fca5a5'}` }}>
+              Delete requests
+              <span style={{ minWidth: 22, padding: '1px 7px', borderRadius: 999, fontSize: 11, fontWeight: 800, textAlign: 'center', background: showRequests ? 'rgba(255,255,255,0.25)' : '#b91c1c', color: '#fff' }}>
+                {deleteRequests.rows.length}
+              </span>
+            </button>
+          )}
           <div className="pr-toolbar-actions flex items-center gap-2.5" style={{ flexShrink: 0 }}>
             {paths.isAdmin && selectedPendingIds.length > 0 && (
               <button type="button" onClick={handleBulkApprove} disabled={bulkApproving}
@@ -858,15 +887,28 @@ const PaymentReceivedPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="pr-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      {showRequests && paths.isAdmin && (
+        <PendingRequestsList t={t} isDark={isDark} rows={deleteRequests.rows} loading={deleteRequests.loading} noun="payments"
+          onReview={setReviewRow} onShowAll={() => setShowRequests(false)} />
+      )}
+      {reviewRow && (
+        <RequestReviewModal t={t} isDark={isDark} row={reviewRow} onClose={() => setReviewRow(null)}
+          onDecided={() => { deleteRequests.reload(); refreshAll(); }} />
+      )}
+      <div className="pr-table-card rounded-2xl" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, display: showRequests && paths.isAdmin ? 'none' : undefined }}>
         <div className="master-table-scroll">
           <table className="pr-table master-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
             <thead>
               <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                <th style={{ padding: '10px 12px', width: 36 }}>
-                  <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={rows.length === 0}
-                    style={{ cursor: rows.length === 0 ? 'not-allowed' : 'pointer' }} />
-                </th>
+                {/* V_26.0 — the tick box is only for Admin's "Approve
+                    Selected", so only Admin sees it, on rows still waiting. */}
+                {paths.isAdmin && (
+                  <th style={{ padding: '10px 12px', width: 36 }}>
+                    <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={pendingRows.length === 0}
+                      title="Select every payment waiting for approval on this page"
+                      style={{ cursor: pendingRows.length === 0 ? 'not-allowed' : 'pointer' }} />
+                  </th>
+                )}
                 {['Actions', 'Status', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'].map((h) => (
                   <th key={h}
                     style={h === 'Actions'
@@ -877,15 +919,17 @@ const PaymentReceivedPage: React.FC = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
+                <tr><td colSpan={paths.isAdmin ? 13 : 12} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
+                <tr><td colSpan={paths.isAdmin ? 13 : 12} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
-                    <td style={{ padding: '10px 12px' }}>
-                      <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelectRow(r.id)} style={{ cursor: 'pointer' }} />
-                    </td>
+                    {paths.isAdmin && (
+                      <td style={{ padding: '10px 12px' }}>
+                        {!r.is_approved && <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelectRow(r.id)} style={{ cursor: 'pointer' }} />}
+                      </td>
+                    )}
                     <td style={{ padding: '10px 12px', width: 64, minWidth: 64, maxWidth: 64 }}>
                       {/* V_23.0 — the old inline View/Download/Delete icon
                           row is now one three-dot trigger; the menu itself
@@ -934,7 +978,10 @@ const PaymentReceivedPage: React.FC = () => {
                           <MdHourglassEmpty size={12} /> UnApproved
                         </span>
                       )}
-                      {r.delete_requested && <div><DeleteRequestedTag /></div>}
+                      {r.delete_requested && <div
+                        role={paths.isAdmin ? 'button' : undefined}
+                        style={{ cursor: paths.isAdmin ? 'pointer' : undefined }} title={paths.isAdmin ? 'Review the delete request' : undefined}
+                        onClick={() => { const cr = deleteRequests.rows.find((x) => String(x.entity_id) === String(r.id)); if (paths.isAdmin && cr) setReviewRow(cr); }}><DeleteRequestedTag /></div>}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap' }}>{r.receipt_number || '—'}</td>
                     <td style={{ padding: '10px 12px', fontSize: 12, color: t.textPrimary, whiteSpace: 'nowrap' }}>
@@ -992,7 +1039,7 @@ const PaymentReceivedPage: React.FC = () => {
               )}
               {/* Invisible sentinel row — scrolling near it loads the next 100. */}
               {!loading && hasMoreRows && (
-                <tr ref={lazyLoadSentinelRef} aria-hidden="true"><td colSpan={13} style={{ padding: 0, border: 'none' }} /></tr>
+                <tr ref={lazyLoadSentinelRef} aria-hidden="true"><td colSpan={paths.isAdmin ? 13 : 12} style={{ padding: 0, border: 'none' }} /></tr>
               )}
             </tbody>
           </table>

@@ -11,22 +11,17 @@ import { ROUTES } from '../../constants';
 import { useNavigate } from 'react-router-dom';
 import { useAppearanceTokens } from '../../styles/appearanceTokens';
 import { AppTheme } from '../../styles/theme';
-import { BaseRole, isAdminRole } from '../../types';
+import { isAdminRole } from '../../types';
 import { homeRouteForRole, roleLabelFor } from '../../utils';
 import { useAccessProfile } from '../../hooks/useAccessProfile';
 import { AccessArea } from '../../services/accessService';
 import { fetchPendingApprovalCounts, PENDING_APPROVALS_CHANGED } from '../../services/pendingApprovalsService';
 
 import {
-  MdDashboard, MdBusiness, MdPeople, MdContactPage,
-  MdHistory, MdCalculate, MdStorage, MdPhoneAndroid, MdPhoneInTalk,
-  MdEventAvailable, MdLeaderboard, MdPayment, MdAttachMoney,
-  MdApartment, MdAccountBalance, MdAccountTree,
-  MdExpandMore, MdExpandLess, MdChevronLeft, MdChevronRight,
-  MdPersonAdd, MdSettings, MdGridOn, MdAssessment,
-  MdAdminPanelSettings, MdManageAccounts, MdPendingActions, MdBeachAccess, MdAssignment,
-  MdGridView, MdEventBusy,
-  MdNotificationsActive,
+  MdDashboard, MdPeople, MdContactPage, MdHistory, MdCalculate, MdPhoneInTalk,
+  MdEventAvailable, MdLeaderboard, MdPayment, MdAttachMoney, MdExpandMore, MdExpandLess,
+  MdChevronLeft, MdChevronRight, MdPersonAdd, MdSettings, MdAssessment, MdPendingActions,
+  MdBeachAccess, MdGridView, MdEventBusy,
 } from 'react-icons/md';
 
 // ── Single source of truth for "desktop vs drawer" mode ────────────────────
@@ -69,97 +64,60 @@ interface NavItem {
   children?: NavItem[];
   /** V_26.0 — a count shown beside the label (hidden when 0). */
   badge?: number;
+  /** V_26.0 — also highlighted on these pages (e.g. Settings on its sub-pages). */
+  activePaths?: string[];
 }
 
-const buildAdminNavItems = (masterEnabled: boolean, role: BaseRole | null, pendingCount = 0): NavItem[] => [
+// V_26.0 — short admin menu: daily work up top, the rarely used setup pages
+// (Masters, Payment Reminders, Call Sync Phones, User Management, Backup,
+// and the Super Admin tools) on one Settings page instead of the sidebar.
+const SETTINGS_PAGES = [
+  '/admin/masters', ROUTES.ADMIN.TASKS, ROUTES.ADMIN.PAYMENT_REMINDERS, ROUTES.ADMIN.CALL_DEVICES, ROUTES.ADMIN.USER_MANAGEMENT,
+  ROUTES.ADMIN.BACKUP_DATABASE, ROUTES.ADMIN.DEPARTMENT_SETUP,
+];
+// V_26.0 — no Pending Approval page: each request is approved on its own
+// page, and that page's menu entry shows how many wait there. Tasks moved
+// to the Settings page.
+type AdminCounts = { customer: number; lead: number; employee: number; payment: number; refunds: number };
+const NO_COUNTS: AdminCounts = { customer: 0, lead: 0, employee: 0, payment: 0, refunds: 0 };
+const buildAdminNavItems = (c: AdminCounts = NO_COUNTS): NavItem[] => ([
   { label: 'Dashboard', path: ROUTES.ADMIN.DASHBOARD, icon: <MdDashboard /> },
-
-  // Master section — conditionally included based on settings toggle
-  ...(masterEnabled ? [{
-    label: 'Masters', icon: <MdBusiness />,
-    children: [
-      { label: 'Company', path: ROUTES.ADMIN.COMPANY, icon: <MdBusiness /> },
-      { label: 'Department', path: ROUTES.ADMIN.DEPARTMENT, icon: <MdAccountTree /> },
-      { label: 'Bank A/C', path: ROUTES.ADMIN.BANK_AC, icon: <MdAccountBalance /> },
-      { label: 'Building', path: ROUTES.ADMIN.BUILDING, icon: <MdApartment /> },
-      // SuperAdmin-only, same restriction the backend enforces
-      // (requireSuperAdmin on /api/role, /api/action-master, /api/module,
-      // /api/module-action) — a regular Admin gets "SuperAdmin access
-      // required" from the API, so don't show these to them at all.
-      ...(role === 'superadmin' ? [
-        { label: 'Roles', path: ROUTES.ADMIN.ROLES, icon: <MdAccountTree /> },
-        { label: 'Action & Module', path: ROUTES.ADMIN.ACTION_MODULE, icon: <MdSettings /> },
-        { label: 'Module Mapping', path: ROUTES.ADMIN.MODULE_MAPPING, icon: <MdGridOn /> },
-      ] : []),
-    ],
-  }] : []),
-
-  {
-    label: 'Employee', icon: <MdPeople />,
-    children: [
-      { label: 'Employee Details', path: ROUTES.ADMIN.EMPLOYEE_DETAILS, icon: <MdPersonAdd /> },
-      // Leave Requests now lives inside the Attendance page itself (one
-      // merged Attendance + Leave experience) instead of its own sidebar
-      // entry/route.
-      { label: 'Attendance', path: ROUTES.ADMIN.ATTENDANCE, icon: <MdEventAvailable /> },
-    ],
-  },
-
   {
     label: 'CRM', icon: <MdLeaderboard />,
     children: [
-      { label: 'Leads', path: ROUTES.ADMIN.LEADS, icon: <MdLeaderboard /> },
-      { label: 'Customer Details', path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage /> },
+      { label: 'Leads', path: ROUTES.ADMIN.LEADS, icon: <MdLeaderboard />, badge: c.lead },
+      { label: 'Customer Details', path: ROUTES.ADMIN.CUSTOMER_DETAILS, icon: <MdContactPage />, badge: c.customer },
       { label: 'Payment Dues', path: ROUTES.ADMIN.PAYMENT_DUES, icon: <MdPayment /> },
       // Payment Approval is merged into Payment Received (All/Approved/
       // UnApproved buttons); Payment Upcoming opens from its toolbar button.
-      { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney /> },
-      { label: 'Cancelled Booking', path: ROUTES.ADMIN.CANCELLED_BOOKING, icon: <MdEventBusy /> },
+      { label: 'Payment Received', path: ROUTES.ADMIN.PAYMENT_RECEIVED, icon: <MdAttachMoney />, badge: c.payment },
+      { label: 'Cancelled Booking', path: ROUTES.ADMIN.CANCELLED_BOOKING, icon: <MdEventBusy />, badge: c.refunds },
+      { label: 'Customize Scheme', path: ROUTES.ADMIN.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
+      { label: 'Building View', path: ROUTES.ADMIN.BUILDING_2D_VIEW, icon: <MdGridView /> },
     ],
   },
-
-  { label: 'Customize Scheme', path: ROUTES.ADMIN.CUSTOMIZE_SCHEME, icon: <MdCalculate /> },
-  { label: 'Building View', path: ROUTES.ADMIN.BUILDING_2D_VIEW, icon: <MdGridView /> },
-  { label: 'Audit History', path: ROUTES.ADMIN.AUDIT_HISTORY, icon: <MdHistory /> },
-  // Admin/superadmin (requireAdmin server-side, not requireSuperAdmin) —
-  // the whole point is a regular Admin reviews delete requests an
-  // employee couldn't complete themselves, so this is visible to both,
-  // unlike the Super Admin lobby group below.
-  { label: 'Pending Admin Approval', path: ROUTES.ADMIN.PENDING_APPROVALS, icon: <MdPendingActions />, badge: pendingCount },
-  // V_26.0 — general tasks (e.g. HR work) Admin assigns to employees.
-  { label: 'Tasks', path: ROUTES.ADMIN.TASKS, icon: <MdAssignment /> },
-  // V_26.0 — automatic payment reminders to customers.
-  { label: 'Payment Reminders', path: ROUTES.ADMIN.PAYMENT_REMINDERS, icon: <MdNotificationsActive /> },
-  // Executive Dashboard — visible to Admin/SuperAdmin here same as the rest
-  // of this nav tree; the real gate is server-side (checkPermission
-  // ('reports','view') on GET /api/dashboard/executive) so a role without
-  // the 'reports' permission still can't pull data even if this link is
-  // somehow reached directly.
-  { label: 'Reports', path: ROUTES.ADMIN.EXECUTIVE_DASHBOARD, icon: <MdAssessment /> },
-  // V_27.0 — phones running the DGCRM Calls app; Block is requireAdmin server-side.
-  { label: 'Call Report', path: ROUTES.ADMIN.CALL_REPORT, icon: <MdPhoneInTalk /> },
-  { label: 'Call Sync Phones', path: ROUTES.ADMIN.CALL_DEVICES, icon: <MdPhoneAndroid /> },
-  // Backup Database — Admin may create/download backups (requireAdmin
-  // server-side); Super Admin reaches it from the Super Admin group below.
-  ...(role === 'admin' ? [{ label: 'Backup Database', path: ROUTES.ADMIN.BACKUP_DATABASE, icon: <MdStorage /> }] : []),
-  // V_26.0 — Admin helps employee / customer logins here (unlock, allow /
-  // block login, sign out, set password); Super Admin reaches it below.
-  ...(role === 'admin' ? [{ label: 'User Management', path: ROUTES.ADMIN.USER_MANAGEMENT, icon: <MdManageAccounts /> }] : []),
-
-  // Super Admin lobby — Backup Database moved in here (was previously
-  // visible to every admin with no real page behind it) and User
-  // Management is new. Both are superadmin-only server-side
-  // (requireSuperAdmin on /api/backup and /api/user-management), same
-  // restriction as the Roles/Action & Module/Module Mapping group above.
-  ...(role === 'superadmin' ? [{
-    label: 'Super Admin', icon: <MdAdminPanelSettings />,
+  {
+    label: 'Employee', icon: <MdPeople />,
     children: [
-      { label: 'User Management', path: ROUTES.ADMIN.USER_MANAGEMENT, icon: <MdManageAccounts /> },
-      { label: 'Department Setup', path: ROUTES.ADMIN.DEPARTMENT_SETUP, icon: <MdAccountTree /> },
-      { label: 'Backup Database', path: ROUTES.ADMIN.BACKUP_DATABASE, icon: <MdStorage /> },
+      { label: 'Employee Details', path: ROUTES.ADMIN.EMPLOYEE_DETAILS, icon: <MdPersonAdd />, badge: c.employee },
+      // Leave Requests lives inside the Attendance page (one merged
+      // Attendance + Leave experience).
+      { label: 'Attendance', path: ROUTES.ADMIN.ATTENDANCE, icon: <MdEventAvailable /> },
     ],
-  }] : []),
-];
+  },
+  {
+    label: 'Reports', icon: <MdAssessment />,
+    children: [
+      // Executive Dashboard — the real gate is server-side
+      // (checkPermission('reports','view') on GET /api/dashboard/executive).
+      { label: 'Executive Dashboard', path: ROUTES.ADMIN.EXECUTIVE_DASHBOARD, icon: <MdAssessment /> },
+      // V_27.0 — calls synced from the DGCRM Calls app.
+      { label: 'Call Report', path: ROUTES.ADMIN.CALL_REPORT, icon: <MdPhoneInTalk /> },
+      { label: 'Audit History', path: ROUTES.ADMIN.AUDIT_HISTORY, icon: <MdHistory /> },
+    ],
+  },
+  { label: 'Settings', path: ROUTES.ADMIN.SETTINGS, icon: <MdSettings />, activePaths: SETTINGS_PAGES },
+] as NavItem[]).map((item) => (item.children ? { ...item, badge: item.children.reduce((n, ch) => n + (ch.badge ?? 0), 0) } : item));
 
 // Employee sidebar — same shape as the admin tree above (a CRM group
 // holding the customer/payment pages, then the standalone tools), so the
@@ -187,6 +145,9 @@ const buildEmployeeNavItems = (has: (area: AccessArea) => boolean): NavItem[] =>
     ...(has('payment_received') ? [{ label: 'Payment Received', path: ROUTES.EMPLOYEE.PAYMENT_RECEIVED, icon: <MdAttachMoney /> }] : []),
     // Refund: every cancellation; others: their own customers'.
     ...(has('cancelled_booking') ? [{ label: 'Cancelled Booking', path: ROUTES.EMPLOYEE.CANCELLED_BOOKING, icon: <MdEventBusy /> }] : []),
+    // V_26.0 — inside CRM, as on the admin menu.
+    ...(has('customize_scheme') ? [{ label: 'Customize Scheme', path: ROUTES.EMPLOYEE.CUSTOMIZE_SCHEME, icon: <MdCalculate /> }] : []),
+    ...(has('building_view') ? [{ label: 'Building View', path: ROUTES.EMPLOYEE.BUILDING_2D_VIEW, icon: <MdGridView /> }] : []),
   ];
   const hr: NavItem[] = [
     ...(has('employee_details') ? [{ label: 'Employee Details', path: ROUTES.EMPLOYEE.EMPLOYEE_DETAILS, icon: <MdPersonAdd /> }] : []),
@@ -197,13 +158,10 @@ const buildEmployeeNavItems = (has: (area: AccessArea) => boolean): NavItem[] =>
     // A single CRM page (e.g. Sales: just Leads) sits directly in the list.
     ...(crm.length > 1 ? [{ label: 'CRM', icon: <MdLeaderboard />, children: crm }] : crm),
     ...(hr.length ? [{ label: 'HR', icon: <MdPeople />, children: hr }] : []),
-    ...(has('customize_scheme') ? [{ label: 'Customize Scheme', path: ROUTES.EMPLOYEE.CUSTOMIZE_SCHEME, icon: <MdCalculate /> }] : []),
-    ...(has('building_view') ? [{ label: 'Building View', path: ROUTES.EMPLOYEE.BUILDING_2D_VIEW, icon: <MdGridView /> }] : []),
     // Audit History is deliberately NOT here — it stays admin-only.
     { label: 'Attendance', path: ROUTES.EMPLOYEE.ATTENDANCE, icon: <MdEventAvailable /> },
     { label: 'Leave', path: ROUTES.EMPLOYEE.LEAVES, icon: <MdBeachAccess /> },
     // V_26.0 — tasks an Admin assigned to this employee.
-    { label: 'My Tasks', path: ROUTES.EMPLOYEE.TASKS, icon: <MdAssignment /> },
     ...(has('leads') ? [{ label: 'Call Report', path: ROUTES.EMPLOYEE.CALL_REPORT, icon: <MdPhoneInTalk /> }] : []),
     // V_26.0 — requests this employee sent for Admin approval.
     { label: 'My Requests', path: ROUTES.EMPLOYEE.MY_REQUESTS, icon: <MdPendingActions /> },
@@ -252,6 +210,12 @@ const NavItemComponent: React.FC<{
           {!collapsed && (
             <>
               <span className="flex-1 text-left font-medium" style={{ fontSize: 12 }}>{item.label}</span>
+              {!open && !!item.badge && (
+                <span aria-label={`${item.badge} waiting`} className="rounded-full text-center"
+                  style={{ minWidth: 18, padding: '1px 6px', fontSize: 10, fontWeight: 700, lineHeight: '16px', background: '#dc2626', color: '#fff' }}>
+                  {item.badge > 99 ? '99+' : item.badge}
+                </span>
+              )}
               <span style={{ color: t.sidebarTextMuted }}>
                 {open ? <MdExpandLess size={16} /> : <MdExpandMore size={16} />}
               </span>
@@ -275,22 +239,25 @@ const NavItemComponent: React.FC<{
       to={item.path!}
       title={collapsed ? item.label : undefined}
       className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 no-underline"
-      style={({ isActive }) => ({
-        background: isActive ? navActiveBg : 'transparent',
-        color: isActive ? navActiveText : t.sidebarText,
-        fontFamily: t.fontFamily, fontWeight: isActive ? 600 : 400,
-        borderLeft: isActive ? `3px solid ${navActiveBorder}` : '3px solid transparent',
-      })}
+      style={({ isActive: linkActive }) => {
+        const isActive = linkActive || !!item.activePaths?.some((p) => location.pathname.startsWith(p));
+        return {
+          background: isActive ? navActiveBg : 'transparent',
+          color: isActive ? navActiveText : t.sidebarText,
+          fontFamily: t.fontFamily, fontWeight: isActive ? 600 : 400,
+          borderLeft: isActive ? `3px solid ${navActiveBorder}` : '3px solid transparent',
+        };
+      }}
       onMouseEnter={(e) => {
         const el = e.currentTarget as HTMLElement;
-        if (!location.pathname.startsWith(item.path ?? '__')) {
+        if (!location.pathname.startsWith(item.path ?? '__') && !item.activePaths?.some((p) => location.pathname.startsWith(p))) {
           el.style.background = t.sidebarHoverBg;
           el.style.color = t.sidebarHoverText;
         }
       }}
       onMouseLeave={(e) => {
         const el = e.currentTarget as HTMLElement;
-        if (!location.pathname.startsWith(item.path ?? '__')) {
+        if (!location.pathname.startsWith(item.path ?? '__') && !item.activePaths?.some((p) => location.pathname.startsWith(p))) {
           el.style.background = 'transparent';
           el.style.color = t.sidebarText;
         }
@@ -345,19 +312,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDesktop]);
 
-  // ── Master visibility — sync with Header settings toggle ──────────────
-  const [masterEnabled, setMasterEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem('dgcrm_master_enabled');
-    return saved === null ? true : saved === 'true';
-  });
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      setMasterEnabled((e as CustomEvent<boolean>).detail);
-    };
-    window.addEventListener('dgcrm_master_toggle', handler);
-    return () => window.removeEventListener('dgcrm_master_toggle', handler);
-  }, []);
+  // V_26.0 — Masters moved to the Settings page (which honours the
+  // header's "Enable Master" switch).
 
   // ── ROOT-CAUSE FIXES for mobile drawer behavior ────────────────────────
   // 1) Auto-close the mobile drawer whenever the route changes, so
@@ -389,16 +345,23 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
   }, [mobileOpen]);
 
   const access = useAccessProfile();
-  // V_26.0 — Pending Admin Approval count: reloaded on every page change,
-  // when the browser tab is focused again, and right after an approve/reject.
-  const [pendingCount, setPendingCount] = useState(0);
+  // V_26.0 — requests waiting on the Admin, per page: reloaded on every page
+  // change, when the browser tab is focused again, and right after an
+  // approve/reject.
+  const [counts, setCounts] = useState<AdminCounts>(NO_COUNTS);
   const isAdmin = isAdminRole(role);
   useEffect(() => {
     if (!isAdmin) return;
     let alive = true;
     const load = () => {
       fetchPendingApprovalCounts()
-        .then((c) => { if (alive) setPendingCount(c.total); })
+        .then((c) => { if (alive) setCounts({
+          customer: c.changes_by_module.customer ?? 0,
+          lead: (c.changes_by_module.lead ?? 0) + (c.deletes_by_type.lead ?? 0),
+          employee: (c.changes_by_module.employee ?? 0) + (c.deletes_by_type.employee ?? 0),
+          payment: c.changes_by_module.payment ?? 0,
+          refunds: c.refunds,
+        }); })
         .catch(() => { /* badge only — never block the sidebar */ });
     };
     load();
@@ -411,7 +374,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
     };
   }, [isAdmin, location.pathname]);
 
-  const navItems = isAdmin ? buildAdminNavItems(masterEnabled, role, pendingCount) : buildEmployeeNavItems(access.has);
+  const navItems = isAdmin ? buildAdminNavItems(counts) : buildEmployeeNavItems(access.has);
 
   const shellStyle: React.CSSProperties = {
     background: t.sidebarBg,

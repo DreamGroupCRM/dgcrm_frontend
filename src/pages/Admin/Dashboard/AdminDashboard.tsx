@@ -55,6 +55,22 @@ const AdminDashboard: React.FC = () => {
     })();
   }, []);
 
+  // V_26.0 — each request is approved on its own page (no Pending Approval
+  // page): a queue line opens that page with its waiting requests shown.
+  const pageFor = (key: string): string => {
+    const [module, action] = key.split('.');
+    const base = module === 'refund' ? ROUTES.ADMIN.CANCELLED_BOOKING
+      : module === 'delete' ? (action === 'lead' ? ROUTES.ADMIN.LEADS : action === 'employee' ? ROUTES.ADMIN.EMPLOYEE_DETAILS : ROUTES.ADMIN.PENDING_APPROVALS)
+      : module === 'customer' ? ROUTES.ADMIN.CUSTOMER_DETAILS
+      : module === 'employee' ? ROUTES.ADMIN.EMPLOYEE_DETAILS
+      : module === 'lead' ? ROUTES.ADMIN.LEADS
+      : module === 'payment' ? ROUTES.ADMIN.PAYMENT_RECEIVED
+      : ROUTES.ADMIN.PENDING_APPROVALS;
+    return base === ROUTES.ADMIN.CANCELLED_BOOKING || base === ROUTES.ADMIN.PAYMENT_RECEIVED || base === ROUTES.ADMIN.PENDING_APPROVALS ? base : `${base}?approvals=1`;
+  };
+  const firstQueue = [...(data?.approvals?.queues ?? [])].sort((a, b) => b.count - a.count)[0];
+  const reviewTo = firstQueue ? pageFor(firstQueue.key) : ROUTES.ADMIN.CUSTOMER_DETAILS;
+
   const totals = data?.totals;
   const waiting = data?.approvals?.total ?? 0;
   const oldest = (data?.approvals?.queues ?? []).map((q) => q.oldest).filter(Boolean).sort()[0] ?? null;
@@ -70,7 +86,7 @@ const AdminDashboard: React.FC = () => {
     { label: 'Active leads', value: String(totals?.leads ?? 0), note: totals ? `${totals.hot_leads} hot` : undefined, noteColor: red, to: ROUTES.ADMIN.LEADS },
     { label: 'Received this month', value: rupeeCompact(data?.month?.received ?? 0), note: 'approved payments', to: ROUTES.ADMIN.PAYMENT_RECEIVED },
     { label: 'Due now', value: rupeeCompact(totals?.payment_due ?? 0), note: totals?.overdue_customers != null ? plural(totals.overdue_customers, 'customer') : undefined, noteColor: red, to: ROUTES.ADMIN.PAYMENT_DUES },
-    { label: 'Waiting for you', value: String(waiting), note: oldest ? `oldest ${waitingFor(oldest)}` : undefined, noteColor: amber, to: ROUTES.ADMIN.PENDING_APPROVALS },
+    { label: 'Waiting for you', value: String(waiting), note: oldest ? `oldest ${waitingFor(oldest)}` : undefined, noteColor: amber, to: reviewTo },
   ];
 
   const shortcuts = [
@@ -78,7 +94,7 @@ const AdminDashboard: React.FC = () => {
     { label: 'Add employee', to: `${ROUTES.ADMIN.EMPLOYEE_DETAILS}/add` },
     { label: 'Payment Received', to: ROUTES.ADMIN.PAYMENT_RECEIVED },
     { label: 'Payment Dues', to: ROUTES.ADMIN.PAYMENT_DUES },
-    { label: 'Assign task', to: ROUTES.ADMIN.TASKS },
+    { label: 'Tasks', to: ROUTES.ADMIN.TASKS },
     { label: 'Reports', to: ROUTES.ADMIN.EXECUTIVE_DASHBOARD },
   ];
 
@@ -93,7 +109,7 @@ const AdminDashboard: React.FC = () => {
         subtitle={`${today} · Company-wide view · ${role === 'superadmin' ? 'Super Admin' : 'Admin'}`}
         right={
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-            <Link to={ROUTES.ADMIN.PENDING_APPROVALS} style={{ ...bandButton, background: '#ffffff', color: '#073b3b' }}>
+            <Link to={reviewTo} style={{ ...bandButton, background: '#ffffff', color: '#073b3b' }}>
               {waiting > 0 ? `Review ${waiting} approval${waiting === 1 ? '' : 's'}` : 'No approvals waiting'}
             </Link>
             <Link to={ROUTES.ADMIN.TASKS} style={{ ...bandButton, color: '#ffffff', border: '1px solid #5fb3b3' }}>Assign task</Link>
@@ -106,15 +122,15 @@ const AdminDashboard: React.FC = () => {
       </section>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18 }}>
-        <Panel t={t} title="Pending Admin Approval" action={{ label: 'Open queue', to: ROUTES.ADMIN.PENDING_APPROVALS }}>
+        <Panel t={t} title="Pending Admin Approval">
           {loading ? <Empty t={t}>Loading…</Empty>
             : !data?.approvals?.queues.length ? <Empty t={t}>Nothing is waiting for an Admin.</Empty>
             : data.approvals.queues.map((q) => (
-              <div key={q.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, background: rowBg }}>
-                <span style={{ flex: '1 1 auto', fontSize: 13, fontWeight: 600, color: t.textPrimary }}>{q.label}</span>
+              <Link key={q.key} to={pageFor(q.key)} title="Open the page to review" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, background: rowBg, textDecoration: 'none' }}>
+                <span style={{ flex: '1 1 auto', fontSize: 13, fontWeight: 600, color: t.textPrimary }}>{q.label} <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--brand-ink)' }}>· Review ›</span></span>
                 {q.oldest && <span style={{ fontSize: 11.5, color: t.textSecondary }}>oldest {waitingFor(q.oldest)}</span>}
                 <span style={{ minWidth: 30, textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#ffffff', background: '#0A7474', borderRadius: 10, padding: '3px 8px' }}>{q.count}</span>
-              </div>
+              </Link>
             ))}
         </Panel>
 
@@ -205,7 +221,7 @@ const AdminDashboard: React.FC = () => {
       </Panel>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18 }}>
-        <Panel t={t} title="HR approvals" action={{ label: 'Review', to: ROUTES.ADMIN.PENDING_APPROVALS }}>
+        <Panel t={t} title="HR approvals" action={{ label: 'Review', to: `${ROUTES.ADMIN.EMPLOYEE_DETAILS}?approvals=1` }}>
           {!loading && !data?.hr_requests?.length && <Empty t={t}>No HR requests waiting.</Empty>}
           {(data?.hr_requests ?? []).map((h) => (
             <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12.5, padding: '8px 0', borderTop: `1px solid ${t.divider}`, color: t.textPrimary }}>

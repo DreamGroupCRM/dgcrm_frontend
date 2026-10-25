@@ -72,6 +72,7 @@ const CallDevicesPage = lazyPage(() => import('../pages/Admin/CallDevices/CallDe
 const CallReportPage = lazyPage(() => import('../pages/Admin/Reports/CallReportPage'));
 const DuplicateLeadsPage = lazyPage(() => import('../pages/Admin/CRM/DuplicateLeads/DuplicateLeadsPage'));
 const PaymentRemindersPage = lazyPage(() => import('../pages/Admin/Reminders/PaymentRemindersPage'));
+const SettingsPage = lazyPage(() => import('../pages/Admin/Settings/SettingsPage'));
 const UserManagementPage = lazyPage(() => import('../pages/Admin/UserManagement/UserManagementPage'));
 // Pending Approvals — shared delete-request review queue (see
 // pendingApprovals module in dgcrm_backend). Admin/superadmin, same as
@@ -177,6 +178,7 @@ const AdminRoutes: React.FC = () => (
       <Route path="reports/calls" element={<CallReportPage />} />
       <Route path="call-devices" element={<ProtectedRoute allowedRoles={['superadmin', 'admin']}><CallDevicesPage /></ProtectedRoute>} />
       <Route path="payment-reminders" element={<PaymentRemindersPage />} />
+      <Route path="settings" element={<SettingsPage />} />
       <Route path="user-management" element={<UserManagementPage />} />
     </Route>
   </Routes>

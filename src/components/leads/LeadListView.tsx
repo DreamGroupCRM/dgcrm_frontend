@@ -22,6 +22,8 @@ import { formatDate, showAlert } from '../../utils';
 import MasterIconButtons from '../../components/masters/MasterIconButtons';
 import SortableTh, { SortDir } from '../../components/masters/SortableTh';
 import LeadStatusBadge from './LeadStatusBadge';
+import { usePendingRequests, usePendingDeletes, RequestReviewModal, RequestTag, PendingRequestsList, reviewFormPath } from '../approvals/RequestReview';
+import { ChangeRequestRow } from '../../services/changeRequestsService';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 const ACTION_COL_WIDTH = 72;
@@ -42,6 +44,17 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
   const isAdmin = portal === 'admin';
 
   useEffect(() => { dispatch(setPageTitle('Leads')); }, [dispatch]);
+
+  // V_26.0 — Admin approves lead add / edit / delete requests here.
+  const pending = usePendingRequests('lead', isAdmin);
+  const pendingDeletes = usePendingDeletes('lead', isAdmin);
+  const [showRequests, setShowRequests] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('approvals') === '1'; } catch { return false; }
+  });
+  const [reviewRow, setReviewRow] = useState<ChangeRequestRow | null>(null);
+  // Add / edit requests open in the real form; the rest in the review popup.
+  const openReview = (r: ChangeRequestRow) => { const to = reviewFormPath(r); if (to) navigate(to); else setReviewRow(r); };
+  const waitingCount = pending.rows.length + pendingDeletes.rows.length;
 
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [statusCounts, setStatusCounts] = useState<Partial<Record<LeadStatus, number>>>({});
@@ -280,6 +293,12 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
           title="Open leads with no call in the last 7 days">
           <MdPhoneDisabled size={13} /> No call 7 days
         </div>
+        {isAdmin && (
+          <div style={{ ...pillStyle(showRequests), ...(showRequests ? {} : { borderColor: '#f59e0b', color: '#b45309' }) }} onClick={() => setShowRequests((v) => !v)}
+            title="Lead requests waiting for your approval">
+            Waiting for your approval <span style={{ opacity: 0.75 }}>({waitingCount})</span>
+          </div>
+        )}
         {isAdmin && statusFilter === 'duplicate' && duplicateCount > 0 && (
           <button type="button" className="master-btn-primary" onClick={() => navigate(`${basePath}/duplicates`)}>
             <MdMergeType size={15} /> Review &amp; merge
@@ -287,7 +306,15 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
         )}
       </div>
 
-      <div className="master-table-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
+      {showRequests && isAdmin && (
+        <PendingRequestsList t={t} isDark={isDark} rows={pending.rows} loading={pending.loading} noun="leads"
+          deletes={pendingDeletes.rows} onDeleteDecided={() => { pendingDeletes.reload(); fetchLeads(); }}
+          onReview={openReview} onShowAll={() => setShowRequests(false)} />
+      )}
+      {reviewRow && (
+        <RequestReviewModal t={t} isDark={isDark} row={reviewRow} onClose={() => setReviewRow(null)} onDecided={() => { pending.reload(); fetchLeads(); }} />
+      )}
+      <div className="master-table-card" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}`, display: showRequests && isAdmin ? 'none' : undefined }}>
         <div className="master-table-scroll">
           <table className="master-table" style={{ minWidth: 980 }}>
             <thead>
@@ -331,6 +358,8 @@ const LeadListView: React.FC<LeadListViewProps> = ({ portal, basePath }) => {
                       <div className="flex items-center gap-2">
                         <MdPerson size={16} className="master-row-icon" />
                         <span style={{ fontWeight: 700 }}>{l.name}</span>
+                        {pending.rows.filter((r) => String(r.entity_id) === String(l.id)).map((r) => <RequestTag key={r.id} action={r.action} onClick={() => openReview(r)} />)}
+                        {pendingDeletes.rows.some((d) => String(d.id) === String(l.id)) && <RequestTag action="delete" onClick={() => setShowRequests(true)} />}
                         {l.is_duplicate && (
                           <span title="Possible duplicate lead" style={{ color: duplicateIcon, display: 'inline-flex' }}>
                             <MdContentCopy size={13} />

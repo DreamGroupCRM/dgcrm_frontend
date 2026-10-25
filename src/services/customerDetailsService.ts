@@ -89,7 +89,7 @@ interface BackendFloor { id: number | string; name: string; }
 interface BackendFlat { id: number | string; flat_number: string; flat_type: string | null; area_sqft: number | string | null; floor: BackendFloor | null; }
 // V_22.0 item 9 — commercial shop, sibling of BackendFlat (no floor/wing).
 interface BackendShop { id: number | string; shop_no: string; area_sqft: number | string | null; }
-interface BackendCustomer {
+export interface BackendCustomer {
   id: number | string;
   customer_code: string;
   name: string | null;
@@ -247,6 +247,8 @@ const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   booking_date: bc.booking_date ?? '',
   monthly_emi: bc.installment_amount,
   monthly_installment_date: nextMonthlyInstallmentDate(bc.installment_date),
+  // V_26.0 — the EMI's own day of the month (the next date can be clamped to a shorter month).
+  installment_day: bc.installment_date ? Number(String(bc.installment_date).slice(8, 10)) || null : null,
   assigned_employee_id: bc.assigned_employee_id != null ? String(bc.assigned_employee_id) : undefined,
   assigned_employee_code: bc.assigned_employee_code ?? undefined,
   assigned_employee_name: bc.assigned_employee_name ?? undefined,
@@ -277,7 +279,7 @@ const mapCancellation = (bc: BackendCustomer): CustomerFullDetail['cancellation'
   };
 };
 
-const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
+export const mapCustomerFullDetail = (bc: BackendCustomer): CustomerFullDetail => ({
   cancellation: mapCancellation(bc),
   id: String(bc.id),
   customer_code: bc.customer_code,
@@ -583,23 +585,29 @@ export const updateCustomer = async (id: string, payload: UpdateCustomerPayload)
 // back as `{ pending: true }` with no `data` — callers must check
 // `pending` before touching the response's `data`.
 /** POST /api/customers (multipart/form-data) */
-export const createCustomerWithDetails = async (formData: FormData, draftId?: number | null): Promise<CustomerCreateEditResponse> => {
+export const createCustomerWithDetails = async (formData: FormData, draftId?: number | null, approveRequestId?: string | null): Promise<CustomerCreateEditResponse> => {
   const res = await axiosInstance.post('/customers', toBackendCustomerFormData(formData), {
     headers: { 'Content-Type': 'multipart/form-data' },
     // V_25.0 — submitting a saved draft: its uploaded files are re-used
     // server-side and the draft is removed once this succeeds.
-    params: draftId ? { draft_id: draftId } : undefined,
+    // V_26.0 — approve_request: the Admin's review form approves that request.
+    params: { ...(draftId ? { draft_id: draftId } : {}), ...(approveRequestId ? { approve_request: approveRequestId } : {}) },
   });
+  // The review form approved a request: no customer row comes back (shaped like pending).
+  if (res.data.approved) return { success: true, pending: true, message: res.data.message };
   if (res.data.pending) return { success: res.data.success, pending: true, message: res.data.message };
   return { success: res.data.success, pending: false, message: res.data.message, data: mapCustomerRow(res.data.data as BackendCustomer) };
 };
 
 // ── Update existing customer — full Create-Customer form, multipart/form-data ─
 /** PUT /api/customers/:id (multipart/form-data) */
-export const updateCustomerWithDetails = async (id: string, formData: FormData): Promise<CustomerCreateEditResponse> => {
+export const updateCustomerWithDetails = async (id: string, formData: FormData, approveRequestId?: string | null): Promise<CustomerCreateEditResponse> => {
   const res = await axiosInstance.put(`/customers/${id}`, toBackendCustomerFormData(formData), {
     headers: { 'Content-Type': 'multipart/form-data' },
+    params: approveRequestId ? { approve_request: approveRequestId } : undefined,
   });
+  // The review form approved a request: no customer row comes back (shaped like pending).
+  if (res.data.approved) return { success: true, pending: true, message: res.data.message };
   if (res.data.pending) return { success: res.data.success, pending: true, message: res.data.message };
   return { success: res.data.success, pending: false, message: res.data.message, data: mapCustomerRow(res.data.data as BackendCustomer) };
 };
@@ -630,6 +638,10 @@ export interface CancelledCustomerRow extends Customer {
   pending_refund: number;   // refunds entered, awaiting admin approval
   /** Approved refunds' cancelled receipts (C_FY_MM_n), oldest first. */
   cancelled_receipts: { refund_id: string; receipt_number: string }[];
+  /** V_26.0 — the Refund employee handling this refund. */
+  refund_employee_id: string | null;
+  refund_employee_name: string | null;
+  refund_employee_code: string | null;
 }
 
 type RawCancelledCustomer = BackendCustomer & {
@@ -647,6 +659,9 @@ type RawCancelledCustomer = BackendCustomer & {
   last_refund_mode: string | null;
   pending_refund?: number | string | null;
   cancelled_receipts?: { refund_id: string; receipt_number: string }[] | null;
+  refund_employee_id?: number | string | null;
+  refund_employee_name?: string | null;
+  refund_employee_code?: string | null;
 };
 
 export interface CancelBookingPayload {
@@ -714,8 +729,24 @@ export const fetchCancelledCustomers = async (
       last_refund_mode: c.last_refund_mode,
       pending_refund: Number(c.pending_refund ?? 0),
       cancelled_receipts: c.cancelled_receipts ?? [],
+      refund_employee_id: c.refund_employee_id != null ? String(c.refund_employee_id) : null,
+      refund_employee_name: c.refund_employee_name ?? null,
+      refund_employee_code: c.refund_employee_code ?? null,
     })),
   };
+};
+
+export interface RefundEmployee { id: string; name: string; code: string | null }
+
+/** V_26.0 — GET /api/customers/refund-employees (Admin): who can be given a refund. */
+export const fetchRefundEmployees = async (): Promise<RefundEmployee[]> => {
+  const res = await axiosInstance.get('/customers/refund-employees');
+  return (res.data.data ?? []).map((e: { id: number | string; name: string; code: string | null }) => ({ id: String(e.id), name: e.name, code: e.code }));
+};
+
+/** V_26.0 — PUT /api/customers/:id/refund-assignee (Admin). null removes it. */
+export const setRefundAssignee = async (customerId: string, employeeId: string | null): Promise<void> => {
+  await axiosInstance.put(`/customers/${customerId}/refund-assignee`, { employee_id: employeeId });
 };
 
 export interface CancelledBookingSummary {

@@ -21,7 +21,8 @@ import {
 import { FiSun, FiMoon, FiMoreVertical, FiMoreHorizontal, FiSettings } from 'react-icons/fi';
 import { AiOutlineInstagram, AiOutlineWhatsApp } from 'react-icons/ai';
 import { FaFacebookF } from 'react-icons/fa';
-import { MdLogout, MdCheckBox, MdCheckBoxOutlineBlank } from 'react-icons/md';
+import { MdLogout, MdCheckBox, MdCheckBoxOutlineBlank, MdAssignment } from 'react-icons/md';
+import { fetchTasks } from '../../services/tasksService';
 import { useNavigate } from 'react-router-dom';
 // Same runtime check the Sidebar uses to decide desktop-rail vs mobile-drawer
 // mode. Importing it (instead of re-declaring `lg:hidden` here) guarantees
@@ -71,6 +72,20 @@ const IconBtn: React.FC<{
 };
 
 const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
+  // V_26.0 — an employee's My Tasks moved out of the left menu into this
+  // top-bar icon (with the open count) and the dashboard.
+  const headerRole = useAppSelector((st) => st.auth.role);
+  const isEmployee = headerRole === 'employee';
+  const [openTasks, setOpenTasks] = useState(0);
+  useEffect(() => {
+    if (!isEmployee) return;
+    let alive = true;
+    const load = () => { fetchTasks({ kind: 'general' }).then((ts) => { if (alive) setOpenTasks(ts.filter((tk) => tk.status !== 'completed').length); }).catch(() => { /* icon without count */ }); };
+    load();
+    const timer = window.setInterval(load, 5 * 60 * 1000);
+    window.addEventListener('focus', load);
+    return () => { alive = false; window.clearInterval(timer); window.removeEventListener('focus', load); };
+  }, [isEmployee]);
   const dispatch = useAppDispatch();
   const { user, role } = useAppSelector((s) => s.auth);
   const { isDark, t, appearance, avatarGradient } = useAppearanceTokens();
@@ -169,6 +184,22 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   // ── Settings Panel content (reused in both desktop and mobile) ─────────
   const SettingsMenuContent = () => (
     <>
+      {/* V_26.0 — the Settings page (setup pages), Admin only. */}
+      {(role === 'admin' || role === 'superadmin') && (
+        <>
+          <button
+            type="button"
+            style={dropdownItemStyle}
+            onClick={() => { setSettingsOpen(false); navigate(ROUTES.ADMIN.SETTINGS); }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.hoverBg)}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+          >
+            <FiSettings size={16} style={{ color: 'var(--brand-ink)', flexShrink: 0 }} />
+            All settings
+          </button>
+          <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
+        </>
+      )}
       <button
         type="button"
         style={dropdownItemStyle}
@@ -292,6 +323,19 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
 
           <div className="mx-1"><Divider /></div>
 
+          {isEmployee && (
+            <span style={{ position: 'relative', display: 'inline-flex' }}>
+              <IconBtn onClick={() => navigate(ROUTES.EMPLOYEE.TASKS)} title={`My Tasks${openTasks ? ` (${openTasks} open)` : ''}`} isDark={isDark}>
+                <MdAssignment size={19} />
+              </IconBtn>
+              {openTasks > 0 && (
+                <span aria-label={`${openTasks} open tasks`} style={{ position: 'absolute', top: 1, right: 0, minWidth: 16, padding: '0 4px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, lineHeight: '15px', textAlign: 'center', background: '#dc2626', color: '#fff', pointerEvents: 'none' }}>
+                  {openTasks > 99 ? '99+' : openTasks}
+                </span>
+              )}
+            </span>
+          )}
+
           {/* Theme toggle */}
           <IconBtn
             onClick={() => dispatch(toggleTheme())}
@@ -364,6 +408,15 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
                 </a>
 
                 <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
+
+                {isEmployee && (
+                  <button type="button" style={dropdownItemStyle}
+                    onClick={() => { navigate(ROUTES.EMPLOYEE.TASKS); setMoreOpen(false); }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = t.hoverBg)}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}>
+                    <MdAssignment size={17} style={{ color: 'var(--brand-ink)' }} /> My Tasks{openTasks ? ` (${openTasks})` : ''}
+                  </button>
+                )}
 
                 {/* Theme toggle */}
                 <button

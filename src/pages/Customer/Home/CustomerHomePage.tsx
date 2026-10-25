@@ -5,7 +5,7 @@
 import React from 'react';
 import { CircularProgress } from '@mui/material';
 import { MdPerson, MdApartment, MdVerifiedUser, MdGroups, MdCall, MdEmail } from 'react-icons/md';
-import { formatDate, resolveFileUrl } from '../../../utils';
+import { formatDate, resolveFileUrl, resolveThumbUrl } from '../../../utils';
 import { useCustomerPortal, bookingLabel } from '../CustomerPortalContext';
 import { PageHead, Card, Field } from '../CustomerPortalUi';
 
@@ -36,7 +36,7 @@ const CustomerHomePage: React.FC = () => {
         <div className="cp-home-row">
           <div className="cp-home-id">
             {detail.customer_image ? (
-              <img src={resolveFileUrl(detail.customer_image)} alt="" className="cp-avatar-photo" />
+              <img src={resolveThumbUrl(detail.customer_image)} alt="" className="cp-avatar-photo" />
             ) : (
               <div className="cp-avatar-photo cp-avatar-empty"><MdPerson size={24} /></div>
             )}
@@ -67,7 +67,7 @@ const CustomerHomePage: React.FC = () => {
           <div className="cp-home-row">
             <div className="cp-home-id">
               {rm.photo_url ? (
-                <img src={resolveFileUrl(rm.photo_url)} alt="" className="cp-avatar-photo" />
+                <img src={resolveThumbUrl(rm.photo_url)} alt="" className="cp-avatar-photo" />
               ) : (
                 <div className="cp-avatar-photo cp-avatar-empty"><MdPerson size={24} /></div>
               )}

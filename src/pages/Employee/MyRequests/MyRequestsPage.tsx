@@ -13,13 +13,16 @@ import { useAppDispatch } from '../../../hooks';
 import { setPageTitle } from '../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { getFormInputStyle, StatusChip } from '../../../components/common/MasterListUI';
-import { RequestValuesTable } from '../../../components/common/RequestValuesTable';
+import { RequestValuesTable, fieldLabel, displayFieldValue, isFileValue } from '../../../components/common/RequestValuesTable';
 import DocumentViewerModal from '../../../components/common/DocumentViewerModal';
 import { fetchMyChangeRequests, ChangeRequestRow, ChangeRequestStatus } from '../../../services/changeRequestsService';
 import { formatLastLogin } from '../../../utils';
 
 const MODULE_LABEL: Record<string, string> = { customer: 'Customer', lead: 'Lead', employee: 'Employee', payment: 'Payment' };
 const ACTION_LABEL: Record<string, string> = { create: 'Add', edit: 'Edit', cancel_booking: 'Cancel Booking', delete: 'Delete', reassign: 'Reassign' };
+// V_26.0 — fields the Admin changed before approving (ids / internal keys left out).
+const adminChanged = (r: ChangeRequestRow): string[] =>
+  Object.keys(r.admin_values ?? {}).filter((k) => !/(^|_)ids?$|^(is_active|status|secondary_numbers|unit_type|company_name|project_name|location|building_name|wing_name|floor_label|flat_no|flat_type|area_sqft|shop_no|shop_area|module_action_ids|department_heads)$/.test(k));
 const STATUS_LABEL: Record<ChangeRequestStatus, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
 
 function recordName(r: ChangeRequestRow): string {
@@ -91,7 +94,13 @@ const MyRequestsPage: React.FC = () => {
                   <td style={{ ...cell, whiteSpace: 'nowrap', color: t.textPrimary, fontWeight: 600 }}>{MODULE_LABEL[r.module] ?? r.module} · {ACTION_LABEL[r.action] ?? r.action}</td>
                   <td style={{ ...cell, wordBreak: 'break-word' }}>{recordName(r)}</td>
                   <td style={{ ...cell, whiteSpace: 'nowrap' }}>{formatLastLogin(r.requested_at)}</td>
-                  <td style={cell}><StatusChip label={STATUS_LABEL[r.status] ?? r.status} status={r.status} fontSize={11} /></td>
+                  <td style={cell}>
+                    <StatusChip label={STATUS_LABEL[r.status] ?? r.status} status={r.status} fontSize={11} />
+                    {/* V_26.0 — the Admin corrected something before approving. */}
+                    {r.status === 'approved' && adminChanged(r).length > 0 && (
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: '#2563eb', marginTop: 3 }}>with Admin changes: {adminChanged(r).map(fieldLabel).join(', ')}</div>
+                    )}
+                  </td>
                   <td style={{ ...cell, wordBreak: 'break-word' }}>{r.admin_remarks || '—'}</td>
                   <td style={cell}>
                     <button type="button" onClick={() => setDetails(r)} title="View details" aria-label={`View details of ${recordName(r)}`} className="master-icon-btn">
@@ -121,6 +130,17 @@ const MyRequestsPage: React.FC = () => {
                 <div style={{ fontSize: 12, color: t.textSecondary }}>
                   {STATUS_LABEL[details.status]} by <b style={{ color: t.textPrimary }}>{details.reviewed_by_name || 'Admin'}</b> on {formatLastLogin(details.reviewed_at)}
                   {details.admin_remarks ? <> · Remark: <b style={{ color: t.textPrimary }}>{details.admin_remarks}</b></> : null}
+                </div>
+              )}
+              {adminChanged(details).length > 0 && (
+                <div className="rounded-xl" style={{ padding: '8px 12px', background: isDark ? 'rgba(37,99,235,0.12)' : '#eff6ff', border: `1px solid ${isDark ? 'rgba(37,99,235,0.4)' : '#bfdbfe'}`, fontSize: 12, color: t.textPrimary }}>
+                  <b>The Admin changed {adminChanged(details).length === 1 ? 'this' : 'these'} before {details.status === 'approved' ? 'approving' : 'deciding'}:</b>
+                  <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                    {adminChanged(details).map((k) => (
+                      <li key={k}>{fieldLabel(k)}: {isFileValue(details.new_values?.[k]) || isFileValue(details.admin_values?.[k]) ? 'document replaced'
+                        : <>you sent <b>{displayFieldValue(k, details.new_values?.[k])}</b> → saved as <b>{displayFieldValue(k, details.admin_values?.[k])}</b></>}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
               <RequestValuesTable t={t} isDark={isDark} row={details} onPreview={setPreviewDoc} />
