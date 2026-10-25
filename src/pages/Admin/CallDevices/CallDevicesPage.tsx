@@ -42,6 +42,9 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DEFAULT_HOURS: CallWorkHours = { enabled: false, days: [1, 2, 3, 4, 5, 6], start: '09:00', end: '20:00' };
 
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+/** "Off until I turn it on" is stored with a far-future end (backend INDEFINITE_PAUSE_UNTIL). */
+const pausedText = (iso: string) =>
+  new Date(iso).getFullYear() >= 2099 ? 'Personal mode (until turned on)' : `Personal mode until ${timeOf(iso)}`;
 
 const CallDevicesPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -243,7 +246,7 @@ const CallDevicesPage: React.FC = () => {
                     {d.status === 'approved' && d.paused_until && (
                       <div className="flex items-center gap-1" style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}
                         title={d.paused_at ? `Paused since ${formatLastLogin(d.paused_at)}` : undefined}>
-                        <MdPauseCircle size={13} /> Personal mode until {timeOf(d.paused_until)}
+                        <MdPauseCircle size={13} /> {pausedText(d.paused_until)}
                       </div>
                     )}
                   </td>
