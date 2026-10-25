@@ -4,6 +4,7 @@
 import axios from 'axios';
 import { STORAGE_KEYS } from '../constants';
 import { getDataScope } from '../utils/dataScope';
+import { compressFormDataImages } from '../utils/imageCompression';
 
 // Uploads carry files (up to 10 MB), so they get their own, much longer
 // budget than ordinary JSON calls — see the request interceptor below.
@@ -20,7 +21,7 @@ const axiosInstance = axios.create({
 
 // Request interceptor — attach JWT token
 axiosInstance.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -35,6 +36,8 @@ axiosInstance.interceptors.request.use(
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
       config.timeout = UPLOAD_TIMEOUT_MS;
+      // V_26.0 — photos are shrunk before they leave the browser.
+      config.data = await compressFormDataImages(config.data);
     }
     return config;
   },

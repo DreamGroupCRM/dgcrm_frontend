@@ -41,7 +41,7 @@ import {
   Customer, Building, CustomerPaymentRecord, CustomerListSummary, CustomerListFilters,
   PaymentFor, PaymentReceipt, CollectPaymentPayload, isAdminRole,
 } from '../../../../types/index';
-import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
+import { formatDate, showAlert, resolveFileUrl, resolveThumbUrl } from '../../../../utils';
 import { fetchMyChangeRequests, ChangeRequestRow } from '../../../../services/changeRequestsService';
 import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
@@ -360,7 +360,7 @@ const CustomerCard: React.FC<{
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex flex-col items-center flex-shrink-0" style={{ gap: 4 }}>
             {c.customer_photo_url ? (
-              <img src={resolveFileUrl(c.customer_photo_url)} alt="" className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
+              <img src={resolveThumbUrl(c.customer_photo_url)} alt="" className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
             ) : (
               <div className="flex items-center justify-center rounded-full text-white font-bold"
                 style={{ width: 48, height: 48, background: 'var(--grad-purple)', fontSize: 15 }}>
@@ -1489,7 +1489,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'normal', minWidth: 190, maxWidth: 260 }}>
                       <div className="flex items-center gap-2">
                         {c.customer_photo_url ? (
-                          <img src={resolveFileUrl(c.customer_photo_url)} alt="" className="rounded-full flex-shrink-0" style={{ width: 30, height: 30, objectFit: 'cover' }} />
+                          <img src={resolveThumbUrl(c.customer_photo_url)} alt="" className="rounded-full flex-shrink-0" style={{ width: 30, height: 30, objectFit: 'cover' }} />
                         ) : (
                           <div className="flex items-center justify-center rounded-full flex-shrink-0 text-white font-bold" style={{ width: 30, height: 30, fontSize: 11, background: 'var(--grad-purple)' }}>
                             {(c.customer_name || '—').slice(0, 1).toUpperCase()}
@@ -1521,7 +1521,7 @@ const CustomerDetailsListPage: React.FC = () => {
                     <td style={{ padding: '10px 12px' }}>
                       <div className="flex items-center gap-2">
                         {c.assigned_employee_photo_url ? (
-                          <img src={resolveFileUrl(c.assigned_employee_photo_url)} alt="" className="rounded-full flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'cover' }} />
+                          <img src={resolveThumbUrl(c.assigned_employee_photo_url)} alt="" className="rounded-full flex-shrink-0" style={{ width: 28, height: 28, objectFit: 'cover' }} />
                         ) : c.assigned_employee_name ? (
                           <div className="flex items-center justify-center rounded-full flex-shrink-0 text-white text-xs font-bold" style={{ width: 28, height: 28, background: 'var(--grad-sky)' }}>
                             {c.assigned_employee_name.slice(0, 1).toUpperCase()}

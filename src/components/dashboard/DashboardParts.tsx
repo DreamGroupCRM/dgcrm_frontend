@@ -9,7 +9,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { AppTheme } from '../../styles/theme';
-import { resolveFileUrl } from '../../utils';
+import { resolveFileUrl, resolveThumbUrl } from '../../utils';
 
 export const BAND = {
   admin: { bg: '#073b3b', label: '#9fd8d8', sub: '#cfeaea', chip: '#0f5555', strong: '#073b3b' },
@@ -41,7 +41,7 @@ export const initialsOf = (name: string): string =>
 
 export const Avatar: React.FC<{ name: string; photo?: string | null; size?: number; bg?: string; fg?: string }> = ({ name, photo, size = 34, bg = '#0A7474', fg = '#ffffff' }) => (
   photo
-    ? <img src={resolveFileUrl(photo)} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flex: '0 0 auto' }} />
+    ? <img src={resolveThumbUrl(photo)} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flex: '0 0 auto' }} />
     : <span aria-hidden style={{ width: size, height: size, borderRadius: '50%', background: bg, color: fg, fontSize: Math.round(size * 0.36), fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>{initialsOf(name)}</span>
 );
 

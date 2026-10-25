@@ -11,7 +11,7 @@ import { useAppSelector } from '../../hooks';
 import { useAccessProfile } from '../../hooks/useAccessProfile';
 import { pageRoleLabel } from '../../utils/pageRole';
 import { ROUTES } from '../../constants';
-import { resolveFileUrl } from '../../utils';
+import { resolveFileUrl, resolveThumbUrl } from '../../utils';
 
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
 
@@ -38,7 +38,7 @@ const WhoStrip: React.FC = () => {
     <div role="note" aria-label="Logged in as" className="flex items-center gap-2.5 flex-wrap"
       style={{ background: bg, color: '#fff', borderRadius: 12, padding: '7px 14px', marginBottom: 14, minHeight: 34 }}>
       {photo ? (
-        <img src={resolveFileUrl(photo)} alt="" onError={() => setPhotoFailed(true)} style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', background: '#fff', flexShrink: 0 }} />
+        <img src={resolveThumbUrl(photo)} alt="" onError={() => setPhotoFailed(true)} style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', background: '#fff', flexShrink: 0 }} />
       ) : (
         <span className="flex items-center justify-center" style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff', color: ink, fontWeight: 800, fontSize: 11.5, flexShrink: 0 }}>
           {initials(name)}

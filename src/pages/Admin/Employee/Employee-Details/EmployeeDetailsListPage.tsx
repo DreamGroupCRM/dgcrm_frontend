@@ -18,7 +18,7 @@ import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { AppTheme } from '../../../../styles/theme';
 import { FetchEmployeeDetails, DeleteEmployee, SetEmployeeActiveStatus, Employee, EmployeeMembership, EmployeeStatus, EmployeeListSummary } from '../../../../services/employeeDetailsService';
-import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
+import { formatDate, showAlert, resolveFileUrl, resolveThumbUrl } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
 import DraftsButton from '../../../../components/common/DraftsButton';
 import { RowActionMenu, useRowActionMenu, RowMenuAction } from '../../../../components/common/RowActionMenu';
@@ -187,7 +187,7 @@ const EmployeeCard: React.FC<{
               like "Sohel" down to "Soh…". */}
           <div className="flex flex-col items-center flex-shrink-0" style={{ gap: 4 }}>
             {emp.profile_photo_url ? (
-              <img src={resolveFileUrl(emp.profile_photo_url)} alt="" className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
+              <img src={resolveThumbUrl(emp.profile_photo_url)} alt="" className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
             ) : (
               <div
                 className="flex items-center justify-center rounded-full text-white font-bold"
@@ -650,7 +650,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                         <td>
                           <div className="flex items-center gap-2">
                             {emp.profile_photo_url ? (
-                              <img src={resolveFileUrl(emp.profile_photo_url)} alt="" className="rounded-full" style={{ width: 30, height: 30, objectFit: 'cover', flexShrink: 0 }} />
+                              <img src={resolveThumbUrl(emp.profile_photo_url)} alt="" className="rounded-full" style={{ width: 30, height: 30, objectFit: 'cover', flexShrink: 0 }} />
                             ) : (
                               <div className="flex items-center justify-center rounded-full text-white font-bold"
                                 style={{ width: 30, height: 30, background: 'var(--brand-gradient)', fontSize: 11, flexShrink: 0 }}>

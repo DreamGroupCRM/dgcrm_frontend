@@ -23,7 +23,7 @@ import '../../../Customer/CustomerPortal.css';
 import './CustomerDetails.css';
 
 import { AppTheme } from '../../../../styles/theme';
-import { resolveFileUrl } from '../../../../utils';
+import { resolveFileUrl, resolveThumbUrl } from '../../../../utils';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { fetchCustomerScheme } from '../../../../services/customerDetailsService';
 import { fetchCustomerDueGrid, DueGridRow, CustomerDueGrid } from '../../../../services/paymentService';
@@ -308,7 +308,7 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
           <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
             <div className="flex items-center gap-3.5">
               {c.customer_image ? (
-                <img src={resolveFileUrl(c.customer_image)} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover', border: '2px solid rgba(255,255,255,0.5)' }} />
+                <img src={resolveThumbUrl(c.customer_image)} alt="" className="rounded-full flex-shrink-0" style={{ width: 56, height: 56, objectFit: 'cover', border: '2px solid rgba(255,255,255,0.5)' }} />
               ) : (
                 <div className="flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 56, height: 56, background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: 17.5, fontWeight: 800 }}>
                   {fullName(c).charAt(0).toUpperCase()}
