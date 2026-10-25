@@ -39,6 +39,13 @@ const API_NAME_HEADER = 'X-Api-Name';
 
 export type EmployeeStatus = 'active' | 'inactive' | 'on_leave';
 
+export interface EmployeeMembership {
+  department: string;
+  designation: string | null;
+  level: 'head' | 'executive' | null;
+  reports_to: string | null;
+}
+
 export interface Employee {
   id                      : string;
   employee_code           : string;   // 'E_001'
@@ -99,6 +106,9 @@ export interface Employee {
   // / "Assign Visible Employees") — always present on list rows, computed
   // server-side via a correlated subquery (employees.repository.ts).
   visible_employees_count?                         : number;
+  // V_26.0 — list rows: every department with the designation held there
+  // and the Reporting Head's name (null = reports to the Admin).
+  memberships?                                     : EmployeeMembership[];
 
   status                                             : EmployeeStatus;
   is_active                                           : boolean;

@@ -17,7 +17,7 @@ import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { AppTheme } from '../../../../styles/theme';
-import { FetchEmployeeDetails, DeleteEmployee, SetEmployeeActiveStatus, Employee, EmployeeStatus, EmployeeListSummary } from '../../../../services/employeeDetailsService';
+import { FetchEmployeeDetails, DeleteEmployee, SetEmployeeActiveStatus, Employee, EmployeeMembership, EmployeeStatus, EmployeeListSummary } from '../../../../services/employeeDetailsService';
 import { formatDate, showAlert, resolveFileUrl } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
 import DraftsButton from '../../../../components/common/DraftsButton';
@@ -83,6 +83,71 @@ const employeeStatusStyle = (emp: { status: EmployeeStatus; is_active: boolean }
   (!emp.is_active ? STATUS_STYLES.inactive : STATUS_STYLES[emp.status] || STATUS_STYLES.active);
 
 const initials = (first: string, last: string) => `${first?.[0] || ''}${last?.[0] || ''}`.toUpperCase();
+
+// V_26.0 — one tag per department. Each department keeps its own colour
+// (picked from its name) so it reads the same on every row and card.
+const DEPT_TONES: { light: [string, string]; dark: [string, string] }[] = [
+  { light: ['#e0f2fe', '#075985'], dark: ['#0c3a52', '#bae6fd'] },
+  { light: ['#fef3c7', '#92400e'], dark: ['#4a3410', '#fde68a'] },
+  { light: ['#ede9fe', '#5b21b6'], dark: ['#33245c', '#ddd6fe'] },
+  { light: ['#fee2e2', '#991b1b'], dark: ['#4c1d1d', '#fecaca'] },
+  { light: ['#dcfce7', '#166534'], dark: ['#173d26', '#bbf7d0'] },
+  { light: ['#fce7f3', '#9d174d'], dark: ['#4a1a33', '#fbcfe8'] },
+  { light: ['#e0e7ff', '#3730a3'], dark: ['#262c5c', '#c7d2fe'] },
+  { light: ['#ccfbf1', '#115e59'], dark: ['#123d3a', '#99f6e4'] },
+];
+const deptTone = (name: string, isDark: boolean) => {
+  let h = 0;
+  for (const ch of name.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const tone = DEPT_TONES[h % DEPT_TONES.length];
+  return isDark ? tone.dark : tone.light;
+};
+
+/** Memberships for a row, falling back to the single primary department. */
+const membershipsOf = (emp: Employee): EmployeeMembership[] =>
+  emp.memberships?.length ? emp.memberships
+    : emp.department ? [{ department: emp.department, designation: emp.designation ?? null, level: null, reports_to: null }] : [];
+
+const LEVEL_WORD = { head: 'Head', executive: 'Executive' } as const;
+
+const DeptTags: React.FC<{ emp: Employee; isDark: boolean; short?: boolean }> = ({ emp, isDark, short }) => {
+  const list = membershipsOf(emp);
+  if (!list.length) return <span>—</span>;
+  return (
+    <div className="flex flex-wrap" style={{ gap: 4 }}>
+      {list.map((m, i) => {
+        const [bg, fg] = deptTone(m.department, isDark);
+        const role = short ? (m.level ? LEVEL_WORD[m.level] : m.designation) : m.designation;
+        return (
+          <span key={`${m.department}-${i}`} className="inline-flex items-center rounded-full font-semibold"
+            style={{ background: bg, color: fg, fontSize: 10.5, padding: '2px 9px', gap: 5, whiteSpace: 'nowrap' }}>
+            {role ? `${m.department} · ${role}` : m.department}
+            {!short && m.level && (
+              <span style={{ background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.8)', borderRadius: 999, padding: '0 6px', fontSize: 9, fontWeight: 800 }}>
+                {m.level === 'head' ? 'HEAD' : 'EXEC'}
+              </span>
+            )}
+          </span>
+        );
+      })}
+    </div>
+  );
+};
+
+/** "Imran Test", or one line per department when they differ. */
+const ReportsTo: React.FC<{ emp: Employee; t: Theme }> = ({ emp, t }) => {
+  const list = membershipsOf(emp).filter((m) => m.level !== 'head');
+  if (!list.length) return <span>{membershipsOf(emp).length ? 'Admin' : '—'}</span>;
+  const names = list.map((m) => m.reports_to ?? 'Admin');
+  if (new Set(names).size === 1) return <span>{names[0]}</span>;
+  return (
+    <div>
+      {list.map((m, i) => (
+        <div key={i} style={i ? { fontSize: 10.5, color: t.textSecondary } : undefined}>{m.department}: {names[i]}</div>
+      ))}
+    </div>
+  );
+};
 
 // ── Grid card — module scope (not defined inside the page component) so
 // React sees the same component type across renders. Defining a component
@@ -166,10 +231,14 @@ const EmployeeCard: React.FC<{
         </div>
       </div>
 
+      {membershipsOf(emp).length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase', color: t.textSecondary, marginBottom: 4 }}>Departments</div>
+          <DeptTags emp={emp} isDark={isDark} short />
+        </div>
+      )}
+
       {(() => {
-        // Department/Designation deliberately not shown on the profile
-        // card (removed per request) — still available via the Department/
-        // Designation filter dropdowns and the employee's own View page.
         const age = ageFromDob(emp.date_of_birth);
         return age != null ? (
           <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 11.5, color: t.textSecondary, marginBottom: 8 }}>
@@ -371,7 +440,8 @@ const EmployeeDetailsListPage: React.FC = () => {
       const rows = exportRows.map((e) => [
         e.employee_code, `${e.first_name} ${e.last_name}`, e.email, `${e.mobile_country_code || ''} ${e.mobile_number || ''}`.trim(),
         formatDate(e.date_of_birth), formatDate(e.joining_date),
-        e.department || (e.department_names || []).join('; '), e.designation || (e.designation_names || []).join('; '),
+        membershipsOf(e).map((m) => m.department).join('; '),
+        membershipsOf(e).map((m) => m.designation).filter(Boolean).join('; '),
         employeeStatusStyle(e).label,
       ]);
       const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -540,7 +610,7 @@ const EmployeeDetailsListPage: React.FC = () => {
                     borderBottom: `1px solid ${t.divider}`, zIndex: 2, background: t.tableHeaderBg,
                     borderRight: `2px solid ${t.divider}`, boxShadow: '4px 0 8px rgba(0,0,0,0.06)',
                   }}>Action</th>
-                  {['Employee ID', 'Employee Name', 'Email ID / Mobile Number', 'D.O.B', 'Joining Date', 'Department', 'Designation', 'Status'].map((h) => (
+                  {['Employee ID', 'Employee Name', 'Email ID / Mobile Number', 'D.O.B', 'Joining Date', 'Departments & designations', 'Reports to', 'Status'].map((h) => (
                     <th key={h} style={{ borderBottom: `1px solid ${t.divider}` }}>{h}</th>
                   ))}
                 </tr>
@@ -598,8 +668,8 @@ const EmployeeDetailsListPage: React.FC = () => {
                         </td>
                         <td>{formatDate(emp.date_of_birth) || '—'}</td>
                         <td>{formatDate(emp.joining_date) || '—'}</td>
-                        <td>{emp.department || '—'}</td>
-                        <td>{emp.designation || '—'}</td>
+                        <td style={{ minWidth: 200 }}><DeptTags emp={emp} isDark={isDark} /></td>
+                        <td style={{ whiteSpace: 'nowrap' }}><ReportsTo emp={emp} t={t} /></td>
                         <td>
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
                             style={{ background: status.bg, color: status.color, fontSize: 10.5, whiteSpace: 'nowrap' }}>
