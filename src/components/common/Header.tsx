@@ -29,6 +29,7 @@ import { useNavigate } from 'react-router-dom';
 // the hamburger and the desktop Collapse button can never both be visible,
 // and can never both be absent.
 import { useIsDesktopSidebar } from './Sidebar';
+import { reloadToLogin } from '../../services/axiosConfig';
 
 interface HeaderProps {
   onMobileMenuToggle: () => void;
@@ -145,7 +146,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
       await dispatch(logoutThunk());
       dispatch(clearProfile());
       await showAlert.logoutSuccess(loggedOutRole);
-      navigate(ROUTES.LOGIN, { replace: true });
+      reloadToLogin();
     }
   };
 

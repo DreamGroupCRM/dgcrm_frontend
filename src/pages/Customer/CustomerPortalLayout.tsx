@@ -16,7 +16,7 @@
 // `mobileOpen` slides in and a scrim closes. Sharing one flag between the
 // two made "collapsed on desktop" reopen as "drawer open" on rotate.
 import React, { Suspense, useEffect, useState } from 'react';
-import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { CircularProgress } from '@mui/material';
 import {
   MdMenu, MdClose, MdLogout, MdLockOutline, MdHome, MdHistory,
@@ -33,6 +33,7 @@ import ChangePasswordForm from '../../components/common/ChangePasswordForm';
 import { ensureFileToken } from '../../services/fileAccessService';
 import { CustomerPortalProvider, useCustomerPortal, bookingLabel } from './CustomerPortalContext';
 import './CustomerPortal.css';
+import { reloadToLogin } from '../../services/axiosConfig';
 
 // V_24.0 — five sections reduced to three: Payment Receipt merged into
 // Payment History (see CustomerPaymentHistoryPage's own header comment),
@@ -111,7 +112,6 @@ const BookingBoxes: React.FC = () => {
 
 const CustomerPortalShell: React.FC = () => {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const location = useLocation();
   const { t, cssVars } = useAppearanceTokens();
   const { loading, error, detailError, reload, bookings, detail, selected } = useCustomerPortal();
@@ -147,7 +147,7 @@ const CustomerPortalShell: React.FC = () => {
 
   const handleLogout = async () => {
     await dispatch(logoutThunk());
-    navigate(ROUTES.CUSTOMER.LOGIN, { replace: true });
+    reloadToLogin();
   };
 
   // The appearance hook's cssVars only carries the BRAND tokens

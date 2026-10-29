@@ -26,10 +26,9 @@
 // independently (backend shared/session.ts) and is the real authority —
 // a timer here could otherwise be bypassed simply by not running it.
 import React, { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from '@/utils/toast';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { logoutThunk } from '../../redux/thunks/authThunks';
+import { reloadToLogin } from '../../services/axiosConfig';
 
 /** Must match IDLE_TIMEOUT_MS in the backend's shared/session.ts. */
 const IDLE_TIMEOUT_MS = 60 * 60 * 1000;
@@ -66,7 +65,6 @@ const writeLastActivity = (at: number): void => {
 
 const IdleLogoutWatcher: React.FC = () => {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
   // Guards against two timers racing to log out at once (e.g. the interval
   // firing while a visibilitychange check is already handling it).
@@ -91,8 +89,8 @@ const IdleLogoutWatcher: React.FC = () => {
       loggingOutRef.current = true;
       try { localStorage.removeItem(LAST_ACTIVITY_KEY); } catch { /* ignore */ }
       await dispatch(logoutThunk());
-      toast.error('Your session expired due to inactivity. Please log in again.');
-      navigate('/login', { replace: true });
+      // The login page shows the reason (a toast would not survive the reload).
+      reloadToLogin('SESSION_IDLE');
     };
 
     const check = () => {
