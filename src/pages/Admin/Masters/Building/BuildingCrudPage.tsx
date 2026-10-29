@@ -8,7 +8,7 @@ import { toast } from '@/utils/toast';
 import {
   MdApartment, MdAdd, MdClose, MdCheckCircle, MdFiberManualRecord,
   MdArrowBack, MdSave, MdLayers, MdChevronRight, MdExpandMore,
-  MdBusiness, MdGridView, MdStorefront, MdLocalParking,
+  MdBusiness, MdGridView, MdStorefront, MdLocalParking, MdDelete, MdLock,
 } from 'react-icons/md';
 import type { IconType } from 'react-icons';
 import { useAppDispatch } from '../../../../hooks';
@@ -37,6 +37,8 @@ interface FlatRow {
   flat_type: string;
   area_sqft: string;
   is_active: boolean;
+  /** V_29.0 (G1) — saved flat that was ever booked: disable only, no delete. */
+  has_history?: boolean;
 }
 
 interface FloorRow {
@@ -229,7 +231,8 @@ const FloorAccordionItem: React.FC<{
   defaultOpen: boolean;
   readOnly: boolean;
   onUpdateFlat: (flatId: string, patch: Partial<FlatRow>) => void;
-}> = ({ t, isDark, floor, defaultOpen, readOnly, onUpdateFlat }) => {
+  onDeleteFlat: (flatId: string) => void;
+}> = ({ t, isDark, floor, defaultOpen, readOnly, onUpdateFlat, onDeleteFlat }) => {
   const { isOpen, toggle, contentRef, contentHeight, recalc } = useAccordion(defaultOpen);
 
   // Re-measure the panel height whenever the flats for this floor are (re)generated
@@ -284,7 +287,7 @@ const FloorAccordionItem: React.FC<{
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
               <thead>
                 <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                  {['Flat No.', 'Flat Type', 'Area (Sq Ft)', 'Status'].map((h) => (
+                  {['Flat No.', 'Flat Type', 'Area (Sq Ft)', 'Status', ...(readOnly ? [] : [''])].map((h) => (
                     <th key={h} style={{
                       padding: '8px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                       textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary,
@@ -352,6 +355,22 @@ const FloorAccordionItem: React.FC<{
                           onChange={(v) => onUpdateFlat(flat.id, { is_active: v })}
                         />
                       </td>
+                      {/* V_29.0 (G1) — Delete only for a flat never booked; a
+                          booked one keeps its history and can only be disabled. */}
+                      {!readOnly && (
+                        <td style={{ padding: '8px 8px', width: 44, textAlign: 'center' }}>
+                          {flat.has_history ? (
+                            <span title="This flat has a booking history, so it cannot be deleted. Disable it instead." style={{ display: 'inline-flex', color: t.textMuted }}>
+                              <MdLock size={16} />
+                            </span>
+                          ) : (
+                            <button type="button" onClick={() => onDeleteFlat(flat.id)} title="Delete flat" aria-label={`Delete flat ${flat.flat_no}`}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', display: 'inline-flex', padding: 4 }}>
+                              <MdDelete size={16} />
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -566,6 +585,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 flat_type: fl.flat_type || FLAT_TYPES[0],
                 area_sqft: fl.area_sqft != null ? String(fl.area_sqft) : '',
                 is_active: fl.is_active ?? true,
+                has_history: Boolean(fl.has_history),
               })),
             })),
             };
@@ -669,6 +689,13 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   // keeps the original 001, 002 ... style, since floorNumberFromLabel
   // returns 0 for it).
   const generateFlats = (wingId: string) => {
+    // V_29.0 (G1) — regenerating replaces every flat in the wing, which
+    // would delete ones with a booking history (the server refuses that).
+    const booked = wings.find((w) => w.id === wingId)?.floors.flatMap((f) => f.flats).filter((fl) => fl.has_history) ?? [];
+    if (booked.length) {
+      toast.error(`Flats ${booked.map((fl) => fl.flat_no).join(', ')} have a booking history, so this wing's flats cannot be regenerated. Add, delete or disable flats one by one instead.`);
+      return;
+    }
     setWings((prev) => {
       const allFlatIds = prev.flatMap((w) => w.floors.flatMap((f) => f.flats.map((fl) => fl.id)));
       let flatCounter = maxNumericSuffix(allFlatIds, 'flat_');
@@ -697,6 +724,20 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
     });
     markDirty();
     toast.success('Flats Generated Successfully');
+  };
+
+  // V_29.0 (G1) — removes a never-booked flat from the form; it is marked
+  // deleted when the building is saved (the server re-checks its history).
+  const deleteFlat = async (wingId: string, floorId: string, flatId: string) => {
+    const flat = wings.find((w) => w.id === wingId)?.floors.find((f) => f.id === floorId)?.flats.find((fl) => fl.id === flatId);
+    if (!flat || flat.has_history) return;
+    const ok = await showAlert.confirm(`Flat ${flat.flat_no || ''} will be removed when you save the building.`, 'Delete Flat?');
+    if (!ok.isConfirmed) return;
+    setWings((prev) => prev.map((w) => (w.id !== wingId ? w : {
+      ...w,
+      floors: w.floors.map((f) => (f.id !== floorId ? f : { ...f, flats: f.flats.filter((fl) => fl.id !== flatId) })),
+    })));
+    markDirty();
   };
 
   const updateFlat = (wingId: string, floorId: string, flatId: string, patch: Partial<FlatRow>) => {
@@ -1347,6 +1388,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                         defaultOpen={false}
                         readOnly={isView}
                         onUpdateFlat={(flatId, patch) => updateFlat(activeWing.id, floor.id, flatId, patch)}
+                        onDeleteFlat={(flatId) => deleteFlat(activeWing.id, floor.id, flatId)}
                       />
                     ))}
                   </>

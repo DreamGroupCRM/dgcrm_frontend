@@ -487,6 +487,8 @@ export interface BuildingFlat {
   // separate admin-controlled Enabled/Disabled toggle).
   booked_by_customer_id?  : string | null;
   booked_by_customer_name?: string | null;
+  /** V_29.0 (G1) — ever booked (cancelled too): may be disabled, never deleted. */
+  has_history?: boolean;
 }
 
 export interface BuildingFloor {

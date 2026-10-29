@@ -34,7 +34,7 @@ const API_NAME_HEADER = 'X-Api-Name';
 // V_22.0 item 9 — bookedByCustomerId/bookedByCustomerName come from
 // building.repository.ts's getFullBuildingTree/getShops LEFT JOIN
 // customers, absent (undefined) on any response that predates this.
-interface WizardFlat { id: number; flatNo: string; flatType: string | null; flatArea: number | null; enabled: boolean; bookedByCustomerId?: number | string | null; bookedByCustomerName?: string | null; }
+interface WizardFlat { id: number; flatNo: string; flatType: string | null; flatArea: number | null; enabled: boolean; bookedByCustomerId?: number | string | null; bookedByCustomerName?: string | null; hasHistory?: boolean; }
 interface WizardFloor { id: number; floorName: string; flats: WizardFlat[]; }
 interface WizardWing { id: number; wingName: string; withGroundFloor: boolean; numberOfFloors: number | null; floors: WizardFloor[]; }
 interface WizardShop { id: number; shopNo: string; shopArea: number | null; enabled: boolean; bookedByCustomerId?: number | string | null; bookedByCustomerName?: string | null; }
@@ -116,6 +116,7 @@ function fromWizardResponse(data: WizardFullResponse): Building {
           is_active: fl.enabled,
           booked_by_customer_id: fl.bookedByCustomerId != null ? String(fl.bookedByCustomerId) : null,
           booked_by_customer_name: fl.bookedByCustomerName || null,
+          has_history: Boolean(fl.hasHistory),
         })),
       })),
     })),
@@ -244,7 +245,8 @@ export const FetchBuildingList = async (
   search?: string,
   sort?: BuildingSortKey,
   sortDir?: 'asc' | 'desc',
-  includeDisabled = true
+  // V_29.0 (G1) — the Building list's Status filter; everyone else gets all.
+  status: 'active' | 'disabled' | 'all' = 'all'
 ): Promise<BuildingListResponse> => {
   const params: Record<string, string | number | boolean> = {
     page,
@@ -255,7 +257,7 @@ export const FetchBuildingList = async (
   }
   if (sort) params.sort = sort;
   if (sortDir) params.sort_dir = sortDir;
-  if (!includeDisabled) params.is_active = true;
+  if (status !== 'all') params.is_active = status === 'active';
   const res = await axiosInstance.get('/buildings', {
     params,
     headers: { [API_NAME_HEADER]: 'FetchBuildingList' },
