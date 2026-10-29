@@ -54,7 +54,7 @@ const CustomerPaymentHistoryPage: React.FC = () => {
         if (stale) return;
         setRows(payments);
         setTotals(grid
-          ? totalsFromDueGrid(grid)
+          ? totalsFromDueGrid(grid, selected?.flat_amount)
           // V_26.0 — approved payments only, as everywhere else.
           : { totalCost: Number(selected?.flat_amount || 0), paid: payments.filter((r) => r.is_approved).reduce((n, r) => n + Number(r.amount || 0), 0), pending: 0,
               awaiting: payments.filter((r) => !r.is_approved).reduce((n, r) => n + Number(r.amount || 0), 0) });

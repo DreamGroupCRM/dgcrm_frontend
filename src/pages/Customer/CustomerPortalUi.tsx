@@ -101,10 +101,13 @@ export interface BookingTotals {
  */
 export function totalsFromDueGrid(grid: {
   rows: DueGridRow[]; extra_pay_total?: number; approved_paid_total?: number; awaiting_approval_total?: number;
-}): BookingTotals {
+}, flatCost?: number | string | null): BookingTotals {
   const { rows } = grid;
   const extraPay = grid.extra_pay_total ?? 0;
-  const totalCost = rows.reduce((sum, r) => sum + r.amount, 0);
+  // V_29.0 (Q1) — the Total Flat Cost entered on the customer is the
+  // official figure everywhere (the schedule should add up to it); the
+  // schedule's own sum is only the fallback when no cost is recorded.
+  const totalCost = Number(flatCost) > 0 ? Number(flatCost) : rows.reduce((sum, r) => sum + r.amount, 0);
   // V_26.0 — only approved payments count as paid; what is entered but
   // still awaiting approval is shown on its own. (The rows keep their
   // Paid / Due status: each payment's EMI allocation is fixed at entry.)
@@ -113,11 +116,14 @@ export function totalsFromDueGrid(grid: {
     return { totalCost, paid, pending: Math.max(0, totalCost - paid), awaiting: grid.awaiting_approval_total ?? 0 };
   }
   const owed = rows.reduce((sum, r) => sum + r.due_amount, 0);
+  // Older servers (no approved_paid_total): paid comes from the schedule itself.
+  const scheduleTotal = rows.reduce((sum, r) => sum + r.amount, 0);
   // V_25.0 — Extra Pay is kept separate from EMIs (no schedule row is
   // marked paid by it), but it is money the customer has paid: it counts in
   // Payment Completed and comes off Payment Pending.
   const pending = Math.max(0, owed - extraPay);
-  return { totalCost, paid: Math.min(totalCost, totalCost - owed + extraPay), pending };
+  const paid = Math.min(totalCost, Math.max(0, scheduleTotal - owed + extraPay));
+  return { totalCost, paid, pending: Number(flatCost) > 0 ? Math.max(0, totalCost - paid) : pending };
 }
 
 /**
@@ -134,7 +140,7 @@ export function useBookingTotals(bookingId: string | number | null | undefined, 
       try {
         if (!isCancelled) {
           const grid = await fetchMyBookingDueGrid(bookingId);
-          if (!stale) setTotals(totalsFromDueGrid(grid));
+          if (!stale) setTotals(totalsFromDueGrid(grid, flatAmount));
           return;
         }
         const payments = await fetchMyBookingPayments(bookingId);

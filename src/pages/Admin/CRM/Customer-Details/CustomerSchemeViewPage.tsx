@@ -344,7 +344,7 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
           so Admin, employee and customer always see identical figures. Due
           Now = what is past its date and still unpaid. */}
       {gridRows && (() => {
-        const totals = totalsFromDueGrid(grid ?? { rows: gridRows });
+        const totals = totalsFromDueGrid(grid ?? { rows: gridRows }, c.flat_amount);
         const dueNow = gridRows.filter((r) => r.status === 'due').reduce((sum, r) => sum + r.due_amount, 0);
         // ₹0 rows (e.g. an unused Remaining Booking Amount) aren't instalments.
         const instalments = gridRows.filter((r) => r.amount > 0);

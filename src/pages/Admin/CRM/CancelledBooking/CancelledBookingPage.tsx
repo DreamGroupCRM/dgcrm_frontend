@@ -623,7 +623,12 @@ const CancelledBookingPage: React.FC = () => {
             <label style={labelStyle}>Refund Amount (₹)</label>
             <input type="number" min={0} value={rAmount} disabled={refundLocked}
               placeholder={selectedCustomer ? `Max ${rupee(selectedBalance)}` : 'Amount'}
-              title={selectedCustomer ? `Refund balance: ${rupee(selectedBalance)}` : 'Select a customer first'}
+              // V_29.0 (Q2) — the balance shown everywhere is approved refunds
+              // only; this cap also holds back refunds still awaiting approval,
+              // so the same money cannot be entered twice.
+              title={selectedCustomer
+                ? `Can still be refunded: ${rupee(selectedBalance)}${selectedCustomer.pending_refund > 0 ? ` (balance ${rupee(Math.max(0, selectedCustomer.total_paid - selectedCustomer.total_refunded))} less ${rupee(selectedCustomer.pending_refund)} awaiting approval)` : ''}`
+                : 'Select a customer first'}
               // Never more than the refund balance: a larger number is capped
               // at the balance as it is typed (digits only, no minus/decimal).
               max={selectedBalance}
