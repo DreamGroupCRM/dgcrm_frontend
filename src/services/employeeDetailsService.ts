@@ -449,14 +449,25 @@ export const EditEmployee = async (
   values: EmployeeFormValues,
   files: EmployeeFileValues,
   approveRequestId?: string | null,
+  releaseCustomers = false,
 ): Promise<EmployeeSingleResponse> => {
-  const res = await axiosInstance.put(`/employees/${id}`, toBackendEmployeeFormData(await buildEmployeeFormData(values, files)), {
+  const body = toBackendEmployeeFormData(await buildEmployeeFormData(values, files));
+  if (releaseCustomers) body.append('release_customers', 'true');
+  const res = await axiosInstance.put(`/employees/${id}`, body, {
     headers: { 'Content-Type': 'multipart/form-data', [API_NAME_HEADER]: 'EditEmployee' },
     params: approveRequestId ? { approve_request: approveRequestId } : undefined,
   });
   if (res.data.approved) return { success: true, message: res.data.message } as EmployeeSingleResponse;
   if (res.data.pending) return { success: res.data.success, message: res.data.message, pending: true } as EmployeeSingleResponse;
   return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
+};
+
+// ── V_29.0 (E4) — customers an Admin's edit would release ──────────────────
+export interface CustomerReleaseImpact { reason: string; customers: { id: number; customer_code: string | null; name: string }[] }
+/** POST /api/employees/:id/customer-release-preview — null when nothing changes for customers. */
+export const previewCustomerRelease = async (id: string, departmentIds: number[], designationIds: number[]): Promise<CustomerReleaseImpact | null> => {
+  const res = await axiosInstance.post(`/employees/${id}/customer-release-preview`, { department_ids: departmentIds, designation_ids: designationIds });
+  return res.data?.data ?? null;
 };
 
 // ── Delete employee ──────────────────────────────────────────────────────────

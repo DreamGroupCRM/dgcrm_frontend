@@ -18,7 +18,7 @@ import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
 import DocumentViewerModal from '../../../../components/common/DocumentViewerModal';
 import { previewKindFor, downloadDocument } from '../../../../services/documentService';
 import {
-  ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee, normalizeEmployee,
+  ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee, normalizeEmployee, previewCustomerRelease,
   fetchEmployeePermissions,
   EmployeeFormValues, EmployeeFileValues, EmployeeStatus, EMPLOYEE_FILE_FIELD_MAP,
 } from '../../../../services/employeeDetailsService';
@@ -1397,16 +1397,32 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         can_add_customer: isHeadAnywhere && form.can_add_customer,
       };
       let pending = false;
+      // V_29.0 (E4) — when the Admin's change takes away a Head role (or
+      // Customer Details), the customers it leaves behind are shown first;
+      // they become Unassigned only if the Admin goes ahead.
+      let releaseCustomers = false;
+      if (mode === 'edit' && id && actorIsAdmin) {
+        const impact = await previewCustomerRelease(id, payload.department_ids, payload.designation_ids);
+        if (impact) {
+          const ok = await showAlert.confirmWithList(
+            `This employee ${impact.reason}. These ${impact.customers.length} customer(s) will be taken off them and become Unassigned (their department stays). Other employees on the same customer are not changed.`,
+            'Customers will become Unassigned',
+            impact.customers.map((c) => `${c.customer_code ? `${c.customer_code} · ` : ''}${c.name}`),
+          );
+          if (!ok.isConfirmed) return;
+          releaseCustomers = true;
+        }
+      }
       if (reviewId) {
         // V_26.0 — this save approves HR's request (with any changes made here).
-        if (mode === 'edit' && id) await EditEmployee(id, payload, files, reviewId);
+        if (mode === 'edit' && id) await EditEmployee(id, payload, files, reviewId, releaseCustomers);
         else await createEmployee(payload, files, null, reviewId);
         showAlert.approved(mode === 'edit' ? 'The employee changes were approved.' : 'The new employee was approved and added.');
         navigate(afterReview);
         return;
       }
       if (mode === 'edit' && id) {
-        const res = await EditEmployee(id, payload, files);
+        const res = await EditEmployee(id, payload, files, null, releaseCustomers);
         pending = Boolean(res.pending);
         if (pending) showAlert.pendingApproval('The employee changes were saved successfully.');
         else toast.success('Employee updated successfully.');
