@@ -45,6 +45,7 @@ import { useAppSelector } from '../../../../hooks';
 import { fetchAccessConfig, fetchDepartmentHeads, ConfigDepartment, TeamMember, DesignationLevel, AccessArea } from '../../../../services/accessService';
 import DateInput from '../../../../components/common/DateInput';
 import { serverTodayYmd } from '../../../../utils/serverTime';
+import { confirmCustomerRelease } from '../../../../utils/customerRelease';
 
 // Employee Status badge colors for View mode — same palette as
 // EmployeeDetailsListPage.tsx's STATUS_STYLES, kept as its own small local
@@ -1402,14 +1403,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       // they become Unassigned only if the Admin goes ahead.
       let releaseCustomers = false;
       if (mode === 'edit' && id && actorIsAdmin) {
-        const impact = await previewCustomerRelease(id, payload.department_ids, payload.designation_ids);
+        const impact = await previewCustomerRelease(id, { department_ids: payload.department_ids, designation_ids: payload.designation_ids, is_active: payload.is_active });
         if (impact) {
-          const ok = await showAlert.confirmWithList(
-            `This employee ${impact.reason}. These ${impact.customers.length} customer(s) will be taken off them and become Unassigned (their department stays). Other employees on the same customer are not changed.`,
-            'Customers will become Unassigned',
-            impact.customers.map((c) => `${c.customer_code ? `${c.customer_code} · ` : ''}${c.name}`),
-          );
-          if (!ok.isConfirmed) return;
+          if (!(await confirmCustomerRelease(impact))) return;
           releaseCustomers = true;
         }
       }

@@ -17,7 +17,7 @@ import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { setPageTitle } from '../../../../redux/slices/uiSlice';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { AppTheme } from '../../../../styles/theme';
-import { FetchEmployeeDetails, DeleteEmployee, SetEmployeeActiveStatus, Employee, EmployeeMembership, EmployeeStatus, EmployeeListSummary } from '../../../../services/employeeDetailsService';
+import { FetchEmployeeDetails, DeleteEmployee, SetEmployeeActiveStatus, previewCustomerRelease, Employee, EmployeeMembership, EmployeeStatus, EmployeeListSummary } from '../../../../services/employeeDetailsService';
 import { formatDate, showAlert, resolveFileUrl, resolveThumbUrl } from '../../../../utils';
 import StatCard from '../../../../components/masters/StatCard';
 import DraftsButton from '../../../../components/common/DraftsButton';
@@ -26,6 +26,7 @@ import './EmployeeDetails.css';
 import { serverToday } from '../../../../utils/serverTime';
 import { usePendingRequests, usePendingDeletes, RequestReviewModal, RequestTag, PendingRequestsList, reviewFormPath } from '../../../../components/approvals/RequestReview';
 import { ChangeRequestRow } from '../../../../services/changeRequestsService';
+import { confirmCustomerRelease } from '../../../../utils/customerRelease';
 
 type Theme = AppTheme;
 
@@ -382,15 +383,26 @@ const EmployeeDetailsListPage: React.FC = () => {
   // permanent delete the caller may not be able to perform.
   const handleDelete = async (emp: Employee) => {
     rowMenu.close();
-    const result = await showAlert.confirm(
-      canDeleteImmediately
-        ? `This will permanently delete ${emp.first_name} ${emp.last_name}'s record.`
-        : `This sends a request to delete ${emp.first_name} ${emp.last_name}. They stay active until an admin approves it.`,
-      canDeleteImmediately ? 'Delete Employee?' : 'Request Deletion?'
-    );
-    if (!result.isConfirmed) return;
+    // V_29.0 (E4) — an Admin's delete first shows what the employee holds.
+    let release = false;
     try {
-      const res = await DeleteEmployee(emp.id);
+      const impact = canDeleteImmediately ? await previewCustomerRelease(String(emp.id), { deleting: true }) : null;
+      if (impact) {
+        if (!(await confirmCustomerRelease(impact))) return;
+        release = true;
+      }
+    } catch { toast.error('Could not check this employee\'s customers. Please try again.'); return; }
+    if (!release) {
+      const result = await showAlert.confirm(
+        canDeleteImmediately
+          ? `This will permanently delete ${emp.first_name} ${emp.last_name}'s record.`
+          : `This sends a request to delete ${emp.first_name} ${emp.last_name}. They stay active until an admin approves it.`,
+        canDeleteImmediately ? 'Delete Employee?' : 'Request Deletion?'
+      );
+      if (!result.isConfirmed) return;
+    }
+    try {
+      const res = await DeleteEmployee(emp.id, release);
       toast.success(
         res.pending
           ? 'Delete request sent for admin approval.'
@@ -405,15 +417,26 @@ const EmployeeDetailsListPage: React.FC = () => {
   const handleToggleActive = async (emp: Employee) => {
     rowMenu.close();
     const activating = !emp.is_active;
-    const result = await showAlert.confirm(
-      activating
-        ? `${emp.first_name} ${emp.last_name} will be able to log in again.`
-        : `${emp.first_name} ${emp.last_name} will no longer be able to log in.`,
-      activating ? 'Activate Employee?' : 'Deactivate Employee?'
-    );
-    if (!result.isConfirmed) return;
+    // V_29.0 (E4) — deactivating first shows what the employee holds.
+    let release = false;
     try {
-      await SetEmployeeActiveStatus(String(emp.id), activating);
+      const impact = activating ? null : await previewCustomerRelease(String(emp.id), { is_active: false });
+      if (impact) {
+        if (!(await confirmCustomerRelease(impact))) return;
+        release = true;
+      }
+    } catch { toast.error('Could not check this employee\'s customers. Please try again.'); return; }
+    if (!release) {
+      const result = await showAlert.confirm(
+        activating
+          ? `${emp.first_name} ${emp.last_name} will be able to log in again.`
+          : `${emp.first_name} ${emp.last_name} will no longer be able to log in.`,
+        activating ? 'Activate Employee?' : 'Deactivate Employee?'
+      );
+      if (!result.isConfirmed) return;
+    }
+    try {
+      await SetEmployeeActiveStatus(String(emp.id), activating, release);
       toast.success(activating ? 'Employee activated.' : 'Employee deactivated.');
       fetchEmployees();
     } catch {

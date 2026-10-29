@@ -463,18 +463,25 @@ export const EditEmployee = async (
 };
 
 // ── V_29.0 (E4) — customers an Admin's edit would release ──────────────────
-export interface CustomerReleaseImpact { reason: string; customers: { id: number; customer_code: string | null; name: string }[] }
-/** POST /api/employees/:id/customer-release-preview — null when nothing changes for customers. */
-export const previewCustomerRelease = async (id: string, departmentIds: number[], designationIds: number[]): Promise<CustomerReleaseImpact | null> => {
-  const res = await axiosInstance.post(`/employees/${id}/customer-release-preview`, { department_ids: departmentIds, designation_ids: designationIds });
+type ReleasedItem = { id: number; customer_code: string | null; name: string };
+export interface CustomerReleaseImpact {
+  reason: string; customers: ReleasedItem[]; refund_cases: ReleasedItem[];
+  pending_requests: number; open_tasks: number;
+}
+/** POST /api/employees/:id/customer-release-preview — null when the change releases nothing. */
+export const previewCustomerRelease = async (
+  id: string, change: { department_ids?: number[]; designation_ids?: number[]; is_active?: boolean; deleting?: boolean },
+): Promise<CustomerReleaseImpact | null> => {
+  const res = await axiosInstance.post(`/employees/${id}/customer-release-preview`, change);
   return res.data?.data ?? null;
 };
 
 // ── Delete employee ──────────────────────────────────────────────────────────
 /** DELETE /api/employees/:id */
-export const DeleteEmployee = async (id: string): Promise<EmployeeDeleteResponse> => {
+export const DeleteEmployee = async (id: string, releaseCustomers = false): Promise<EmployeeDeleteResponse> => {
   const res = await axiosInstance.delete(`/employees/${id}`, {
     headers: { [API_NAME_HEADER]: 'DeleteEmployee' },
+    params: releaseCustomers ? { release_customers: true } : undefined,
   });
   return res.data;
 };
@@ -484,8 +491,8 @@ export const DeleteEmployee = async (id: string): Promise<EmployeeDeleteResponse
 // employees.repository.ts's setEmployeeActiveStatus), so deactivating here
 // actually blocks that employee's login, not just hides them from lists.
 /** PATCH /api/employees/:id/active-status */
-export const SetEmployeeActiveStatus = async (id: string, is_active: boolean): Promise<EmployeeSingleResponse> => {
-  const res = await axiosInstance.patch(`/employees/${id}/active-status`, { is_active }, {
+export const SetEmployeeActiveStatus = async (id: string, is_active: boolean, releaseCustomers = false): Promise<EmployeeSingleResponse> => {
+  const res = await axiosInstance.patch(`/employees/${id}/active-status`, { is_active, ...(releaseCustomers ? { release_customers: true } : {}) }, {
     headers: { [API_NAME_HEADER]: 'SetEmployeeActiveStatus' },
   });
   return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
