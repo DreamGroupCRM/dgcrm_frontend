@@ -827,7 +827,7 @@ const CancelledBookingPage: React.FC = () => {
           title={`Payment Refund - ${refundFor.customer_name}${refundFor.customer_code ? ` (${refundFor.customer_code})` : ''}`}
           customer={customerInfoItems({ name: refundFor.customer_name, code: refundFor.customer_code, mobile: refundFor.mobile_number, email: refundFor.email, address: refundFor.address })}
           property={propertyInfoItems({
-            project: refundFor.project_name, building: refundFor.building_name, wing: refundFor.unit_type === 'shop' ? null : refundFor.wing_name,
+            project: refundFor.project_name, location: refundFor.location, building: refundFor.building_name, wing: refundFor.unit_type === 'shop' ? null : refundFor.wing_name,
             unitType: refundFor.unit_type === 'shop' ? 'shop' : 'flat', unitNo: refundFor.unit_type === 'shop' ? refundFor.shop_no : refundFor.flat_no,
             flatAmount: refundFor.flat_amount, paid: refundSummary?.total_paid ?? 0,
           })}

@@ -69,7 +69,7 @@ const CustomerPaymentHistoryModal: React.FC<{
         title={`Payments History - Total Transaction (${sorted.length})`}
         customer={customerInfoItems({ name: customerName, code: customerCode, mobile: full?.mobile_number, email: full?.email, address: full?.address })}
         property={propertyInfoItems({
-          project: full?.project_name, building: full?.building_name, wing: full?.wing_name,
+          project: full?.project_name, location: full?.location, building: full?.building_name, wing: full?.wing_name,
           unitType: full?.unit_type === 'shop' ? 'shop' : 'flat', unitNo: full?.unit_type === 'shop' ? full?.shop_no : full?.flat_no,
           flatAmount: cost, paid: approvedPaid, pending: cost != null ? Math.max(0, cost - approvedPaid) : null, awaiting,
         })}>

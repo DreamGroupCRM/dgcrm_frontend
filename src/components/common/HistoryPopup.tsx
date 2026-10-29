@@ -35,12 +35,15 @@ export const customerInfoItems = (c: {
 // is left out where it doesn't apply (a cancelled booking).
 export const propertyInfoItems = (p: {
   project?: string | null; building?: string | null; wing?: string | null;
+  /** V_29.0 (J4) — the building's location. */
+  location?: string | null;
   unitType?: 'flat' | 'shop' | null; unitNo?: string | null;
   flatAmount?: number | null; paid?: number | null; pending?: number | null;
   /** V_26.0 — entered but not yet approved (not in Paid). */
   awaiting?: number | null;
 }): HistoryInfoItem[] => [
   { label: 'Project', value: p.project || '—' },
+  ...(p.location ? [{ label: 'Location', value: p.location }] : []),
   // V_29.0 — "Wing 1" stays "Wing 1" (it read "Wing 1 Wing").
   { label: 'Building', value: [p.building, p.wing && (/\bwing\b/i.test(p.wing) ? p.wing : `${p.wing} Wing`)].filter(Boolean).join(' · ') || '—' },
   { label: p.unitType === 'shop' ? 'Shop No.' : 'Flat No.', value: p.unitNo || '—' },

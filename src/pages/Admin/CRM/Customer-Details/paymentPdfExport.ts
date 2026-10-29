@@ -59,6 +59,8 @@ export async function exportPaymentSchedulePdf(data: CustomerSchemeData): Promis
       ['Name', fullCustomerName(c), 'Address', c.address || '—'],
       ['Building', [c.building_name, c.wing_name].filter(Boolean).join(' / ') || '—', 'Email', c.email || '—'],
       ['Mobile No.', c.mobile_number || '—', 'Total Flat Cost', rupee(c.flat_amount)],
+      // V_29.0 (J4) — the building's location.
+      ...(c.building_location ? [['Location', c.building_location, '', '']] : []),
     ],
     theme: 'grid',
     styles: { fontSize: 9.5, cellPadding: 7, lineColor: [203, 213, 225], lineWidth: 0.75 },
@@ -227,7 +229,7 @@ export async function exportPaymentHistoryPdf(
       ['Name', customer.customer_name || '—', 'Address', customer.address || '—'],
       ['Building', flatLine || '—', 'Email', customer.email || '—'],
       ['Mobile No.', customer.mobile_number || '—', 'Total Flat Cost', totalFlatCost != null ? rupee(totalFlatCost) : '—'],
-      ['', '', 'Pending Amount', pendingAmount != null ? rupee(pendingAmount) : '—'],
+      [customer.location ? 'Location' : '', customer.location || '', 'Pending Amount', pendingAmount != null ? rupee(pendingAmount) : '—'],
     ],
     theme: 'plain',
     styles: { fontSize: 9.5, cellPadding: 4 },

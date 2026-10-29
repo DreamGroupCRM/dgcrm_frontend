@@ -237,6 +237,7 @@ const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   project_name: bc.building?.project_name ?? '',
   building_id: bc.building_id != null ? String(bc.building_id) : '',
   building_name: bc.building?.name ?? '',
+  location: bc.building?.location ?? '',
   wing_id: bc.wing_id != null ? String(bc.wing_id) : undefined,
   wing_name: bc.wing?.name ?? '',
   flat_id: bc.flat_id != null ? String(bc.flat_id) : undefined,

@@ -113,7 +113,7 @@ const CustomerPaymentHistoryPage: React.FC = () => {
     email: detail?.email, address: detail?.address,
   });
   const property = propertyInfoItems({
-    project: detail?.building?.project_name, building: selected?.building_name, wing: selected?.unit_type === 'shop' ? null : selected?.wing_name,
+    project: detail?.building?.project_name, location: detail?.building?.location, building: selected?.building_name, wing: selected?.unit_type === 'shop' ? null : selected?.wing_name,
     unitType: selected?.unit_type === 'shop' ? 'shop' : 'flat', unitNo: selected?.unit_type === 'shop' ? selected?.shop_no : selected?.flat_no,
     flatAmount: totals?.totalCost, paid: totals?.paid,
     // A cancelled booking owes nothing more — its refund block replaces Pending.

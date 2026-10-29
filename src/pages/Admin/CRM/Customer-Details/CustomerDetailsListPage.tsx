@@ -278,7 +278,7 @@ const unitLabel = (c: Customer): string => {
   if (!c.building_name) return '—';
   return c.unit_type === 'shop'
     ? `${c.building_name}, Shop ${c.shop_no || '—'}`
-    : `${c.building_name}, ${c.wing_name || '—'} Wing, ${c.flat_no || '—'}`;
+    : `${c.building_name}, ${/\bwing\b/i.test(c.wing_name || '') ? c.wing_name : `${c.wing_name || '—'} Wing`}, ${c.flat_no || '—'}`;
 };
 
 const RowActionMenu: React.FC<{
@@ -1565,7 +1565,8 @@ const CustomerDetailsListPage: React.FC = () => {
                           of an empty "undefined Wing," line. */}
                       {c.unit_type === 'shop'
                         ? <div>Shop {c.shop_no || '—'}</div>
-                        : <div>{c.wing_name} Wing, {c.flat_no}</div>}
+                        : <div>{/\bwing\b/i.test(c.wing_name || '') ? c.wing_name : `${c.wing_name} Wing`}, {c.flat_no}</div>}
+                      {c.location && <div style={{ opacity: 0.75 }}>{c.location}</div>}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       {c.unit_type === 'shop'
@@ -1630,7 +1631,7 @@ const CustomerDetailsListPage: React.FC = () => {
                 const awaiting = all.reduce((s, p) => s + p.amount, 0) - paid;
                 const cost = infoModal.totalFlatCost;
                 return propertyInfoItems({
-                  project: c.project_name, building: c.building_name, wing: c.unit_type === 'shop' ? null : c.wing_name,
+                  project: c.project_name, location: c.location, building: c.building_name, wing: c.unit_type === 'shop' ? null : c.wing_name,
                   unitType: c.unit_type === 'shop' ? 'shop' : 'flat', unitNo: c.unit_type === 'shop' ? c.shop_no : c.flat_no,
                   flatAmount: cost, paid, pending: cost != null ? Math.max(0, cost - paid) : null, awaiting,
                 });

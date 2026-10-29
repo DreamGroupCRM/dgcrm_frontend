@@ -1888,6 +1888,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               <ViewValue label="Company Name" value={effectiveCompanyName} />
               <ViewValue label="Project Name" value={projectName} />
               <ViewValue label="Building" value={buildingName} />
+              <ViewValue label="Location" value={location} />
               <ViewValue label="Wing / Floor" value={[wingName, floorLabel].filter(Boolean).join(' / ')} />
               {/* V_22.0 item 9 — Flat No/Type/Area become Shop No/Type/Area
                   when this customer's booking is a shop, not a flat. */}

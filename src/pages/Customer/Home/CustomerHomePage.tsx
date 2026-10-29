@@ -115,6 +115,7 @@ const CustomerHomePage: React.FC = () => {
           <Field label="Company" value={detail.company_name} />
           <Field label="Project" value={detail.building?.project_name} />
           <Field label="Building" value={detail.building?.name} />
+          <Field label="Location" value={detail.building?.location} />
           {!isShop && <Field label="Wing" value={detail.wing?.name} />}
           {!isShop && <Field label="Floor" value={detail.flat?.floor?.name} />}
           <Field label={`${unitLabel} No`} value={isShop ? detail.shop?.shop_no : detail.flat?.flat_number} />
