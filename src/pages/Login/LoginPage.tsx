@@ -1,5 +1,5 @@
 // ==========================================
-// DREAM GROUP CRM - LOGIN PAGE (UPDATED)
+// DREAM GROUP - LOGIN PAGE (staff and customers)
 // ==========================================
 //
 // CHANGES IN THIS VERSION:
@@ -18,29 +18,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { WRONG_PORTAL, loginThunk, verifyOtpThunk, resendOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
-import { showWrongPortalAlert } from './wrongPortalAlert';
+import { loginThunk, verifyOtpThunk, resendOtpThunk, setNewPasswordThunk } from '../../redux/thunks/authThunks';
 import { clearError, resetLoginFlow } from '../../redux/slices/authSlice';
 import { ROUTES } from '../../constants';
 import { showAlert, homeRouteForRole } from '../../utils';
 import { authService } from '../../services/authService';
 import { takeLogoutReason } from '../../services/axiosConfig';
 import Logo from '../../components/ui/Logo';
-// Circuit-board background photo (explicit product choice, replacing the
-// earlier vector artwork) — shown at full brightness/clarity (not dimmed)
-// so the artwork's own left/right circuit detail stays clearly visible;
-// the login card is centered on top of it, landing on the image's own
-// plainer, darker middle band so it doesn't fight the card for contrast.
-// object-fit: cover (see .login-bg-image in Responsive.css) crops it to
-// fill any viewport without distorting its aspect ratio. Note: unlike the
-// previous SVG, this is a fixed-resolution raster (1672×941) — on a
-// viewport wider than that (e.g. a 1920px+/4K desktop monitor) `cover`
-// scales it up past its native size, which will look softer there than on
-// a laptop/tablet/phone screen. That's an inherent tradeoff of using a
-// raster photo instead of vector artwork, not a bug in how it's mounted.
-// Black version of the same circuit artwork (white/silver circuit on a
-// black base) — the blue original (login_circuit_bg.webp) is kept on disk.
-import loginBgImage from '../../assets/images/login_circuit_bg_black.webp';
 
 import {
   TextField,
@@ -179,10 +163,7 @@ const LoginPage: React.FC = () => {
 
   // ── Show API-level errors via SweetAlert2 ──
   useEffect(() => {
-    if (error === WRONG_PORTAL) {
-      void showWrongPortalAlert('staff');
-      dispatch(clearError());
-    } else if (error) {
+    if (error) {
       showAlert.error(error, 'Login Failed');
       dispatch(clearError());
     }
@@ -341,7 +322,9 @@ const LoginPage: React.FC = () => {
         return;
       }
 
-      const result = await dispatch(loginThunk({ email: form.email, password: form.password, portal: 'staff' }));
+      const result = await dispatch(// V_29.0 — one login page for staff and customers: no `portal`, so the
+      // server accepts either and each lands on their own home page below.
+      loginThunk({ email: form.email, password: form.password }));
       if (loginThunk.fulfilled.match(result)) {
         setJustRequestedOtp(true);
       }
@@ -466,16 +449,8 @@ const LoginPage: React.FC = () => {
       {/* Decorative only — the page's meaning lives in the card, so this is
           hidden from assistive tech. fetchPriority high because it is the
           first thing painted behind the form. */}
-      <div className="login-background">
-        <img
-          src={loginBgImage}
-          alt=""
-          aria-hidden="true"
-          className="login-bg-image"
-          decoding="async"
-          fetchPriority="high"
-        />
-      </div>
+      {/* V_29.0 — plain black background (Responsive.css .login-background). */}
+      <div className="login-background" aria-hidden="true" />
 
       {/* Centered, standalone login card — no carousel/side panel. Tagline +
           Hindi slogan now sit inside the card itself, around the logo/
@@ -505,7 +480,7 @@ const LoginPage: React.FC = () => {
                 <Logo size="lg" />
               </div>
               <h1 className="font-display text-4xl font-bold text-white mb-3">
-                Dream Group CRM
+                Dream Group
               </h1>
               <p className="login-tagline-en">Humaara Sapna, Har Hindustani Ka Ghar Ho Apna</p>
             </div>
@@ -572,6 +547,10 @@ const LoginPage: React.FC = () => {
                   }}
                   sx={glassFieldSx}
                 />
+
+                <p className="text-white/40 text-xs -mt-1">
+                  Customer logging in for the first time? Use the email and initial password from your welcome email.
+                </p>
 
                 {/* Forgot password? */}
                 <div className="flex justify-end -mt-2">

@@ -24,7 +24,6 @@ import VersionWatcher from '../components/common/VersionWatcher';
 
 const LoginPage     = lazy(() => import('../pages/Login/LoginPage'));
 const ResetPasswordPage = lazy(() => import('../pages/Login/ResetPasswordPage'));
-const CustomerLoginPage = lazy(() => import('../pages/Login/CustomerLoginPage'));
 const AdminRoutes   = lazy(() => import('./AdminRoutes'));
 const EmployeeRoutes = lazy(() => import('./EmployeeRoutes'));
 const CustomerRoutes = lazy(() => import('./CustomerRoutes'));
@@ -59,17 +58,9 @@ const AppRoutes: React.FC = () => (
             different account), so it never auto-redirects to a dashboard. */}
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* Public: /customer/login — Customer First Login's dedicated
-            activation/login page (see CustomerLoginPage.tsx). Separate from
-            the staff /login above; same underlying auth mechanism. */}
-        <Route
-          path="/customer/login"
-          element={
-            <PublicRoute>
-              <CustomerLoginPage />
-            </PublicRoute>
-          }
-        />
+        {/* V_29.0 — customers use the same /login page as staff. Old links
+            (welcome emails, bookmarks) to /customer/login open it. */}
+        <Route path="/customer/login" element={<Navigate to="/login" replace />} />
 
         {/* Root redirect */}
         <Route path="/" element={<Navigate to="/login" replace />} />
