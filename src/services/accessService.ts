@@ -38,6 +38,8 @@ export interface AccessDepartment {
   designation_name: string | null;
   level: DesignationLevel;
   reporting_head_id: number | null;
+  /** V_29.0 (E2) — the reporting head's name ('Admin' when none). */
+  reports_to?: string | null;
 }
 
 export interface AccessProfile {
