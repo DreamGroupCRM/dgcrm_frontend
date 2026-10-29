@@ -15,7 +15,7 @@ import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import { getFormInputStyle, StatusChip } from '../../../components/common/MasterListUI';
 import { RequestValuesTable, fieldLabel, displayFieldValue, isFileValue } from '../../../components/common/RequestValuesTable';
 import DocumentViewerModal from '../../../components/common/DocumentViewerModal';
-import { fetchMyChangeRequests, ChangeRequestRow, ChangeRequestStatus } from '../../../services/changeRequestsService';
+import { fetchMyChangeRequests, fetchMyCancellationRefund, CancellationRefund, ChangeRequestRow, ChangeRequestStatus } from '../../../services/changeRequestsService';
 import { formatLastLogin } from '../../../utils';
 
 const MODULE_LABEL: Record<string, string> = { customer: 'Customer', lead: 'Lead', employee: 'Employee', payment: 'Payment' };
@@ -31,6 +31,42 @@ function recordName(r: ChangeRequestRow): string {
   const name = [v.name ?? v.first_name, v.last_name].filter(Boolean).join(' ') || (v.title as string) || (v.customer_name as string);
   return name || `Request #${r.id}`;
 }
+
+const rupee = (n: number) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
+
+/** V_29.0 — for an approved Cancel Booking request: what the customer paid,
+ * what has been refunded and the balance still to refund. Read-only. */
+const CancellationRefundBox: React.FC<{ requestId: number | string; t: ReturnType<typeof useAppearanceTokens>['t']; isDark: boolean }> = ({ requestId, t, isDark }) => {
+  const [data, setData] = useState<CancellationRefund | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetchMyCancellationRefund(requestId).then((d) => { if (alive) setData(d); }).catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, [requestId]);
+  if (failed) return null;
+  const items: [string, string, string][] = data
+    ? [['Amount paid', rupee(data.total_paid), t.textPrimary], ['Refunded', rupee(data.total_refunded), '#16a34a'], ['Balance to refund', rupee(data.balance), '#ea580c']]
+    : [];
+  return (
+    <div className="rounded-xl" style={{ padding: '10px 12px', background: isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc', border: `1px solid ${t.divider}` }}>
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase', color: t.textSecondary, marginBottom: 6 }}>Refund status</div>
+      {!data ? <div style={{ fontSize: 12, color: t.textSecondary }}>Loading…</div> : (
+        <div className="grid grid-cols-3 gap-2">
+          {items.map(([label, value, color]) => (
+            <div key={label}>
+              <div style={{ fontSize: 11, color: t.textSecondary }}>{label}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {data && data.pending_refund > 0 && (
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#b45309', marginTop: 6 }}>{rupee(data.pending_refund)} refund waiting for Admin approval</div>
+      )}
+    </div>
+  );
+};
 
 const MyRequestsPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -142,6 +178,9 @@ const MyRequestsPage: React.FC = () => {
                     ))}
                   </ul>
                 </div>
+              )}
+              {details.action === 'cancel_booking' && details.status === 'approved' && (
+                <CancellationRefundBox requestId={details.id} t={t} isDark={isDark} />
               )}
               <RequestValuesTable t={t} isDark={isDark} row={details} onPreview={setPreviewDoc} />
             </div>

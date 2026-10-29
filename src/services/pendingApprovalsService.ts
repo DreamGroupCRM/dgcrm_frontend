@@ -33,6 +33,8 @@ export interface PendingApprovalCounts {
   changes_by_module: Record<string, number>;
   /** V_26.0 — delete requests per record type (employee, lead, …). */
   deletes_by_type: Record<string, number>;
+  /** V_29.0 — pending Cancel Booking requests (for the Cancelled Booking menu). */
+  cancel_requests: number;
 }
 
 /**
@@ -41,7 +43,7 @@ export interface PendingApprovalCounts {
  */
 export const fetchPendingApprovalCounts = async (): Promise<PendingApprovalCounts> => {
   const { data } = await axiosInstance.get('/pending-approvals/count');
-  return { deletes: data.deletes, changes: data.changes, refunds: data.refunds, total: data.total, changes_by_module: data.changes_by_module ?? {}, deletes_by_type: data.deletes_by_type ?? {} };
+  return { deletes: data.deletes, changes: data.changes, refunds: data.refunds, total: data.total, changes_by_module: data.changes_by_module ?? {}, deletes_by_type: data.deletes_by_type ?? {}, cancel_requests: data.cancel_requests ?? 0 };
 };
 
 /** Fired after any approve/reject so the sidebar count refreshes at once. */

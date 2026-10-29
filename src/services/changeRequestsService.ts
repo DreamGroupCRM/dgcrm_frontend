@@ -80,6 +80,14 @@ export const fetchChangeRequests = async (module: ChangeRequestModule, status?: 
   return res.data.rows;
 };
 
+/** V_29.0 — Paid / Refunded / Balance of a booking whose Cancel Booking request
+ * the caller sent and the Admin approved. Read-only. */
+export interface CancellationRefund { total_paid: number; total_refunded: number; pending_refund: number; balance: number }
+export const fetchMyCancellationRefund = async (requestId: number | string): Promise<CancellationRefund> => {
+  const res = await axiosInstance.get(`/change-requests/mine/${requestId}/refund-summary`);
+  return res.data.data;
+};
+
 /** V_26.0 — GET /api/change-requests/mine: the logged-in user's own requests. */
 export const fetchMyChangeRequests = async (filters: { module?: ChangeRequestModule; action?: ChangeRequestRow['action']; status?: ChangeRequestStatus } = {}): Promise<ChangeRequestRow[]> => {
   const res = await axiosInstance.get('/change-requests/mine', { params: filters });
@@ -100,5 +108,13 @@ export const rejectChangeRequest = async (id: string, remarks?: string): Promise
 
 /** V_26.0 — GET /change-requests/:id/record: the request as a filled-in record (Admin's review form). */
 export interface RequestRecord { request: ChangeRequestRow; record: Record<string, unknown>; changed: string[] }
-export const fetchRequestRecord = async (id: string): Promise<RequestRecord> =>
-  (await axiosInstance.get(`/change-requests/${id}/record`)).data.data;
+// V_29.0 — only a request still waiting can be reviewed: an approved or
+// rejected one never opens with Approve / Reject again (the server also
+// refuses a second decision).
+export const fetchRequestRecord = async (id: string): Promise<RequestRecord> => {
+  const data: RequestRecord = (await axiosInstance.get(`/change-requests/${id}/record`)).data.data;
+  if (data.request.status !== 'pending') {
+    throw new Error(`This request was already ${data.request.status === 'approved' ? 'approved' : 'rejected'}${data.request.reviewed_by_name ? ` by ${data.request.reviewed_by_name}` : ''}.`);
+  }
+  return data;
+};

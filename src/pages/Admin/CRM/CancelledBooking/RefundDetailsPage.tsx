@@ -94,7 +94,7 @@ const RefundDetailsPage: React.FC = () => {
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 700, color: t.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 };
   const inputStyle: React.CSSProperties = { width: '100%', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText, borderRadius: 10, padding: '9px 10px', fontSize: 12, outline: 'none', height: 38 };
   const td: React.CSSProperties = { padding: '9px 12px', fontSize: 11.5, color: t.textPrimary, whiteSpace: 'nowrap' };
-  const headers = ['Actions', 'Status', 'Cancelled Receipt No.', 'Customer', 'Building / Wing / Flat', 'Phone Number', 'Refund Amount', 'Refund Date', 'Mode', 'Processed By', 'Approved By'];
+  const headers = ['Actions', 'Status', 'Cancelled Receipt No.', 'Customer', 'Building / Wing / Flat', 'Phone Number', 'Refund Amount', 'Balance to Refund', 'Refund Date', 'Mode', 'Processed By', 'Approved By'];
 
   return (
     <div style={{ fontFamily: t.fontFamily, ...cssVars }}>
@@ -202,6 +202,10 @@ const RefundDetailsPage: React.FC = () => {
                     <td style={td}>{unitText(r)}</td>
                     <td style={td}>{r.mobile_number || '—'}</td>
                     <td style={{ ...td, fontWeight: 800 }}>{rupee(r.refunded_amount)}</td>
+                    <td style={td} title={r.customer_total_paid != null ? `Paid ${rupee(r.customer_total_paid)} · refunded ${rupee(r.customer_total_refunded ?? 0)}` : undefined}>
+                      <div style={{ fontWeight: 700, color: (r.balance_refund ?? 0) > 0 ? '#ea580c' : '#16a34a' }}>{rupee(r.balance_refund ?? 0)}</div>
+                      {r.customer_total_paid != null && <div style={{ fontSize: 10.5, color: t.textSecondary }}>of {rupee(r.customer_total_paid)} paid</div>}
+                    </td>
                     <td style={td}>{formatDate(r.refund_date)}</td>
                     <td style={td}>{r.mode_of_payment || '—'}</td>
                     <td style={{ ...td, fontWeight: 600 }}>{r.created_by_name || '—'}</td>

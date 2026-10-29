@@ -360,7 +360,9 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
           lead: (c.changes_by_module.lead ?? 0) + (c.deletes_by_type.lead ?? 0),
           employee: (c.changes_by_module.employee ?? 0) + (c.deletes_by_type.employee ?? 0),
           payment: c.changes_by_module.payment ?? 0,
-          refunds: c.refunds,
+          // V_29.0 — pending refunds and pending Cancel Booking requests
+          // (the latter also counted on Customer Details, where they start).
+          refunds: c.refunds + c.cancel_requests,
         }); })
         .catch(() => { /* badge only — never block the sidebar */ });
     };

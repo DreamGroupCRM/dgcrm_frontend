@@ -1143,8 +1143,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         } else {
           toast.error('Failed to load customer details.');
         }
-      } catch {
-        toast.error(reviewId ? 'This request could not be opened. It may already be approved or rejected.' : 'Failed to load customer details.');
+      } catch (e) {
+        toast.error(reviewId ? (e instanceof Error && /^This request was already/.test(e.message) ? e.message : 'This request could not be opened. It may already be approved or rejected.') : 'Failed to load customer details.');
+        if (reviewId) navigate(afterReview);
       } finally {
         setFetching(false);
       }
@@ -2319,7 +2320,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               <div style={{ flex: '0 1 50%', minWidth: 0 }}>
                 <AmountField t={t} isView={isView} placeholder="Amount" value={remainingBookingAmount} onChange={setRemainingBookingAmount} />
               </div>
-              <DateInput t={t} value={remainingBookingDate} readOnly={isView} disabled={isView} onChange={(v) => setRemainingBookingDate(v)} className={fieldClass} style={{ flex: '0 1 150px', minWidth: 124 }} />
+              <DateInput t={t} value={remainingBookingDate} readOnly={isView} disabled={isView} min={bookingDate || undefined} onChange={(v) => setRemainingBookingDate(v)} className={fieldClass} style={{ flex: '0 1 150px', minWidth: 124 }} />
             </div>
           </Field>
           <Field t={t} label="Possession Amount (₹)" required error={errorFor('possessionAmount')} fieldRef={setFieldRef('possessionAmount') as React.Ref<HTMLDivElement>}>

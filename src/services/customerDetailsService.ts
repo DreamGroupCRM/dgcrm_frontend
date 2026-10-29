@@ -835,6 +835,8 @@ export interface GivenRefundRow {
   status?: 'approved' | 'pending' | 'rejected';
   customer_name: string; customer_code: string | null; mobile_number: string | null;
   building_name: string | null; wing_name: string | null; flat_no: string | null; shop_no: string | null;
+  /** V_29.0 — the booking's balance still to refund (approved payments − approved refunds). */
+  customer_total_paid?: number; customer_total_refunded?: number; balance_refund?: number;
 }
 /** GET /api/customers/refunds/given — admin only. */
 export interface GivenRefundsResult {

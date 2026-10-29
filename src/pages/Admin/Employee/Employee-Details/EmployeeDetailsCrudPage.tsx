@@ -1128,8 +1128,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         } else {
           toast.error('Failed to load employee details.');
         }
-      } catch {
-        toast.error(reviewId ? 'This request could not be opened. It may already be approved or rejected.' : 'Failed to load employee details.');
+      } catch (e) {
+        toast.error(reviewId ? (e instanceof Error && /^This request was already/.test(e.message) ? e.message : 'This request could not be opened. It may already be approved or rejected.') : 'Failed to load employee details.');
+        if (reviewId) navigate(afterReview);
       } finally {
         setFetching(false);
       }

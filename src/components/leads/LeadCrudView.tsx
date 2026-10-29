@@ -165,7 +165,10 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
       setReview(rr);
       const v = rr.record as Partial<CreateLeadPayload>;
       setForm((f) => ({ ...f, ...Object.fromEntries(Object.entries(v).filter(([k, val]) => k in EMPTY_FORM && val !== undefined)) }));
-    }).catch(() => toast.error('This request could not be opened. It may already be approved or rejected.'));
+    }).catch((e) => {
+      toast.error(e instanceof Error && /^This request was already/.test(e.message) ? e.message : 'This request could not be opened. It may already be approved or rejected.');
+      navigate(`${basePath}?approvals=1`);
+    });
   }, [reviewId]);
   const handleRejectReview = async () => {
     if (!reviewId) return;
