@@ -754,6 +754,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // permissions) are not shown to them.
   const actorRole = useAppSelector((st) => st.auth.role);
   const actorIsAdmin = actorRole === 'admin' || actorRole === 'superadmin';
+  const deptLockedForHr = !actorIsAdmin && mode === 'edit';
   const actorIsSuperAdmin = actorRole === 'superadmin';
   // V_26.0 — ?review=<request id> (Admin): the form opens filled with HR's
   // add / edit request; saving approves it with any changes made here.
@@ -1891,10 +1892,19 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* V_25.0 — one row: Department | Designation | Reporting Head (the
             Head list sits right beside the designation, not in a separate
             block below); then the Access Summary in two lines. */}
+        {/* V_29.0 — after an employee exists only the Admin changes their
+            department or designation; HR sees them locked (the server refuses
+            such a change too). On Add, HR picks them and the Admin can correct
+            them while approving. */}
+        {deptLockedForHr && (
+          <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 8 }}>
+            Department and designation can only be changed by the Admin.
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
           <div className="emp-assign-box">
             <CheckboxGroup
-              t={t} isView={isView}
+              t={t} isView={isView || deptLockedForHr}
               label="Assign Departments" required
               options={departmentOptions} selected={form.department_ids}
               onToggle={toggleDepartment}
@@ -1904,7 +1914,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
           <div className="emp-assign-box">
             <GroupedDesignationChecklist
-              t={t} isView={isView}
+              t={t} isView={isView || deptLockedForHr}
               required={deptRoles.length === 0 || deptRoles.some((r) => r.designationRequired && r.hasDesignations)}
               options={visibleDesignationOptions} departmentOptions={departmentOptions} selected={form.designation_ids}
               onToggle={selectDesignation}

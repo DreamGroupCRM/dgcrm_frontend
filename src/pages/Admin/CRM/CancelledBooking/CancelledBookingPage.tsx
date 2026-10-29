@@ -331,6 +331,7 @@ const CancelledBookingPage: React.FC = () => {
   // then sees it here. The customer's own (Recovery) assignment is kept as
   // it was; that is the "Assigned Employee" column.
   const canAssignRefund = isAdmin;
+  const REFUND_UNASSIGNED = 'Unassigned';
   const [refundEmployees, setRefundEmployees] = useState<{ id: string; label: string }[]>([]);
   useEffect(() => {
     if (!canAssignRefund) return;
@@ -345,12 +346,14 @@ const CancelledBookingPage: React.FC = () => {
   const allOnPage = rows.length > 0 && rows.every((r) => selected.has(r.id));
   const toggleAll = () => setSelected(allOnPage ? new Set() : new Set(rows.map((r) => r.id)));
   const handleAssign = async () => {
+    // V_29.0 — "Unassigned" takes the refund case off its employee.
+    const unassign = employeeSearch === REFUND_UNASSIGNED;
     const employee = refundEmployees.find((e) => e.label === employeeSearch);
-    if (!employee) { toast.error('Select a Refund employee.'); return; }
+    if (!employee && !unassign) { toast.error('Select a Refund employee.'); return; }
     setAssigning(true);
     try {
-      for (const id of Array.from(selected)) await setRefundAssignee(id, employee.id);
-      toast.success(`Assigned for refund to ${employee.label}`);
+      for (const id of Array.from(selected)) await setRefundAssignee(id, unassign ? null : employee!.id);
+      toast.success(unassign ? 'Refund employee removed' : `Assigned for refund to ${employee!.label}`);
       setSelected(new Set());
       setEmployeeSearch('');
       fetchRows(); loadAllCancelled();
@@ -676,6 +679,7 @@ const CancelledBookingPage: React.FC = () => {
                 onChange={(e) => setEmployeeSearch(e.target.value)}
                 style={selected.size === 0 ? readOnlyStyle : inputStyle} />
               <datalist id="cancelled-assign-employees">
+                <option value={REFUND_UNASSIGNED} />
                 {refundEmployees.map((e) => <option key={e.id} value={e.label} />)}
               </datalist>
             </div>
@@ -687,7 +691,7 @@ const CancelledBookingPage: React.FC = () => {
                 border: `1px solid ${selected.size === 0 || !employeeSearch || assigning ? t.surfaceBorder : 'transparent'}`,
                 cursor: selected.size === 0 || !employeeSearch || assigning ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
               }}>
-              {assigning ? 'Assigning...' : 'Assign for Refund'}
+              {assigning ? 'Assigning...' : employeeSearch === REFUND_UNASSIGNED ? 'Unassign' : 'Assign for Refund'}
             </button>
           </div>
         ) : <div />}

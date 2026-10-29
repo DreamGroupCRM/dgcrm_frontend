@@ -901,10 +901,15 @@ export const toCancelledReceipt = ({ refund: r, customer }: { refund: any; custo
 // single `employee_id`. AssignCustomersPayload itself is untouched — this
 // just builds the correct backend body from it.
 /** POST /api/customers/assign-employees */
-export const assignCustomersToEmployee = async (payload: AssignCustomersPayload): Promise<AssignCustomersResponse> => {
+// V_29.0 — employee_id null = Unassigned (Admin); assign_to_me = a Head
+// taking the customers back from their Executives.
+export const assignCustomersToEmployee = async (
+  payload: Omit<AssignCustomersPayload, 'employee_id'> & { employee_id: AssignCustomersPayload['employee_id'] | null; assign_to_me?: boolean },
+): Promise<AssignCustomersResponse> => {
   const res = await axiosInstance.post('/customers/assign-employees', {
     customer_ids: payload.customer_ids.map(Number),
-    employee_ids: [Number(payload.employee_id)],
+    employee_ids: payload.employee_id == null ? [] : [Number(payload.employee_id)],
+    ...(payload.assign_to_me ? { assign_to_me: true } : {}),
   });
   return res.data;
 };
