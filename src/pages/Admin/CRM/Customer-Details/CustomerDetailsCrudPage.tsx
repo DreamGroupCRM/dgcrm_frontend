@@ -457,7 +457,7 @@ const SearchableSelect: React.FC<{
 // which is why Employee never hit this.
 const CompactFileUpload: React.FC<{
   t: Theme; isView?: boolean; accept?: string; value: FileValue;
-  onChange: (f: File | null) => void; onView?: (url: string) => void;
+  onChange: (f: File | null) => void; onView?: (v: string | File) => void;
 }> = ({ t, isView, accept = DOCUMENT_ACCEPT, value, onChange, onView }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const displayName = fileDisplayName(value);
@@ -520,12 +520,9 @@ const CompactFileUpload: React.FC<{
             <MdInsertDriveFile size={16} style={{ color: 'var(--brand-ink)', flexShrink: 0 }} />
           )}
           <span className="truncate" style={{ fontSize: 11.5, color: t.textPrimary, flex: 1 }}>{displayName}</span>
-          {/* Only an already-SAVED file (a string url) can be opened in the
-              viewer — a freshly-picked File has not been uploaded yet, and
-              its object URL is already what the thumbnail beside this is
-              showing. */}
-          {onView && typeof value === 'string' && value && (
-            <button type="button" onClick={(e) => { e.stopPropagation(); onView(value); }}
+          {/* V_29.0 (H3) — a saved file, or one picked but not saved yet. */}
+          {onView && value && (value instanceof File || typeof value === 'string') && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onView(value as string | File); }}
               title="View" aria-label="View file"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.accentText, padding: 0, display: 'flex', flexShrink: 0 }}>
               <MdVisibility size={16} />
@@ -550,7 +547,7 @@ const CompactFileUpload: React.FC<{
 };
 
 // Larger dashed drop-card (Application Form / Declaration Form / Allotment Letter).
-const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; value: FileValue; onChange: (f: File | null) => void; onView?: (url: string) => void }> = ({ t, isView, label, value, onChange, onView }) => {
+const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; value: FileValue; onChange: (f: File | null) => void; onView?: (v: string | File) => void }> = ({ t, isView, label, value, onChange, onView }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const displayName = fileDisplayName(value);
 
@@ -601,10 +598,9 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
       {displayName ? (
         <div className="flex items-center justify-center gap-2">
           <span className="truncate" style={{ fontSize: 11, color: t.textPrimary, maxWidth: 150 }}>{displayName}</span>
-          {/* Only an already-SAVED file (a string url) can be opened in the
-              viewer — same rule as CompactFileUpload above. */}
-          {onView && typeof value === 'string' && value && (
-            <button type="button" onClick={(e) => { e.stopPropagation(); onView(value); }}
+          {/* V_29.0 (H3) — a saved file, or one picked but not saved yet. */}
+          {onView && value && (value instanceof File || typeof value === 'string') && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onView(value as string | File); }}
               title="View" aria-label="View file"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.accentText, padding: 0, display: 'flex' }}>
               <MdVisibility size={15} />
@@ -817,10 +813,11 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   // Quick View — which document the shared viewer is showing, if any. Kept
   // at page level so closing the preview leaves the record exactly where
   // the user left it.
-  const [preview, setPreview] = useState<{ label: string; url: string } | null>(null);
+  const [preview, setPreview] = useState<{ label: string; url: string; file?: File } | null>(null);
   // V_26.0 — the viewer loads through the API client, so it needs the full
   // address; the bare stored path became /api/api/files/... and failed.
-  const openPreview = useCallback((label: string, url: string) => setPreview({ label, url: resolveFileUrl(url) }), []);
+  const openPreview = useCallback((label: string, v: string | File) => setPreview(
+    v instanceof File ? { label, url: v.name, file: v } : { label, url: resolveFileUrl(v) }), []);
 
   // A customer's email is their portal login credential, so only an Admin
   // may change it on an existing record. Same rule (and same message) as
@@ -1912,7 +1909,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               <CustomerDocumentCard t={t} label="Declaration Form" url={typeof declarationForm === 'string' ? declarationForm : null} onQuickView={openPreview} />
               <CustomerDocumentCard t={t} label="Allotment Letter" url={typeof allotmentLetter === 'string' ? allotmentLetter : null} onQuickView={openPreview} />
               {preview && (
-                <DocumentViewerModal t={t} label={preview.label} url={preview.url} onClose={() => setPreview(null)} />
+                <DocumentViewerModal t={t} label={preview.label} url={preview.url} file={preview.file} onClose={() => setPreview(null)} />
               )}
             </div>
           </div>
@@ -2021,7 +2018,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
           </Field>
           <Field t={t} label="Customer Photo" required error={errorFor('customerPhoto')} fieldRef={setFieldRef('customerPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} accept={IMAGE_ACCEPT} value={customerPhoto} onChange={setCustomerPhoto}
-              onView={(url) => openPreview('Customer Photo', url)} />
+              onView={(v) => openPreview('Customer Photo', v)} />
           </Field>
         </div>
 
@@ -2054,12 +2051,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
           </Field>
           <Field t={t} label="Upload Aadhar Card Photo" required error={errorFor('aadharPhoto')} fieldRef={setFieldRef('aadharPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange}
-              onView={(url) => openPreview('Aadhar Card', url)} />
+              onView={(v) => openPreview('Aadhar Card', v)} />
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
           <Field t={t} label="Upload Pancard Photo" required error={errorFor('pancardPhoto')} fieldRef={setFieldRef('pancardPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange}
-              onView={(url) => openPreview('Pancard', url)} />
+              onView={(v) => openPreview('Pancard', v)} />
             {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
         </div>
@@ -2435,15 +2432,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field t={t} label="Application Form" required error={errorFor('applicationForm')} fieldRef={setFieldRef('applicationForm') as React.Ref<HTMLDivElement>}>
             <DocumentDropCard t={t} isView={isView} label="Application Form" value={applicationForm} onChange={setApplicationForm}
-              onView={(url) => openPreview('Application Form', url)} />
+              onView={(v) => openPreview('Application Form', v)} />
           </Field>
           <Field t={t} label="Declaration Form" required error={errorFor('declarationForm')} fieldRef={setFieldRef('declarationForm') as React.Ref<HTMLDivElement>}>
             <DocumentDropCard t={t} isView={isView} label="Declaration Form" value={declarationForm} onChange={setDeclarationForm}
-              onView={(url) => openPreview('Declaration Form', url)} />
+              onView={(v) => openPreview('Declaration Form', v)} />
           </Field>
           <Field t={t} label="Allotment Letter" required error={errorFor('allotmentLetter')} fieldRef={setFieldRef('allotmentLetter') as React.Ref<HTMLDivElement>}>
             <DocumentDropCard t={t} isView={isView} label="Allotment Letter" value={allotmentLetter} onChange={setAllotmentLetter}
-              onView={(url) => openPreview('Allotment Letter', url)} />
+              onView={(v) => openPreview('Allotment Letter', v)} />
           </Field>
         </div>
       </AccordionSection>
@@ -2559,7 +2556,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
       {/* V_26.0 — the eye icon on an uploaded document (Add / Edit) opens
           the same preview as View mode; the popup used to exist only there. */}
       {preview && (
-        <DocumentViewerModal t={t} label={preview.label} url={preview.url} onClose={() => setPreview(null)} />
+        <DocumentViewerModal t={t} label={preview.label} url={preview.url} file={preview.file} onClose={() => setPreview(null)} />
       )}
     </div>
   );

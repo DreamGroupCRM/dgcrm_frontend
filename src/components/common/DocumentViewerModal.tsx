@@ -44,6 +44,8 @@ export interface DocumentViewerModalProps {
   /** Served path from resolveFileUrl(). */
   url: string;
   onClose: () => void;
+  /** V_29.0 (H3) — a file picked but not saved yet: shown from the browser, nothing is fetched. */
+  file?: File | null;
 }
 
 type State =
@@ -51,13 +53,13 @@ type State =
   | { phase: 'ready'; objectUrl: string; blob: Blob; size: number }
   | { phase: 'error'; message: string };
 
-const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url, onClose }) => {
+const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url, onClose, file }) => {
   const [state, setState] = useState<State>({ phase: 'loading' });
   // V_29.0 (I) — a Recovery Executive may view customer documents, not save them.
   const { profile } = useAccessProfile();
   const viewOnly = Boolean(profile?.documents_view_only) && /\/files\/customers\//.test(url);
-  const kind: PreviewKind = previewKindFor(url);
-  const ext = extensionLabel(url);
+  const kind: PreviewKind = previewKindFor(file ? file.name : url);
+  const ext = extensionLabel(file ? file.name : url);
   // Held in a ref as well as in state so cleanup can revoke it without
   // having to re-run the effect when state changes.
   const objectUrlRef = useRef<string | null>(null);
@@ -67,7 +69,9 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url
     let cancelled = false;
     setState({ phase: 'loading' });
 
-    fetchDocument(url, controller.signal)
+    (file
+      ? Promise.resolve({ objectUrl: URL.createObjectURL(file), blob: file as Blob, size: file.size })
+      : fetchDocument(url, controller.signal))
       .then(({ objectUrl, blob, size }) => {
         if (cancelled) { URL.revokeObjectURL(objectUrl); return; }
         objectUrlRef.current = objectUrl;
@@ -95,7 +99,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url
         objectUrlRef.current = null;
       }
     };
-  }, [url]);
+  }, [url, file]);
 
   // Escape closes, matching the app's other modals.
   useEffect(() => {
@@ -106,7 +110,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url
 
   const handleDownload = useCallback(() => {
     if (state.phase !== 'ready') return;
-    saveBlob(state.blob, downloadNameFor(label, url));
+    saveBlob(state.blob, file ? file.name : downloadNameFor(label, url));
   }, [state, label, url]);
 
   const body = () => {
