@@ -26,7 +26,7 @@ import { fetchDraft, saveDraft } from '../../../../services/draftsService';
 import { FetchDepartmentList } from '../../../../services/departmentService';
 import { fetchDesignationList } from '../../../../services/designationService';
 import { fetchMappingMatrix } from '../../../../services/moduleActionService';
-import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
+import { readDocumentText, extractAadharNumber, extractPanNumber, notReadMessage } from '../../../../utils/ocr';
 import { DobPicker } from '../../../../components/common/DobPicker';
 import { TimePicker } from '../../../../components/common/TimePicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
@@ -882,10 +882,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     setFile('aadhar_card')(f);
     if (!(f instanceof File)) return;
     setOcrRunning('aadhar');
-    runOcr(f).then((text) => {
+    readDocumentText(f).then(({ text, problem }) => {
       const number = extractAadharNumber(text);
-      if (number) { set('aadhar_number', number); toast.success('Aadhar number auto-filled from the photo — please verify it.'); }
-      else toast.info('Could not read an Aadhar number from that photo — please enter it manually.');
+      if (number) { set('aadhar_number', number); toast.success('Aadhar number auto-filled from the document — please verify it.'); }
+      else toast.info(notReadMessage('an Aadhar', f, problem));
     }).finally(() => setOcrRunning(null));
   };
 
@@ -893,10 +893,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     setFile('pan_card')(f);
     if (!(f instanceof File)) return;
     setOcrRunning('pancard');
-    runOcr(f).then((text) => {
+    readDocumentText(f).then(({ text, problem }) => {
       const number = extractPanNumber(text);
-      if (number) { set('pan_number', number); toast.success('PAN number auto-filled from the photo — please verify it.'); }
-      else toast.info('Could not read a PAN number from that photo — please enter it manually.');
+      if (number) { set('pan_number', number); toast.success('PAN number auto-filled from the document — please verify it.'); }
+      else toast.info(notReadMessage('a PAN', f, problem));
     }).finally(() => setOcrRunning(null));
   };
 
