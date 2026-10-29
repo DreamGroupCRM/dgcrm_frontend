@@ -64,6 +64,7 @@ import {
   PaymentReceipt,
 } from '../types/index';
 import { serverToday } from '../utils/serverTime';
+import { toLocalYmd } from '../utils';
 
 // booking_date/installment_date/pay_after_booking_date are `timestamp`
 // columns on the backend (not `date`), so they come back as full ISO
@@ -73,7 +74,7 @@ import { serverToday } from '../utils/serverTime';
 // Remaining Booking Date fields all came back empty despite having been
 // saved correctly. date_of_birth doesn't need this — it's a `date` column
 // and already comes back as a plain "yyyy-mm-dd" string.
-const toDateOnly = (iso: string | null): string => (iso ? iso.slice(0, 10) : '');
+const toDateOnly = (iso: string | null): string => toLocalYmd(iso);
 
 // ── Backend response shapes (V_13.0) — only the fields this file reads ──
 // See Customer.entity.ts / Building.entity.ts / Wing.entity.ts /
@@ -198,9 +199,10 @@ interface BackendAmountTransaction {
 // start with the date in that exact position.
 export const nextMonthlyInstallmentDate = (raw: string | null | undefined): string | null => {
   if (!raw) return null;
-  const day = Number(raw.slice(8, 10));
+  const ymd = toLocalYmd(raw);
+  const day = Number(ymd.slice(8, 10));
   if (!day) return raw;
-  const anchorDatePart = raw.slice(0, 10);
+  const anchorDatePart = ymd;
 
   const now = serverToday();
   const daysInThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();

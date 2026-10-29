@@ -14,6 +14,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CustomerSchemeData, CustomerPaymentRecord, Customer, PaymentReceipt } from '../../../../types/index';
 import { paymentForLabel } from '../../../../services/paymentService';
+import { toLocalYmd } from '../../../../utils';
 
 const rupee = (n: number): string => `Rs. ${Math.round(n || 0).toLocaleString('en-IN')}`;
 // jsPDF's helvetica has no ₹ glyph — a label carrying one (e.g. "1st EMI's
@@ -29,7 +30,7 @@ const GRAND_TEXT: [number, number, number] = [146, 64, 14];
 
 const formatDMY = (iso: string | null | undefined): string => {
   if (!iso) return '—';
-  const [y, m, d] = iso.slice(0, 10).split('-');
+  const [y, m, d] = toLocalYmd(iso).split('-');
   return y && m && d ? `${d}/${m}/${y}` : '—';
 };
 

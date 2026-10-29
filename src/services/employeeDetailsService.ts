@@ -29,6 +29,7 @@
 
 import axiosInstance from './axiosConfig';
 import { compressImageFile } from '../utils/imageCompression';
+import { toLocalYmd } from '../utils';
 
 // Sent as a custom request header on every call below, and echoed back by
 // the backend as a response header (see employees.controller.ts) — same
@@ -148,8 +149,8 @@ export const normalizeEmployee = (raw: Record<string, unknown>): Employee => ({
   // date input silently rejects and renders blank instead. Same issue (and
   // fix) for joining_date, which was resetting on every View/Edit for the
   // same reason.
-  date_of_birth: raw.date_of_birth ? String(raw.date_of_birth).slice(0, 10) : '',
-  joining_date: raw.joining_date ? String(raw.joining_date).slice(0, 10) : '',
+  date_of_birth: toLocalYmd(raw.date_of_birth as string | null),
+  joining_date: toLocalYmd(raw.joining_date as string | null),
 });
 
 export interface EmployeeListSummary {

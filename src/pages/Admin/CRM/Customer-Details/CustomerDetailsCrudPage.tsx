@@ -122,7 +122,7 @@ const clampInstallmentDate = (value: string): string => {
 const dayAfter = (value: string): string => {
   const d = new Date(`${value}T00:00:00`);
   d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 // Fires showPicker() on both click AND focus — a plain onClick alone opens

@@ -9,6 +9,7 @@
 import React, { useState } from 'react';
 import { AppTheme } from '../../styles/theme';
 import { ChangeRequestRow } from '../../services/changeRequestsService';
+import { toLocalYmd } from '../../utils';
 
 // V_26.0 — plain names for the stored field keys (customer and employee
 // forms), so a request reads like the form it came from.
@@ -45,7 +46,7 @@ export const isBlank = (v: unknown) => v === null || v === undefined || v === ''
 export function displayValue(v: unknown): string {
   if (isBlank(v)) return '—';
   if (typeof v === 'boolean' || v === 'true' || v === 'false') return v === true || v === 'true' ? 'Yes' : 'No';
-  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}(T|$)/.test(v)) return v.slice(0, 10).split('-').reverse().join('/');
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}(T|$)/.test(v)) return toLocalYmd(v).split('-').reverse().join('/');
   if (typeof v === 'object') return JSON.stringify(v);
   return String(v);
 }
