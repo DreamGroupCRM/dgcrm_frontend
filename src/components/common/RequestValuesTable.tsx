@@ -42,7 +42,13 @@ const CAPITALISE_KEYS = new Set(['unit_type', 'gender']);
 // value being cleared is visible), current vs proposed for an edit, and
 // uploaded documents previewable. Stored uploads are /api/files/... paths.
 export const isFileValue = (v: unknown): v is string => typeof v === 'string' && v.startsWith('/api/files/');
-export const isBlank = (v: unknown) => v === null || v === undefined || v === '';
+// V_29.0 (F2) — an empty list ([] or '[]') is blank too, so it never shows as a change.
+export const isBlank = (v: unknown) => v === null || v === undefined || v === ''
+  || (Array.isArray(v) && v.length === 0) || v === '[]';
+// A yes/no stored as 1/0 and sent as true/false is the same answer.
+const asBool = (v: unknown): boolean | null =>
+  v === true || v === 'true' || v === 1 || v === '1' ? true : v === false || v === 'false' || v === 0 || v === '0' ? false : null;
+const isBoolLike = (v: unknown) => typeof v === 'boolean' || v === 'true' || v === 'false';
 export function displayValue(v: unknown): string {
   if (isBlank(v)) return '—';
   if (typeof v === 'boolean' || v === 'true' || v === 'false') return v === true || v === 'true' ? 'Yes' : 'No';
@@ -61,6 +67,7 @@ const isNumeric = (v: unknown) => (typeof v === 'number' || (typeof v === 'strin
 // For an amount, "500000" and the stored "500000.00" are the same value.
 export const sameValue = (a: unknown, b: unknown, key?: string) =>
   (isBlank(a) && isBlank(b))
+  || ((isBoolLike(a) || isBoolLike(b)) && asBool(a) !== null && asBool(a) === asBool(b))
   || (key && MONEY_KEY.test(key) && isNumeric(a) && isNumeric(b) ? Number(a) === Number(b) : displayValue(a) === displayValue(b));
 
 export function displayFieldValue(key: string, v: unknown): string {

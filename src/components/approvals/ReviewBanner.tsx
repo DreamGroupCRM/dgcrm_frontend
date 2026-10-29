@@ -13,7 +13,7 @@ import { RequestValuesTable } from '../common/RequestValuesTable';
 import DocumentViewerModal from '../common/DocumentViewerModal';
 import { formatLastLogin } from '../../utils';
 
-export const ReviewBanner: React.FC<{ t: AppTheme; isDark: boolean; review: RequestRecord; noun: string }> = ({ t, isDark, review, noun }) => {
+export const ReviewBanner: React.FC<{ t: AppTheme; isDark: boolean; review: RequestRecord; noun: string; readOnly?: boolean }> = ({ t, isDark, review, noun, readOnly }) => {
   // A new record: the form below already shows everything that was sent.
   const [open, setOpen] = useState(review.request.action !== 'create');
   const [preview, setPreview] = useState<{ label: string; url: string } | null>(null);
@@ -33,7 +33,10 @@ export const ReviewBanner: React.FC<{ t: AppTheme; isDark: boolean; review: Requ
             {!isCreate && <> · <b style={{ color: isDark ? '#fcd34d' : '#92400e' }}>{review.changed.length} field{review.changed.length === 1 ? '' : 's'} changed</b></>}
           </div>
           <div style={{ fontSize: 12, color: t.textPrimary, marginTop: 6 }}>
-            The form below is filled with the request{isCreate ? '' : ' (the record with the proposed changes)'}. Correct any field or document if needed, then press <b>Approve</b> — it is saved like a normal save. <b>Reject</b> sends it back with your note.
+            {readOnly
+              // V_29.0 (F1) — changes to an existing customer are not edited here.
+              ? <>Below is the {noun} as it will be after approval. These changes are approved exactly as sent: press <b>Approve</b>, or <b>Reject</b> with a note asking for the correction.</>
+              : <>The form below is filled with the request{isCreate ? '' : ' (the record with the proposed changes)'}. Correct any field or document if needed, then press <b>Approve</b> — it is saved like a normal save. <b>Reject</b> sends it back with your note.</>}
           </div>
         </div>
         <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-1 rounded-lg"

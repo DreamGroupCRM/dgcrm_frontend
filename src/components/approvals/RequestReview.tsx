@@ -85,8 +85,10 @@ const DATE_FIELDS = ['date_of_birth', 'joining_date'];
 const docFieldsFor = (row: ChangeRequestRow): [string, string][] => row.module === 'employee'
   ? Object.entries(EMPLOYEE_DOC_FIELDS).map(([field, key]) => [field, fieldLabel(key)])
   : CUSTOMER_DOC_FIELDS.map((k) => [k, fieldLabel(k)]);
+// V_29.0 (F1) — not for a change to an existing customer: that is approved as sent.
 export const canAdminEdit = (row: ChangeRequestRow) =>
-  (row.module === 'customer' || row.module === 'employee') && (row.action === 'create' || row.action === 'edit') && row.status === 'pending';
+  (row.module === 'customer' || row.module === 'employee') && (row.action === 'create' || row.action === 'edit') && row.status === 'pending'
+  && !(row.module === 'customer' && row.action === 'edit');
 export const AdminEditForm: React.FC<{ t: AppTheme; row: ChangeRequestRow; onSaved: (adminValues: Record<string, unknown>) => void; onCancel: () => void }> = ({ t, row, onSaved, onCancel }) => {
   // An edit starts from the record as it is now, so unchanged details show too.
   const current = { ...(row.action === 'edit' ? row.old_values ?? {} : {}), ...row.new_values, ...(row.admin_values ?? {}) };

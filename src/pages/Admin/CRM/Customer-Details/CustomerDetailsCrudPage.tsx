@@ -55,7 +55,7 @@ import { cssRect } from '../../../../utils/appZoom';
 import DateInput from '../../../../components/common/DateInput';
 import CallHistoryCard from '../../../../components/calls/CallHistoryCard';
 import { fetchCustomerCalls } from '../../../../services/callService';
-import { fetchRequestRecord, RequestRecord, rejectChangeRequest } from '../../../../services/changeRequestsService';
+import { fetchRequestRecord, RequestRecord, rejectChangeRequest, approveChangeRequest } from '../../../../services/changeRequestsService';
 import { ReviewBanner } from '../../../../components/approvals/ReviewBanner';
 
 type Mode = 'add' | 'edit' | 'view';
@@ -808,6 +808,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   const [reviewParams] = useSearchParams();
   const reviewId = paths.isAdmin && !isView ? reviewParams.get('review') : null;
   const [review, setReview] = useState<RequestRecord | null>(null);
+  // V_29.0 (F1) — an existing customer's changes are reviewed read-only;
+  // a new customer can still be corrected before approval.
+  const readOnlyReview = Boolean(reviewId && review?.request.action === 'edit');
   const afterReview = `${paths.customerDetails}?approvals=1`;
 
   // Quick View — which document the shared viewer is showing, if any. Kept
@@ -1555,6 +1558,21 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
     }
   };
 
+  // V_29.0 (F1) — a change to an existing customer is approved exactly as sent.
+  const handleApproveAsSent = async () => {
+    if (!reviewId) return;
+    setSaving(true);
+    try {
+      await approveChangeRequest(reviewId);
+      showAlert.approved('The customer changes were approved.');
+      navigate(afterReview);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to approve the request.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleRejectReview = async () => {
     if (!reviewId) return;
     const { isConfirmed, note } = await showAlert.confirmWithNote('Reject this request? Nothing is saved; the employee sees your note on My Requests.',
@@ -1794,7 +1812,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   // Payment Details, Uploaded Documents) with label-over-value cells,
   // instead of the same editable-looking form with every field disabled.
   // Same visual language as View Employee (ViewValue + real doc previews). ──
-  if (isView) {
+  if (isView || readOnlyReview) {
     const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
     return (
       <div className="cust-crud-page" style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16, ...cssVars }}>
@@ -1802,12 +1820,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         {/* ── Page header ───────────────────────────────────────────────── */}
         <div className="cust-crud-header flex items-center justify-between flex-wrap gap-3 mb-6">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={() => navigate(backPath)}
+            <button type="button" onClick={() => navigate(readOnlyReview ? afterReview : backPath)}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, padding: 6 }}>
               <MdArrowBack size={20} />
             </button>
             <div>
-              <h1 className="cust-crud-title">View Customer</h1>
+              <h1 className="cust-crud-title">{readOnlyReview ? 'Review Customer Changes' : 'View Customer'}</h1>
             </div>
           </div>
           {customerCode && (
@@ -1816,6 +1834,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             </div>
           )}
         </div>
+
+        {/* V_29.0 (F1) — a change to an existing customer: what changed, read-only. */}
+        {readOnlyReview && review && <ReviewBanner t={t} isDark={isDark} review={review} noun="customer" readOnly />}
 
         {/* ── Identity strip — photo + name + email, above the boxes ─────── */}
         <div className="flex items-center gap-3 mb-5">
@@ -1936,10 +1957,24 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         {/* ── Sticky footer — Go Back only, same shared class every other
             CRUD page's footer uses. ────────────────────────────────────── */}
         <div className="master-crud-footer flex items-center justify-center gap-3 z-10" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
-          <button type="button" onClick={() => navigate(backPath)}
+          <button type="button" onClick={() => navigate(readOnlyReview ? afterReview : backPath)} disabled={saving}
             className="px-6 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
-            Go Back
+            {readOnlyReview ? 'Back' : 'Go Back'}
           </button>
+          {readOnlyReview && (
+            <>
+              <button type="button" onClick={handleRejectReview} disabled={saving}
+                className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-bold"
+                style={{ background: t.surfaceBg, color: '#b91c1c', border: '1px solid #fca5a5', cursor: saving ? 'not-allowed' : 'pointer' }}>
+                <MdClose size={16} /> Reject
+              </button>
+              <button type="button" onClick={handleApproveAsSent} disabled={saving}
+                className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-bold text-white cust-btn-primary"
+                style={{ background: 'var(--brand-gradient)', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.8 : 1 }}>
+                <MdSave size={17} /> {saving ? 'Approving...' : 'Approve'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
