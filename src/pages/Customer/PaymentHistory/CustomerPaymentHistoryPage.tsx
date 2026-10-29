@@ -11,7 +11,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CircularProgress } from '@mui/material';
 import { toast } from '@/utils/toast';
-import { MdVisibility, MdDownload, MdTrendingUp, MdAccountBalanceWallet, MdHourglassEmpty } from 'react-icons/md';
+import { MdVisibility, MdDownload } from 'react-icons/md';
 import { formatDate } from '../../../utils';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
 import PaymentHistoryTable from '../../../components/common/PaymentHistoryTable';
@@ -24,7 +24,7 @@ import { PaymentReceipt } from '../../../types/index';
 import { HistoryCard, HistorySection, customerInfoItems, propertyInfoItems } from '../../../components/common/HistoryPopup';
 import RefundHistoryTable from '../../../components/common/RefundHistoryTable';
 import { useCustomerPortal } from '../CustomerPortalContext';
-import { PageHead, Stat, STAT_GRADIENTS, rupee, totalsFromDueGrid, BookingTotals, AwaitingNote } from '../CustomerPortalUi';
+import { PageHead, rupee, totalsFromDueGrid, BookingTotals, AwaitingNote } from '../CustomerPortalUi';
 
 const CustomerPaymentHistoryPage: React.FC = () => {
   const { selectedId, selected, cancelled, detail } = useCustomerPortal();
@@ -119,35 +119,26 @@ const CustomerPaymentHistoryPage: React.FC = () => {
     // A cancelled booking owes nothing more — its refund block replaces Pending.
     ...(isCancelled ? {} : { pending: totals?.pending }),
   });
-  const extra = isCancelled ? { title: 'Cancellation Details', items: [
-    { label: 'Cancellation Date', value: selected?.cancelled_at ? formatDate(selected.cancelled_at) : '—' },
-    { label: 'Total Refunded', value: rupee(refundedApproved), tone: 'green' as const },
-    { label: 'Refund Balance', value: rupee(Math.max(0, (totals?.paid ?? 0) - refundedApproved)), tone: 'red' as const },
-  ] } : undefined;
 
   return (
     <>
       <PageHead title="Payment History & Receipt" />
 
-      {/* The three summary boxes on top (as before), then the history card. */}
-      {selectedId != null && (
-        <div className="cp-stats">
-          <Stat icon={<MdTrendingUp size={19} />} label="Total Flat Amount" value={rupee(totals?.totalCost)} gradient={STAT_GRADIENTS.total} />
-          <Stat icon={<MdAccountBalanceWallet size={19} />} label="Total Amount Paid" value={rupee(totals?.paid)} gradient={STAT_GRADIENTS.paid} />
-          {isCancelled ? (
-            <Stat icon={<MdHourglassEmpty size={19} />}
-              label={refundPending > 0 ? `Total Refunded (${rupee(refundPending)} awaiting approval)` : 'Total Refunded'}
-              value={rupee(refundedApproved)} gradient={STAT_GRADIENTS.pending} />
-          ) : (
-            <Stat icon={<MdHourglassEmpty size={19} />} label="Total Amount Pending" value={rupee(totals?.pending)} gradient={STAT_GRADIENTS.pending} />
-          )}
+      {/* V_29.0 (C4) — no summary boxes here (they are on Home); a cancelled
+          booking says so in one line at the top instead of its own box. */}
+      {isCancelled && selectedId != null && (
+        <div className="cp-cancel-note" role="note">
+          This booking was cancelled{selected?.cancelled_at ? ` on ${formatDate(selected.cancelled_at)}` : ''}.
+          {' '}Refunded so far: <b>{rupee(refundedApproved)}</b>
+          {refundPending > 0 && <> ({rupee(refundPending)} awaiting approval)</>}
+          {' '}· Balance to refund: <b>{rupee(Math.max(0, (totals?.paid ?? 0) - refundedApproved))}</b>
         </div>
       )}
       {selectedId != null && <AwaitingNote amount={totals?.awaiting} />}
 
       {selectedId != null && (
-        <HistoryCard t={t} title={`Payments History - Total Transaction (${sorted.length})`} customer={customer} property={property} extra={extra}>
-          <HistorySection t={t} title="Payment Details" total={sorted.length ? { label: 'Grand Total:', value: rupee(paidTotal) } : undefined}>
+        <HistoryCard t={t} title={`Payments History - Total Transaction (${sorted.length})`} customer={customer} property={property}>
+          <HistorySection t={t} title="Payment Details" total={sorted.length ? { label: (totals?.awaiting ?? 0) > 0 ? 'Grand Total (incl. awaiting confirmation):' : 'Grand Total:', value: rupee(paidTotal) } : undefined}>
             <PaymentHistoryTable
               t={t} isDark={isDark} emptyText="No payments have been recorded yet."
               rows={sorted.map((r) => ({

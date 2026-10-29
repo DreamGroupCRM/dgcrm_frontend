@@ -41,7 +41,8 @@ export const propertyInfoItems = (p: {
   awaiting?: number | null;
 }): HistoryInfoItem[] => [
   { label: 'Project', value: p.project || '—' },
-  { label: 'Building', value: [p.building, p.wing && `${p.wing} Wing`].filter(Boolean).join(' · ') || '—' },
+  // V_29.0 — "Wing 1" stays "Wing 1" (it read "Wing 1 Wing").
+  { label: 'Building', value: [p.building, p.wing && (/\bwing\b/i.test(p.wing) ? p.wing : `${p.wing} Wing`)].filter(Boolean).join(' · ') || '—' },
   { label: p.unitType === 'shop' ? 'Shop No.' : 'Flat No.', value: p.unitNo || '—' },
   { label: 'Flat Amount', value: rupee(p.flatAmount), tone: 'green' },
   { label: 'Paid Amount', value: rupee(p.paid), tone: 'green' },

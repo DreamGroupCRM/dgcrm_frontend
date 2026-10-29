@@ -1,6 +1,9 @@
 // My Documents — every document on file for the selected booking, shown
 // large and side by side (a real preview for images, a PDF sheet for PDFs),
 // each with View and Download. Moved off Home onto its own sidebar page.
+// V_29.0 (J3) — only documents on file get a card, each labelled with its
+// type; the ones not uploaded yet are listed in one line underneath
+// instead of a large empty card each.
 import React, { useState } from 'react';
 import { CircularProgress } from '@mui/material';
 import { MdDownload, MdInsertDriveFile, MdPictureAsPdf, MdVisibility, MdFolderOpen } from 'react-icons/md';
@@ -53,14 +56,14 @@ const CustomerDocumentsPage: React.FC = () => {
       <PageHead title="My Documents" subtitle={selected ? bookingLabel(selected) : undefined} />
 
       <div className="cp-docs-grid">
-        {documents.map(({ label, url }) => {
+        {documents.filter((d) => !!d.url).map(({ label, url }) => {
           const resolved = url ? resolveFileUrl(url) : null;
           const kind = resolved ? previewKindFor(resolved) : null;
           return (
             <section key={label} className="cp-doc-card">
               <div className="cp-doc-card-head">
                 <span>{label}</span>
-                {!resolved && <span className="cp-doc-card-missing">Not uploaded</span>}
+                <span className="cp-doc-card-missing">{kind === 'image' ? 'Image' : kind === 'pdf' ? 'PDF' : 'File'}</span>
               </div>
               <button
                 type="button" className="cp-doc-card-preview" disabled={!resolved}
@@ -69,8 +72,10 @@ const CustomerDocumentsPage: React.FC = () => {
               >
                 {resolved && kind === 'image' ? (
                   <img src={resolved} alt={label} />
-                ) : resolved ? (
+                ) : resolved && kind === 'pdf' ? (
                   <span className="cp-doc-card-pdf"><MdPictureAsPdf size={56} /><span>PDF document</span></span>
+                ) : resolved ? (
+                  <span className="cp-doc-card-pdf"><MdInsertDriveFile size={56} /><span>Document</span></span>
                 ) : (
                   <span className="cp-doc-card-pdf" style={{ color: t.textSecondary, opacity: 0.6 }}><MdInsertDriveFile size={48} /><span>Not uploaded</span></span>
                 )}
@@ -90,6 +95,12 @@ const CustomerDocumentsPage: React.FC = () => {
         })}
       </div>
 
+      {documents.some((d) => !d.url) && documents.some((d) => !!d.url) && (
+        <div className="cp-empty" style={{ marginTop: 12, textAlign: 'left' }}>
+          <MdInsertDriveFile size={16} /> Not on file yet: {documents.filter((d) => !d.url).map((d) => d.label).join(', ')}.
+          {' '}Your Relationship Manager can add them.
+        </div>
+      )}
       {documents.every((d) => !d.url) && (
         <div className="cp-empty" style={{ marginTop: 12 }}><MdFolderOpen size={16} /> No documents are on file for this booking yet.</div>
       )}

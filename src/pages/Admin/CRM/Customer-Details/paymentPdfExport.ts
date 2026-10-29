@@ -27,6 +27,8 @@ const TOTAL_A_TEXT: [number, number, number] = [30, 64, 175];
 const TOTAL_B_FILL: [number, number, number] = [220, 252, 231];  // light green
 const TOTAL_B_TEXT: [number, number, number] = [22, 101, 52];
 const GRAND_FILL: [number, number, number] = [254, 243, 199];    // light amber
+// V_29.0 (C4) — the brand's dark teal for PDF header bars / table heads.
+const PDF_BRAND: [number, number, number] = [15, 94, 89];
 const GRAND_TEXT: [number, number, number] = [146, 64, 14];
 
 const formatDMY = (iso: string | null | undefined): string => {
@@ -207,12 +209,10 @@ export async function exportPaymentHistoryPdf(
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = await drawBrandHeader(doc, marginX, 24);
 
-  // Header bar — two-tone rect approximating the reference's purple->orange
-  // gradient (jsPDF has no native gradient fill).
-  doc.setFillColor(109, 40, 217);
-  doc.rect(marginX, y, (pageWidth - marginX * 2) / 2, 30, 'F');
-  doc.setFillColor(217, 119, 6);
-  doc.rect(marginX + (pageWidth - marginX * 2) / 2, y, (pageWidth - marginX * 2) / 2, 30, 'F');
+  // Header bar — V_29.0 (C4): one dark brand colour that prints cleanly
+  // (the old two-tone purple/orange bar printed muddy and clashed).
+  doc.setFillColor(...PDF_BRAND);
+  doc.rect(marginX, y, pageWidth - marginX * 2, 30, 'F');
   doc.setFontSize(12.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
@@ -220,12 +220,12 @@ export async function exportPaymentHistoryPdf(
   doc.setTextColor(0, 0, 0);
   y += 50;
 
-  const flatLine = [customer.building_name, customer.wing_name ? `${customer.wing_name}-` : '', customer.flat_no].filter(Boolean).join(' / ');
+  const flatLine = [customer.building_name, customer.wing_name, customer.flat_no].filter(Boolean).join(' / ');
   autoTable(doc, {
     startY: y,
     body: [
       ['Name', customer.customer_name || '—', 'Address', customer.address || '—'],
-      ['Building', flatLine || '—', 'Email', customer.email || 'no'],
+      ['Building', flatLine || '—', 'Email', customer.email || '—'],
       ['Mobile No.', customer.mobile_number || '—', 'Total Flat Cost', totalFlatCost != null ? rupee(totalFlatCost) : '—'],
       ['', '', 'Pending Amount', pendingAmount != null ? rupee(pendingAmount) : '—'],
     ],
@@ -259,9 +259,10 @@ export async function exportPaymentHistoryPdf(
       ];
     }),
     theme: 'grid',
-    headStyles: { fillColor: [109, 40, 217], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
-    styles: { fontSize: 8.5, cellPadding: 5, lineColor: [203, 213, 225], lineWidth: 0.75 },
-    columnStyles: { 5: { halign: 'right', textColor: [220, 38, 38], fontStyle: 'bold' } },
+    headStyles: { fillColor: PDF_BRAND, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+    styles: { fontSize: 8.5, cellPadding: 5, lineColor: [203, 213, 225], lineWidth: 0.75, textColor: [17, 24, 39] },
+    // Amounts in dark text — red read as money owed.
+    columnStyles: { 5: { halign: 'right', fontStyle: 'bold' } },
     margin: { left: marginX, right: marginX },
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -270,10 +271,17 @@ export async function exportPaymentHistoryPdf(
   if (y > 760) { doc.addPage(); y = 44; }
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(37, 99, 235);
+  doc.setTextColor(17, 24, 39);
   doc.text('Grand Total:', marginX, y);
-  doc.setTextColor(21, 128, 61);
   doc.text(rupee(grandTotal), pageWidth - marginX, y, { align: 'right' });
+  // Which part is confirmed: only approved payments count as paid.
+  const awaiting = payments.filter((p) => !p.is_approved).reduce((n, p) => n + p.amount, 0);
+  if (awaiting > 0) {
+    y += 16;
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Approved: ${rupee(grandTotal - awaiting)}   ·   Pending approval: ${rupee(awaiting)}`, pageWidth - marginX, y, { align: 'right' });
+  }
   doc.setTextColor(0, 0, 0);
 
   doc.save(`Payment-History-${customer.customer_code || customer.id}.pdf`);

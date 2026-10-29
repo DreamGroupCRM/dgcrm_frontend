@@ -1,16 +1,25 @@
 // Home — the customer's own details, the employee looking after their
 // booking, and the property itself: three sections stacked one below the
-// other, each section's details in one row on a desktop. The money tiles and the documents moved off Home:
-// documents have their own "My Documents" page in the sidebar.
+// other, each section's details in one row on a desktop, under the money
+// tiles (V_29.0 — moved here from Payment History). Documents have their own
+// "My Documents" page in the sidebar.
 import React from 'react';
 import { CircularProgress } from '@mui/material';
-import { MdPerson, MdApartment, MdVerifiedUser, MdGroups, MdCall, MdEmail } from 'react-icons/md';
+import { MdPerson, MdApartment, MdVerifiedUser, MdGroups, MdCall, MdEmail, MdTrendingUp, MdAccountBalanceWallet, MdHourglassEmpty } from 'react-icons/md';
 import { formatDate, resolveFileUrl, resolveThumbUrl } from '../../../utils';
 import { useCustomerPortal, bookingLabel } from '../CustomerPortalContext';
-import { PageHead, Card, Field } from '../CustomerPortalUi';
+import { PageHead, Card, Field, Stat, STAT_GRADIENTS, rupee, AwaitingNote, useBookingTotals } from '../CustomerPortalUi';
+
+// V_29.0 — only the last 4 digits of the Aadhaar number are shown.
+const maskAadhaar = (v?: string | null): string => {
+  const digits = (v ?? '').replace(/\D/g, '');
+  return digits.length >= 4 ? `XXXX XXXX ${digits.slice(-4)}` : '';
+};
 
 const CustomerHomePage: React.FC = () => {
-  const { detail, selected } = useCustomerPortal();
+  const { detail, selected, selectedId } = useCustomerPortal();
+  const isCancelled = !!selected?.is_cancelled;
+  const totals = useBookingTotals(selectedId, isCancelled, selected?.flat_amount);
 
   if (!detail) return <div className="cp-center"><CircularProgress size={28} /></div>;
 
@@ -27,6 +36,16 @@ const CustomerHomePage: React.FC = () => {
     <>
       {/* The customer's name / ID are on the header's booking boxes now. */}
       <PageHead title="Home" subtitle={selected ? bookingLabel(selected) : undefined} />
+
+      {/* V_29.0 (A5) — the booking's money at a glance, at the top of Home. */}
+      {selectedId != null && (
+        <div className="cp-stats">
+          <Stat icon={<MdTrendingUp size={19} />} label="Total Flat Amount" value={rupee(totals?.totalCost)} gradient={STAT_GRADIENTS.total} />
+          <Stat icon={<MdAccountBalanceWallet size={19} />} label="Total Amount Paid" value={rupee(totals?.paid)} gradient={STAT_GRADIENTS.paid} />
+          {!isCancelled && <Stat icon={<MdHourglassEmpty size={19} />} label="Total Amount Pending" value={rupee(totals?.pending)} gradient={STAT_GRADIENTS.pending} />}
+        </div>
+      )}
+      {selectedId != null && <AwaitingNote amount={totals?.awaiting} />}
 
       {/* Three full-width sections, one below the other: Personal Details,
           Relationship Manager, Property Details. On a desktop each section's
@@ -53,7 +72,7 @@ const CustomerHomePage: React.FC = () => {
             <Field label="Mobile" value={detail.mobile_number ? `${detail.mobile_country_code || ''} ${detail.mobile_number}`.trim() : ''} />
             <Field label="Alternate Number" value={secondary || detail.alternate_number} />
             <Field label="Date of Birth" value={detail.date_of_birth ? formatDate(detail.date_of_birth) : ''} />
-            <Field label="Aadhaar Number" value={detail.aadhar_card_no} />
+            <Field label="Aadhaar Number" value={maskAadhaar(detail.aadhar_card_no)} />
             <Field label="PAN Number" value={detail.pan_card_no} />
             <div className="cp-home-wide"><Field label="Address" value={detail.address} /></div>
           </div>

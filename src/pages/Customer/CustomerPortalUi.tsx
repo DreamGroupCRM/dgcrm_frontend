@@ -1,9 +1,10 @@
 // Small pieces every portal page shares, so the five pages stay about
 // their own content rather than each restating the same card/field/stat
 // markup. Styling lives in CustomerPortal.css.
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { MdCheckCircle, MdErrorOutline, MdSchedule } from 'react-icons/md';
 import { DueGridRow } from '../../services/paymentService';
+import { fetchMyBookingPayments, fetchMyBookingDueGrid } from '../../services/customerPortalService';
 
 export const rupee = (n: number | null | undefined): string =>
   n == null ? '—' : `₹ ${Math.round(n).toLocaleString('en-IN')}`;
@@ -117,4 +118,36 @@ export function totalsFromDueGrid(grid: {
   // Payment Completed and comes off Payment Pending.
   const pending = Math.max(0, owed - extraPay);
   return { totalCost, paid: Math.min(totalCost, totalCost - owed + extraPay), pending };
+}
+
+/**
+ * V_29.0 (A5) — the summary tiles' figures for one booking, the same way
+ * Payment History worked them out: from the due grid for an active
+ * booking; for a cancelled one, its flat amount and approved payments.
+ */
+export function useBookingTotals(bookingId: string | number | null | undefined, isCancelled: boolean, flatAmount?: number | string | null): BookingTotals | null {
+  const [totals, setTotals] = useState<BookingTotals | null>(null);
+  useEffect(() => {
+    if (bookingId == null) { setTotals(null); return; }
+    let stale = false;
+    (async () => {
+      try {
+        if (!isCancelled) {
+          const grid = await fetchMyBookingDueGrid(bookingId);
+          if (!stale) setTotals(totalsFromDueGrid(grid));
+          return;
+        }
+        const payments = await fetchMyBookingPayments(bookingId);
+        if (stale) return;
+        setTotals({
+          totalCost: Number(flatAmount || 0),
+          paid: payments.filter((r) => r.is_approved).reduce((n, r) => n + Number(r.amount || 0), 0),
+          pending: 0,
+          awaiting: payments.filter((r) => !r.is_approved).reduce((n, r) => n + Number(r.amount || 0), 0),
+        });
+      } catch { if (!stale) setTotals(null); }
+    })();
+    return () => { stale = true; };
+  }, [bookingId, isCancelled, flatAmount]);
+  return totals;
 }

@@ -773,3 +773,16 @@ html.dark .cp-empty-error, html.dark .cp-doc-card-pdf { color: #fca5a5; }
 html.dark .cp-cancelled-banner { color: #fff; background: rgba(185, 28, 28, 0.35); border-color: rgba(248, 113, 113, 0.5); }
 
 html.dark .cp-awaiting-note { color: #fcd34d !important; }
+
+/* V_29.0 — the logo's 'screen' blend (made for dark backgrounds) hid it on
+   the light sidebar; multiply keeps it visible there. */
+.cp-brand img { mix-blend-mode: multiply !important; }
+html.dark .cp-brand img { mix-blend-mode: screen !important; }
+
+/* V_29.0 (C4) — a cancelled booking's refund figures, one line at the top
+   of Payment History (replaces the separate Cancellation Details box). */
+.cp-cancel-note {
+  margin-bottom: 12px; padding: 10px 14px; border-radius: 12px; font-size: 12.5px; line-height: 1.5;
+  color: var(--cp-text-primary, #111827); background: #fff7ed; border: 1px solid #fed7aa;
+}
+html.dark .cp-cancel-note { background: rgba(234, 88, 12, 0.15); border-color: rgba(251, 146, 60, 0.45); }
