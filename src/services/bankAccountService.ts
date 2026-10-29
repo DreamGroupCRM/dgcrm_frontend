@@ -33,6 +33,15 @@ export const FetchBankAccount = async (
   return res.data;
 };
 
+// V_29.0 — one company's active bank accounts (Building form dropdown).
+export const FetchBanksForCompany = async (companyId: number | string): Promise<BankAccountListResponse> => {
+  const res = await axiosInstance.get('/banks', {
+    params: { is_active: true, company_id: companyId, page: 1, limit: 200 },
+    headers: { [API_NAME_HEADER]: 'FetchBanksForCompany' },
+  });
+  return res.data;
+};
+
 // ── Fetch single bank account by ID ────────────────────────────────────────
 export const ViewBankAccount = async (id: string): Promise<BankAccountResponse> => {
   const res = await axiosInstance.get(`/banks/${id}`, {

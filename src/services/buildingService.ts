@@ -45,6 +45,8 @@ interface WizardBuilding {
   id: number; name: string; code: string | null; has_parking: boolean; parking_count: number | null;
   business_company_id?: number | null;
   business_company_name?: string | null;
+  bank_id?: number | string | null;
+  bank_name?: string | null;
   is_active: boolean; sort_order: number; created_at: string; updated_at?: string;
   project: { projectName: string; location: string | null } | null;
 }
@@ -131,6 +133,8 @@ function fromWizardResponse(data: WizardFullResponse): Building {
     parking_count: b.parking_count ?? null,
     business_company_id: b.business_company_id ?? null,
     business_company_name: b.business_company_name ?? null,
+    bank_id: b.bank_id != null ? Number(b.bank_id) : null,
+    bank_name: b.bank_name ?? null,
     is_active: b.is_active,
     created_at: b.created_at,
     updated_at: b.updated_at,
@@ -192,6 +196,7 @@ function toWizardPayload(payload: CreateBuildingPayload) {
       hasParking: payload.has_parking,
       parkingCount: payload.has_parking ? payload.parking_count : null,
       businessCompanyId: payload.business_company_id,
+      bankId: payload.bank_id,
     },
     wings: payload.wings.map((w) => ({
       id: toServerId(w.id),

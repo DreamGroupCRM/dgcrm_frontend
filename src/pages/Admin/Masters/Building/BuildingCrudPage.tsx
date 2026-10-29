@@ -26,6 +26,7 @@ import {
 } from '../../../../services/buildingService';
 import { CreateBuildingPayload, BuildingShop, Company } from '../../../../types/index';
 import { companyService } from '../../../../services/companyService';
+import { FetchBanksForCompany } from '../../../../services/bankAccountService';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Local (string-friendly, form-editable) shapes
@@ -488,6 +489,34 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
     })();
   }, []);
 
+  // V_29.0 — the building's bank account: one of the selected company's
+  // active accounts. New payments on this building go to it; changing it
+  // later never changes payments already saved. The server checks it too.
+  const [bankId, setBankId] = useState<string>('');
+  const [savedBank, setSavedBank] = useState<{ id: string; label: string } | null>(null);
+  const [bankOptions, setBankOptions] = useState<{ id: string; label: string }[]>([]);
+  const [bankState, setBankState] = useState<'idle' | 'loading' | 'error'>('idle');
+  useEffect(() => {
+    if (!businessCompanyId) { setBankOptions([]); setBankState('idle'); return; }
+    let cancelled = false;
+    setBankState('loading');
+    FetchBanksForCompany(businessCompanyId)
+      .then((res) => {
+        if (cancelled) return;
+        const opts = (res.rows ?? []).map((b) => ({
+          id: String(b.id),
+          label: [b.name, b.branch_name, b.account_number ? `••${String(b.account_number).slice(-4)}` : ''].filter(Boolean).join(' · '),
+        }));
+        setBankOptions(opts);
+        setBankState('idle');
+        // A bank from a different company cannot stay selected. The bank
+        // already saved on this building may be switched off since — keep it.
+        setBankId((cur) => (cur && !opts.some((o) => o.id === cur) && cur !== savedBank?.id ? '' : cur));
+      })
+      .catch(() => { if (!cancelled) { setBankOptions([]); setBankState('error'); } });
+    return () => { cancelled = true; };
+  }, [businessCompanyId, savedBank?.id]);
+
   // Refs so a newly-added wing's name input gets focus automatically
   const wingInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
   const newlyAddedWingIdRef = React.useRef<string | null>(null);
@@ -559,6 +588,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
           setHasParking(b.has_parking ?? false);
           setParkingCountInput(b.parking_count != null ? String(b.parking_count) : '');
           setBusinessCompanyId(b.business_company_id != null ? String(b.business_company_id) : '');
+          setBankId(b.bank_id != null ? String(b.bank_id) : '');
+          setSavedBank(b.bank_id != null ? { id: String(b.bank_id), label: b.bank_name || 'Saved account' } : null);
         } else {
           toast.error('Failed to load building');
           navigate('/admin/masters/building');
@@ -798,6 +829,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   // an otherwise-unrelated edit until the user backfills it.
   const isFormValid =
     (isEdit || businessCompanyId !== '') &&
+    (isEdit || bankId !== '') &&
     projectName.trim() !== '' &&
     location.trim() !== '' &&
     buildingName.trim() !== '' &&
@@ -818,6 +850,8 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
   const validationChecks: { field: string; message: string; failed: () => boolean; sectionRef: React.RefObject<HTMLDivElement | null> }[] = [
     { field: 'projectDetails', message: 'Please fill all Project Details fields, including Company.', sectionRef: projectDetailsRef,
       failed: () => (!isEdit && !businessCompanyId) || !projectName.trim() || !location.trim() || !buildingName.trim() },
+    { field: 'bank', message: 'Please select the bank account for this building.', sectionRef: projectDetailsRef,
+      failed: () => !isEdit && !bankId },
     { field: 'wings', message: 'Please give every wing a name and a valid floor count.', sectionRef: wingsRef,
       failed: () => wings.length === 0 || wings.some((w) => w.name.trim() === '' || !(parseInt(w.no_of_floors, 10) >= 0)) },
     { field: 'shops', message: hasShops === null ? 'Please select whether this building has shops.' : 'Please enter the number of shops and click Generate Shops.', sectionRef: shopsRef,
@@ -878,6 +912,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         has_parking: hasParking === true,
         parking_count: hasParking ? parseInt(parkingCountInput, 10) : null,
         business_company_id: businessCompanyId ? Number(businessCompanyId) : null,
+        bank_id: bankId ? Number(bankId) : null,
       };
 
       const res = isEdit
@@ -943,7 +978,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             <h2 style={{ fontSize: 14.5, fontWeight: 700, color: t.textPrimary, margin: 0 }}>Project Details</h2>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4 mt-4">
           <div>
             {/* Moved here from its own former "Step 7: Company" section,
                 per the sequence Company → Project → Location → Building.
@@ -961,6 +996,34 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Bank Account {!isEdit && <span style={{ color: t.accentText }}>*</span>}</label>
+            <select
+              value={bankId}
+              disabled={isView || !businessCompanyId || bankState === 'loading'}
+              onChange={(e) => { setBankId(e.target.value); markDirty(); }}
+              style={{ ...fieldStyle, cursor: isView || !businessCompanyId ? 'default' : 'pointer' }}
+            >
+              <option value="">
+                {!businessCompanyId ? 'Select company first'
+                  : bankState === 'loading' ? 'Loading accounts…'
+                  : bankState === 'error' ? 'Could not load accounts'
+                  : bankOptions.length === 0 ? 'No bank account for this company' : 'Select bank account'}
+              </option>
+              {savedBank && savedBank.id === bankId && !bankOptions.some((o) => o.id === savedBank.id) && (
+                <option value={savedBank.id}>{savedBank.label} (switched off)</option>
+              )}
+              {bankOptions.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+            {!isView && businessCompanyId && bankState === 'idle' && bankOptions.length === 0 && (
+              <p style={{ fontSize: 11, color: t.textSecondary, margin: '4px 0 0' }}>Add one in Masters → Bank Account for this company.</p>
+            )}
+            {isEdit && !isView && (
+              <p style={{ fontSize: 11, color: t.textSecondary, margin: '4px 0 0' }}>New payments go to this account. Earlier payments keep their own.</p>
+            )}
           </div>
           <div>
             <label style={labelStyle}>Project Name <span style={{ color: t.accentText }}>*</span></label>

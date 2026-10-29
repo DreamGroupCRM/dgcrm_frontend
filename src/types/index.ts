@@ -540,6 +540,9 @@ export interface Building {
   // auto-derive Add Payment's Company field.
   business_company_id?: number | null;
   business_company_name?: string | null;
+  // V_29.0 — current bank account for new payments, and its label.
+  bank_id?: number | null;
+  bank_name?: string | null;
   is_active    : boolean;
   created_at   : string;
   updated_at?  : string;
@@ -592,6 +595,7 @@ export interface CreateBuildingPayload {
   has_parking  : boolean;
   parking_count: number | null;
   business_company_id: number | null;
+  bank_id: number | null;
   is_active    : boolean;
 }
 

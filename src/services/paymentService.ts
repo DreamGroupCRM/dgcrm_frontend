@@ -372,6 +372,10 @@ export interface PaymentListRow {
   // payment_type === 'EMIAmount'.
   is_after_possession_emi: boolean;
   customer_cancelled?: boolean; // the customer's booking has been cancelled
+  // V_29.0 — the bank account the payment was received in (null = saved
+  // before this was recorded).
+  bank_id?: string | null;
+  bank_name?: string | null;
 }
 export interface PaymentListFilters {
   approval?: 'approved' | 'pending';
@@ -384,6 +388,7 @@ export interface PaymentListFilters {
   received_by?: string;
   date_from?: string;
   date_to?: string;
+  bank_id?: string; // a bank id, or 'none' for "Not recorded"
 }
 /** GET /api/payments?page=&limit=&approval=&search=&... */
 export const fetchPaymentList = async (
@@ -398,6 +403,7 @@ export const fetchPaymentList = async (
   if (filters?.mode_of_payment) params.mode_of_payment = filters.mode_of_payment;
   if (filters?.company) params.company = filters.company;
   if (filters?.received_by) params.received_by = filters.received_by;
+  if (filters?.bank_id) params.bank_id = filters.bank_id;
   if (filters?.date_from) params.date_from = filters.date_from;
   if (filters?.date_to) params.date_to = filters.date_to;
   const res = await axiosInstance.get('/payments', { params });
@@ -463,6 +469,7 @@ export const fetchPaymentCategorySummary = async (filters?: PaymentListFilters):
   if (filters?.mode_of_payment) params.mode_of_payment = filters.mode_of_payment;
   if (filters?.company) params.company = filters.company;
   if (filters?.received_by) params.received_by = filters.received_by;
+  if (filters?.bank_id) params.bank_id = filters.bank_id;
   if (filters?.date_from) params.date_from = filters.date_from;
   if (filters?.date_to) params.date_to = filters.date_to;
   const res = await axiosInstance.get('/payments/category-summary', { params });
