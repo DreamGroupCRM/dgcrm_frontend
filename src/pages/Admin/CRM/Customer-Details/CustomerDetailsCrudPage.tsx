@@ -49,6 +49,7 @@ import {
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
+import { useAccessProfile } from '../../../../hooks/useAccessProfile';
 import { serverToday, serverTodayYmd } from '../../../../utils/serverTime';
 import { cssRect } from '../../../../utils/appZoom';
 import DateInput from '../../../../components/common/DateInput';
@@ -244,6 +245,8 @@ const CustomerDocumentCard: React.FC<{
   onQuickView: (label: string, url: string) => void;
 }> = ({ t, label, url, onQuickView }) => {
   const resolved = url ? resolveFileUrl(url) : '';
+  // V_29.0 (I) — Recovery Executives view documents only.
+  const viewOnly = Boolean(useAccessProfile().profile?.documents_view_only);
   const isImage = !!resolved && previewKindFor(resolved) === 'image';
   const [downloading, setDownloading] = useState(false);
 
@@ -291,13 +294,13 @@ const CustomerDocumentCard: React.FC<{
             >
               <MdVisibility size={16} />
             </button>
-            <button
+            {!viewOnly && <button
               type="button" onClick={handleDownload} disabled={downloading}
               title="Download" aria-label={`Download ${label}`}
               style={{ background: 'none', border: 'none', cursor: downloading ? 'wait' : 'pointer', color: t.accentText, display: 'inline-flex', padding: 4, opacity: downloading ? 0.5 : 1 }}
             >
               <MdDownload size={16} />
-            </button>
+            </button>}
           </div>
         )}
       </div>

@@ -31,6 +31,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { CircularProgress } from '@mui/material';
 import { MdClose, MdDownload, MdDescription, MdErrorOutline } from 'react-icons/md';
 import { AppTheme } from '../../styles/theme';
+import { useAccessProfile } from '../../hooks/useAccessProfile';
 import {
   fetchDocument, saveBlob, previewKindFor, extensionLabel, formatBytes, downloadNameFor,
   PreviewKind,
@@ -52,6 +53,9 @@ type State =
 
 const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url, onClose }) => {
   const [state, setState] = useState<State>({ phase: 'loading' });
+  // V_29.0 (I) — a Recovery Executive may view customer documents, not save them.
+  const { profile } = useAccessProfile();
+  const viewOnly = Boolean(profile?.documents_view_only) && /\/files\/customers\//.test(url);
   const kind: PreviewKind = previewKindFor(url);
   const ext = extensionLabel(url);
   // Held in a ref as well as in state so cleanup can revoke it without
@@ -161,16 +165,16 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url
         </div>
         <p style={{ fontSize: 12.5, color: t.textSecondary, margin: 0, maxWidth: 380 }}>
           {ext ? `${ext} files` : 'Files of this type'} cannot be previewed in the browser.
-          Download the file to open it in the application it belongs to.
+          {viewOnly ? ' Please ask your Head or the Admin for a copy.' : ' Download the file to open it in the application it belongs to.'}
         </p>
-        <button
+        {!viewOnly && <button
           type="button"
           onClick={handleDownload}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl"
           style={{ background: 'var(--brand-gradient)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700 }}
         >
           <MdDownload size={15} /> Download
-        </button>
+        </button>}
       </div>
     );
   };
@@ -197,7 +201,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url
             {label}{ext ? <span style={{ fontWeight: 600, color: t.textMuted }}> · {ext}</span> : null}
           </h3>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button
+            {!viewOnly && <button
               type="button"
               onClick={handleDownload}
               disabled={state.phase !== 'ready'}
@@ -205,7 +209,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url
               style={{ background: t.insetBg, color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
             >
               <MdDownload size={14} /> Download
-            </button>
+            </button>}
             <button
               type="button"
               onClick={onClose}
