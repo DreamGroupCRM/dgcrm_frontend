@@ -404,8 +404,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
         {!collapsed && (
           <button type="button" onClick={() => navigate(dashboardRoute)}
             style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', outline: 'none' }}>
-            <span style={{ fontFamily: t.fontFamily, fontSize: 22, fontWeight: 700, letterSpacing: '0.06em', color: t.textPrimary }}>
-              DGCRM
+            <span style={{ fontFamily: t.fontFamily, fontSize: 19, fontWeight: 700, letterSpacing: '0.02em', color: t.textPrimary, whiteSpace: 'nowrap' }}>
+              Dream Group
             </span>
           </button>
         )}

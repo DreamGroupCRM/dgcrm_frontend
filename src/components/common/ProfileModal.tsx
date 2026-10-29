@@ -110,7 +110,7 @@ const ProfileModal: React.FC = () => {
             My Profile
           </p>
           <h2 className="text-white font-bold text-lg" style={{ fontFamily: t.fontFamily }}>
-            Dream Group CRM
+            Dream Group
           </h2>
         </div>
 

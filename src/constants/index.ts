@@ -2,7 +2,7 @@
 // DREAM GROUP CRM - CONSTANTS
 // ==========================================
 
-export const APP_NAME = 'Dream Group CRM';
+export const APP_NAME = 'Dream Group';
 export const APP_SUBTITLE = 'Interest Free Home For All Community People';
 export const APP_TAGLINE = 'Building Dreams. Building A Better Future.';
 

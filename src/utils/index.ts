@@ -289,7 +289,7 @@ export const showAlert = {
     return Swal.fire({
       icon: 'success',
       title: `${roleLabel} Logged in Successfully`,
-      text: 'Welcome to Dream Group CRM!',
+      text: 'Welcome to Dream Group!',
       timer: 1500,
       showConfirmButton: false,
       position: 'top',

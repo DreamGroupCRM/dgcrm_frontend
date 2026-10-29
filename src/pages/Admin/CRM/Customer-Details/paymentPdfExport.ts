@@ -1,5 +1,5 @@
 // ==========================================
-// DREAM GROUP CRM - PAYMENT HISTORY / SCHEDULE PDF EXPORT
+// DREAM GROUP - PAYMENT HISTORY / SCHEDULE PDF EXPORT
 // ==========================================
 // Same jsPDF + jspdf-autotable stack every other PDF export in this app
 // uses (see ../../CustomizeScheme/schemePdfExport.ts, ../../Reports/
@@ -15,6 +15,7 @@ import autoTable from 'jspdf-autotable';
 import { CustomerSchemeData, CustomerPaymentRecord, Customer, PaymentReceipt } from '../../../../types/index';
 import { paymentForLabel } from '../../../../services/paymentService';
 import { toLocalYmd } from '../../../../utils';
+import { drawBrandHeader } from '../../../../utils/pdfBrand';
 
 const rupee = (n: number): string => `Rs. ${Math.round(n || 0).toLocaleString('en-IN')}`;
 // jsPDF's helvetica has no ₹ glyph — a label carrying one (e.g. "1st EMI's
@@ -38,12 +39,12 @@ const fullCustomerName = (c: { name?: string | null; middle_name?: string | null
   [c.name, c.middle_name, c.last_name].filter(Boolean).join(' ') || c.customer_code || '—';
 
 // ── Payment Schedule PDF (matches the reference "EMI SCHEDULE" PDF) ──────
-export function exportPaymentSchedulePdf(data: CustomerSchemeData): void {
+export async function exportPaymentSchedulePdf(data: CustomerSchemeData): Promise<void> {
   const c = data.customer;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const marginX = 40;
   const pageWidth = doc.internal.pageSize.getWidth();
-  let y = 44;
+  let y = await drawBrandHeader(doc, marginX, 28) + 4;
 
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
@@ -195,16 +196,16 @@ export function exportPaymentSchedulePdf(data: CustomerSchemeData): void {
 }
 
 // ── Payment History PDF (matches the reference "Payments History" PDF) ──
-export function exportPaymentHistoryPdf(
+export async function exportPaymentHistoryPdf(
   customer: Customer,
   payments: CustomerPaymentRecord[],
   totalFlatCost: number | null,
   pendingAmount: number | null
-): void {
+): Promise<void> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const marginX = 40;
   const pageWidth = doc.internal.pageSize.getWidth();
-  let y = 40;
+  let y = await drawBrandHeader(doc, marginX, 24);
 
   // Header bar — two-tone rect approximating the reference's purple->orange
   // gradient (jsPDF has no native gradient fill).

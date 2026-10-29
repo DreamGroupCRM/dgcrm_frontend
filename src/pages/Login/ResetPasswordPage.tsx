@@ -126,7 +126,7 @@ const ResetPasswordPage: React.FC = () => {
               <Logo size="lg" />
             </div>
             <h1 className="font-display text-3xl font-bold text-white mb-1">
-              Dream Group CRM
+              Dream Group
             </h1>
             <p className="text-xs text-yellow-300/90 font-body tracking-wide px-4 leading-relaxed">
               Interest Free Home For All Community People

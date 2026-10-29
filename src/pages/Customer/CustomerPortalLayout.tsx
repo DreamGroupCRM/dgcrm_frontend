@@ -176,7 +176,7 @@ const CustomerPortalShell: React.FC = () => {
           <div className="cp-brand">
             <Logo size={28} />
             <span className="cp-brand-text">
-              <span className="cp-brand-line1">DGCRM</span>
+              <span className="cp-brand-line1">Dream Group</span>
               <span className="cp-brand-line2">Customer Portal</span>
             </span>
           </div>

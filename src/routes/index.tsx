@@ -32,7 +32,7 @@ const CustomerRoutes = lazy(() => import('./CustomerRoutes'));
 const PageLoader = () => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-green-950 to-gray-900">
     <CircularProgress size={40} sx={{ color: '#d97706' }} />
-    <p className="text-white/50 text-sm mt-3 font-body">Loading Dream Group CRM...</p>
+    <p className="text-white/50 text-sm mt-3 font-body">Loading Dream Group...</p>
   </div>
 );
 

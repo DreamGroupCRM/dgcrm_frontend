@@ -138,7 +138,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   }, []);
 
   const handleLogout = async () => {
-    const result = await showAlert.confirm('You will be Logged Out of Dream Group CRM.', 'Logout?');
+    const result = await showAlert.confirm('You will be Logged Out of Dream Group.', 'Logout?');
     if (result.isConfirmed) {
       const loggedOutRole = role ?? 'employee';
       localStorage.removeItem('dgcrm_master_enabled'); // keep setting on logout? remove if preferred
@@ -293,9 +293,6 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
           <div className="hidden sm:block text-left leading-none">
             <p style={{ fontFamily: t.fontFamily, fontSize: 19.5, fontWeight: 700, color: t.textPrimary, margin: 1, whiteSpace: 'nowrap' }}>
               Dream Group
-            </p>
-            <p style={{ fontFamily: t.fontFamily, fontSize: 10, fontWeight: 500, color: isDark ? '#ffffff' : '#000000', margin: 2, whiteSpace: 'nowrap' }}>
-              CRM Platform
             </p>
           </div>
         </button>
