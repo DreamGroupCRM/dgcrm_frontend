@@ -1887,7 +1887,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               />
               <ViewValue label="Address" value={address} className="cust-view-field-wide" />
               <ViewValue label="Date of Birth" value={dateOfBirth ? `${dateOfBirth}${age ? ` (${age.years}y ${age.months}m)` : ''}` : ''} />
-              <ViewValue label="Aadhar Number" value={aadharNumber} />
+              {/* V_29.0 — staff see only the last 4 digits; the Admin sees the full number. */}
+              <ViewValue label="Aadhar Number" value={paths.isAdmin || !aadharNumber ? aadharNumber
+                : `XXXX XXXX ${String(aadharNumber).replace(/\D/g, '').slice(-4)}`} />
               <ViewValue label="PAN Number" value={pancardNumber} />
               <ViewValue label="Alternate Contact" value={alternatePersonName ? `${alternatePersonName}${alternatePersonMobile ? ` · ${alternatePersonCountryCode} ${alternatePersonMobile}` : ''}` : ''} />
             </div>
