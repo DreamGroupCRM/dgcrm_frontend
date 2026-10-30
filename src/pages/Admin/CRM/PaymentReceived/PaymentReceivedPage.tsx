@@ -50,7 +50,7 @@ import { companyService } from '../../../../services/companyService';
 import { FetchBankAccount } from '../../../../services/bankAccountService';
 import { exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport.lazy';
 import { Building, PaymentReceipt } from '../../../../types/index';
-import { showAlert } from '../../../../utils';
+import { showAlert, wingLabel } from '../../../../utils';
 import './PaymentReceived.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { serverToday, toYmd, employeeReceivedMinYmd } from '../../../../utils/serverTime';
@@ -779,7 +779,7 @@ const PaymentReceivedPage: React.FC = () => {
             placeholder="--Select--" options={flatsInScope.map((f) => ({ value: f.flat_no, label: f.flat_no }))} disabled={!selectedWing} />
         </div>
         <div className="pr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
-          <FilterSelect t={t} label="ModeOfPayment" value={draftMode} onChange={setDraftMode}
+          <FilterSelect t={t} label="Mode of Payment" value={draftMode} onChange={setDraftMode}
             placeholder="--Select--" options={MODE_OF_PAYMENT_OPTIONS.map((m) => ({ value: m, label: m }))} />
           <FilterSelect t={t} label="Bank Account" value={draftBank} onChange={setDraftBank}
             placeholder="--All--" options={bankFilterOptions} />
@@ -966,7 +966,7 @@ const PaymentReceivedPage: React.FC = () => {
                         <RowActionMenu t={t} pos={rowMenu.pos} actions={[
                           { key: 'view', label: r.is_approved ? 'View Receipt' : 'View', icon: <MdVisibility size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); handleViewReceipt(r); } },
                           // V_25.0 — this booking's full payment history (same table as Customer Details).
-                          { key: 'history', label: 'Payment History', icon: <MdHistory size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); setHistoryFor({ id: r.customer_id, name: r.customer_name || 'Customer', code: r.customer_code, unit: [r.building_name, r.wing_name && `${r.wing_name} Wing`, r.flat_no && `Flat ${r.flat_no}`].filter(Boolean).join(' - ') }); } },
+                          { key: 'history', label: 'Payment History', icon: <MdHistory size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); setHistoryFor({ id: r.customer_id, name: r.customer_name || 'Customer', code: r.customer_code, unit: [r.building_name, r.wing_name && `${wingLabel(r.wing_name)}`, r.flat_no && `Flat ${r.flat_no}`].filter(Boolean).join(' - ') }); } },
                           // No receipt exists until approval, so Download is
                           // only offered on approved rows; Approve only on
                           // unapproved ones (admin).
@@ -1021,7 +1021,7 @@ const PaymentReceivedPage: React.FC = () => {
                       <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
                       {(r.wing_name || r.flat_no) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
-                          {r.wing_name ? `${r.wing_name} Wing` : ''}{r.wing_name && r.flat_no ? ' - ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
+                          {r.wing_name ? `${wingLabel(r.wing_name)}` : ''}{r.wing_name && r.flat_no ? ' - ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
                         </div>
                       )}
                     </td>

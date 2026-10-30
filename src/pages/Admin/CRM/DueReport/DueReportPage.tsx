@@ -1290,7 +1290,7 @@ const DueReportPage: React.FC = () => {
               {(() => {
                 const buildingText = apSelectedCustomer ? [
                   apSelectedCustomer.building_name,
-                  apSelectedCustomer.wing_name ? `${apSelectedCustomer.wing_name} Wing` : '',
+                  apSelectedCustomer.wing_name ? `${wingLabel(apSelectedCustomer.wing_name)}` : '',
                   apSelectedCustomer.flat_no ? `Flat ${apSelectedCustomer.flat_no}` : '',
                 ].filter(Boolean).join(' - ') : '';
                 return (

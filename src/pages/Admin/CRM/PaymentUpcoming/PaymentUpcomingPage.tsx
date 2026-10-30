@@ -40,7 +40,7 @@ import { fetchUpcomingAmount, fetchUpcomingListDetailed } from '../../../../serv
 import { PaymentForKey, UpcomingAmountData, UpcomingListDetailRow } from '../../../../types/paymentUpcoming';
 import './PaymentUpcoming.css';
 import { serverTodayYmd } from '../../../../utils/serverTime';
-import { formatDate } from '../../../../utils';
+import { formatDate, wingLabel } from '../../../../utils';
 import DateInput from '../../../../components/common/DateInput';
 
 type Theme = AppTheme;
@@ -364,7 +364,7 @@ const PaymentUpcomingPage: React.FC = () => {
                       <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
                       {(r.wing_name || r.flat_no) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
-                          {r.wing_name ? `${r.wing_name} Wing` : ''}{r.wing_name && r.flat_no ? ' - ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
+                          {r.wing_name ? `${wingLabel(r.wing_name)}` : ''}{r.wing_name && r.flat_no ? ' - ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
                         </div>
                       )}
                     </td>

@@ -417,3 +417,6 @@ export const getInitials = (name: string): string => {
     .map((p) => p[0]?.toUpperCase() || '')
     .join('');
 };
+
+/** V_29.0 — "Wing 1" stays "Wing 1"; a bare "A" becomes "A Wing". */
+export const wingLabel = (w: string | null | undefined): string => (w ? (/\bwing\b/i.test(w) ? w : `${w} Wing`) : '');

@@ -23,14 +23,14 @@ import { PaymentReceiptViewModal } from '../../../../components/common/PaymentRe
 import { fetchGivenRefunds, fetchCancelledReceipt, GivenRefundRow, GivenRefundsResult } from '../../../../services/customerDetailsService';
 import { exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport.lazy';
 import { PaymentReceipt } from '../../../../types';
-import { formatDate } from '../../../../utils';
+import { formatDate, wingLabel } from '../../../../utils';
 import DateInput from '../../../../components/common/DateInput';
 import { PENDING_APPROVALS_CHANGED } from '../../../../services/pendingApprovalsService';
 
 const rupee = (n: number): string => `₹${(n || 0).toLocaleString('en-IN')}`;
 const unitText = (r: GivenRefundRow): string => r.shop_no
   ? `${r.building_name || '—'} - Shop ${r.shop_no}`
-  : [r.building_name, r.wing_name ? `${r.wing_name} Wing` : '', r.flat_no ? `Flat ${r.flat_no}` : ''].filter(Boolean).join(' - ') || '—';
+  : [r.building_name, r.wing_name ? `${wingLabel(r.wing_name)}` : '', r.flat_no ? `Flat ${r.flat_no}` : ''].filter(Boolean).join(' - ') || '—';
 const errMessage = (e: unknown, fallback: string) =>
   (e as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
 
