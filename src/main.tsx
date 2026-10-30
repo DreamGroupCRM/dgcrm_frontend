@@ -30,6 +30,8 @@ import './styles/Responsive.css';
 import './index.css';
 // Phone layout rules (<640px) — last so they can override page styles.
 import './styles/mobile.css';
+// V_29.0 — chosen design direction (B), loaded last.
+import './styles/styleB.css';
 
 // Calendars take "today" from the server clock (see utils/serverTime.ts),
 // so sync it before the first render; capped at a few seconds so a slow

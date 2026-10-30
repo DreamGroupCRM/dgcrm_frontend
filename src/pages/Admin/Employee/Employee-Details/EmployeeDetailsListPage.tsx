@@ -85,24 +85,6 @@ const employeeStatusStyle = (emp: { status: EmployeeStatus; is_active: boolean }
 
 const initials = (first: string, last: string) => `${first?.[0] || ''}${last?.[0] || ''}`.toUpperCase();
 
-// V_26.0 — one tag per department. Each department keeps its own colour
-// (picked from its name) so it reads the same on every row and card.
-const DEPT_TONES: { light: [string, string]; dark: [string, string] }[] = [
-  { light: ['#e0f2fe', '#075985'], dark: ['#0c3a52', '#bae6fd'] },
-  { light: ['#fef3c7', '#92400e'], dark: ['#4a3410', '#fde68a'] },
-  { light: ['#ede9fe', '#5b21b6'], dark: ['#33245c', '#ddd6fe'] },
-  { light: ['#fee2e2', '#991b1b'], dark: ['#4c1d1d', '#fecaca'] },
-  { light: ['#dcfce7', '#166534'], dark: ['#173d26', '#bbf7d0'] },
-  { light: ['#fce7f3', '#9d174d'], dark: ['#4a1a33', '#fbcfe8'] },
-  { light: ['#e0e7ff', '#3730a3'], dark: ['#262c5c', '#c7d2fe'] },
-  { light: ['#ccfbf1', '#115e59'], dark: ['#123d3a', '#99f6e4'] },
-];
-const deptTone = (name: string, isDark: boolean) => {
-  let h = 0;
-  for (const ch of name.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  const tone = DEPT_TONES[h % DEPT_TONES.length];
-  return isDark ? tone.dark : tone.light;
-};
 
 /** Memberships for a row, falling back to the single primary department. */
 const membershipsOf = (emp: Employee): EmployeeMembership[] =>
@@ -111,23 +93,29 @@ const membershipsOf = (emp: Employee): EmployeeMembership[] =>
 
 const LEVEL_WORD = { head: 'Head', executive: 'Executive' } as const;
 
+// V_29.0 (E1, option 1) — one chip per department: "Department · Head" or
+// "Department · Executive", blue for a Head and purple for an Executive
+// (grey where the department has no level), with no separate HEAD/EXEC badge.
+const LEVEL_TONES = {
+  head: { light: ['#dbeafe', '#1d4ed8'], dark: ['rgba(59,130,246,0.22)', '#93c5fd'] },
+  executive: { light: ['#ede9fe', '#6d28d9'], dark: ['rgba(139,92,246,0.22)', '#c4b5fd'] },
+  none: { light: ['#f1f5f9', '#475569'], dark: ['rgba(148,163,184,0.18)', '#cbd5e1'] },
+} as const;
+
 const DeptTags: React.FC<{ emp: Employee; isDark: boolean; short?: boolean }> = ({ emp, isDark, short }) => {
   const list = membershipsOf(emp);
   if (!list.length) return <span>—</span>;
   return (
     <div className="flex flex-wrap" style={{ gap: 4 }}>
       {list.map((m, i) => {
-        const [bg, fg] = deptTone(m.department, isDark);
-        const role = short ? (m.level ? LEVEL_WORD[m.level] : m.designation) : m.designation;
+        const tone = LEVEL_TONES[m.level ?? 'none'];
+        const [bg, fg] = isDark ? tone.dark : tone.light;
+        const role = m.level ? LEVEL_WORD[m.level] : (short ? null : m.designation);
         return (
           <span key={`${m.department}-${i}`} className="inline-flex items-center rounded-full font-semibold"
-            style={{ background: bg, color: fg, fontSize: 10.5, padding: '2px 9px', gap: 5, whiteSpace: 'nowrap' }}>
+            title={m.designation ?? undefined}
+            style={{ background: bg, color: fg, fontSize: 11, padding: '2px 9px', whiteSpace: 'nowrap' }}>
             {role ? `${m.department} · ${role}` : m.department}
-            {!short && m.level && (
-              <span style={{ background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.8)', borderRadius: 999, padding: '0 6px', fontSize: 9, fontWeight: 800 }}>
-                {m.level === 'head' ? 'HEAD' : 'EXEC'}
-              </span>
-            )}
           </span>
         );
       })}
@@ -135,12 +123,20 @@ const DeptTags: React.FC<{ emp: Employee; isDark: boolean; short?: boolean }> = 
   );
 };
 
+const initialsOf = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
+const ReportsChip: React.FC<{ name: string; t: Theme }> = ({ name, t }) => (
+  <span className="inline-flex items-center" style={{ gap: 6 }}>
+    <span className="inline-flex items-center justify-center rounded-full" style={{ width: 20, height: 20, fontSize: 9, fontWeight: 800, background: t.insetBg, color: 'var(--brand-ink)', flexShrink: 0 }}>{initialsOf(name)}</span>
+    {name}
+  </span>
+);
+
 /** "Imran Test", or one line per department when they differ. */
 const ReportsTo: React.FC<{ emp: Employee; t: Theme }> = ({ emp, t }) => {
   const list = membershipsOf(emp).filter((m) => m.level !== 'head');
-  if (!list.length) return <span>{membershipsOf(emp).length ? 'Admin' : '—'}</span>;
+  if (!list.length) return membershipsOf(emp).length ? <ReportsChip name="Admin" t={t} /> : <span>—</span>;
   const names = list.map((m) => m.reports_to ?? 'Admin');
-  if (new Set(names).size === 1) return <span>{names[0]}</span>;
+  if (new Set(names).size === 1) return <ReportsChip name={names[0]} t={t} />;
   return (
     <div>
       {list.map((m, i) => (

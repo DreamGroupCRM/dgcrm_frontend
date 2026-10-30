@@ -56,6 +56,8 @@ import DateInput from '../../../../components/common/DateInput';
 import CallHistoryCard from '../../../../components/calls/CallHistoryCard';
 import { fetchCustomerCalls } from '../../../../services/callService';
 import { fetchRequestRecord, RequestRecord, rejectChangeRequest, approveChangeRequest } from '../../../../services/changeRequestsService';
+import { fetchCustomerDueGrid } from '../../../../services/paymentService';
+import { totalsFromDueGrid, BookingTotals } from '../../../Customer/CustomerPortalUi';
 import { ReviewBanner } from '../../../../components/approvals/ReviewBanner';
 
 type Mode = 'add' | 'edit' | 'view';
@@ -191,10 +193,10 @@ const calcAge = (dob: string): { years: number; months: number } | null => {
 // spacing before the fields grid below.
 const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; gradient: string; badge?: string }> = ({ icon, title, gradient, badge }) => (
   <div
-    className="flex items-center gap-2.5 -mt-5 -mx-5 sm:-mt-6 sm:-mx-6 mb-5 px-5 sm:px-6 py-3.5 rounded-t-2xl"
+    className="sec-b-head flex items-center gap-2.5 -mt-5 -mx-5 sm:-mt-6 sm:-mx-6 mb-5 px-5 sm:px-6 py-3.5 rounded-t-2xl"
     style={{ background: gradient }}
   >
-    <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.22)' }}>
+    <span className="sec-b-icon flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.22)' }}>
       {icon}
     </span>
     <h2 className="cust-section-title">{title}</h2>
@@ -1068,6 +1070,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
 
   // Set for a cancelled booking — shown on View Details (reason + documents).
   const [cancellation, setCancellation] = useState<CustomerFullDetail['cancellation']>(null);
+  // V_29.0 (style B) — View Customer's financial summary: the same figures
+  // as the customer's portal (flat cost, approved paid, pending, awaiting).
+  const [dueGrid, setDueGrid] = useState<Parameters<typeof totalsFromDueGrid>[0] | null>(null);
+  useEffect(() => {
+    if (!isView || !id) return;
+    let stale = false;
+    fetchCustomerDueGrid(id).then((g) => { if (!stale) setDueGrid(g as Parameters<typeof totalsFromDueGrid>[0]); }).catch(() => {});
+    return () => { stale = true; };
+  }, [isView, id]);
 
   useEffect(() => {
     if (!reviewId && (mode === 'add' || !id)) return;
@@ -1906,6 +1917,24 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 items-start">
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
             <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" gradient="var(--grad-green)" />
+            {dueGrid && (() => {
+              const money: BookingTotals = totalsFromDueGrid(dueGrid, totalCost);
+              const cost = money.totalCost;
+              const pct = cost > 0 ? Math.min(100, (money.paid / cost) * 100) : 0;
+              const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+              return (
+                <div style={{ marginBottom: 14 }}>
+                  <div className="b-money">
+                    <div><div className="l">Flat cost</div><div className="v">{inr(cost)}</div></div>
+                    <div><div className="l">Paid (approved)</div><div className="v" style={{ color: '#16a34a' }}>{inr(money.paid)}</div></div>
+                    <div><div className="l">Pending</div><div className="v" style={{ color: '#dc2626' }}>{inr(Math.max(0, cost - money.paid))}</div></div>
+                    {(money.awaiting ?? 0) > 0 && <div><div className="l">Awaiting approval</div><div className="v" style={{ color: '#b45309' }}>{inr(money.awaiting ?? 0)}</div></div>}
+                  </div>
+                  <div className="b-bar" role="img" aria-label={`${pct.toFixed(1)}% of the flat cost paid`}><i style={{ width: `${pct}%` }} /></div>
+                  <div className="b-cap">{pct.toFixed(1)}% paid</div>
+                </div>
+              );
+            })()}
             <div className="cust-view-grid">
               <ViewValue label="Total Cost" value={totalCost && `₹ ${totalCost}`} />
               <ViewValue label="Booking Date" value={bookingDate} />
