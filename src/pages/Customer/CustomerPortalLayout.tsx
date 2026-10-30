@@ -86,7 +86,20 @@ const BookingBoxes: React.FC = () => {
   const { bookings, selectedId, selectBooking } = useCustomerPortal();
   if (bookings.length === 0) return null;
   return (
-    <div className="cp-booking-boxes" role="tablist" aria-label="My bookings">
+    <>
+    {/* V_29.0 — on a phone the boxes cannot all fit; with two or more
+        bookings a drop-down is shown there instead (CustomerPortal.css). */}
+    {bookings.length > 1 && (
+      <select className="cp-booking-select" aria-label="Choose property" value={String(selectedId ?? '')}
+        onChange={(e) => { const b = bookings.find((x) => String(x.id) === e.target.value); if (b) selectBooking(b.id); }}>
+        {bookings.map((b) => (
+          <option key={b.id} value={String(b.id)}>
+            {b.customer_code} · {bookingLabel(b)}{b.is_cancelled ? ' (Cancelled)' : ''}
+          </option>
+        ))}
+      </select>
+    )}
+    <div className={`cp-booking-boxes${bookings.length > 1 ? ' cp-booking-boxes-multi' : ''}`} role="tablist" aria-label="My bookings">
       {bookings.map((b) => {
         const active = b.id === selectedId;
         return (
@@ -107,6 +120,7 @@ const BookingBoxes: React.FC = () => {
         );
       })}
     </div>
+    </>
   );
 };
 
