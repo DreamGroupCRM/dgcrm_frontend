@@ -48,20 +48,11 @@ export interface CallDevice {
   paused_until: string | null;
 }
 
-export interface CallWorkHours {
-  enabled: boolean;
-  /** 0 = Sunday … 6 = Saturday. */
-  days: number[];
-  start: string;
-  end: string;
-}
-
 export interface CallSyncSettings {
   pin_set: boolean;
   archive_after_months: number;
   delete_after_years: number;
   recording_days: number;
-  work_hours: CallWorkHours;
 }
 
 /** GET /api/leads/:id/calls */
@@ -96,13 +87,9 @@ export const saveCallSyncPin = async (pin: string): Promise<void> => {
 };
 
 /** PUT /api/call-sync/settings/retention — Admin only. */
-export const saveCallRetention = async (v: Omit<CallSyncSettings, 'pin_set' | 'work_hours'>): Promise<void> => {
+export const saveCallRetention = async (v: Omit<CallSyncSettings, 'pin_set'>): Promise<void> => {
   await axiosInstance.put('/call-sync/settings/retention', v);
 };
-
-/** PUT /api/call-sync/settings/work-hours — Admin only. Phones skip calls outside these hours. */
-export const saveCallWorkHours = async (v: CallWorkHours): Promise<CallWorkHours> =>
-  (await axiosInstance.put<{ data: CallWorkHours }>('/call-sync/settings/work-hours', v)).data.data;
 
 /**
  * URL an <audio> element can play. Like uploaded files, it carries the
