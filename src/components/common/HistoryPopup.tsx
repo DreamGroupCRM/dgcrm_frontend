@@ -78,10 +78,13 @@ export const HistoryCard: React.FC<{
   property: HistoryInfoItem[];
   extra?: { title: string; items: HistoryInfoItem[] };
   children: React.ReactNode;
-}> = ({ t, title, onClose, loading, customer, property, extra, children }) => (
+  /** V_29.0 — header buttons left of Close (e.g. Download History PDF). */
+  actions?: React.ReactNode;
+}> = ({ t, title, onClose, loading, customer, property, extra, children, actions }) => (
   <div className="rounded-2xl w-full" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-    <div className="flex items-center justify-between px-5 py-3.5" style={{ background: 'var(--grad-table-header)', borderRadius: '16px 16px 0 0' }}>
-      <div style={{ fontSize: 13.5, fontWeight: 800, color: '#fff' }}>{title}</div>
+    <div className="flex items-center justify-between gap-2 px-5 py-3.5" style={{ background: 'var(--grad-table-header)', borderRadius: '16px 16px 0 0' }}>
+      <div style={{ fontSize: 13.5, fontWeight: 800, color: '#fff', minWidth: 0 }}>{title}</div>
+      {actions && <div className="flex items-center gap-2" style={{ marginLeft: 'auto' }}>{actions}</div>}
       {onClose && (
         <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#fff', padding: 4, display: 'flex' }}>
           <MdClose size={20} />

@@ -1619,6 +1619,14 @@ const CustomerDetailsListPage: React.FC = () => {
                 property right), same as every other page. */}
             <HistoryCard t={t} title={`Payments History - Total Transaction (${(infoModal.payments || []).length})`}
               onClose={() => setInfoModal(null)} loading={infoModal.loading}
+              // V_29.0 (C5) — the same Payment History PDF as the row menu's Download.
+              actions={!infoModal.loading && (
+                <button type="button" onClick={() => handleDownloadPaymentHistoryPdf(infoModal.customer)}
+                  className="inline-flex items-center gap-1.5"
+                  style={{ background: 'rgba(255,255,255,0.18)', color: '#fff', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 9, padding: '5px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <MdDownload size={15} /> Download History
+                </button>
+              )}
               customer={customerInfoItems({
                 name: infoModal.customer.customer_name, code: infoModal.customer.customer_code,
                 mobile: infoModal.customer.mobile_number, email: infoModal.customer.email, address: infoModal.customer.address,
