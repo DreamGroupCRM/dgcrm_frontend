@@ -94,6 +94,25 @@ export async function fetchEmployeeIdsWithArea(area: AccessArea): Promise<Set<st
   return new Set(((res.data.data ?? []) as (number | string)[]).map(String));
 }
 
+/**
+ * V_29.0 — the employees `area` is open to, each with the department that
+ * opens it (and the designation held there), for picker labels such as
+ * "Recovery · Executive" on Customer Details instead of a first department.
+ */
+export interface AreaMember { id: number | string; department: string | null; designation: string | null; level: 'head' | 'executive' | null }
+
+export async function fetchEmployeesWithArea(area: AccessArea): Promise<Map<string, AreaMember>> {
+  const res = await axiosInstance.get('/access/employees', { params: { area, detail: 1 } });
+  return new Map(((res.data.data ?? []) as AreaMember[]).map((m) => [String(m.id), m]));
+}
+
+/** "Recovery · Executive", "Sales · Head", "Refund · Refund Executive"; '' when unknown. */
+export function areaRoleLabel(m: AreaMember | null | undefined): string {
+  if (!m?.department) return '';
+  const role = m.level === 'head' ? 'Head' : m.level === 'executive' ? 'Executive' : m.designation;
+  return [m.department, role].filter(Boolean).join(' · ');
+}
+
 export async function fetchAccessConfig(): Promise<ConfigDepartment[]> {
   const res = await axiosInstance.get('/access/config');
   return res.data.data.departments;

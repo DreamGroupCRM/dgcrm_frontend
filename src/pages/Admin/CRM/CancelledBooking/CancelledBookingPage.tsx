@@ -41,6 +41,7 @@ import {
 } from '../../../../services/customerDetailsService';
 import { fetchChangeRequests, approveChangeRequest, rejectChangeRequest, ChangeRequestRow } from '../../../../services/changeRequestsService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
+import { areaRoleLabel, fetchEmployeesWithArea } from '../../../../services/accessService';
 import { PENDING_APPROVALS_CHANGED } from '../../../../services/pendingApprovalsService';
 import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport.lazy';
 import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
@@ -123,8 +124,16 @@ const CancelledBookingPage: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await FetchEmployeeDetails(1, 1000, undefined, true);
-        if (res.success) setEmployees((res.rows ?? []).map((e) => ({ id: String(e.id), label: `${e.first_name} ${e.last_name ?? ''} (${e.employee_code})`.replace(/\s+/g, ' ') })));
+        // V_29.0 — only employees with Cancelled Booking (the Refund
+        // department), labelled with that role; everyone if that list fails.
+        const [res, withRefunds] = await Promise.all([
+          FetchEmployeeDetails(1, 1000, undefined, true),
+          fetchEmployeesWithArea('cancelled_booking').catch(() => null),
+        ]);
+        if (res.success) setEmployees((res.rows ?? []).filter((e) => !withRefunds || withRefunds.has(String(e.id))).map((e) => {
+          const role = areaRoleLabel(withRefunds?.get(String(e.id)));
+          return { id: String(e.id), label: `${e.first_name} ${e.last_name ?? ''} (${e.employee_code})${role ? ` — ${role}` : ''}`.replace(/\s+/g, ' ') };
+        }));
       } catch { /* employee filter/assign stay empty */ }
     })();
   }, []);
@@ -335,8 +344,12 @@ const CancelledBookingPage: React.FC = () => {
   const [refundEmployees, setRefundEmployees] = useState<{ id: string; label: string }[]>([]);
   useEffect(() => {
     if (!canAssignRefund) return;
-    fetchRefundEmployees()
-      .then((list) => setRefundEmployees(list.map((e) => ({ id: e.id, label: `${e.name}${e.code ? ` (${e.code})` : ''}` }))))
+    // V_29.0 — label each with the role that gives refunds ("Refund · Refund Executive").
+    Promise.all([fetchRefundEmployees(), fetchEmployeesWithArea('cancelled_booking').catch(() => null)])
+      .then(([list, roles]) => setRefundEmployees(list.map((e) => {
+        const role = areaRoleLabel(roles?.get(String(e.id)));
+        return { id: e.id, label: `${e.name}${e.code ? ` (${e.code})` : ''}${role ? ` — ${role}` : ''}` };
+      })))
       .catch(() => { /* picker stays empty */ });
   }, [canAssignRefund]);
   const [selected, setSelected] = useState<Set<string>>(new Set());

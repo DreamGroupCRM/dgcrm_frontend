@@ -20,7 +20,7 @@ import { phoneNumberError } from '../../utils/phoneValidation';
 import {
   fetchLeadById, createLead, updateLead, assignLead, fetchLeadActivities, addLeadComment,
 } from '../../services/leadService';
-import { fetchEmployeeIdsWithArea } from '../../services/accessService';
+import { areaRoleLabel, fetchEmployeesWithArea } from '../../services/accessService';
 import { FetchEmployeeDetails } from '../../services/employeeDetailsService';
 import { useAccessProfile } from '../../hooks/useAccessProfile';
 import { Lead, LeadActivity, LeadStatus, LEAD_STATUSES, LEAD_STATUS_LABELS, CreateLeadPayload } from '../../types/index';
@@ -186,11 +186,15 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
     }
     // V_26.0 — only employees whose department has Leads (Sales), not e.g.
     // Recovery; if that list can't load, everyone is offered as before.
-    Promise.all([FetchEmployeeDetails(1, 500, undefined, true), fetchEmployeeIdsWithArea('leads').catch(() => null)])
+    // V_29.0 — each name shows the Sales role that gives Leads ("Sales · Head").
+    Promise.all([FetchEmployeeDetails(1, 500, undefined, true), fetchEmployeesWithArea('leads').catch(() => null)])
       .then(([res, withLeads]) => {
         if (res.success) setEmployeeOptions(res.rows
           .filter((e) => !withLeads || withLeads.has(String(e.id)))
-          .map((e) => ({ id: e.id, name: `${e.first_name} ${e.last_name}`.trim() })));
+          .map((e) => {
+            const role = areaRoleLabel(withLeads?.get(String(e.id)));
+            return { id: e.id, name: `${`${e.first_name} ${e.last_name}`.trim()}${role ? ` — ${role}` : ''}` };
+          }));
       })
       .catch(() => { /* dropdown staying empty is a harmless degrade */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
