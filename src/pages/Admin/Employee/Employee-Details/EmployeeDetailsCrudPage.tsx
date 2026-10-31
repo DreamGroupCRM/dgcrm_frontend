@@ -18,7 +18,7 @@ import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
 import DocumentViewerModal from '../../../../components/common/DocumentViewerModal';
 import { previewKindFor, downloadDocument } from '../../../../services/documentService';
 import {
-  ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee, normalizeEmployee,
+  ViewEmployee, fetchNextEmployeeCode, createEmployee, EditEmployee, normalizeEmployee, previewCustomerRelease,
   fetchEmployeePermissions,
   EmployeeFormValues, EmployeeFileValues, EmployeeStatus, EMPLOYEE_FILE_FIELD_MAP,
 } from '../../../../services/employeeDetailsService';
@@ -26,7 +26,7 @@ import { fetchDraft, saveDraft } from '../../../../services/draftsService';
 import { FetchDepartmentList } from '../../../../services/departmentService';
 import { fetchDesignationList } from '../../../../services/designationService';
 import { fetchMappingMatrix } from '../../../../services/moduleActionService';
-import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
+import { readDocumentText, extractAadharNumber, extractPanNumber, notReadMessage } from '../../../../utils/ocr';
 import { DobPicker } from '../../../../components/common/DobPicker';
 import { TimePicker } from '../../../../components/common/TimePicker';
 import { PhoneInput } from '../../../../components/common/PhoneInput';
@@ -45,6 +45,7 @@ import { useAppSelector } from '../../../../hooks';
 import { fetchAccessConfig, fetchDepartmentHeads, ConfigDepartment, TeamMember, DesignationLevel, AccessArea } from '../../../../services/accessService';
 import DateInput from '../../../../components/common/DateInput';
 import { serverTodayYmd } from '../../../../utils/serverTime';
+import { confirmCustomerRelease } from '../../../../utils/customerRelease';
 
 // Employee Status badge colors for View mode — same palette as
 // EmployeeDetailsListPage.tsx's STATUS_STYLES, kept as its own small local
@@ -189,10 +190,10 @@ const compactINR = (v: string): string => {
 // spacing before the fields grid below.
 const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; gradient: string }> = ({ icon, title, gradient }) => (
   <div
-    className="flex items-center gap-2.5 -mt-5 -mx-5 sm:-mt-6 sm:-mx-6 mb-5 px-5 sm:px-6 py-3.5 rounded-t-2xl"
+    className="sec-b-head flex items-center gap-2.5 -mt-5 -mx-5 sm:-mt-6 sm:-mx-6 mb-5 px-5 sm:px-6 py-3.5 rounded-t-2xl"
     style={{ background: gradient }}
   >
-    <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.22)' }}>
+    <span className="sec-b-icon flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.22)' }}>
       {icon}
     </span>
     <h2 className="emp-section-title">{title}</h2>
@@ -754,6 +755,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // permissions) are not shown to them.
   const actorRole = useAppSelector((st) => st.auth.role);
   const actorIsAdmin = actorRole === 'admin' || actorRole === 'superadmin';
+  const deptLockedForHr = !actorIsAdmin && mode === 'edit';
   const actorIsSuperAdmin = actorRole === 'superadmin';
   // V_26.0 — ?review=<request id> (Admin): the form opens filled with HR's
   // add / edit request; saving approves it with any changes made here.
@@ -881,10 +883,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     setFile('aadhar_card')(f);
     if (!(f instanceof File)) return;
     setOcrRunning('aadhar');
-    runOcr(f).then((text) => {
+    readDocumentText(f).then(({ text, problem }) => {
       const number = extractAadharNumber(text);
-      if (number) { set('aadhar_number', number); toast.success('Aadhar number auto-filled from the photo — please verify it.'); }
-      else toast.info('Could not read an Aadhar number from that photo — please enter it manually.');
+      if (number) { set('aadhar_number', number); toast.success('Aadhar number auto-filled from the document — please verify it.'); }
+      else toast.info(notReadMessage('an Aadhar', f, problem));
     }).finally(() => setOcrRunning(null));
   };
 
@@ -892,10 +894,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     setFile('pan_card')(f);
     if (!(f instanceof File)) return;
     setOcrRunning('pancard');
-    runOcr(f).then((text) => {
+    readDocumentText(f).then(({ text, problem }) => {
       const number = extractPanNumber(text);
-      if (number) { set('pan_number', number); toast.success('PAN number auto-filled from the photo — please verify it.'); }
-      else toast.info('Could not read a PAN number from that photo — please enter it manually.');
+      if (number) { set('pan_number', number); toast.success('PAN number auto-filled from the document — please verify it.'); }
+      else toast.info(notReadMessage('a PAN', f, problem));
     }).finally(() => setOcrRunning(null));
   };
 
@@ -1128,8 +1130,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         } else {
           toast.error('Failed to load employee details.');
         }
-      } catch {
-        toast.error(reviewId ? 'This request could not be opened. It may already be approved or rejected.' : 'Failed to load employee details.');
+      } catch (e) {
+        toast.error(reviewId ? (e instanceof Error && /^This request was already/.test(e.message) ? e.message : 'This request could not be opened. It may already be approved or rejected.') : 'Failed to load employee details.');
+        if (reviewId) navigate(afterReview);
       } finally {
         setFetching(false);
       }
@@ -1395,16 +1398,27 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         can_add_customer: isHeadAnywhere && form.can_add_customer,
       };
       let pending = false;
+      // V_29.0 (E4) — when the Admin's change takes away a Head role (or
+      // Customer Details), the customers it leaves behind are shown first;
+      // they become Unassigned only if the Admin goes ahead.
+      let releaseCustomers = false;
+      if (mode === 'edit' && id && actorIsAdmin) {
+        const impact = await previewCustomerRelease(id, { department_ids: payload.department_ids, designation_ids: payload.designation_ids, is_active: payload.is_active });
+        if (impact) {
+          if (!(await confirmCustomerRelease(impact))) return;
+          releaseCustomers = true;
+        }
+      }
       if (reviewId) {
         // V_26.0 — this save approves HR's request (with any changes made here).
-        if (mode === 'edit' && id) await EditEmployee(id, payload, files, reviewId);
+        if (mode === 'edit' && id) await EditEmployee(id, payload, files, reviewId, releaseCustomers);
         else await createEmployee(payload, files, null, reviewId);
         showAlert.approved(mode === 'edit' ? 'The employee changes were approved.' : 'The new employee was approved and added.');
         navigate(afterReview);
         return;
       }
       if (mode === 'edit' && id) {
-        const res = await EditEmployee(id, payload, files);
+        const res = await EditEmployee(id, payload, files, null, releaseCustomers);
         pending = Boolean(res.pending);
         if (pending) showAlert.pendingApproval('The employee changes were saved successfully.');
         else toast.success('Employee updated successfully.');
@@ -1890,10 +1904,19 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* V_25.0 — one row: Department | Designation | Reporting Head (the
             Head list sits right beside the designation, not in a separate
             block below); then the Access Summary in two lines. */}
+        {/* V_29.0 — after an employee exists only the Admin changes their
+            department or designation; HR sees them locked (the server refuses
+            such a change too). On Add, HR picks them and the Admin can correct
+            them while approving. */}
+        {deptLockedForHr && (
+          <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 8 }}>
+            Department and designation can only be changed by the Admin.
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
           <div className="emp-assign-box">
             <CheckboxGroup
-              t={t} isView={isView}
+              t={t} isView={isView || deptLockedForHr}
               label="Assign Departments" required
               options={departmentOptions} selected={form.department_ids}
               onToggle={toggleDepartment}
@@ -1903,7 +1926,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
           <div className="emp-assign-box">
             <GroupedDesignationChecklist
-              t={t} isView={isView}
+              t={t} isView={isView || deptLockedForHr}
               required={deptRoles.length === 0 || deptRoles.some((r) => r.designationRequired && r.hasDesignations)}
               options={visibleDesignationOptions} departmentOptions={departmentOptions} selected={form.designation_ids}
               onToggle={selectDesignation}

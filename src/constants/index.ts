@@ -2,7 +2,7 @@
 // DREAM GROUP CRM - CONSTANTS
 // ==========================================
 
-export const APP_NAME = 'Dream Group CRM';
+export const APP_NAME = 'Dream Group';
 export const APP_SUBTITLE = 'Interest Free Home For All Community People';
 export const APP_TAGLINE = 'Building Dreams. Building A Better Future.';
 
@@ -126,7 +126,7 @@ export const ROUTES = {
   // now — nothing renders at those paths as their own page any more.
   CUSTOMER: {
     ROOT: '/customer',
-    LOGIN: '/customer/login',
+    LOGIN: '/login', // V_29.0 — one login page for staff and customers
     // Kept so older links and bookmarks still land somewhere — it now
     // redirects to HOME, which replaced the single scrolling dashboard.
     DASHBOARD: '/customer/dashboard',

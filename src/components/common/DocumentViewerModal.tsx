@@ -31,6 +31,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { CircularProgress } from '@mui/material';
 import { MdClose, MdDownload, MdDescription, MdErrorOutline } from 'react-icons/md';
 import { AppTheme } from '../../styles/theme';
+import { useAccessProfile } from '../../hooks/useAccessProfile';
 import {
   fetchDocument, saveBlob, previewKindFor, extensionLabel, formatBytes, downloadNameFor,
   PreviewKind,
@@ -43,6 +44,8 @@ export interface DocumentViewerModalProps {
   /** Served path from resolveFileUrl(). */
   url: string;
   onClose: () => void;
+  /** V_29.0 (H3) — a file picked but not saved yet: shown from the browser, nothing is fetched. */
+  file?: File | null;
 }
 
 type State =
@@ -50,10 +53,13 @@ type State =
   | { phase: 'ready'; objectUrl: string; blob: Blob; size: number }
   | { phase: 'error'; message: string };
 
-const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url, onClose }) => {
+const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url, onClose, file }) => {
   const [state, setState] = useState<State>({ phase: 'loading' });
-  const kind: PreviewKind = previewKindFor(url);
-  const ext = extensionLabel(url);
+  // V_29.0 (I) — a Recovery Executive may view customer documents, not save them.
+  const { profile } = useAccessProfile();
+  const viewOnly = Boolean(profile?.documents_view_only) && /\/files\/customers\//.test(url);
+  const kind: PreviewKind = previewKindFor(file ? file.name : url);
+  const ext = extensionLabel(file ? file.name : url);
   // Held in a ref as well as in state so cleanup can revoke it without
   // having to re-run the effect when state changes.
   const objectUrlRef = useRef<string | null>(null);
@@ -63,7 +69,9 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url
     let cancelled = false;
     setState({ phase: 'loading' });
 
-    fetchDocument(url, controller.signal)
+    (file
+      ? Promise.resolve({ objectUrl: URL.createObjectURL(file), blob: file as Blob, size: file.size })
+      : fetchDocument(url, controller.signal))
       .then(({ objectUrl, blob, size }) => {
         if (cancelled) { URL.revokeObjectURL(objectUrl); return; }
         objectUrlRef.current = objectUrl;
@@ -91,7 +99,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url
         objectUrlRef.current = null;
       }
     };
-  }, [url]);
+  }, [url, file]);
 
   // Escape closes, matching the app's other modals.
   useEffect(() => {
@@ -102,7 +110,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url
 
   const handleDownload = useCallback(() => {
     if (state.phase !== 'ready') return;
-    saveBlob(state.blob, downloadNameFor(label, url));
+    saveBlob(state.blob, file ? file.name : downloadNameFor(label, url));
   }, [state, label, url]);
 
   const body = () => {
@@ -161,16 +169,16 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url
         </div>
         <p style={{ fontSize: 12.5, color: t.textSecondary, margin: 0, maxWidth: 380 }}>
           {ext ? `${ext} files` : 'Files of this type'} cannot be previewed in the browser.
-          Download the file to open it in the application it belongs to.
+          {viewOnly ? ' Please ask your Head or the Admin for a copy.' : ' Download the file to open it in the application it belongs to.'}
         </p>
-        <button
+        {!viewOnly && <button
           type="button"
           onClick={handleDownload}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl"
           style={{ background: 'var(--brand-gradient)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700 }}
         >
           <MdDownload size={15} /> Download
-        </button>
+        </button>}
       </div>
     );
   };
@@ -197,7 +205,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url
             {label}{ext ? <span style={{ fontWeight: 600, color: t.textMuted }}> · {ext}</span> : null}
           </h3>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button
+            {!viewOnly && <button
               type="button"
               onClick={handleDownload}
               disabled={state.phase !== 'ready'}
@@ -205,7 +213,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ t, label, url
               style={{ background: t.insetBg, color: t.textPrimary, border: `1px solid ${t.surfaceBorder}`, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
             >
               <MdDownload size={14} /> Download
-            </button>
+            </button>}
             <button
               type="button"
               onClick={onClose}

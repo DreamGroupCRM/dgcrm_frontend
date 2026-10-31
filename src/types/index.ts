@@ -487,6 +487,8 @@ export interface BuildingFlat {
   // separate admin-controlled Enabled/Disabled toggle).
   booked_by_customer_id?  : string | null;
   booked_by_customer_name?: string | null;
+  /** V_29.0 (G1) — ever booked (cancelled too): may be disabled, never deleted. */
+  has_history?: boolean;
 }
 
 export interface BuildingFloor {
@@ -540,6 +542,9 @@ export interface Building {
   // auto-derive Add Payment's Company field.
   business_company_id?: number | null;
   business_company_name?: string | null;
+  // V_29.0 — current bank account for new payments, and its label.
+  bank_id?: number | null;
+  bank_name?: string | null;
   is_active    : boolean;
   created_at   : string;
   updated_at?  : string;
@@ -592,6 +597,7 @@ export interface CreateBuildingPayload {
   has_parking  : boolean;
   parking_count: number | null;
   business_company_id: number | null;
+  bank_id: number | null;
   is_active    : boolean;
 }
 
@@ -654,6 +660,8 @@ export interface Customer {
 
   building_id                    : string;
   building_name                   : string;
+  /** V_29.0 (J4) — the booked building's location. */
+  location?                       : string;
   wing_id?                         : string;
   wing_name                         : string;
   flat_id?                           : string;
@@ -837,6 +845,8 @@ export interface CustomerSchemeCustomerInfo {
   address        : string | null;
   customer_image : string | null;
   building_name  : string | null;
+  /** V_29.0 (J4) — the booked building's location. */
+  building_location?: string | null;
   wing_name      : string | null;
   flat_no        : string | null;
   flat_type      : string | null;

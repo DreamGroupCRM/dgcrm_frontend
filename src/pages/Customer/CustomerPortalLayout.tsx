@@ -16,7 +16,7 @@
 // `mobileOpen` slides in and a scrim closes. Sharing one flag between the
 // two made "collapsed on desktop" reopen as "drawer open" on rotate.
 import React, { Suspense, useEffect, useState } from 'react';
-import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { CircularProgress } from '@mui/material';
 import {
   MdMenu, MdClose, MdLogout, MdLockOutline, MdHome, MdHistory,
@@ -33,6 +33,7 @@ import ChangePasswordForm from '../../components/common/ChangePasswordForm';
 import { ensureFileToken } from '../../services/fileAccessService';
 import { CustomerPortalProvider, useCustomerPortal, bookingLabel } from './CustomerPortalContext';
 import './CustomerPortal.css';
+import { reloadToLogin } from '../../services/axiosConfig';
 
 // V_24.0 — five sections reduced to three: Payment Receipt merged into
 // Payment History (see CustomerPaymentHistoryPage's own header comment),
@@ -85,7 +86,20 @@ const BookingBoxes: React.FC = () => {
   const { bookings, selectedId, selectBooking } = useCustomerPortal();
   if (bookings.length === 0) return null;
   return (
-    <div className="cp-booking-boxes" role="tablist" aria-label="My bookings">
+    <>
+    {/* V_29.0 — on a phone the boxes cannot all fit; with two or more
+        bookings a drop-down is shown there instead (CustomerPortal.css). */}
+    {bookings.length > 1 && (
+      <select className="cp-booking-select" aria-label="Choose property" value={String(selectedId ?? '')}
+        onChange={(e) => { const b = bookings.find((x) => String(x.id) === e.target.value); if (b) selectBooking(b.id); }}>
+        {bookings.map((b) => (
+          <option key={b.id} value={String(b.id)}>
+            {b.customer_code} · {bookingLabel(b)}{b.is_cancelled ? ' (Cancelled)' : ''}
+          </option>
+        ))}
+      </select>
+    )}
+    <div className={`cp-booking-boxes${bookings.length > 1 ? ' cp-booking-boxes-multi' : ''}`} role="tablist" aria-label="My bookings">
       {bookings.map((b) => {
         const active = b.id === selectedId;
         return (
@@ -106,12 +120,12 @@ const BookingBoxes: React.FC = () => {
         );
       })}
     </div>
+    </>
   );
 };
 
 const CustomerPortalShell: React.FC = () => {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const location = useLocation();
   const { t, cssVars } = useAppearanceTokens();
   const { loading, error, detailError, reload, bookings, detail, selected } = useCustomerPortal();
@@ -147,7 +161,7 @@ const CustomerPortalShell: React.FC = () => {
 
   const handleLogout = async () => {
     await dispatch(logoutThunk());
-    navigate(ROUTES.CUSTOMER.LOGIN, { replace: true });
+    reloadToLogin();
   };
 
   // The appearance hook's cssVars only carries the BRAND tokens
@@ -176,7 +190,7 @@ const CustomerPortalShell: React.FC = () => {
           <div className="cp-brand">
             <Logo size={28} />
             <span className="cp-brand-text">
-              <span className="cp-brand-line1">DGCRM</span>
+              <span className="cp-brand-line1">Dream Group</span>
               <span className="cp-brand-line2">Customer Portal</span>
             </span>
           </div>

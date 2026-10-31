@@ -10,7 +10,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from '@/utils/toast';
 import { MdCheckCircle, MdCancel, MdClose } from 'react-icons/md';
-import { showAlert, formatLastLogin } from '../../utils';
+import { toLocalYmd, showAlert, formatLastLogin } from '../../utils';
 import { ROUTES } from '../../constants';
 import DocumentViewerModal from '../common/DocumentViewerModal';
 import DateInput from '../common/DateInput';
@@ -85,8 +85,10 @@ const DATE_FIELDS = ['date_of_birth', 'joining_date'];
 const docFieldsFor = (row: ChangeRequestRow): [string, string][] => row.module === 'employee'
   ? Object.entries(EMPLOYEE_DOC_FIELDS).map(([field, key]) => [field, fieldLabel(key)])
   : CUSTOMER_DOC_FIELDS.map((k) => [k, fieldLabel(k)]);
+// V_29.0 (F1) — not for a change to an existing customer: that is approved as sent.
 export const canAdminEdit = (row: ChangeRequestRow) =>
-  (row.module === 'customer' || row.module === 'employee') && (row.action === 'create' || row.action === 'edit') && row.status === 'pending';
+  (row.module === 'customer' || row.module === 'employee') && (row.action === 'create' || row.action === 'edit') && row.status === 'pending'
+  && !(row.module === 'customer' && row.action === 'edit');
 export const AdminEditForm: React.FC<{ t: AppTheme; row: ChangeRequestRow; onSaved: (adminValues: Record<string, unknown>) => void; onCancel: () => void }> = ({ t, row, onSaved, onCancel }) => {
   // An edit starts from the record as it is now, so unchanged details show too.
   const current = { ...(row.action === 'edit' ? row.old_values ?? {} : {}), ...row.new_values, ...(row.admin_values ?? {}) };
@@ -102,7 +104,7 @@ export const AdminEditForm: React.FC<{ t: AppTheme; row: ChangeRequestRow; onSav
     if (saving) return;
     // Only what the Admin actually changed is sent.
     const changed = Object.fromEntries(Object.entries(fields).filter(([k, v]) =>
-      DATE_FIELDS.includes(k) ? v.slice(0, 10) !== asText(current[k]).slice(0, 10) : v !== asText(current[k])));
+      DATE_FIELDS.includes(k) ? toLocalYmd(v) !== toLocalYmd(asText(current[k])) : v !== asText(current[k])));
     if (Object.keys(changed).length === 0 && Object.keys(files).length === 0) { toast.error('Nothing changed.'); return; }
     setSaving(true);
     try {
@@ -136,7 +138,7 @@ export const AdminEditForm: React.FC<{ t: AppTheme; row: ChangeRequestRow; onSav
                 <option value="">—</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
               </select>
             ) : DATE_FIELDS.includes(k) ? (
-              <DateInput t={t} value={fields[k].slice(0, 10)} max={k === 'date_of_birth' ? serverTodayYmd() : undefined} onChange={(v) => setFields((f) => ({ ...f, [k]: v }))} style={input} />
+              <DateInput t={t} value={toLocalYmd(fields[k])} max={k === 'date_of_birth' ? serverTodayYmd() : undefined} onChange={(v) => setFields((f) => ({ ...f, [k]: v }))} style={input} />
             ) : (
               <input value={fields[k]} onChange={(e) => setFields((f) => ({ ...f, [k]: e.target.value }))} style={input} />
             )}

@@ -773,3 +773,54 @@ html.dark .cp-empty-error, html.dark .cp-doc-card-pdf { color: #fca5a5; }
 html.dark .cp-cancelled-banner { color: #fff; background: rgba(185, 28, 28, 0.35); border-color: rgba(248, 113, 113, 0.5); }
 
 html.dark .cp-awaiting-note { color: #fcd34d !important; }
+
+/* V_29.0 — the logo's 'screen' blend (made for dark backgrounds) hid it on
+   the light sidebar; multiply keeps it visible there. */
+.cp-brand img { mix-blend-mode: multiply !important; }
+html.dark .cp-brand img { mix-blend-mode: screen !important; }
+
+/* V_29.0 (C4) — a cancelled booking's refund figures, one line at the top
+   of Payment History (replaces the separate Cancellation Details box). */
+.cp-cancel-note {
+  margin-bottom: 12px; padding: 10px 14px; border-radius: 12px; font-size: 12.5px; line-height: 1.5;
+  color: var(--cp-text-primary, #111827); background: #fff7ed; border: 1px solid #fed7aa;
+}
+html.dark .cp-cancel-note { background: rgba(234, 88, 12, 0.15); border-color: rgba(251, 146, 60, 0.45); }
+
+/* V_29.0 — two or more bookings: chips on wider screens, a drop-down on a
+   phone (the chip row hid every booking but the first off-screen). */
+.cp-booking-select { display: none; }
+@media (max-width: 640px) {
+  .cp-booking-boxes-multi { display: none; }
+  .cp-booking-select {
+    display: block; min-width: 0; flex: 1 1 auto; max-width: 100%;
+    height: 38px; padding: 0 28px 0 10px; border-radius: 10px; font: inherit; font-size: 12.5px; font-weight: 700;
+    color: #fff; background: var(--brand-gradient, #0f766e); border: none;
+    text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+  }
+  .cp-booking-select option { color: #111827; background: #fff; }
+}
+
+/* V_29.0 — Home, design B: progress card + recent payments timeline */
+.cp-progress-card { padding: 14px 16px; display: grid; gap: 10px; }
+.cp-progress-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-end; }
+.cp-k { font-size: 11.5px; color: var(--cp-text-secondary, #6b7280); }
+.cp-big { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--cp-text-primary, #111827); }
+.cp-good { color: #15803d; }
+html.dark .cp-good { color: #4ade80; }
+.cp-progress { height: 10px; border-radius: 999px; background: var(--cp-surface-border, #e5e7eb); overflow: hidden; }
+.cp-progress > i { display: block; height: 100%; background: #16a34a; border-radius: 999px; }
+.cp-progress-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--cp-text-secondary, #6b7280); font-variant-numeric: tabular-nums; }
+.cp-timeline { display: grid; }
+.cp-tl-row { display: grid; grid-template-columns: 12px 1fr auto; gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px dashed var(--cp-surface-border, #e5e7eb); }
+.cp-tl-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: #16a34a; }
+.cp-tl-dot.wait { background: #d97706; }
+.cp-tl-main { display: grid; gap: 2px; min-width: 0; }
+.cp-tl-title { font-size: 13px; font-weight: 600; color: var(--cp-text-primary, #111827); }
+.cp-tl-wait { color: #b45309; font-weight: 700; }
+html.dark .cp-tl-wait { color: #fcd34d; }
+.cp-tl-amt { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--cp-text-primary, #111827); white-space: nowrap; }
+.cp-tl-all { justify-self: end; margin-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--brand-ink, #0f766e); text-decoration: none; }
+.cp-tl-all:hover, .cp-tl-all:focus-visible { text-decoration: underline; }
+.cp-call-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 4px 10px; border-radius: 9px; font-size: 12px; font-weight: 700;
+  color: var(--brand-ink, #0f766e); border: 1px solid var(--cp-surface-border, #e5e7eb); text-decoration: none; }

@@ -72,6 +72,19 @@ export const clearStoredSession = (): void => {
   localStorage.removeItem(STORAGE_KEYS.FILE_TOKEN);
 };
 
+/**
+ * V_29.0 (A4) — ends a logout with a full page load of the login page, so
+ * nothing the previous user saw (dashboard figures, cached lists, the
+ * access profile) stays in this tab's memory. `code` leaves a reason for
+ * the login page to show once.
+ */
+export const reloadToLogin = (code?: string): void => {
+  if (code) setLogoutReason(code);
+  clearStoredSession();
+  try { localStorage.removeItem('dgcrm.portal.booking'); } catch { /* storage blocked */ }
+  window.location.replace('/login');
+};
+
 /** Records why the session ended, for the login page to show once. */
 export const setLogoutReason = (code: string | undefined): void => {
   const message = (code && LOGOUT_MESSAGES[code]) || LOGOUT_MESSAGES.SESSION_IDLE;

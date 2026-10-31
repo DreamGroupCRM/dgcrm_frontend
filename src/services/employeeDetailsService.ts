@@ -29,6 +29,7 @@
 
 import axiosInstance from './axiosConfig';
 import { compressImageFile } from '../utils/imageCompression';
+import { toLocalYmd } from '../utils';
 
 // Sent as a custom request header on every call below, and echoed back by
 // the backend as a response header (see employees.controller.ts) — same
@@ -148,8 +149,8 @@ export const normalizeEmployee = (raw: Record<string, unknown>): Employee => ({
   // date input silently rejects and renders blank instead. Same issue (and
   // fix) for joining_date, which was resetting on every View/Edit for the
   // same reason.
-  date_of_birth: raw.date_of_birth ? String(raw.date_of_birth).slice(0, 10) : '',
-  joining_date: raw.joining_date ? String(raw.joining_date).slice(0, 10) : '',
+  date_of_birth: toLocalYmd(raw.date_of_birth as string | null),
+  joining_date: toLocalYmd(raw.joining_date as string | null),
 });
 
 export interface EmployeeListSummary {
@@ -448,8 +449,11 @@ export const EditEmployee = async (
   values: EmployeeFormValues,
   files: EmployeeFileValues,
   approveRequestId?: string | null,
+  releaseCustomers = false,
 ): Promise<EmployeeSingleResponse> => {
-  const res = await axiosInstance.put(`/employees/${id}`, toBackendEmployeeFormData(await buildEmployeeFormData(values, files)), {
+  const body = toBackendEmployeeFormData(await buildEmployeeFormData(values, files));
+  if (releaseCustomers) body.append('release_customers', 'true');
+  const res = await axiosInstance.put(`/employees/${id}`, body, {
     headers: { 'Content-Type': 'multipart/form-data', [API_NAME_HEADER]: 'EditEmployee' },
     params: approveRequestId ? { approve_request: approveRequestId } : undefined,
   });
@@ -458,11 +462,26 @@ export const EditEmployee = async (
   return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };
 };
 
+// ── V_29.0 (E4) — customers an Admin's edit would release ──────────────────
+type ReleasedItem = { id: number; customer_code: string | null; name: string };
+export interface CustomerReleaseImpact {
+  reason: string; customers: ReleasedItem[]; refund_cases: ReleasedItem[];
+  pending_requests: number; open_tasks: number;
+}
+/** POST /api/employees/:id/customer-release-preview — null when the change releases nothing. */
+export const previewCustomerRelease = async (
+  id: string, change: { department_ids?: number[]; designation_ids?: number[]; is_active?: boolean; deleting?: boolean },
+): Promise<CustomerReleaseImpact | null> => {
+  const res = await axiosInstance.post(`/employees/${id}/customer-release-preview`, change);
+  return res.data?.data ?? null;
+};
+
 // ── Delete employee ──────────────────────────────────────────────────────────
 /** DELETE /api/employees/:id */
-export const DeleteEmployee = async (id: string): Promise<EmployeeDeleteResponse> => {
+export const DeleteEmployee = async (id: string, releaseCustomers = false): Promise<EmployeeDeleteResponse> => {
   const res = await axiosInstance.delete(`/employees/${id}`, {
     headers: { [API_NAME_HEADER]: 'DeleteEmployee' },
+    params: releaseCustomers ? { release_customers: true } : undefined,
   });
   return res.data;
 };
@@ -472,8 +491,8 @@ export const DeleteEmployee = async (id: string): Promise<EmployeeDeleteResponse
 // employees.repository.ts's setEmployeeActiveStatus), so deactivating here
 // actually blocks that employee's login, not just hides them from lists.
 /** PATCH /api/employees/:id/active-status */
-export const SetEmployeeActiveStatus = async (id: string, is_active: boolean): Promise<EmployeeSingleResponse> => {
-  const res = await axiosInstance.patch(`/employees/${id}/active-status`, { is_active }, {
+export const SetEmployeeActiveStatus = async (id: string, is_active: boolean, releaseCustomers = false): Promise<EmployeeSingleResponse> => {
+  const res = await axiosInstance.patch(`/employees/${id}/active-status`, { is_active, ...(releaseCustomers ? { release_customers: true } : {}) }, {
     headers: { [API_NAME_HEADER]: 'SetEmployeeActiveStatus' },
   });
   return { success: res.data.success, message: res.data.message, data: normalizeEmployee(res.data.data) };

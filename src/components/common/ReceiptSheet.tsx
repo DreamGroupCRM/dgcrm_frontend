@@ -18,7 +18,7 @@ import React from 'react';
 // has a black background that shows as a box on a white receipt).
 import logoUrl from '../../assets/images/favicon_logo.png';
 import { PaymentReceipt } from '../../types/index';
-import { numberToIndianWords } from '../../utils';
+import { numberToIndianWords, toLocalYmd } from '../../utils';
 import { paymentForLabel } from '../../services/paymentService';
 
 export const RECEIPT_SHEET_WIDTH = 840;
@@ -51,12 +51,12 @@ const VALUE_FONT = 'Arial, Helvetica, sans-serif';
 const amountText = (n: number): string => Math.round(n || 0).toLocaleString('en-IN');
 const formatDMY = (iso: string | null | undefined): string => {
   if (!iso) return '';
-  const [y, m, d] = iso.slice(0, 10).split('-');
+  const [y, m, d] = toLocalYmd(iso).split('-');
   return y && m && d ? `${d}/${m}/${y}` : '';
 };
 const monthYear = (iso: string | null | undefined): string => {
   if (!iso) return '';
-  const [y, m] = iso.slice(0, 7).split('-');
+  const [y, m] = toLocalYmd(iso).slice(0, 7).split('-');
   const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return y && m ? `${names[Number(m) - 1]} ${y}` : '';
 };

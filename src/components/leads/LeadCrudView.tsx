@@ -24,7 +24,7 @@ import { fetchEmployeeIdsWithArea } from '../../services/accessService';
 import { FetchEmployeeDetails } from '../../services/employeeDetailsService';
 import { useAccessProfile } from '../../hooks/useAccessProfile';
 import { Lead, LeadActivity, LeadStatus, LEAD_STATUSES, LEAD_STATUS_LABELS, CreateLeadPayload } from '../../types/index';
-import { formatDate, showAlert } from '../../utils';
+import { toLocalYmd, formatDate, showAlert } from '../../utils';
 import LeadStatusBadge from './LeadStatusBadge';
 import DateInput from '../common/DateInput';
 import CallHistoryCard from '../calls/CallHistoryCard';
@@ -47,7 +47,7 @@ const EMPTY_FORM: CreateLeadPayload = {
   status: 'new', project_id: '', cp_firm_name: '', cp_name: '', cp_validity: '', channel_partner_id: '',
 };
 
-const toDateOnly = (iso: string | null | undefined): string => (iso ? String(iso).slice(0, 10) : '');
+const toDateOnly = (iso: string | null | undefined): string => toLocalYmd(iso);
 
 // Indian comma grouping while typing — same pattern as
 // CustomerDetailsCrudPage.tsx's formatAmountDisplay, adapted for Budget/
@@ -165,7 +165,10 @@ const LeadCrudView: React.FC<Props> = ({ mode, basePath }) => {
       setReview(rr);
       const v = rr.record as Partial<CreateLeadPayload>;
       setForm((f) => ({ ...f, ...Object.fromEntries(Object.entries(v).filter(([k, val]) => k in EMPTY_FORM && val !== undefined)) }));
-    }).catch(() => toast.error('This request could not be opened. It may already be approved or rejected.'));
+    }).catch((e) => {
+      toast.error(e instanceof Error && /^This request was already/.test(e.message) ? e.message : 'This request could not be opened. It may already be approved or rejected.');
+      navigate(`${basePath}?approvals=1`);
+    });
   }, [reviewId]);
   const handleRejectReview = async () => {
     if (!reviewId) return;

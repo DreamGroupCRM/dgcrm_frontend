@@ -1,9 +1,10 @@
 // Small pieces every portal page shares, so the five pages stay about
 // their own content rather than each restating the same card/field/stat
 // markup. Styling lives in CustomerPortal.css.
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { MdCheckCircle, MdErrorOutline, MdSchedule } from 'react-icons/md';
 import { DueGridRow } from '../../services/paymentService';
+import { fetchMyBookingPayments, fetchMyBookingDueGrid } from '../../services/customerPortalService';
 
 export const rupee = (n: number | null | undefined): string =>
   n == null ? '—' : `₹ ${Math.round(n).toLocaleString('en-IN')}`;
@@ -100,10 +101,13 @@ export interface BookingTotals {
  */
 export function totalsFromDueGrid(grid: {
   rows: DueGridRow[]; extra_pay_total?: number; approved_paid_total?: number; awaiting_approval_total?: number;
-}): BookingTotals {
+}, flatCost?: number | string | null): BookingTotals {
   const { rows } = grid;
   const extraPay = grid.extra_pay_total ?? 0;
-  const totalCost = rows.reduce((sum, r) => sum + r.amount, 0);
+  // V_29.0 (Q1) — the Total Flat Cost entered on the customer is the
+  // official figure everywhere (the schedule should add up to it); the
+  // schedule's own sum is only the fallback when no cost is recorded.
+  const totalCost = Number(flatCost) > 0 ? Number(flatCost) : rows.reduce((sum, r) => sum + r.amount, 0);
   // V_26.0 — only approved payments count as paid; what is entered but
   // still awaiting approval is shown on its own. (The rows keep their
   // Paid / Due status: each payment's EMI allocation is fixed at entry.)
@@ -112,9 +116,44 @@ export function totalsFromDueGrid(grid: {
     return { totalCost, paid, pending: Math.max(0, totalCost - paid), awaiting: grid.awaiting_approval_total ?? 0 };
   }
   const owed = rows.reduce((sum, r) => sum + r.due_amount, 0);
+  // Older servers (no approved_paid_total): paid comes from the schedule itself.
+  const scheduleTotal = rows.reduce((sum, r) => sum + r.amount, 0);
   // V_25.0 — Extra Pay is kept separate from EMIs (no schedule row is
   // marked paid by it), but it is money the customer has paid: it counts in
   // Payment Completed and comes off Payment Pending.
   const pending = Math.max(0, owed - extraPay);
-  return { totalCost, paid: Math.min(totalCost, totalCost - owed + extraPay), pending };
+  const paid = Math.min(totalCost, Math.max(0, scheduleTotal - owed + extraPay));
+  return { totalCost, paid, pending: Number(flatCost) > 0 ? Math.max(0, totalCost - paid) : pending };
+}
+
+/**
+ * V_29.0 (A5) — the summary tiles' figures for one booking, the same way
+ * Payment History worked them out: from the due grid for an active
+ * booking; for a cancelled one, its flat amount and approved payments.
+ */
+export function useBookingTotals(bookingId: string | number | null | undefined, isCancelled: boolean, flatAmount?: number | string | null): BookingTotals | null {
+  const [totals, setTotals] = useState<BookingTotals | null>(null);
+  useEffect(() => {
+    if (bookingId == null) { setTotals(null); return; }
+    let stale = false;
+    (async () => {
+      try {
+        if (!isCancelled) {
+          const grid = await fetchMyBookingDueGrid(bookingId);
+          if (!stale) setTotals(totalsFromDueGrid(grid, flatAmount));
+          return;
+        }
+        const payments = await fetchMyBookingPayments(bookingId);
+        if (stale) return;
+        setTotals({
+          totalCost: Number(flatAmount || 0),
+          paid: payments.filter((r) => r.is_approved).reduce((n, r) => n + Number(r.amount || 0), 0),
+          pending: 0,
+          awaiting: payments.filter((r) => !r.is_approved).reduce((n, r) => n + Number(r.amount || 0), 0),
+        });
+      } catch { if (!stale) setTotals(null); }
+    })();
+    return () => { stale = true; };
+  }, [bookingId, isCancelled, flatAmount]);
+  return totals;
 }

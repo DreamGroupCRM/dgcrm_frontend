@@ -278,7 +278,7 @@ const unitLabel = (c: Customer): string => {
   if (!c.building_name) return '—';
   return c.unit_type === 'shop'
     ? `${c.building_name}, Shop ${c.shop_no || '—'}`
-    : `${c.building_name}, ${c.wing_name || '—'} Wing, ${c.flat_no || '—'}`;
+    : `${c.building_name}, ${/\bwing\b/i.test(c.wing_name || '') ? c.wing_name : `${c.wing_name || '—'} Wing`}, ${c.flat_no || '—'}`;
 };
 
 const RowActionMenu: React.FC<{
@@ -790,7 +790,18 @@ const CustomerDetailsListPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [employees, headTeam.map((m) => m.id).join(',')],
   );
-  const employeeOptions = useMemo(() => assignableEmployees.map((e) => e.label), [assignableEmployees]);
+  // V_29.0 — Admin may leave customers Unassigned; a Head may take them
+  // back from their Executives ("Assign to Me").
+  const UNASSIGNED_OPTION = 'Unassigned';
+  const ASSIGN_TO_ME_OPTION = 'Assign to Me';
+  const employeeOptions = useMemo(
+    () => [
+      ...(paths.isAdmin ? [UNASSIGNED_OPTION] : headTeam.length > 0 ? [ASSIGN_TO_ME_OPTION] : []),
+      ...assignableEmployees.map((e) => e.label),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [assignableEmployees, paths.isAdmin, headTeam.length > 0],
+  );
 
   const clearAllFilters = () => {
     setCustomerNameFilter(''); setBuildingFilter(''); setWingFilter(''); setFloorFilter(''); setFlatNoFilter('');
@@ -882,14 +893,22 @@ const CustomerDetailsListPage: React.FC = () => {
   }, [assignmentEnabled, employees.length, loadingEmployees, fetchEmployeesForAssignment, needsAllEmployees]);
 
   const handleAssign = async () => {
+    const unassign = paths.isAdmin && employeeSearch === UNASSIGNED_OPTION;
+    const toMe = headTeam.length > 0 && employeeSearch === ASSIGN_TO_ME_OPTION;
     const employee = assignableEmployees.find((e) => e.label === employeeSearch);
-    if (!employee) {
+    if (!employee && !unassign && !toMe) {
       toast.error('Select an employee to assign to.');
       return;
     }
+    if (unassign) {
+      const ok = await showAlert.confirm(`${selectedIds.size} customer(s) will have no employee assigned.`, 'Leave Unassigned?');
+      if (!ok.isConfirmed) return;
+    }
     setAssigning(true);
     try {
-      const res = await assignCustomersToEmployee({ customer_ids: Array.from(selectedIds), employee_id: employee.id });
+      const res = await assignCustomersToEmployee({
+        customer_ids: Array.from(selectedIds), employee_id: employee && !unassign && !toMe ? employee.id : null, assign_to_me: toMe,
+      });
       // V_26.0 — a Head's change waits for Admin approval (Pending Approvals).
       if (res.pending) toast.success(res.message || 'Sent to Admin for approval.');
       else toast.success('Customer(s) Assigned Successfully');
@@ -1301,7 +1320,7 @@ const CustomerDetailsListPage: React.FC = () => {
                 cursor: !assignmentEnabled || !employeeSearch || assigning ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
               }}
             >
-              {assigning ? 'Assigning...' : 'Assign to Employee'}
+              {assigning ? 'Assigning...' : employeeSearch === UNASSIGNED_OPTION ? 'Unassign' : 'Assign to Employee'}
             </button>
           </div>
         )}
@@ -1546,7 +1565,8 @@ const CustomerDetailsListPage: React.FC = () => {
                           of an empty "undefined Wing," line. */}
                       {c.unit_type === 'shop'
                         ? <div>Shop {c.shop_no || '—'}</div>
-                        : <div>{c.wing_name} Wing, {c.flat_no}</div>}
+                        : <div>{/\bwing\b/i.test(c.wing_name || '') ? c.wing_name : `${c.wing_name} Wing`}, {c.flat_no}</div>}
+                      {c.location && <div style={{ opacity: 0.75 }}>{c.location}</div>}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       {c.unit_type === 'shop'
@@ -1599,6 +1619,14 @@ const CustomerDetailsListPage: React.FC = () => {
                 property right), same as every other page. */}
             <HistoryCard t={t} title={`Payments History - Total Transaction (${(infoModal.payments || []).length})`}
               onClose={() => setInfoModal(null)} loading={infoModal.loading}
+              // V_29.0 (C5) — the same Payment History PDF as the row menu's Download.
+              actions={!infoModal.loading && (
+                <button type="button" onClick={() => handleDownloadPaymentHistoryPdf(infoModal.customer)}
+                  className="inline-flex items-center gap-1.5"
+                  style={{ background: 'rgba(255,255,255,0.18)', color: '#fff', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 9, padding: '5px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <MdDownload size={15} /> Download History
+                </button>
+              )}
               customer={customerInfoItems({
                 name: infoModal.customer.customer_name, code: infoModal.customer.customer_code,
                 mobile: infoModal.customer.mobile_number, email: infoModal.customer.email, address: infoModal.customer.address,
@@ -1611,7 +1639,7 @@ const CustomerDetailsListPage: React.FC = () => {
                 const awaiting = all.reduce((s, p) => s + p.amount, 0) - paid;
                 const cost = infoModal.totalFlatCost;
                 return propertyInfoItems({
-                  project: c.project_name, building: c.building_name, wing: c.unit_type === 'shop' ? null : c.wing_name,
+                  project: c.project_name, location: c.location, building: c.building_name, wing: c.unit_type === 'shop' ? null : c.wing_name,
                   unitType: c.unit_type === 'shop' ? 'shop' : 'flat', unitNo: c.unit_type === 'shop' ? c.shop_no : c.flat_no,
                   flatAmount: cost, paid, pending: cost != null ? Math.max(0, cost - paid) : null, awaiting,
                 });

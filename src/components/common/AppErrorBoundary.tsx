@@ -29,7 +29,7 @@ export class AppErrorBoundary extends React.Component<{ children: React.ReactNod
       <div role="alert" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
         <div style={{ maxWidth: 420, width: '100%', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 24, textAlign: 'center' }}>
           <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
-            {newVersion ? 'A new version of DGCRM is available' : 'Something went wrong on this page'}
+            {newVersion ? 'A new version of Dream Group is available' : 'Something went wrong on this page'}
           </div>
           <div style={{ fontSize: 13, color: '#475569', marginTop: 8 }}>
             {newVersion

@@ -54,7 +54,7 @@ const PlaceholderPage: React.FC<PlaceholderPageProps> = ({ title, description })
           fontFamily: t.fontFamily,
         }}
       >
-        Dream Group CRM — Coming Soon
+        Dream Group — Coming Soon
       </div>
     </div>
   );

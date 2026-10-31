@@ -46,8 +46,8 @@ export const setUserActiveStatus = async (id: number, is_active: boolean): Promi
 };
 
 /** DELETE /api/user-management/users/:id */
-export const deleteUser = async (id: number): Promise<void> => {
-  await axiosInstance.delete(`/user-management/users/${id}`);
+export const deleteUser = async (id: number, releaseCustomers = false): Promise<void> => {
+  await axiosInstance.delete(`/user-management/users/${id}`, { params: releaseCustomers ? { release_customers: true } : undefined });
 };
 
 /** PATCH /api/user-management/users/:id/unlock — clears the lockout and failed attempts. */

@@ -20,6 +20,8 @@ import { ValidationErrorSummary } from '../../../components/common/ValidationErr
 import { phoneNumberError } from '../../../utils/phoneValidation';
 import { showAlert, formatLastLogin } from '../../../utils';
 import './UserManagementPage.css';
+import { confirmCustomerRelease } from '../../../utils/customerRelease';
+import { previewCustomerRelease } from '../../../services/employeeDetailsService';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -169,9 +171,20 @@ const UserManagementPage: React.FC = () => {
       'Delete User?'
     );
     if (!result.isConfirmed) return;
+    // V_29.0 (E4) — its employee's customers / refund cases are shown first.
+    let release = false;
+    if (row.linked_employee_id) {
+      try {
+        const impact = await previewCustomerRelease(String(row.linked_employee_id), { deleting: true });
+        if (impact) {
+          if (!(await confirmCustomerRelease(impact))) return;
+          release = true;
+        }
+      } catch { toast.error('Could not check this employee\'s customers. Please try again.'); return; }
+    }
     setBusyId(row.id);
     try {
-      await deleteUser(row.id);
+      await deleteUser(row.id, release);
       toast.success('User deleted.');
       await load();
     } catch (e) {

@@ -1,5 +1,5 @@
 // ==========================================
-// DREAM GROUP CRM - EXECUTIVE DASHBOARD EXPORT (PDF / Excel)
+// DREAM GROUP - EXECUTIVE DASHBOARD EXPORT (PDF / Excel)
 // ==========================================
 // Both exports work purely off the already-fetched ExecutiveDashboardData —
 // no extra network calls, no re-deriving numbers the backend already
@@ -10,19 +10,20 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { ExecutiveDashboardData } from '../../../services/executiveDashboardService';
+import { drawBrandHeader } from '../../../utils/pdfBrand';
 
 const rupee = (n: number): string => `Rs. ${Math.round(n).toLocaleString('en-IN')}`;
 
 interface RangeInfo { from: string; to: string }
 
-export function exportDashboardToPdf(data: ExecutiveDashboardData, range: RangeInfo): void {
+export async function exportDashboardToPdf(data: ExecutiveDashboardData, range: RangeInfo): Promise<void> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const marginX = 40;
-  let y = 44;
+  let y = await drawBrandHeader(doc, marginX, 28) + 8;
 
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('DGCRM — Executive Dashboard', marginX, y);
+  doc.text('Executive Dashboard', marginX, y);
   y += 18;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -116,7 +117,7 @@ export function exportDashboardToPdf(data: ExecutiveDashboardData, range: RangeI
 
 export async function exportDashboardToExcel(data: ExecutiveDashboardData, range: RangeInfo): Promise<void> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'DGCRM';
+  wb.creator = 'Dream Group';
   wb.created = new Date();
 
   const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF0000FF' } };

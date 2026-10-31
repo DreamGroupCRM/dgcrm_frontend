@@ -64,6 +64,7 @@ import {
   PaymentReceipt,
 } from '../types/index';
 import { serverToday } from '../utils/serverTime';
+import { toLocalYmd } from '../utils';
 
 // booking_date/installment_date/pay_after_booking_date are `timestamp`
 // columns on the backend (not `date`), so they come back as full ISO
@@ -73,7 +74,7 @@ import { serverToday } from '../utils/serverTime';
 // Remaining Booking Date fields all came back empty despite having been
 // saved correctly. date_of_birth doesn't need this — it's a `date` column
 // and already comes back as a plain "yyyy-mm-dd" string.
-const toDateOnly = (iso: string | null): string => (iso ? iso.slice(0, 10) : '');
+const toDateOnly = (iso: string | null): string => toLocalYmd(iso);
 
 // ── Backend response shapes (V_13.0) — only the fields this file reads ──
 // See Customer.entity.ts / Building.entity.ts / Wing.entity.ts /
@@ -198,9 +199,10 @@ interface BackendAmountTransaction {
 // start with the date in that exact position.
 export const nextMonthlyInstallmentDate = (raw: string | null | undefined): string | null => {
   if (!raw) return null;
-  const day = Number(raw.slice(8, 10));
+  const ymd = toLocalYmd(raw);
+  const day = Number(ymd.slice(8, 10));
   if (!day) return raw;
-  const anchorDatePart = raw.slice(0, 10);
+  const anchorDatePart = ymd;
 
   const now = serverToday();
   const daysInThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -235,6 +237,7 @@ const mapCustomerRow = (bc: BackendCustomer): Customer => ({
   project_name: bc.building?.project_name ?? '',
   building_id: bc.building_id != null ? String(bc.building_id) : '',
   building_name: bc.building?.name ?? '',
+  location: bc.building?.location ?? '',
   wing_id: bc.wing_id != null ? String(bc.wing_id) : undefined,
   wing_name: bc.wing?.name ?? '',
   flat_id: bc.flat_id != null ? String(bc.flat_id) : undefined,
@@ -833,6 +836,8 @@ export interface GivenRefundRow {
   status?: 'approved' | 'pending' | 'rejected';
   customer_name: string; customer_code: string | null; mobile_number: string | null;
   building_name: string | null; wing_name: string | null; flat_no: string | null; shop_no: string | null;
+  /** V_29.0 — the booking's balance still to refund (approved payments − approved refunds). */
+  customer_total_paid?: number; customer_total_refunded?: number; balance_refund?: number;
 }
 /** GET /api/customers/refunds/given — admin only. */
 export interface GivenRefundsResult {
@@ -897,10 +902,15 @@ export const toCancelledReceipt = ({ refund: r, customer }: { refund: any; custo
 // single `employee_id`. AssignCustomersPayload itself is untouched — this
 // just builds the correct backend body from it.
 /** POST /api/customers/assign-employees */
-export const assignCustomersToEmployee = async (payload: AssignCustomersPayload): Promise<AssignCustomersResponse> => {
+// V_29.0 — employee_id null = Unassigned (Admin); assign_to_me = a Head
+// taking the customers back from their Executives.
+export const assignCustomersToEmployee = async (
+  payload: Omit<AssignCustomersPayload, 'employee_id'> & { employee_id: AssignCustomersPayload['employee_id'] | null; assign_to_me?: boolean },
+): Promise<AssignCustomersResponse> => {
   const res = await axiosInstance.post('/customers/assign-employees', {
     customer_ids: payload.customer_ids.map(Number),
-    employee_ids: [Number(payload.employee_id)],
+    employee_ids: payload.employee_id == null ? [] : [Number(payload.employee_id)],
+    ...(payload.assign_to_me ? { assign_to_me: true } : {}),
   });
   return res.data;
 };

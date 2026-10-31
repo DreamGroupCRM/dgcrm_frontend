@@ -177,5 +177,7 @@ export const bookingLabel = (b: PortalBookingSummary): string => {
   const unit = b.unit_type === 'shop'
     ? (b.shop_no ? `Shop ${b.shop_no}` : 'Shop')
     : (b.flat_no ? `Flat ${b.flat_no}` : 'Flat');
-  return [b.building_name, b.wing_name && `Wing ${b.wing_name}`, unit].filter(Boolean).join(' · ');
+  // V_29.0 — a wing already named "Wing 1" is not shown as "Wing Wing 1".
+  const wing = b.wing_name ? (/\bwing\b/i.test(b.wing_name) ? b.wing_name : `Wing ${b.wing_name}`) : null;
+  return [b.building_name, wing, unit].filter(Boolean).join(' · ');
 };

@@ -33,7 +33,7 @@ import { showAlert, resolveFileUrl, formatDate } from '../../../../utils';
 import DocumentViewerModal from '../../../../components/common/DocumentViewerModal';
 import { previewKindFor, downloadDocument } from '../../../../services/documentService';
 import EmiSchemePreviewModal from '../../../../components/common/EmiSchemePreviewModal';
-import { runOcr, extractAadharNumber, extractPanNumber } from '../../../../utils/ocr';
+import { readDocumentText, extractAadharNumber, extractPanNumber, notReadMessage } from '../../../../utils/ocr';
 import { compressImageFile } from '../../../../utils/imageCompression';
 import { DobPicker } from '../../../../components/common/DobPicker';
 import { RestrictedDayPicker } from '../../../../components/common/RestrictedDayPicker';
@@ -49,12 +49,15 @@ import {
 import { AccordionSection } from '../../../../components/common/Accordion';
 import './CustomerDetails.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
+import { useAccessProfile } from '../../../../hooks/useAccessProfile';
 import { serverToday, serverTodayYmd } from '../../../../utils/serverTime';
 import { cssRect } from '../../../../utils/appZoom';
 import DateInput from '../../../../components/common/DateInput';
 import CallHistoryCard from '../../../../components/calls/CallHistoryCard';
 import { fetchCustomerCalls } from '../../../../services/callService';
-import { fetchRequestRecord, RequestRecord, rejectChangeRequest } from '../../../../services/changeRequestsService';
+import { fetchRequestRecord, RequestRecord, rejectChangeRequest, approveChangeRequest } from '../../../../services/changeRequestsService';
+import { fetchCustomerDueGrid } from '../../../../services/paymentService';
+import { totalsFromDueGrid, BookingTotals } from '../../../Customer/CustomerPortalUi';
 import { ReviewBanner } from '../../../../components/approvals/ReviewBanner';
 
 type Mode = 'add' | 'edit' | 'view';
@@ -122,7 +125,7 @@ const clampInstallmentDate = (value: string): string => {
 const dayAfter = (value: string): string => {
   const d = new Date(`${value}T00:00:00`);
   d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 // Fires showPicker() on both click AND focus — a plain onClick alone opens
@@ -190,10 +193,10 @@ const calcAge = (dob: string): { years: number; months: number } | null => {
 // spacing before the fields grid below.
 const SectionHeader: React.FC<{ t: Theme; icon: React.ReactNode; title: string; gradient: string; badge?: string }> = ({ icon, title, gradient, badge }) => (
   <div
-    className="flex items-center gap-2.5 -mt-5 -mx-5 sm:-mt-6 sm:-mx-6 mb-5 px-5 sm:px-6 py-3.5 rounded-t-2xl"
+    className="sec-b-head flex items-center gap-2.5 -mt-5 -mx-5 sm:-mt-6 sm:-mx-6 mb-5 px-5 sm:px-6 py-3.5 rounded-t-2xl"
     style={{ background: gradient }}
   >
-    <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.22)' }}>
+    <span className="sec-b-icon flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.22)' }}>
       {icon}
     </span>
     <h2 className="cust-section-title">{title}</h2>
@@ -244,6 +247,8 @@ const CustomerDocumentCard: React.FC<{
   onQuickView: (label: string, url: string) => void;
 }> = ({ t, label, url, onQuickView }) => {
   const resolved = url ? resolveFileUrl(url) : '';
+  // V_29.0 (I) — Recovery Executives view documents only.
+  const viewOnly = Boolean(useAccessProfile().profile?.documents_view_only);
   const isImage = !!resolved && previewKindFor(resolved) === 'image';
   const [downloading, setDownloading] = useState(false);
 
@@ -291,13 +296,13 @@ const CustomerDocumentCard: React.FC<{
             >
               <MdVisibility size={16} />
             </button>
-            <button
+            {!viewOnly && <button
               type="button" onClick={handleDownload} disabled={downloading}
               title="Download" aria-label={`Download ${label}`}
               style={{ background: 'none', border: 'none', cursor: downloading ? 'wait' : 'pointer', color: t.accentText, display: 'inline-flex', padding: 4, opacity: downloading ? 0.5 : 1 }}
             >
               <MdDownload size={16} />
-            </button>
+            </button>}
           </div>
         )}
       </div>
@@ -454,7 +459,7 @@ const SearchableSelect: React.FC<{
 // which is why Employee never hit this.
 const CompactFileUpload: React.FC<{
   t: Theme; isView?: boolean; accept?: string; value: FileValue;
-  onChange: (f: File | null) => void; onView?: (url: string) => void;
+  onChange: (f: File | null) => void; onView?: (v: string | File) => void;
 }> = ({ t, isView, accept = DOCUMENT_ACCEPT, value, onChange, onView }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const displayName = fileDisplayName(value);
@@ -517,12 +522,9 @@ const CompactFileUpload: React.FC<{
             <MdInsertDriveFile size={16} style={{ color: 'var(--brand-ink)', flexShrink: 0 }} />
           )}
           <span className="truncate" style={{ fontSize: 11.5, color: t.textPrimary, flex: 1 }}>{displayName}</span>
-          {/* Only an already-SAVED file (a string url) can be opened in the
-              viewer — a freshly-picked File has not been uploaded yet, and
-              its object URL is already what the thumbnail beside this is
-              showing. */}
-          {onView && typeof value === 'string' && value && (
-            <button type="button" onClick={(e) => { e.stopPropagation(); onView(value); }}
+          {/* V_29.0 (H3) — a saved file, or one picked but not saved yet. */}
+          {onView && value && (value instanceof File || typeof value === 'string') && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onView(value as string | File); }}
               title="View" aria-label="View file"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.accentText, padding: 0, display: 'flex', flexShrink: 0 }}>
               <MdVisibility size={16} />
@@ -547,7 +549,7 @@ const CompactFileUpload: React.FC<{
 };
 
 // Larger dashed drop-card (Application Form / Declaration Form / Allotment Letter).
-const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; value: FileValue; onChange: (f: File | null) => void; onView?: (url: string) => void }> = ({ t, isView, label, value, onChange, onView }) => {
+const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; value: FileValue; onChange: (f: File | null) => void; onView?: (v: string | File) => void }> = ({ t, isView, label, value, onChange, onView }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const displayName = fileDisplayName(value);
 
@@ -598,10 +600,9 @@ const DocumentDropCard: React.FC<{ t: Theme; isView?: boolean; label: string; va
       {displayName ? (
         <div className="flex items-center justify-center gap-2">
           <span className="truncate" style={{ fontSize: 11, color: t.textPrimary, maxWidth: 150 }}>{displayName}</span>
-          {/* Only an already-SAVED file (a string url) can be opened in the
-              viewer — same rule as CompactFileUpload above. */}
-          {onView && typeof value === 'string' && value && (
-            <button type="button" onClick={(e) => { e.stopPropagation(); onView(value); }}
+          {/* V_29.0 (H3) — a saved file, or one picked but not saved yet. */}
+          {onView && value && (value instanceof File || typeof value === 'string') && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onView(value as string | File); }}
               title="View" aria-label="View file"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.accentText, padding: 0, display: 'flex' }}>
               <MdVisibility size={15} />
@@ -809,15 +810,19 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   const [reviewParams] = useSearchParams();
   const reviewId = paths.isAdmin && !isView ? reviewParams.get('review') : null;
   const [review, setReview] = useState<RequestRecord | null>(null);
+  // V_29.0 (F1) — an existing customer's changes are reviewed read-only;
+  // a new customer can still be corrected before approval.
+  const readOnlyReview = Boolean(reviewId && review?.request.action === 'edit');
   const afterReview = `${paths.customerDetails}?approvals=1`;
 
   // Quick View — which document the shared viewer is showing, if any. Kept
   // at page level so closing the preview leaves the record exactly where
   // the user left it.
-  const [preview, setPreview] = useState<{ label: string; url: string } | null>(null);
+  const [preview, setPreview] = useState<{ label: string; url: string; file?: File } | null>(null);
   // V_26.0 — the viewer loads through the API client, so it needs the full
   // address; the bare stored path became /api/api/files/... and failed.
-  const openPreview = useCallback((label: string, url: string) => setPreview({ label, url: resolveFileUrl(url) }), []);
+  const openPreview = useCallback((label: string, v: string | File) => setPreview(
+    v instanceof File ? { label, url: v.name, file: v } : { label, url: resolveFileUrl(v) }), []);
 
   // A customer's email is their portal login credential, so only an Admin
   // may change it on an existing record. Same rule (and same message) as
@@ -1065,6 +1070,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
 
   // Set for a cancelled booking — shown on View Details (reason + documents).
   const [cancellation, setCancellation] = useState<CustomerFullDetail['cancellation']>(null);
+  // V_29.0 (style B) — View Customer's financial summary: the same figures
+  // as the customer's portal (flat cost, approved paid, pending, awaiting).
+  const [dueGrid, setDueGrid] = useState<Parameters<typeof totalsFromDueGrid>[0] | null>(null);
+  useEffect(() => {
+    if (!isView || !id) return;
+    let stale = false;
+    fetchCustomerDueGrid(id).then((g) => { if (!stale) setDueGrid(g as Parameters<typeof totalsFromDueGrid>[0]); }).catch(() => {});
+    return () => { stale = true; };
+  }, [isView, id]);
 
   useEffect(() => {
     if (!reviewId && (mode === 'add' || !id)) return;
@@ -1143,8 +1157,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         } else {
           toast.error('Failed to load customer details.');
         }
-      } catch {
-        toast.error(reviewId ? 'This request could not be opened. It may already be approved or rejected.' : 'Failed to load customer details.');
+      } catch (e) {
+        toast.error(reviewId ? (e instanceof Error && /^This request was already/.test(e.message) ? e.message : 'This request could not be opened. It may already be approved or rejected.') : 'Failed to load customer details.');
+        if (reviewId) navigate(afterReview);
       } finally {
         setFetching(false);
       }
@@ -1350,10 +1365,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
     setAadharPhoto(f);
     if (!(f instanceof File)) return;
     setOcrRunning('aadhar');
-    runOcr(f).then((text) => {
+    readDocumentText(f).then(({ text, problem }) => {
       const number = extractAadharNumber(text);
-      if (number) { setAadharNumber(number); toast.success('Aadhar number auto-filled from the photo — please verify it.'); }
-      else toast.info('Could not read an Aadhar number from that photo — please enter it manually.');
+      if (number) { setAadharNumber(number); toast.success('Aadhar number auto-filled from the document — please verify it.'); }
+      else toast.info(notReadMessage('an Aadhar', f, problem));
     }).finally(() => setOcrRunning(null));
   };
 
@@ -1361,10 +1376,10 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
     setPancardPhoto(f);
     if (!(f instanceof File)) return;
     setOcrRunning('pancard');
-    runOcr(f).then((text) => {
+    readDocumentText(f).then(({ text, problem }) => {
       const number = extractPanNumber(text);
-      if (number) { setPancardNumber(number); toast.success('PAN number auto-filled from the photo — please verify it.'); }
-      else toast.info('Could not read a PAN number from that photo — please enter it manually.');
+      if (number) { setPancardNumber(number); toast.success('PAN number auto-filled from the document — please verify it.'); }
+      else toast.info(notReadMessage('a PAN', f, problem));
     }).finally(() => setOcrRunning(null));
   };
 
@@ -1551,6 +1566,21 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
       toast.error(e?.response?.data?.message || 'Failed to save the draft.');
     } finally {
       setSavingDraft(false);
+    }
+  };
+
+  // V_29.0 (F1) — a change to an existing customer is approved exactly as sent.
+  const handleApproveAsSent = async () => {
+    if (!reviewId) return;
+    setSaving(true);
+    try {
+      await approveChangeRequest(reviewId);
+      showAlert.approved('The customer changes were approved.');
+      navigate(afterReview);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to approve the request.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1793,7 +1823,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
   // Payment Details, Uploaded Documents) with label-over-value cells,
   // instead of the same editable-looking form with every field disabled.
   // Same visual language as View Employee (ViewValue + real doc previews). ──
-  if (isView) {
+  if (isView || readOnlyReview) {
     const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
     return (
       <div className="cust-crud-page" style={{ fontFamily: t.fontFamily, paddingBottom: FOOTER_HEIGHT + 16, ...cssVars }}>
@@ -1801,12 +1831,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         {/* ── Page header ───────────────────────────────────────────────── */}
         <div className="cust-crud-header flex items-center justify-between flex-wrap gap-3 mb-6">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={() => navigate(backPath)}
+            <button type="button" onClick={() => navigate(readOnlyReview ? afterReview : backPath)}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.textPrimary, padding: 6 }}>
               <MdArrowBack size={20} />
             </button>
             <div>
-              <h1 className="cust-crud-title">View Customer</h1>
+              <h1 className="cust-crud-title">{readOnlyReview ? 'Review Customer Changes' : 'View Customer'}</h1>
             </div>
           </div>
           {customerCode && (
@@ -1815,6 +1845,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             </div>
           )}
         </div>
+
+        {/* V_29.0 (F1) — a change to an existing customer: what changed, read-only. */}
+        {readOnlyReview && review && <ReviewBanner t={t} isDark={isDark} review={review} noun="customer" readOnly />}
 
         {/* ── Identity strip — photo + name + email, above the boxes ─────── */}
         <div className="flex items-center gap-3 mb-5">
@@ -1854,7 +1887,9 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               />
               <ViewValue label="Address" value={address} className="cust-view-field-wide" />
               <ViewValue label="Date of Birth" value={dateOfBirth ? `${dateOfBirth}${age ? ` (${age.years}y ${age.months}m)` : ''}` : ''} />
-              <ViewValue label="Aadhar Number" value={aadharNumber} />
+              {/* V_29.0 — staff see only the last 4 digits; the Admin sees the full number. */}
+              <ViewValue label="Aadhar Number" value={paths.isAdmin || !aadharNumber ? aadharNumber
+                : `XXXX XXXX ${String(aadharNumber).replace(/\D/g, '').slice(-4)}`} />
               <ViewValue label="PAN Number" value={pancardNumber} />
               <ViewValue label="Alternate Contact" value={alternatePersonName ? `${alternatePersonName}${alternatePersonMobile ? ` · ${alternatePersonCountryCode} ${alternatePersonMobile}` : ''}` : ''} />
             </div>
@@ -1866,6 +1901,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               <ViewValue label="Company Name" value={effectiveCompanyName} />
               <ViewValue label="Project Name" value={projectName} />
               <ViewValue label="Building" value={buildingName} />
+              <ViewValue label="Location" value={location} />
               <ViewValue label="Wing / Floor" value={[wingName, floorLabel].filter(Boolean).join(' / ')} />
               {/* V_22.0 item 9 — Flat No/Type/Area become Shop No/Type/Area
                   when this customer's booking is a shop, not a flat. */}
@@ -1883,6 +1919,24 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 items-start">
           <div className="rounded-2xl p-5 sm:p-6" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
             <SectionHeader t={t} icon={<MdPayments size={16} />} title="Payment Details" gradient="var(--grad-green)" />
+            {dueGrid && (() => {
+              const money: BookingTotals = totalsFromDueGrid(dueGrid, totalCost);
+              const cost = money.totalCost;
+              const pct = cost > 0 ? Math.min(100, (money.paid / cost) * 100) : 0;
+              const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+              return (
+                <div style={{ marginBottom: 14 }}>
+                  <div className="b-money">
+                    <div><div className="l">Flat cost</div><div className="v">{inr(cost)}</div></div>
+                    <div><div className="l">Paid (approved)</div><div className="v" style={{ color: '#16a34a' }}>{inr(money.paid)}</div></div>
+                    <div><div className="l">Pending</div><div className="v" style={{ color: '#dc2626' }}>{inr(Math.max(0, cost - money.paid))}</div></div>
+                    {(money.awaiting ?? 0) > 0 && <div><div className="l">Awaiting approval</div><div className="v" style={{ color: '#b45309' }}>{inr(money.awaiting ?? 0)}</div></div>}
+                  </div>
+                  <div className="b-bar" role="img" aria-label={`${pct.toFixed(1)}% of the flat cost paid`}><i style={{ width: `${pct}%` }} /></div>
+                  <div className="b-cap">{pct.toFixed(1)}% paid</div>
+                </div>
+              );
+            })()}
             <div className="cust-view-grid">
               <ViewValue label="Total Cost" value={totalCost && `₹ ${totalCost}`} />
               <ViewValue label="Booking Date" value={bookingDate} />
@@ -1908,7 +1962,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               <CustomerDocumentCard t={t} label="Declaration Form" url={typeof declarationForm === 'string' ? declarationForm : null} onQuickView={openPreview} />
               <CustomerDocumentCard t={t} label="Allotment Letter" url={typeof allotmentLetter === 'string' ? allotmentLetter : null} onQuickView={openPreview} />
               {preview && (
-                <DocumentViewerModal t={t} label={preview.label} url={preview.url} onClose={() => setPreview(null)} />
+                <DocumentViewerModal t={t} label={preview.label} url={preview.url} file={preview.file} onClose={() => setPreview(null)} />
               )}
             </div>
           </div>
@@ -1935,10 +1989,24 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         {/* ── Sticky footer — Go Back only, same shared class every other
             CRUD page's footer uses. ────────────────────────────────────── */}
         <div className="master-crud-footer flex items-center justify-center gap-3 z-10" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
-          <button type="button" onClick={() => navigate(backPath)}
+          <button type="button" onClick={() => navigate(readOnlyReview ? afterReview : backPath)} disabled={saving}
             className="px-6 py-2.5 rounded-xl text-sm font-semibold cust-btn-secondary">
-            Go Back
+            {readOnlyReview ? 'Back' : 'Go Back'}
           </button>
+          {readOnlyReview && (
+            <>
+              <button type="button" onClick={handleRejectReview} disabled={saving}
+                className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-bold"
+                style={{ background: t.surfaceBg, color: '#b91c1c', border: '1px solid #fca5a5', cursor: saving ? 'not-allowed' : 'pointer' }}>
+                <MdClose size={16} /> Reject
+              </button>
+              <button type="button" onClick={handleApproveAsSent} disabled={saving}
+                className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-bold text-white cust-btn-primary"
+                style={{ background: 'var(--brand-gradient)', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.8 : 1 }}>
+                <MdSave size={17} /> {saving ? 'Approving...' : 'Approve'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -2017,7 +2085,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
           </Field>
           <Field t={t} label="Customer Photo" required error={errorFor('customerPhoto')} fieldRef={setFieldRef('customerPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} accept={IMAGE_ACCEPT} value={customerPhoto} onChange={setCustomerPhoto}
-              onView={(url) => openPreview('Customer Photo', url)} />
+              onView={(v) => openPreview('Customer Photo', v)} />
           </Field>
         </div>
 
@@ -2050,12 +2118,12 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
           </Field>
           <Field t={t} label="Upload Aadhar Card Photo" required error={errorFor('aadharPhoto')} fieldRef={setFieldRef('aadharPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={aadharPhoto} onChange={handleAadharPhotoChange}
-              onView={(url) => openPreview('Aadhar Card', url)} />
+              onView={(v) => openPreview('Aadhar Card', v)} />
             {ocrRunning === 'aadhar' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading Aadhar number from photo...</p>}
           </Field>
           <Field t={t} label="Upload Pancard Photo" required error={errorFor('pancardPhoto')} fieldRef={setFieldRef('pancardPhoto') as React.Ref<HTMLDivElement>}>
             <CompactFileUpload t={t} isView={isView} value={pancardPhoto} onChange={handlePancardPhotoChange}
-              onView={(url) => openPreview('Pancard', url)} />
+              onView={(v) => openPreview('Pancard', v)} />
             {ocrRunning === 'pancard' && <p style={{ fontSize: 10, color: 'var(--brand-ink)', margin: '4px 0 0' }}>Reading PAN number from photo...</p>}
           </Field>
         </div>
@@ -2319,7 +2387,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               <div style={{ flex: '0 1 50%', minWidth: 0 }}>
                 <AmountField t={t} isView={isView} placeholder="Amount" value={remainingBookingAmount} onChange={setRemainingBookingAmount} />
               </div>
-              <DateInput t={t} value={remainingBookingDate} readOnly={isView} disabled={isView} onChange={(v) => setRemainingBookingDate(v)} className={fieldClass} style={{ flex: '0 1 150px', minWidth: 124 }} />
+              <DateInput t={t} value={remainingBookingDate} readOnly={isView} disabled={isView} min={bookingDate || undefined} onChange={(v) => setRemainingBookingDate(v)} className={fieldClass} style={{ flex: '0 1 150px', minWidth: 124 }} />
             </div>
           </Field>
           <Field t={t} label="Possession Amount (₹)" required error={errorFor('possessionAmount')} fieldRef={setFieldRef('possessionAmount') as React.Ref<HTMLDivElement>}>
@@ -2431,15 +2499,15 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field t={t} label="Application Form" required error={errorFor('applicationForm')} fieldRef={setFieldRef('applicationForm') as React.Ref<HTMLDivElement>}>
             <DocumentDropCard t={t} isView={isView} label="Application Form" value={applicationForm} onChange={setApplicationForm}
-              onView={(url) => openPreview('Application Form', url)} />
+              onView={(v) => openPreview('Application Form', v)} />
           </Field>
           <Field t={t} label="Declaration Form" required error={errorFor('declarationForm')} fieldRef={setFieldRef('declarationForm') as React.Ref<HTMLDivElement>}>
             <DocumentDropCard t={t} isView={isView} label="Declaration Form" value={declarationForm} onChange={setDeclarationForm}
-              onView={(url) => openPreview('Declaration Form', url)} />
+              onView={(v) => openPreview('Declaration Form', v)} />
           </Field>
           <Field t={t} label="Allotment Letter" required error={errorFor('allotmentLetter')} fieldRef={setFieldRef('allotmentLetter') as React.Ref<HTMLDivElement>}>
             <DocumentDropCard t={t} isView={isView} label="Allotment Letter" value={allotmentLetter} onChange={setAllotmentLetter}
-              onView={(url) => openPreview('Allotment Letter', url)} />
+              onView={(v) => openPreview('Allotment Letter', v)} />
           </Field>
         </div>
       </AccordionSection>
@@ -2555,7 +2623,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
       {/* V_26.0 — the eye icon on an uploaded document (Add / Edit) opens
           the same preview as View mode; the popup used to exist only there. */}
       {preview && (
-        <DocumentViewerModal t={t} label={preview.label} url={preview.url} onClose={() => setPreview(null)} />
+        <DocumentViewerModal t={t} label={preview.label} url={preview.url} file={preview.file} onClose={() => setPreview(null)} />
       )}
     </div>
   );

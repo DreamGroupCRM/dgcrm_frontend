@@ -83,7 +83,7 @@ export interface FetchedDocument {
  * <img src>, and this request carries the real session header instead —
  * no reason to send a second credential.
  */
-export async function fetchDocument(url: string, signal?: AbortSignal): Promise<FetchedDocument> {
+export async function fetchDocument(url: string, signal?: AbortSignal, forDownload = false): Promise<FetchedDocument> {
   // Rebuild the query without `fk` rather than splicing it out with a
   // regex, which would leave a dangling '?&' if any other parameter were
   // ever present.
@@ -91,6 +91,9 @@ export async function fetchDocument(url: string, signal?: AbortSignal): Promise<
   const kept = (query ?? '')
     .split('&')
     .filter((pair) => pair && !pair.startsWith('fk='))
+    // V_29.0 — tells the server this is a download, which it refuses for a
+    // view-only (Recovery Executive) login.
+    .concat(forDownload ? ['download=1'] : [])
     .join('&');
   const clean = kept ? `${base}?${kept}` : base;
   const response = await axiosInstance.get(clean, {
@@ -131,7 +134,7 @@ export function saveBlob(blob: Blob, filename: string): void {
 /** Download without opening the viewer first — the list-row "Download"
  *  action. Same authenticated fetch, so it is subject to the same checks. */
 export async function downloadDocument(url: string, label: string): Promise<void> {
-  const { blob, objectUrl } = await fetchDocument(url);
+  const { blob, objectUrl } = await fetchDocument(url, undefined, true);
   try {
     saveBlob(blob, downloadNameFor(label, url));
   } finally {

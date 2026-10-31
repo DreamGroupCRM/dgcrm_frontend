@@ -47,9 +47,10 @@ import {
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import { companyService } from '../../../../services/companyService';
+import { FetchBankAccount } from '../../../../services/bankAccountService';
 import { exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport.lazy';
 import { Building, PaymentReceipt } from '../../../../types/index';
-import { showAlert } from '../../../../utils';
+import { showAlert, wingLabel } from '../../../../utils';
 import './PaymentReceived.css';
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { serverToday, toYmd, employeeReceivedMinYmd } from '../../../../utils/serverTime';
@@ -289,6 +290,18 @@ const PaymentReceivedPage: React.FC = () => {
         if (res.success) setCompanyNameOptions(Array.from(new Set((res.rows ?? []).map((c: { name: string }) => c.name))));
       } catch { /* filter just stays empty if this fails */ }
     })();
+    (async () => {
+      try {
+        const res = await FetchBankAccount(1, 500);
+        if (res.success) setBankFilterOptions([
+          ...(res.rows ?? []).map((b) => ({
+            value: String(b.id),
+            label: [b.name, b.branch_name, b.account_number ? `••${String(b.account_number).slice(-4)}` : ''].filter(Boolean).join(' · '),
+          })),
+          { value: 'none', label: 'Not recorded (older payments)' },
+        ]);
+      } catch { /* filter just stays empty if this fails */ }
+    })();
   }, [dispatch, paths.isAdmin]);
 
   // V_26.0 — an Executive: only their own name; a Head: theirs and their
@@ -312,6 +325,9 @@ const PaymentReceivedPage: React.FC = () => {
   const [draftFlatNo, setDraftFlatNo] = useState('');
   const [draftMode, setDraftMode] = useState('');
   const [draftCompany, setDraftCompany] = useState('');
+  // V_29.0 — bank account the payment was received in.
+  const [draftBank, setDraftBank] = useState('');
+  const [bankFilterOptions, setBankFilterOptions] = useState<{ value: string; label: string }[]>([]);
   const [draftDateRange, setDraftDateRange] = useState('');
   const [draftFromDate, setDraftFromDate] = useState('');
   const [draftToDate, setDraftToDate] = useState('');
@@ -390,7 +406,7 @@ const PaymentReceivedPage: React.FC = () => {
   // ── Applied filters — what the table actually queries by. ────────────
   interface AppliedFilters {
     received_by?: string; building_id?: string; wing_id?: string; flat_id?: string;
-    mode_of_payment?: string; company?: string; date_from?: string; date_to?: string; search?: string;
+    mode_of_payment?: string; company?: string; date_from?: string; date_to?: string; search?: string; bank_id?: string;
   }
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>({});
 
@@ -522,6 +538,7 @@ const PaymentReceivedPage: React.FC = () => {
       flat_id: flat?.id,
       mode_of_payment: draftMode || undefined,
       company: draftCompany || undefined,
+      bank_id: draftBank || undefined,
       date_from: draftFromDate || undefined,
       date_to: draftToDate || undefined,
       search: prev.search,
@@ -530,7 +547,7 @@ const PaymentReceivedPage: React.FC = () => {
 
   const handleResetFilters = () => {
     setDraftReceivedBy(''); setDraftProjectName(''); setDraftBuildingName(''); setDraftWingName(''); setDraftFlatNo('');
-    setDraftMode(''); setDraftCompany(''); setDraftDateRange(''); setDraftFromDate(''); setDraftToDate('');
+    setDraftMode(''); setDraftCompany(''); setDraftBank(''); setDraftDateRange(''); setDraftFromDate(''); setDraftToDate('');
     setAppliedFilters((prev) => ({ search: prev.search }));
   };
 
@@ -609,11 +626,11 @@ const PaymentReceivedPage: React.FC = () => {
         toast.error('No payments to export.');
         return;
       }
-      const header = ['Status', 'Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'];
+      const header = ['Status', 'Receipt #', 'Customer', 'Building', 'Wing', 'Flat No', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Bank Account', 'Received By'];
       const csvRows = exportRows.map((r) => [
         r.is_approved ? 'Approved' : 'UnApproved', r.receipt_number || '', r.customer_name || '', r.building_name || '', r.wing_name || '', r.flat_no || '',
         paymentTypeLabel(r), r.mode_of_payment || '', r.amount,
-        formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.company || '', r.received_by || '',
+        formatDMY(r.inst_date), formatDMY(r.payment_date || r.created_at), r.company || '', r.bank_name || 'Not recorded', r.received_by || '',
       ]);
       const csv = [header, ...csvRows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -762,8 +779,10 @@ const PaymentReceivedPage: React.FC = () => {
             placeholder="--Select--" options={flatsInScope.map((f) => ({ value: f.flat_no, label: f.flat_no }))} disabled={!selectedWing} />
         </div>
         <div className="pr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 items-end">
-          <FilterSelect t={t} label="ModeOfPayment" value={draftMode} onChange={setDraftMode}
+          <FilterSelect t={t} label="Mode of Payment" value={draftMode} onChange={setDraftMode}
             placeholder="--Select--" options={MODE_OF_PAYMENT_OPTIONS.map((m) => ({ value: m, label: m }))} />
+          <FilterSelect t={t} label="Bank Account" value={draftBank} onChange={setDraftBank}
+            placeholder="--All--" options={bankFilterOptions} />
           <FilterSelect t={t} label="Date Range" value={draftDateRange} onChange={applyDateRangePreset} options={DATE_RANGE_OPTIONS} />
           <div>
             <label style={labelStyle}>Received Date From</label>
@@ -773,7 +792,7 @@ const PaymentReceivedPage: React.FC = () => {
             <label style={labelStyle}>Received Date To</label>
             <DateInput t={t} value={draftToDate} min={receivedMinYmd} onChange={(v) => { setDraftToDate(v); setDraftDateRange(''); }} style={inputStyle} />
           </div>
-          <div className="pr-filter-actions flex items-center gap-2 flex-wrap" style={{ gridColumn: 'span 2 / span 2' }}>
+          <div className="pr-filter-actions flex items-center gap-2 flex-wrap">
             <button type="button" onClick={handleFilter}
               style={{ ...actionBtnBase, background: 'var(--brand-gradient)', color: '#fff', border: 'none' }}>
               <MdFilterAlt size={15} /> Filter
@@ -909,7 +928,7 @@ const PaymentReceivedPage: React.FC = () => {
                       style={{ cursor: pendingRows.length === 0 ? 'not-allowed' : 'pointer' }} />
                   </th>
                 )}
-                {['Actions', 'Status', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Received By'].map((h) => (
+                {['Actions', 'Status', 'Receipt No.', 'Customer Name', 'Building Details', 'Payment Type', 'Payment Method', 'Amount', 'Payment Date', 'Received Date', 'Company', 'Bank Account', 'Received By'].map((h) => (
                   <th key={h}
                     style={h === 'Actions'
                       ? { padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', width: 64, minWidth: 64, maxWidth: 64 }
@@ -919,9 +938,9 @@ const PaymentReceivedPage: React.FC = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={paths.isAdmin ? 13 : 12} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
+                <tr><td colSpan={paths.isAdmin ? 14 : 13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading payments...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={paths.isAdmin ? 13 : 12} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
+                <tr><td colSpan={paths.isAdmin ? 14 : 13} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>No payments found.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
@@ -947,7 +966,7 @@ const PaymentReceivedPage: React.FC = () => {
                         <RowActionMenu t={t} pos={rowMenu.pos} actions={[
                           { key: 'view', label: r.is_approved ? 'View Receipt' : 'View', icon: <MdVisibility size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); handleViewReceipt(r); } },
                           // V_25.0 — this booking's full payment history (same table as Customer Details).
-                          { key: 'history', label: 'Payment History', icon: <MdHistory size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); setHistoryFor({ id: r.customer_id, name: r.customer_name || 'Customer', code: r.customer_code, unit: [r.building_name, r.wing_name && `${r.wing_name} Wing`, r.flat_no && `Flat ${r.flat_no}`].filter(Boolean).join(' - ') }); } },
+                          { key: 'history', label: 'Payment History', icon: <MdHistory size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); setHistoryFor({ id: r.customer_id, name: r.customer_name || 'Customer', code: r.customer_code, unit: [r.building_name, r.wing_name && `${wingLabel(r.wing_name)}`, r.flat_no && `Flat ${r.flat_no}`].filter(Boolean).join(' - ') }); } },
                           // No receipt exists until approval, so Download is
                           // only offered on approved rows; Approve only on
                           // unapproved ones (admin).
@@ -1002,7 +1021,7 @@ const PaymentReceivedPage: React.FC = () => {
                       <div style={{ fontWeight: 600 }}>{r.building_name || '—'}</div>
                       {(r.wing_name || r.flat_no) && (
                         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 1 }}>
-                          {r.wing_name ? `${r.wing_name} Wing` : ''}{r.wing_name && r.flat_no ? ' - ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
+                          {r.wing_name ? `${wingLabel(r.wing_name)}` : ''}{r.wing_name && r.flat_no ? ' - ' : ''}{r.flat_no ? `Flat ${r.flat_no}` : ''}
                         </div>
                       )}
                     </td>
@@ -1033,13 +1052,15 @@ const PaymentReceivedPage: React.FC = () => {
                       </div>
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.company || '—'}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, fontStyle: r.bank_name ? 'normal' : 'italic', whiteSpace: 'nowrap' }}
+                      title={r.bank_name ? undefined : 'Saved before the bank account was recorded'}>{r.bank_name || 'Not recorded'}</td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: t.textSecondary, whiteSpace: 'nowrap' }}>{r.received_by || '—'}</td>
                   </tr>
                 ))
               )}
               {/* Invisible sentinel row — scrolling near it loads the next 100. */}
               {!loading && hasMoreRows && (
-                <tr ref={lazyLoadSentinelRef} aria-hidden="true"><td colSpan={paths.isAdmin ? 13 : 12} style={{ padding: 0, border: 'none' }} /></tr>
+                <tr ref={lazyLoadSentinelRef} aria-hidden="true"><td colSpan={paths.isAdmin ? 14 : 13} style={{ padding: 0, border: 'none' }} /></tr>
               )}
             </tbody>
           </table>

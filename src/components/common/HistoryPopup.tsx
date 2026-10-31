@@ -35,13 +35,17 @@ export const customerInfoItems = (c: {
 // is left out where it doesn't apply (a cancelled booking).
 export const propertyInfoItems = (p: {
   project?: string | null; building?: string | null; wing?: string | null;
+  /** V_29.0 (J4) — the building's location. */
+  location?: string | null;
   unitType?: 'flat' | 'shop' | null; unitNo?: string | null;
   flatAmount?: number | null; paid?: number | null; pending?: number | null;
   /** V_26.0 — entered but not yet approved (not in Paid). */
   awaiting?: number | null;
 }): HistoryInfoItem[] => [
   { label: 'Project', value: p.project || '—' },
-  { label: 'Building', value: [p.building, p.wing && `${p.wing} Wing`].filter(Boolean).join(' · ') || '—' },
+  ...(p.location ? [{ label: 'Location', value: p.location }] : []),
+  // V_29.0 — "Wing 1" stays "Wing 1" (it read "Wing 1 Wing").
+  { label: 'Building', value: [p.building, p.wing && (/\bwing\b/i.test(p.wing) ? p.wing : `${p.wing} Wing`)].filter(Boolean).join(' · ') || '—' },
   { label: p.unitType === 'shop' ? 'Shop No.' : 'Flat No.', value: p.unitNo || '—' },
   { label: 'Flat Amount', value: rupee(p.flatAmount), tone: 'green' },
   { label: 'Paid Amount', value: rupee(p.paid), tone: 'green' },
@@ -74,10 +78,13 @@ export const HistoryCard: React.FC<{
   property: HistoryInfoItem[];
   extra?: { title: string; items: HistoryInfoItem[] };
   children: React.ReactNode;
-}> = ({ t, title, onClose, loading, customer, property, extra, children }) => (
+  /** V_29.0 — header buttons left of Close (e.g. Download History PDF). */
+  actions?: React.ReactNode;
+}> = ({ t, title, onClose, loading, customer, property, extra, children, actions }) => (
   <div className="rounded-2xl w-full" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
-    <div className="flex items-center justify-between px-5 py-3.5" style={{ background: 'var(--grad-table-header)', borderRadius: '16px 16px 0 0' }}>
-      <div style={{ fontSize: 13.5, fontWeight: 800, color: '#fff' }}>{title}</div>
+    <div className="flex items-center justify-between gap-2 px-5 py-3.5" style={{ background: 'var(--grad-table-header)', borderRadius: '16px 16px 0 0' }}>
+      <div style={{ fontSize: 13.5, fontWeight: 800, color: '#fff', minWidth: 0 }}>{title}</div>
+      {actions && <div className="flex items-center gap-2" style={{ marginLeft: 'auto' }}>{actions}</div>}
       {onClose && (
         <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#fff', padding: 4, display: 'flex' }}>
           <MdClose size={20} />

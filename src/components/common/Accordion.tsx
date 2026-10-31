@@ -41,14 +41,14 @@ export const AccordionSection: React.FC<AccordionSectionProps> = ({ theme, icon,
   <div ref={sectionRef} className="rounded-2xl mb-5" style={{ background: theme.surfaceBg, border: `1px solid ${theme.surfaceBorder}`, overflow: open ? 'visible' : 'hidden' }}>
     <button
       type="button" onClick={onToggle}
-      className="w-full flex items-center gap-2.5 px-5 sm:px-6 py-3.5"
+      className="sec-b-head w-full flex items-center gap-2.5 px-5 sm:px-6 py-3.5"
       style={{ background: gradient, border: 'none', cursor: 'pointer', textAlign: 'left' }}
     >
-      <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.22)' }}>
+      <span className="sec-b-icon flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.22)' }}>
         {icon}
       </span>
-      <h2 className="flex-1" style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>{title}</h2>
-      <MdKeyboardArrowDown
+      <h2 className="sec-b-title flex-1" style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', margin: 0 }}>{title}</h2>
+      <MdKeyboardArrowDown className="sec-b-arrow"
         size={20}
         style={{ color: '#fff', flexShrink: 0, transition: 'transform 0.15s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
       />

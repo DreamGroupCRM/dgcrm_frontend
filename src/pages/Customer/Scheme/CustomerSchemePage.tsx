@@ -146,7 +146,7 @@ const ScheduleList: React.FC<{ scheme: CustomerSchemeData; gridRows: DueGridRow[
 };
 
 const CustomerSchemePage: React.FC = () => {
-  const { selectedId } = useCustomerPortal();
+  const { selectedId, selected } = useCustomerPortal();
   const { t } = useAppearanceTokens();
   const [scheme, setScheme] = useState<CustomerSchemeData | null>(null);
   const [gridRows, setGridRows] = useState<DueGridRow[]>([]);
@@ -170,7 +170,7 @@ const CustomerSchemePage: React.FC = () => {
         if (cancelled) return;
         setScheme(schemeData);
         setGridRows(grid.rows);
-        setTotals(totalsFromDueGrid(grid));
+        setTotals(totalsFromDueGrid(grid, selected?.flat_amount));
       } catch {
         if (!cancelled) setError(true);
       } finally {

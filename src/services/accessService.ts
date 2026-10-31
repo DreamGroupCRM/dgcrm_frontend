@@ -38,6 +38,8 @@ export interface AccessDepartment {
   designation_name: string | null;
   level: DesignationLevel;
   reporting_head_id: number | null;
+  /** V_29.0 (E2) — the reporting head's name ('Admin' when none). */
+  reports_to?: string | null;
 }
 
 export interface AccessProfile {
@@ -50,6 +52,8 @@ export interface AccessProfile {
   can_add_customer: boolean;
   customer_team: TeamMember[];
   lead_team: TeamMember[];
+  /** V_29.0 — a Recovery Executive: customer documents are view-only (no download). */
+  documents_view_only?: boolean;
   /** V_26.0 — the logged-in employee (name, code, photo), for the strip on every page. */
   me?: { name: string; employee_code: string | null; photo_url: string | null } | null;
 }

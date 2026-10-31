@@ -40,7 +40,7 @@ import { Customer, PaymentFor, CollectPaymentPayload, Building } from '../../../
 import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants';
-import { formatDate } from '../../../../utils';
+import { toLocalYmd, formatDate } from '../../../../utils';
 import { DataScope, setDataScope } from '../../../../utils/dataScope';
 import { employeeBackdateMinYmd, serverTodayYmd, serverYmdPlusDays } from '../../../../utils/serverTime';
 import { cssRect } from '../../../../utils/appZoom';
@@ -640,7 +640,7 @@ const DueReportPage: React.FC = () => {
     // Each save is a new conversation entry in the history, so the note
     // starts empty; the previous note is shown above the field instead.
     setFollowUpNote('');
-    setFollowUpDate(existing?.due_date ? existing.due_date.slice(0, 10) : serverYmdPlusDays(1));
+    setFollowUpDate(existing?.due_date ? toLocalYmd(existing.due_date) : serverYmdPlusDays(1));
   };
   const closeFollowUp = () => { setFollowUpRow(null); setFollowUpEditing(null); };
 
@@ -1290,7 +1290,7 @@ const DueReportPage: React.FC = () => {
               {(() => {
                 const buildingText = apSelectedCustomer ? [
                   apSelectedCustomer.building_name,
-                  apSelectedCustomer.wing_name ? `${apSelectedCustomer.wing_name} Wing` : '',
+                  apSelectedCustomer.wing_name ? `${wingLabel(apSelectedCustomer.wing_name)}` : '',
                   apSelectedCustomer.flat_no ? `Flat ${apSelectedCustomer.flat_no}` : '',
                 ].filter(Boolean).join(' - ') : '';
                 return (
@@ -1572,7 +1572,7 @@ const DueReportPage: React.FC = () => {
                             const scheduled = followUpByCustomer.get(String(g.customer_id));
                             const target: FollowUpTarget = { customer_id: g.customer_id, customer_name: g.customer_name, customer_code: g.customer_code };
                             const iconBtn: React.CSSProperties = { width: 26, height: 26, background: t.insetBg, border: `1px solid ${t.surfaceBorder}`, color: 'var(--brand-ink)', cursor: 'pointer' };
-                            const isPast = !!scheduled?.due_date && scheduled.due_date.slice(0, 10) < serverTodayYmd();
+                            const isPast = !!scheduled?.due_date && toLocalYmd(scheduled.due_date) < serverTodayYmd();
                             return (
                               <div className="flex items-center gap-1.5" style={{ whiteSpace: 'nowrap' }}>
                                 {/* This booking's payment history (same table as Customer Details). */}
@@ -1714,7 +1714,7 @@ const DueReportPage: React.FC = () => {
               {followUpListTasks.length === 0 ? (
                 <p style={{ color: t.textSecondary, fontSize: 12, padding: '16px 20px' }}>No follow-ups scheduled.</p>
               ) : followUpListTasks.map((task) => {
-                const isPast = !!task.due_date && task.due_date.slice(0, 10) < serverTodayYmd();
+                const isPast = !!task.due_date && toLocalYmd(task.due_date) < serverTodayYmd();
                 return (
                   <div key={task.id} style={{ padding: '10px 20px', borderBottom: `1px solid ${t.divider}` }}>
                     <div className="flex items-center justify-between gap-3">

@@ -23,7 +23,7 @@ import '../../../Customer/CustomerPortal.css';
 import './CustomerDetails.css';
 
 import { AppTheme } from '../../../../styles/theme';
-import { resolveFileUrl, resolveThumbUrl } from '../../../../utils';
+import { resolveFileUrl, resolveThumbUrl, toLocalYmd } from '../../../../utils';
 import { useAppearanceTokens } from '../../../../styles/appearanceTokens';
 import { fetchCustomerScheme } from '../../../../services/customerDetailsService';
 import { fetchCustomerDueGrid, DueGridRow, CustomerDueGrid } from '../../../../services/paymentService';
@@ -43,7 +43,7 @@ const formatINR = (n: number): string => `₹ ${Math.max(0, Math.round(n || 0)).
 // shape before splitting, so neither format renders garbled.
 const formatDMY = (iso: string | null): string => {
   if (!iso) return '—';
-  const [y, m, d] = iso.slice(0, 10).split('-');
+  const [y, m, d] = toLocalYmd(iso).split('-');
   return y && m && d ? `${d}/${m}/${y}` : '—';
 };
 
@@ -344,7 +344,7 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
           so Admin, employee and customer always see identical figures. Due
           Now = what is past its date and still unpaid. */}
       {gridRows && (() => {
-        const totals = totalsFromDueGrid(grid ?? { rows: gridRows });
+        const totals = totalsFromDueGrid(grid ?? { rows: gridRows }, c.flat_amount);
         const dueNow = gridRows.filter((r) => r.status === 'due').reduce((sum, r) => sum + r.due_amount, 0);
         // ₹0 rows (e.g. an unused Remaining Booking Amount) aren't instalments.
         const instalments = gridRows.filter((r) => r.amount > 0);

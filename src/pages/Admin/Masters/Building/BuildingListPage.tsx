@@ -110,7 +110,8 @@ const BuildingListPage: React.FC = () => {
   // A disabled building is filtered out of this list by default (see
   // FetchBuildingList's includeDisabled) — this toggle is the only way back
   // to a disabled building, e.g. to re-enable it.
-  const [showDisabled, setShowDisabled] = useState(false);
+  // V_29.0 (G1) — Status filter instead of the "Show Disabled" tick box.
+  const [statusFilter, setStatusFilter] = useState<'active' | 'disabled' | 'all'>('active');
 
   useEffect(() => { dispatch(setPageTitle('Building')); }, [dispatch]);
 
@@ -122,7 +123,7 @@ const BuildingListPage: React.FC = () => {
   const fetchBuildings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await FetchBuildingList(page, limit, debouncedSearch, sortKey, sortDir, showDisabled);
+      const res = await FetchBuildingList(page, limit, debouncedSearch, sortKey, sortDir, statusFilter);
       if (res.success) {
         setAllBuildings(res.rows ?? []);
         setTotal(res.total ?? 0);
@@ -135,13 +136,13 @@ const BuildingListPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch, sortKey, sortDir, showDisabled]);
+  }, [page, limit, debouncedSearch, sortKey, sortDir, statusFilter]);
 
   useEffect(() => { fetchBuildings(); }, [fetchBuildings]);
   // A search (or toggling which buildings are even in the result set)
   // narrowing things out from under an already-deep page number would
   // otherwise land on an empty or out-of-range page.
-  useEffect(() => { setPage(1); }, [debouncedSearch, showDisabled]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter]);
 
   const toggleSort = (key: BuildingSortKey) => {
     if (key === sortKey) {
@@ -155,8 +156,8 @@ const BuildingListPage: React.FC = () => {
   // ── disable / enable (replaces the old hard-sounding Delete) ───────────
   // A disabled building is never removed from the database, it's just
   // filtered out of this list by default (see FetchBuildingList's
-  // includeDisabled) — the "Show Disabled" toggle is the only way back to
-  // one, e.g. to re-enable it.
+  // status) — the Status filter (Disabled / All) is the way back to one,
+  // e.g. to re-enable it.
   const handleToggleActive = async (building: Building, force = false) => {
     const disabling = building.is_active;
     if (!force) {
@@ -204,7 +205,7 @@ const BuildingListPage: React.FC = () => {
   const exportCSV = async () => {
     setExportingCsv(true);
     try {
-      const res = await FetchBuildingList(1, 5000, debouncedSearch, sortKey, sortDir);
+      const res = await FetchBuildingList(1, 5000, debouncedSearch, sortKey, sortDir, statusFilter);
       const exportRows = res.rows ?? [];
       if (exportRows.length === 0) { toast.info('No data to Export'); return; }
       const headers = [
@@ -297,23 +298,17 @@ const BuildingListPage: React.FC = () => {
         </div>
 
         <div className="master-actions">
-          {/* Disabled buildings are hidden from the list by default (see
-              FetchBuildingList's includeDisabled) — this is the only way
-              back to one, e.g. to re-enable it. Gated the same as the
-              Disable/Enable action itself (Admin/Superadmin only). */}
+          {/* Disabled buildings are hidden by default; the Status filter
+              brings them back (e.g. to re-enable one). Admin/Superadmin
+              only, same as Disable/Enable itself. */}
           {canToggleActive && (
-            <label
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: t.textPrimary, cursor: 'pointer', whiteSpace: 'nowrap' }}
-              title="Show buildings that have been disabled"
-            >
-              <input
-                type="checkbox"
-                checked={showDisabled}
-                onChange={(e) => setShowDisabled(e.target.checked)}
-                style={{ cursor: 'pointer' }}
-              />
-              Show Disabled
-            </label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'active' | 'disabled' | 'all')}
+              aria-label="Building status" title="Building status"
+              style={{ height: 38, padding: '0 10px', borderRadius: 10, fontSize: 12.5, fontWeight: 600, background: t.inputBg, color: t.inputText, border: `1px solid ${t.inputBorder}`, cursor: 'pointer' }}>
+              <option value="active">Active</option>
+              <option value="disabled">Disabled</option>
+              <option value="all">All</option>
+            </select>
           )}
           <button onClick={() => navigate('/admin/masters/building/add')} className="master-btn-primary">
             <MdAdd size={18} /> Add Building

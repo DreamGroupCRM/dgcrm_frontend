@@ -80,7 +80,7 @@ const Logo: React.FC<LogoProps> = ({
 
             )
           }}>
-          Dream Group CRM
+          Dream Group
         </p>
       </div>
     </div>

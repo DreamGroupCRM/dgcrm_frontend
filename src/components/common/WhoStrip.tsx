@@ -27,7 +27,9 @@ const WhoStrip: React.FC = () => {
   const authName = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim();
   const name = (!isAdmin && profile?.me?.name) || authName || user?.email?.split('@')[0] || 'User';
   const roleText = isAdmin ? 'Admin · Company-wide view' : pageRoleLabel(profile, pathname);
-  const headHere = !isAdmin && Boolean(roleText && profile?.departments.some((d) => d.level === 'head' && roleText.startsWith(`${d.department_name} ·`)));
+  // The department this page belongs to (its label is "Department · Designation").
+  const pageDept = !isAdmin && roleText ? profile?.departments.find((d) => roleText.startsWith(`${d.department_name} ·`) || roleText === d.department_name) : undefined;
+  const headHere = pageDept?.level === 'head';
   const teamIds = new Set([...(profile?.customer_team ?? []), ...(profile?.lead_team ?? [])].map((m) => m.id));
   const bg = isAdmin ? 'linear-gradient(90deg, #073b3b, #0a5c5c)' : headHere ? 'linear-gradient(90deg, #1d4ed8, #2563eb)' : 'linear-gradient(90deg, #6d28d9, #7c3aed)';
   const ink = isAdmin ? '#073b3b' : headHere ? '#1d4ed8' : '#6d28d9';
@@ -47,6 +49,8 @@ const WhoStrip: React.FC = () => {
       <b style={{ fontSize: 13 }}>{name}</b>
       {roleText && <span style={{ ...chip, background: '#fff', color: ink }}>{roleText}</span>}
       {!isAdmin && profile?.me?.employee_code && <span style={chip}>{profile.me.employee_code}</span>}
+      {/* V_29.0 (E2) — who they report to for this page's department. */}
+      {pageDept?.reports_to && <span style={chip}>Reports to {pageDept.reports_to}</span>}
       {headHere && teamIds.size > 0 && <span style={chip}>Team of {teamIds.size}</span>}
       {pageTitle && <span className="hidden sm:inline" style={{ marginLeft: 'auto', fontSize: 11.5, opacity: 0.85 }}>{pageTitle}</span>}
     </div>

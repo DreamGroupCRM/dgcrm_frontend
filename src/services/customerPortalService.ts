@@ -46,7 +46,7 @@ export interface PortalBookingDetail {
   email: string | null;
   address: string | null;
   date_of_birth: string | null;
-  building: { id: number; name: string; project_name: string | null } | null;
+  building: { id: number; name: string; project_name: string | null; location?: string | null } | null;
   wing: { id: number; name: string } | null;
   // flat_type/area_sqft ride along on the relation — they are what the
   // portal's "Flat Type" and "Area" fields read, and they live on the Flat

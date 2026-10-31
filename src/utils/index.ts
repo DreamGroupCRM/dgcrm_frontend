@@ -289,7 +289,7 @@ export const showAlert = {
     return Swal.fire({
       icon: 'success',
       title: `${roleLabel} Logged in Successfully`,
-      text: 'Welcome to Dream Group CRM!',
+      text: 'Welcome to Dream Group!',
       timer: 1500,
       showConfirmButton: false,
       position: 'top',
@@ -327,6 +327,22 @@ export const showAlert = {
  * which is what a timestamp should do.
  */
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * V_29.0 — the calendar day of a date from the server, as YYYY-MM-DD.
+ * Saved dates arrive as ISO strings such as "2026-10-23T18:30:00.000Z"
+ * (= 24 Oct in India). Taking the first 10 characters gave the day before
+ * whenever the server runs on India time, and a form re-saved that wrong
+ * day. A plain YYYY-MM-DD is returned unchanged.
+ */
+export const toLocalYmd = (value: string | null | undefined): string => {
+  if (!value) return '';
+  const s = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s.slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 export const formatDate = (dateString: string): string => {
   if (!dateString) return 'N/A';
@@ -401,3 +417,6 @@ export const getInitials = (name: string): string => {
     .map((p) => p[0]?.toUpperCase() || '')
     .join('');
 };
+
+/** V_29.0 — "Wing 1" stays "Wing 1"; a bare "A" becomes "A Wing". */
+export const wingLabel = (w: string | null | undefined): string => (w ? (/\bwing\b/i.test(w) ? w : `${w} Wing`) : '');

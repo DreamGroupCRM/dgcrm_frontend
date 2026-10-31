@@ -46,6 +46,11 @@ import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceipt
 import { PaymentReceiptViewModal } from '../../../../components/common/PaymentReceiptViewModal';
 import { CustomerPaymentRecord, PaymentReceipt } from '../../../../types';
 import { SearchableSelect } from '../../../../components/common/SearchableSelect';
+import DateInput from '../../../../components/common/DateInput';
+import { serverTodayYmd, employeeBackdateMinYmd } from '../../../../utils/serverTime';
+
+// V_29.0 — how a refund was paid back (same choices as Collect Payment).
+const REFUND_MODE_OPTIONS = ['Cash', 'Cheque', 'Online', 'Other'];
 import { formatDate, resolveFileUrl, showAlert } from '../../../../utils';
 import './CancelledBooking.css';
 import CancelBookingPicker from './CancelBookingPicker';
@@ -141,11 +146,14 @@ const CancelledBookingPage: React.FC = () => {
   };
   const customerOptions = useMemo(() => allCancelled.map(customerLabel), [allCancelled]);
 
-  // ── Refund entry row: Customer, Building/Wing/Flat, Refund Amount, Submit,
-  // X. No Refund Date / Mode of Payment: a refund is dated today by the
-  // server and has no mode. ────────────────────────────────────────────────
+  // ── Refund entry row: Customer, Building/Wing/Flat, Refund Amount, Refund
+  // Date, Mode of Payment, Submit, X. V_29.0 — Admin: any past date; an
+  // employee: today or up to 4 days back within the month (server checks).
   const [custText, setCustText] = useState('');
   const [rAmount, setRAmount] = useState('');
+  const [rDate, setRDate] = useState(serverTodayYmd());
+  const [rMode, setRMode] = useState('');
+  const refundMinYmd = isAdmin ? undefined : employeeBackdateMinYmd();
   const [rSubmitAttempted, setRSubmitAttempted] = useState(false);
   const [savingRefund, setSavingRefund] = useState(false);
   const selectedCustomer = useMemo(() => allCancelled.find((c) => customerLabel(c) === custText) ?? null, [allCancelled, custText]);
@@ -162,7 +170,7 @@ const CancelledBookingPage: React.FC = () => {
   };
   const hasRefundInput = Boolean(custText.trim() || rAmount);
   const clearRefundRow = () => {
-    setCustText(''); setRAmount(''); setRSubmitAttempted(false);
+    setCustText(''); setRAmount(''); setRSubmitAttempted(false); setRDate(serverTodayYmd()); setRMode('');
     setFilter('customer_id', '');
   };
 
@@ -174,18 +182,17 @@ const CancelledBookingPage: React.FC = () => {
   const handleSubmitRefund = async () => {
     if (!selectedCustomer) { toast.error('Select a customer first.'); return; }
     setRSubmitAttempted(true);
-    const err = amountError;
+    const err = amountError || (!rDate ? 'Select the Refund Date.' : '') || (!rMode ? 'Select the Mode of Payment.' : '');
     if (err) { toast.error(err); return; }
     setSavingRefund(true);
     try {
-      // Dated today by the server; no mode of payment.
-      const updated = await createRefund(selectedCustomer.id, { refunded_amount: amountNum });
+      const updated = await createRefund(selectedCustomer.id, { refunded_amount: amountNum, refund_date: rDate, mode_of_payment: rMode });
       // An admin's refund is approved on entry (cancelled receipt generated);
       // an employee's waits for admin approval.
       toast.success(isAdmin
         ? `Refund of ${rupee(amountNum)} recorded for ${selectedCustomer.customer_name} — cancelled receipt generated.`
         : `Refund of ${rupee(amountNum)} for ${selectedCustomer.customer_name} sent for admin approval.`);
-      setRAmount(''); setRSubmitAttempted(false);
+      setRAmount(''); setRSubmitAttempted(false); setRMode(''); setRDate(serverTodayYmd());
       if (refundFor?.id === selectedCustomer.id) setRefundSummary(updated);
       fetchRows(); loadSummary(); loadAllCancelled(); loadPendingRefunds();
     } catch (e) {
@@ -324,6 +331,7 @@ const CancelledBookingPage: React.FC = () => {
   // then sees it here. The customer's own (Recovery) assignment is kept as
   // it was; that is the "Assigned Employee" column.
   const canAssignRefund = isAdmin;
+  const REFUND_UNASSIGNED = 'Unassigned';
   const [refundEmployees, setRefundEmployees] = useState<{ id: string; label: string }[]>([]);
   useEffect(() => {
     if (!canAssignRefund) return;
@@ -338,12 +346,14 @@ const CancelledBookingPage: React.FC = () => {
   const allOnPage = rows.length > 0 && rows.every((r) => selected.has(r.id));
   const toggleAll = () => setSelected(allOnPage ? new Set() : new Set(rows.map((r) => r.id)));
   const handleAssign = async () => {
+    // V_29.0 — "Unassigned" takes the refund case off its employee.
+    const unassign = employeeSearch === REFUND_UNASSIGNED;
     const employee = refundEmployees.find((e) => e.label === employeeSearch);
-    if (!employee) { toast.error('Select a Refund employee.'); return; }
+    if (!employee && !unassign) { toast.error('Select a Refund employee.'); return; }
     setAssigning(true);
     try {
-      for (const id of Array.from(selected)) await setRefundAssignee(id, employee.id);
-      toast.success(`Assigned for refund to ${employee.label}`);
+      for (const id of Array.from(selected)) await setRefundAssignee(id, unassign ? null : employee!.id);
+      toast.success(unassign ? 'Refund employee removed' : `Assigned for refund to ${employee!.label}`);
       setSelected(new Set());
       setEmployeeSearch('');
       fetchRows(); loadAllCancelled();
@@ -613,7 +623,12 @@ const CancelledBookingPage: React.FC = () => {
             <label style={labelStyle}>Refund Amount (₹)</label>
             <input type="number" min={0} value={rAmount} disabled={refundLocked}
               placeholder={selectedCustomer ? `Max ${rupee(selectedBalance)}` : 'Amount'}
-              title={selectedCustomer ? `Refund balance: ${rupee(selectedBalance)}` : 'Select a customer first'}
+              // V_29.0 (Q2) — the balance shown everywhere is approved refunds
+              // only; this cap also holds back refunds still awaiting approval,
+              // so the same money cannot be entered twice.
+              title={selectedCustomer
+                ? `Can still be refunded: ${rupee(selectedBalance)}${selectedCustomer.pending_refund > 0 ? ` (balance ${rupee(Math.max(0, selectedCustomer.total_paid - selectedCustomer.total_refunded))} less ${rupee(selectedCustomer.pending_refund)} awaiting approval)` : ''}`
+                : 'Select a customer first'}
               // Never more than the refund balance: a larger number is capped
               // at the balance as it is typed (digits only, no minus/decimal).
               max={selectedBalance}
@@ -626,6 +641,19 @@ const CancelledBookingPage: React.FC = () => {
               }}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitRefund(); }}
               style={refundLocked ? readOnlyStyle : { ...inputStyle, ...(rSubmitAttempted && amountError ? { borderColor: '#ef4444' } : {}) }} />
+          </div>
+          <div className="cb-f-date">
+            <label style={labelStyle}>Refund Date</label>
+            <DateInput t={t} value={rDate} min={refundMinYmd} max={serverTodayYmd()} onChange={setRDate}
+              style={refundLocked ? readOnlyStyle : { ...inputStyle, ...(rSubmitAttempted && !rDate ? { borderColor: '#ef4444' } : {}) }} />
+          </div>
+          <div className="cb-f-mode">
+            <label style={labelStyle}>Mode of Payment</label>
+            <select value={rMode} disabled={refundLocked} onChange={(e) => setRMode(e.target.value)}
+              style={refundLocked ? readOnlyStyle : { ...inputStyle, height: 38, ...(rSubmitAttempted && !rMode ? { borderColor: '#ef4444' } : {}) }}>
+              <option value="">--Select--</option>
+              {REFUND_MODE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
           </div>
           <div className="cb-filter-actions flex items-center gap-2">
             <button type="button" onClick={handleSubmitRefund} disabled={refundLocked || savingRefund || selectedBalance <= 0}
@@ -656,6 +684,7 @@ const CancelledBookingPage: React.FC = () => {
                 onChange={(e) => setEmployeeSearch(e.target.value)}
                 style={selected.size === 0 ? readOnlyStyle : inputStyle} />
               <datalist id="cancelled-assign-employees">
+                <option value={REFUND_UNASSIGNED} />
                 {refundEmployees.map((e) => <option key={e.id} value={e.label} />)}
               </datalist>
             </div>
@@ -667,7 +696,7 @@ const CancelledBookingPage: React.FC = () => {
                 border: `1px solid ${selected.size === 0 || !employeeSearch || assigning ? t.surfaceBorder : 'transparent'}`,
                 cursor: selected.size === 0 || !employeeSearch || assigning ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
               }}>
-              {assigning ? 'Assigning...' : 'Assign for Refund'}
+              {assigning ? 'Assigning...' : employeeSearch === REFUND_UNASSIGNED ? 'Unassign' : 'Assign for Refund'}
             </button>
           </div>
         ) : <div />}
@@ -707,16 +736,16 @@ const CancelledBookingPage: React.FC = () => {
                 <th style={{ padding: '10px 12px', width: 40 }}>
                   {canAssignRefund && <input type="checkbox" checked={allOnPage} onChange={toggleAll} disabled={rows.length === 0} title="Select all on this page" />}
                 </th>
-                {['Action', 'Customer ID', 'Customer Name', 'Contact Details', 'Company / Project', 'Building Details', 'Cancellation Date', 'Refund Amount', 'Balance Amount', 'Refund Date', 'Mode of Payment', 'Assigned Employee', 'Refund By'].map((h) => (
+                {['Action', 'Customer ID', 'Customer Name', 'Contact Details', 'Company / Project', 'Building Details', 'Cancellation Date', 'Refund Amount', 'Balance Amount', 'Assigned Employee'].map((h) => (
                   <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', ...(h === 'Action' ? { minWidth: 120 } : {}) }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={14} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading...</td></tr>
+                <tr><td colSpan={11} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>Loading...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={14} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>{isAdmin ? 'No cancelled bookings found.' : 'No cancelled bookings assigned to you for refund yet.'}</td></tr>
+                <tr><td colSpan={11} style={{ padding: 28, textAlign: 'center', color: t.textSecondary }}>{isAdmin ? 'No cancelled bookings found.' : 'No cancelled bookings assigned to you for refund yet.'}</td></tr>
               ) : rows.map((c) => (
                 <tr key={c.id} className="master-table-row-hover" style={{ borderTop: `1px solid ${t.divider}` }}>
                   <td style={{ padding: '10px 12px' }}>
@@ -785,14 +814,9 @@ const CancelledBookingPage: React.FC = () => {
                     <div style={{ fontWeight: 700, color: '#ea580c' }}>{rupee(Math.max(0, c.total_paid - c.total_refunded))}</div>
                     <div style={{ fontSize: 10.5, color: t.textSecondary }}>of {rupee(c.total_paid)} paid</div>
                   </td>
-                  <td style={td}>{c.last_refund_date ? formatDate(c.last_refund_date) : '—'}</td>
-                  <td style={td}>{c.last_refund_mode || '—'}</td>
+                  {/* V_29.0 — Refund Date, Mode of Payment and Refund By moved off
+                      the grid; they stay in each booking's refund history popup. */}
                   <td style={td}>{c.assigned_employee_name || '—'}</td>
-                  <td style={td}>
-                    {c.refund_employee_name
-                      ? <>{c.refund_employee_name}{c.refund_employee_code && <div style={{ fontSize: 10.5, color: t.textSecondary }}>{c.refund_employee_code}</div>}</>
-                      : <span style={{ fontSize: 11, fontWeight: 700, color: '#b45309' }}>Not assigned</span>}
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -808,7 +832,7 @@ const CancelledBookingPage: React.FC = () => {
           title={`Payment Refund - ${refundFor.customer_name}${refundFor.customer_code ? ` (${refundFor.customer_code})` : ''}`}
           customer={customerInfoItems({ name: refundFor.customer_name, code: refundFor.customer_code, mobile: refundFor.mobile_number, email: refundFor.email, address: refundFor.address })}
           property={propertyInfoItems({
-            project: refundFor.project_name, building: refundFor.building_name, wing: refundFor.unit_type === 'shop' ? null : refundFor.wing_name,
+            project: refundFor.project_name, location: refundFor.location, building: refundFor.building_name, wing: refundFor.unit_type === 'shop' ? null : refundFor.wing_name,
             unitType: refundFor.unit_type === 'shop' ? 'shop' : 'flat', unitNo: refundFor.unit_type === 'shop' ? refundFor.shop_no : refundFor.flat_no,
             flatAmount: refundFor.flat_amount, paid: refundSummary?.total_paid ?? 0,
           })}

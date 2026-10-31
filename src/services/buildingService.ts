@@ -34,7 +34,7 @@ const API_NAME_HEADER = 'X-Api-Name';
 // V_22.0 item 9 — bookedByCustomerId/bookedByCustomerName come from
 // building.repository.ts's getFullBuildingTree/getShops LEFT JOIN
 // customers, absent (undefined) on any response that predates this.
-interface WizardFlat { id: number; flatNo: string; flatType: string | null; flatArea: number | null; enabled: boolean; bookedByCustomerId?: number | string | null; bookedByCustomerName?: string | null; }
+interface WizardFlat { id: number; flatNo: string; flatType: string | null; flatArea: number | null; enabled: boolean; bookedByCustomerId?: number | string | null; bookedByCustomerName?: string | null; hasHistory?: boolean; }
 interface WizardFloor { id: number; floorName: string; flats: WizardFlat[]; }
 interface WizardWing { id: number; wingName: string; withGroundFloor: boolean; numberOfFloors: number | null; floors: WizardFloor[]; }
 interface WizardShop { id: number; shopNo: string; shopArea: number | null; enabled: boolean; bookedByCustomerId?: number | string | null; bookedByCustomerName?: string | null; }
@@ -45,6 +45,8 @@ interface WizardBuilding {
   id: number; name: string; code: string | null; has_parking: boolean; parking_count: number | null;
   business_company_id?: number | null;
   business_company_name?: string | null;
+  bank_id?: number | string | null;
+  bank_name?: string | null;
   is_active: boolean; sort_order: number; created_at: string; updated_at?: string;
   project: { projectName: string; location: string | null } | null;
 }
@@ -114,6 +116,7 @@ function fromWizardResponse(data: WizardFullResponse): Building {
           is_active: fl.enabled,
           booked_by_customer_id: fl.bookedByCustomerId != null ? String(fl.bookedByCustomerId) : null,
           booked_by_customer_name: fl.bookedByCustomerName || null,
+          has_history: Boolean(fl.hasHistory),
         })),
       })),
     })),
@@ -131,6 +134,8 @@ function fromWizardResponse(data: WizardFullResponse): Building {
     parking_count: b.parking_count ?? null,
     business_company_id: b.business_company_id ?? null,
     business_company_name: b.business_company_name ?? null,
+    bank_id: b.bank_id != null ? Number(b.bank_id) : null,
+    bank_name: b.bank_name ?? null,
     is_active: b.is_active,
     created_at: b.created_at,
     updated_at: b.updated_at,
@@ -192,6 +197,7 @@ function toWizardPayload(payload: CreateBuildingPayload) {
       hasParking: payload.has_parking,
       parkingCount: payload.has_parking ? payload.parking_count : null,
       businessCompanyId: payload.business_company_id,
+      bankId: payload.bank_id,
     },
     wings: payload.wings.map((w) => ({
       id: toServerId(w.id),
@@ -239,7 +245,8 @@ export const FetchBuildingList = async (
   search?: string,
   sort?: BuildingSortKey,
   sortDir?: 'asc' | 'desc',
-  includeDisabled = true
+  // V_29.0 (G1) — the Building list's Status filter; everyone else gets all.
+  status: 'active' | 'disabled' | 'all' = 'all'
 ): Promise<BuildingListResponse> => {
   const params: Record<string, string | number | boolean> = {
     page,
@@ -250,7 +257,7 @@ export const FetchBuildingList = async (
   }
   if (sort) params.sort = sort;
   if (sortDir) params.sort_dir = sortDir;
-  if (!includeDisabled) params.is_active = true;
+  if (status !== 'all') params.is_active = status === 'active';
   const res = await axiosInstance.get('/buildings', {
     params,
     headers: { [API_NAME_HEADER]: 'FetchBuildingList' },
