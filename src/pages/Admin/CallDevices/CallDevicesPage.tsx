@@ -51,7 +51,7 @@ const CallDevicesPage: React.FC = () => {
   const [settings, setSettings] = useState<CallSyncSettings | null>(null);
   const [loading, setLoading] = useState(false);
   const [pin, setPin] = useState('');
-  const [retention, setRetention] = useState({ archive_after_months: 12, delete_after_years: 3, recording_days: 180 });
+  const [retention, setRetention] = useState({ archive_after_months: 12, delete_after_years: 3, recording_days: 90 });
   const [waDefault, setWaDefault] = useState('');
   const [waProjects, setWaProjects] = useState<ProjectWhatsapp[]>([]);
 

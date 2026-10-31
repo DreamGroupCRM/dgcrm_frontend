@@ -46,6 +46,7 @@ import {
 } from '../../../../services/paymentService';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
+import { fetchEmployeeIdsWithArea } from '../../../../services/accessService';
 import { companyService } from '../../../../services/companyService';
 import { FetchBankAccount } from '../../../../services/bankAccountService';
 import { exportPaymentReceiptPdf } from '../Customer-Details/paymentPdfExport.lazy';
@@ -280,8 +281,16 @@ const PaymentReceivedPage: React.FC = () => {
     // list is set below from their own name and team.
     if (paths.isAdmin) (async () => {
       try {
-        const res = await FetchEmployeeDetails(1, 1000, undefined, true);
-        if (res.success) setEmployeeNameOptions(Array.from(new Set((res.rows ?? []).map((e) => [e.first_name, e.last_name].filter(Boolean).join(' ')))));
+        // V_29.0 — only employees who can record payments (Customer Details
+        // or Payment Dues, i.e. Recovery); everyone if that list fails.
+        const [res, canCollect] = await Promise.all([
+          FetchEmployeeDetails(1, 1000, undefined, true),
+          Promise.all([fetchEmployeeIdsWithArea('customers'), fetchEmployeeIdsWithArea('payment_dues')])
+            .then(([a, b]) => new Set([...a, ...b])).catch(() => null),
+        ]);
+        if (res.success) setEmployeeNameOptions(Array.from(new Set((res.rows ?? [])
+          .filter((e) => !canCollect || canCollect.has(String(e.id)))
+          .map((e) => [e.first_name, e.last_name].filter(Boolean).join(' ')))));
       } catch { /* filter just stays empty if this fails */ }
     })();
     (async () => {

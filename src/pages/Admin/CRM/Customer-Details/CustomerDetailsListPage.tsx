@@ -35,7 +35,7 @@ import { exportPaymentHistoryPdf, exportPaymentSchedulePdf, exportPaymentReceipt
 import PaymentHistoryTable, { toPaymentHistoryRow } from '../../../../components/common/PaymentHistoryTable';
 import { HistoryCard, HistorySection, customerInfoItems, propertyInfoItems } from '../../../../components/common/HistoryPopup';
 import { FetchBuildingList, ViewBuilding } from '../../../../services/buildingService';
-import { fetchEmployeeIdsWithArea } from '../../../../services/accessService';
+import { areaRoleLabel, fetchEmployeesWithArea } from '../../../../services/accessService';
 import { FetchEmployeeDetails } from '../../../../services/employeeDetailsService';
 import {
   Customer, Building, CustomerPaymentRecord, CustomerListSummary, CustomerListFilters,
@@ -611,13 +611,15 @@ const CustomerDetailsListPage: React.FC = () => {
       // offered as before and the server still checks.
       const [res, withCustomers] = await Promise.all([
         FetchEmployeeDetails(1, 1000, undefined, true),
-        fetchEmployeeIdsWithArea('customers').catch(() => null),
+        fetchEmployeesWithArea('customers').catch(() => null),
       ]);
       if (res.success) {
         // V_26.0 — department · designation in the label, so two people with
-        // the same name can be told apart when assigning.
+        // the same name can be told apart when assigning. V_29.0 — the
+        // department that gives Customer Details (e.g. "Recovery · Executive"),
+        // not the employee's first department.
         setEmployees((res.rows ?? []).filter((e) => !withCustomers || withCustomers.has(String(e.id))).map((e) => {
-          const role = [e.department, e.designation].filter(Boolean).join(' · ');
+          const role = areaRoleLabel(withCustomers?.get(String(e.id))) || [e.department, e.designation].filter(Boolean).join(' · ');
           return { id: e.id, label: `${e.first_name} ${e.last_name} (${e.employee_code})${role ? ` — ${role}` : ''}` };
         }));
       } else {
