@@ -755,7 +755,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // permissions) are not shown to them.
   const actorRole = useAppSelector((st) => st.auth.role);
   const actorIsAdmin = actorRole === 'admin' || actorRole === 'superadmin';
-  const deptLockedForHr = !actorIsAdmin && mode === 'edit';
+  // V_29.0 — HR never sets department, designation or Reporting Head (Add
+  // or Edit): the Admin assigns them while approving a new employee, and
+  // only the Admin changes them afterwards. The server refuses them too.
+  const deptLockedForHr = !actorIsAdmin;
   const actorIsSuperAdmin = actorRole === 'superadmin';
   // V_26.0 — ?review=<request id> (Admin): the form opens filled with HR's
   // add / edit request; saving approves it with any changes made here.
@@ -1301,7 +1304,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
     } },
   ];
 
-  const getFirstInvalid = () => validationChecks.find((c) => c.failed()) ?? null;
+  // V_29.0 — HR leaves the department section to the Admin, so its checks don't apply.
+  const activeChecks = deptLockedForHr ? validationChecks.filter((c) => c.section !== 'assign') : validationChecks;
+  const getFirstInvalid = () => activeChecks.find((c) => c.failed()) ?? null;
   const validate = (): string | null => getFirstInvalid()?.message ?? null;
   const isFormValid = getFirstInvalid() === null;
 
@@ -1312,9 +1317,9 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
   // render. Gated on submitAttempted so a fresh form doesn't open with
   // every required field already flagged red.
   const [submitAttempted, setSubmitAttempted] = useState(false);
-  const activeErrors = submitAttempted ? validationChecks.filter((c) => c.failed()) : [];
+  const activeErrors = submitAttempted ? activeChecks.filter((c) => c.failed()) : [];
   const errorFor = (field: string): string | undefined =>
-    submitAttempted ? validationChecks.find((c) => c.field === field && c.failed())?.message : undefined;
+    submitAttempted ? activeChecks.find((c) => c.field === field && c.failed())?.message : undefined;
 
   // Auto-expand the section containing the first invalid field, then
   // scroll to and focus it once the section has actually rendered open.
@@ -1397,6 +1402,14 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         department_heads: Object.fromEntries(reportingDeptIds.map((d) => [String(d), form.department_heads[String(d)] ?? null])),
         can_add_customer: isHeadAnywhere && form.can_add_customer,
       };
+      // V_29.0 — HR's new employee goes to the Admin without a department:
+      // the Admin assigns it while approving.
+      if (deptLockedForHr && mode === 'add') {
+        payload.department_ids = [];
+        payload.designation_ids = [];
+        payload.department_heads = {};
+        payload.can_add_customer = false;
+      }
       let pending = false;
       // V_29.0 (E4) — when the Admin's change takes away a Head role (or
       // Customer Details), the customers it leaves behind are shown first;
@@ -1904,20 +1917,21 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* V_25.0 — one row: Department | Designation | Reporting Head (the
             Head list sits right beside the designation, not in a separate
             block below); then the Access Summary in two lines. */}
-        {/* V_29.0 — after an employee exists only the Admin changes their
-            department or designation; HR sees them locked (the server refuses
-            such a change too). On Add, HR picks them and the Admin can correct
-            them while approving. */}
+        {/* V_29.0 — HR never sets these: on Add the Admin assigns them while
+            approving; after that only the Admin changes them (the server
+            refuses such a change from HR too). */}
         {deptLockedForHr && (
           <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 8 }}>
-            Department and designation can only be changed by the Admin.
+            {mode === 'add'
+              ? 'The Admin assigns the Department, Designation and Reporting Head when approving this employee.'
+              : 'Department, designation and Reporting Head can only be changed by the Admin.'}
           </div>
         )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
           <div className="emp-assign-box">
             <CheckboxGroup
               t={t} isView={isView || deptLockedForHr}
-              label="Assign Departments" required
+              label="Assign Departments" required={!deptLockedForHr}
               options={departmentOptions} selected={form.department_ids}
               onToggle={toggleDepartment}
               loading={loadingDepartments} emptyHint="No departments available."
@@ -1927,7 +1941,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <div className="emp-assign-box">
             <GroupedDesignationChecklist
               t={t} isView={isView || deptLockedForHr}
-              required={deptRoles.length === 0 || deptRoles.some((r) => r.designationRequired && r.hasDesignations)}
+              required={!deptLockedForHr && (deptRoles.length === 0 || deptRoles.some((r) => r.designationRequired && r.hasDesignations))}
               options={visibleDesignationOptions} departmentOptions={departmentOptions} selected={form.designation_ids}
               onToggle={selectDesignation}
               loading={loadingDesignations}
@@ -1956,8 +1970,8 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                             id: String(h.id),
                             label: `${h.name}${h.employee_code ? ` (${h.employee_code})` : ''}${h.inactive ? ' (inactive)' : ''}`,
                           }))].map((o) => (
-                          <label key={o.id || 'none'} className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView ? 'default' : 'pointer' }}>
-                            <input type="radio" name={`reporting-head-${r.deptId}`} value={o.id} disabled={isView}
+                          <label key={o.id || 'none'} className="flex items-center gap-2" style={{ fontSize: 12, color: t.textPrimary, cursor: isView || deptLockedForHr ? 'default' : 'pointer' }}>
+                            <input type="radio" name={`reporting-head-${r.deptId}`} value={o.id} disabled={isView || deptLockedForHr}
                               checked={String(form.department_heads[String(r.deptId)] ?? '') === o.id}
                               onChange={() => setDepartmentHead(r.deptId, o.id)} />
                             {o.label}
