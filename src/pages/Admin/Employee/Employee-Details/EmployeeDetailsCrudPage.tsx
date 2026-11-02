@@ -1910,6 +1910,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
       </AccordionSection>
 
       {/* ── Assign Action & Module for this Employee ────────────────── */}
+      {/* V_29.0 — HR never sees this section (owner's decision): the Admin
+          assigns department, designation and Reporting Head while approving,
+          and only the Admin changes them later. */}
+      {!deptLockedForHr && (
       <AccordionSection theme={t} icon={<MdGroups size={16} />} title="Department, Designation & Reporting Head" gradient="var(--grad-green)"
         open={openSections.assign} onToggle={() => setOpenSections((p) => ({ ...p, assign: !p.assign }))}
         sectionRef={(el) => { sectionRefs.current.assign = el; }}>
@@ -1917,16 +1921,6 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
         {/* V_25.0 — one row: Department | Designation | Reporting Head (the
             Head list sits right beside the designation, not in a separate
             block below); then the Access Summary in two lines. */}
-        {/* V_29.0 — HR never sets these: on Add the Admin assigns them while
-            approving; after that only the Admin changes them (the server
-            refuses such a change from HR too). */}
-        {deptLockedForHr && (
-          <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 8 }}>
-            {mode === 'add'
-              ? 'The Admin assigns the Department, Designation and Reporting Head when approving this employee.'
-              : 'Department, designation and Reporting Head can only be changed by the Admin.'}
-          </div>
-        )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
           <div className="emp-assign-box">
             <CheckboxGroup
@@ -2030,6 +2024,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           </div>
         )}
       </AccordionSection>
+      )}
 
       {/* ── Sticky footer — Go Back (always) + Create/Update (add/edit only), centered ──────── */}
       <div className="master-crud-footer flex items-center justify-center gap-3" style={{ background: t.surfaceBg, borderColor: t.surfaceBorder }}>
@@ -2072,7 +2067,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
               border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.8 : 1,
             }}
           >
-            {saving ? 'Saving...' : reviewId ? (review ? 'Approve' : 'Loading…') : mode === 'edit' ? 'Update' : 'Create'}
+            {saving ? 'Saving...' : reviewId ? (review ? 'Approve' : 'Loading…') : !actorIsAdmin ? 'Submit for approval' : mode === 'edit' ? 'Update' : 'Create'}
           </button>
         )}
       </div>
