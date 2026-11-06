@@ -121,6 +121,7 @@ export const STATUS_FAMILY: Record<string, StatusFamily> = {
   visited: 'violet',
   not_booked: 'neutral',
   booked: 'success',
+  existing_customer: 'violet',
 };
 
 /** Normalises 'Follow Up' / 'follow-up' / 'FOLLOW_UP' to one lookup key. */
