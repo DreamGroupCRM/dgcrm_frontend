@@ -1179,7 +1179,10 @@ export interface DefaultAmountResponse {
 // here; duplicates use is_duplicate, not a status value.
 export type LeadStatus =
   | 'new' | 'follow_up' | 'call_back' | 'ringing' | 'switched_off' | 'wrong_number'
-  | 'not_interested' | 'site_visit_scheduled' | 'visited' | 'not_booked' | 'booked' | 'cancelled';
+  | 'not_interested' | 'site_visit_scheduled' | 'visited' | 'not_booked' | 'booked' | 'cancelled'
+  // V_29.0 — already owns a property, not in Customers yet. Own pill; not
+  // counted in "All" or the dashboard lead figures (backend leadCounting).
+  | 'existing_customer';
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   new: 'New',
@@ -1194,6 +1197,7 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   not_booked: 'Not Booked',
   booked: 'Booked',
   cancelled: 'Cancelled',
+  existing_customer: 'Existing Customer',
 };
 
 export const LEAD_STATUSES = Object.keys(LEAD_STATUS_LABELS) as LeadStatus[];

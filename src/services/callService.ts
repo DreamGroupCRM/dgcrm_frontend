@@ -7,7 +7,7 @@ import { getFileToken } from './fileAccessService';
 
 export type CallDirection = 'incoming' | 'outgoing' | 'missed' | 'rejected' | 'other';
 export type RecordingStatus = 'none' | 'pending' | 'recording' | 'completed' | 'failed' | 'unsupported' | 'deleted';
-export type CallOutcome = 'interested' | 'not_interested' | 'call_later' | 'wrong_number';
+export type CallOutcome = 'interested' | 'not_interested' | 'call_later' | 'wrong_number' | 'existing_customer';
 
 export interface CallLog {
   id: string;

@@ -33,6 +33,7 @@ const OUTCOME: Record<CallOutcome, { label: string; color: string }> = {
   not_interested: { label: 'Not interested', color: '#64748B' },
   call_later: { label: 'Call later', color: '#B45309' },
   wrong_number: { label: 'Wrong number', color: '#DC2626' },
+  existing_customer: { label: 'Existing customer', color: '#6D28D9' },
 };
 
 export const formatTalkTime = (seconds: number): string => {
