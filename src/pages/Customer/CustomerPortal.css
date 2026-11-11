@@ -824,3 +824,17 @@ html.dark .cp-tl-wait { color: #fcd34d; }
 .cp-tl-all:hover, .cp-tl-all:focus-visible { text-decoration: underline; }
 .cp-call-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 4px 10px; border-radius: 9px; font-size: 12px; font-weight: 700;
   color: var(--brand-ink, #0f766e); border: 1px solid var(--cp-surface-border, #e5e7eb); text-decoration: none; }
+
+/* V_29.0 (9 Nov) — Home: three cards in a row, then progress + recent payments. */
+.cp-home3, .cp-home2 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-bottom: 12px; align-items: stretch; }
+.cp-home3 > .cp-card, .cp-home2 .cp-card { margin-bottom: 0; }
+.cp-home2 > div { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.cp-home-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin-top: 12px; }
+.cp-home-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.cp-home-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+  background: var(--cp-surface-border, #e5e7eb); color: var(--cp-text-primary, #111827); }
+.cp-home-chip.ok { background: rgba(5,150,105,0.12); color: #059669; }
+.cp-home-chip.wait { background: rgba(217,119,6,0.14); color: #b45309; }
+.cp-home3 .cp-call-btn { margin-top: 12px; }
+@media (min-width: 768px) { .cp-home2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 992px) { .cp-home3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
