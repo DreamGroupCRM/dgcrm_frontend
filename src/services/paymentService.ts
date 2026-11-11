@@ -141,9 +141,28 @@ export const paymentForLabel = (value: string): string =>
 
 // ── Collect a payment ────────────────────────────────────────────────────
 /** POST /api/payments */
+// V_29.0 — a likely duplicate (same amount, type, mode and Received Date
+// for this customer in the last few minutes) is a warning, not a block:
+// whoever is entering may go ahead, since the Admin approves every payment.
 export const collectPayment = async (payload: CollectPaymentPayload): Promise<CollectPaymentResponse> => {
-  const res = await axiosInstance.post('/payments', payload);
-  return res.data;
+  try {
+    const res = await axiosInstance.post('/payments', payload);
+    return res.data;
+  } catch (err) {
+    const data = (err as { response?: { status?: number; data?: { code?: string; message?: string } } })?.response;
+    if (data?.status !== 409 || data.data?.code !== 'DUPLICATE_PAYMENT') throw err;
+    const { default: Swal } = await import('sweetalert2');
+    const go = await Swal.fire({
+      icon: 'warning', title: 'Possible duplicate payment',
+      text: data.data?.message ?? 'The same payment was entered for this customer a few minutes ago.',
+      showCancelButton: true, confirmButtonText: 'Enter it anyway', cancelButtonText: 'Cancel',
+    });
+    if (!go.isConfirmed) {
+      throw Object.assign(new Error('Payment not entered.'), { response: { status: 409, data: { message: 'Payment not entered.' } } });
+    }
+    const res = await axiosInstance.post('/payments', { ...payload, confirm_duplicate: true });
+    return res.data;
+  }
 };
 
 // ── Due report — every active customer's due status for the 4 "simple"
@@ -272,6 +291,8 @@ export const mapPaymentReceiptData = (d: any): PaymentReceiptResponse['data'] =>
   future_emis: d.future_emis,
   total_emis: d.total_emis,
   emi_number: d.emi_number,
+  // V_29.0 — the building's company the receipt is issued by.
+  issuer: d.issuer ?? null,
 });
 
 export const fetchPaymentReceipt = async (transactionId: string | number): Promise<PaymentReceiptResponse> => {

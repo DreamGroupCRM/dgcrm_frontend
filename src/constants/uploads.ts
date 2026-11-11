@@ -30,6 +30,16 @@ export const DOCUMENT_TYPE_LABELS =
 // uploadTypes.ts, which this constant must be kept in sync with).
 export const DOCUMENT_MAX_MB = 5;
 
+/**
+ * V_29.0 — customer documents: only types the browser can show on screen,
+ * so the Admin can check a document while approving without downloading
+ * it (the server enforces the same: uploadTypes 'previewable').
+ */
+export const PREVIEWABLE_ACCEPT = '.jpg,.jpeg,.png,.pdf';
+export const PREVIEWABLE_TYPE_LABELS = 'JPG, JPEG, PNG, PDF';
+export const PREVIEWABLE_IMAGE_ACCEPT = '.jpg,.jpeg,.png';
+export const PREVIEWABLE_IMAGE_LABELS = 'JPG, JPEG, PNG';
+
 /** Photos larger than the upload limit may still be picked: they are compressed first. */
 export const PHOTO_PICK_MAX_MB = 20;
 const PHOTO_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];

@@ -524,7 +524,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
         if (cancelled) return;
         const opts = (res.rows ?? []).map((b) => ({
           id: String(b.id),
-          label: [b.name, b.branch_name, b.account_number ? `••${String(b.account_number).slice(-4)}` : ''].filter(Boolean).join(' · '),
+          label: [b.name, b.account_holder_name, b.account_number ? `A/c ${b.account_number}` : ''].filter(Boolean).join(' – '),
         }));
         setBankOptions(opts);
         setBankState('idle');

@@ -881,7 +881,7 @@ export const fetchCancelledReceipt = async (refundId: string): Promise<PaymentRe
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const toCancelledReceipt = ({ refund: r, customer }: { refund: any; customer: PaymentReceipt['customer'] }): PaymentReceipt => {
+export const toCancelledReceipt = ({ refund: r, customer, issuer }: { refund: any; customer: PaymentReceipt['customer']; issuer?: PaymentReceipt['issuer'] }): PaymentReceipt => {
   return {
     transaction: {
       id: String(r.id), receipt_number: r.receipt_number, payment_type: 'Refund' as PaymentReceipt['transaction']['payment_type'],
@@ -893,6 +893,7 @@ export const toCancelledReceipt = ({ refund: r, customer }: { refund: any; custo
     },
     customer,
     paid_emis: 0, future_emis: 0, total_emis: 0, emi_number: 0,
+    issuer: issuer ?? null,
   };
 };
 

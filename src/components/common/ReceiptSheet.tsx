@@ -17,7 +17,7 @@ import React from 'react';
 // Transparent-background version of the brand logo (logo_dream_group.png
 // has a black background that shows as a box on a white receipt).
 import logoUrl from '../../assets/images/favicon_logo.png';
-import { PaymentReceipt } from '../../types/index';
+import { PaymentReceipt, ReceiptIssuer } from '../../types/index';
 import { numberToIndianWords, toLocalYmd } from '../../utils';
 import { paymentForLabel } from '../../services/paymentService';
 
@@ -31,14 +31,21 @@ export const RECEIPT_SHEET_WIDTH = 840;
 export type ReceiptVariant = 'payment' | 'cancelled';
 export const RECEIPT_LOGO_URL = logoUrl;
 
-// Exactly as printed on the receipt book — never taken from the database.
-const PRINTED = {
+// Dream Builders' header exactly as printed on its receipt book. V_29.0 —
+// the receipt is issued by the building's company (data.issuer from the
+// server); this is the fallback when the server sends none.
+const DREAM_BUILDERS: ReceiptIssuer = {
+  name: 'Dream Builders',
   gstin: '27AAWFD9851G1ZQ',
-  company: 'DREAM BUILDERS',
-  addressLine1: 'A-01, Al- Fatah Apt., Sai Nagar, Opp. Police Station, Nalasopara (W),',
-  addressLine2: 'Dist. Palghar - 401 203. Mob.: +91 7414992571 / 8855996468',
-  signFor: 'DREAMS BUILDERS',
+  address_lines: [
+    'A-01, Al- Fatah Apt., Sai Nagar, Opp. Police Station, Nalasopara (W),',
+    'Dist. Palghar - 401 203. Mob.: +91 7414992571 / 8855996468',
+  ],
 };
+
+/** The receipt's closing line (owner's wording, Nov 2026). */
+export const receiptClosingLine = (issuerName: string): string =>
+  `This is a computer-generated payment receipt issued by ${issuerName}. No manual signature is required for this receipt. Please retain it for your records.`;
 
 const BLUE = '#1f3a93';      // receipt-book blue (borders, labels, title)
 const INK = '#0f172a';       // filled-in values
@@ -96,12 +103,17 @@ export function receiptFields(data: PaymentReceipt, variant: ReceiptVariant = 'p
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <span style={{ color: BLUE, fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 17, letterSpacing: 0.1, whiteSpace: 'nowrap' }}>{children}</span>
 );
-// A filled-in blank: the value sits on the receipt's ruled line.
+// A filled-in blank: the value sits on the receipt's ruled line. V_29.0 —
+// the line is its own filled bar (not a border on the clipped text), so it
+// is also there in the downloaded PDF, where the border was dropped.
 const Blank: React.FC<{ value: string; flex?: number; big?: boolean }> = ({ value, flex = 1, big }) => (
-  <span style={{
-    flex, minWidth: 0, borderBottom: `1.8px solid ${BLUE}`, padding: '0 6px 2px', color: INK, fontFamily: VALUE_FONT,
-    fontWeight: 700, fontSize: big ? 18 : 16, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-  }}>{value || ' '}</span>
+  <span style={{ flex, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+    <span style={{
+      display: 'block', padding: '0 6px 2px', color: INK, fontFamily: VALUE_FONT,
+      fontWeight: 700, fontSize: big ? 18 : 16, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+    }}>{value || '\u00A0'}</span>
+    <span style={{ display: 'block', height: 2, background: BLUE }} />
+  </span>
 );
 const Row: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 24 }}>{children}</div>
@@ -110,6 +122,8 @@ const Row: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => void; logoSrc?: string; variant?: ReceiptVariant }> = ({ data, onLogoLoad, logoSrc, variant = 'payment' }) => {
   const f = receiptFields(data, variant);
   const cancelled = variant === 'cancelled';
+  const issuer = data.issuer?.name ? data.issuer : DREAM_BUILDERS;
+  const company = issuer.name.toUpperCase();
   const infoRows: [string, string][] = [
     ['BUILDING', f.building], ['FLAT NO.', f.flatNo], ['WING', f.wing], ['EMI MONTH', f.emiMonth], ['EMI NO.', f.emiNo],
   ];
@@ -120,8 +134,8 @@ export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => v
         <div style={{ display: 'flex', borderBottom: `2.5px solid ${BLUE}` }}>
           <div style={{ flex: 1, minWidth: 0, padding: '0 10px 8px 14px', position: 'relative' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-              <span style={{ color: BLUE, fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap', marginTop: 16 }}>
-                GSTIN : {PRINTED.gstin}
+              <span style={{ color: BLUE, fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap', marginTop: 16, minHeight: 20 }}>
+                {issuer.gstin ? `GSTIN : ${issuer.gstin}` : '\u00A0'}
               </span>
               <span style={{ background: BLUE, color: '#fff', fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 15, padding: '9px 12px 7px', borderRadius: '0 0 9px 9px', whiteSpace: 'nowrap' }}>
                 {cancelled ? 'CANCELLED RECEIPT' : 'PAYMENT RECEIPT'}
@@ -129,19 +143,18 @@ export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => v
             </div>
             <img src={logoSrc || logoUrl} alt="" onLoad={onLogoLoad} onError={onLogoLoad}
               style={{ position: 'absolute', right: 8, top: 4, width: 84, height: 112, objectFit: 'contain' }} />
-            <div style={{ color: BLUE, fontFamily: TITLE_FONT, fontWeight: 400, fontSize: 38, letterSpacing: 1.5, lineHeight: 1, marginTop: 18, paddingRight: 92, whiteSpace: 'nowrap' }}>
-              {PRINTED.company}
+            <div style={{ color: BLUE, fontFamily: TITLE_FONT, fontWeight: 400, fontSize: company.length > 18 ? 26 : 38, letterSpacing: 1.5, lineHeight: 1, marginTop: 18, paddingRight: 92, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+              {company}
             </div>
             <div style={{ height: 3, background: '#1e293b', margin: '6px 92px 7px 0' }} />
             <div style={{ color: '#1e293b', fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 12.5, lineHeight: 1.45, whiteSpace: 'nowrap' }}>
-              <div>{PRINTED.addressLine1}</div>
-              <div>{PRINTED.addressLine2}</div>
+              {issuer.address_lines.slice(0, 2).map((l) => <div key={l}>{l}</div>)}
             </div>
           </div>
           <div style={{ width: 280, borderLeft: `2.5px solid ${BLUE}`, display: 'flex', flexDirection: 'column' }}>
             {infoRows.map(([label, value], i) => (
-              <div key={label} style={{ flex: 1, display: 'flex', borderTop: i ? `1.8px solid ${BLUE}` : 'none', minHeight: 36 }}>
-                <div style={{ width: 118, borderRight: `1.8px solid ${BLUE}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div key={label} style={{ flex: 1, display: 'flex', borderTop: i ? `2px solid ${BLUE}` : 'none', minHeight: 36 }}>
+                <div style={{ width: 118, borderRight: `2px solid ${BLUE}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ color: '#1e293b', fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>{label}</span>
                 </div>
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', padding: '0 10px' }}>
@@ -185,7 +198,7 @@ export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => v
             <Blank value={f.bank} flex={0.9} />
           </Row>
 
-          {/* ── Footer: ₹ box (left), "For DREAMS BUILDERS" (right) ── */}
+          {/* ── Footer: ₹ box (left), "For <COMPANY>" (right) ── */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: 4 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'stretch', border: `2.5px solid ${BLUE}`, width: 320, height: 60 }}>
@@ -199,13 +212,13 @@ export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => v
             <div style={{ textAlign: 'center', paddingRight: 4, paddingTop: 0 }}>
               <div style={{ color: BLUE, whiteSpace: 'nowrap' }}>
                 <span style={{ fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 16 }}>For </span>
-                <span style={{ fontFamily: TITLE_FONT, fontSize: 22, letterSpacing: 1 }}>{PRINTED.signFor}</span>
+                <span style={{ fontFamily: TITLE_FONT, fontSize: company.length > 18 ? 17 : 22, letterSpacing: 1 }}>{company}</span>
               </div>
             </div>
           </div>
           {/* V_26.0 — system generated: no signature line. */}
-          <div style={{ textAlign: 'center', color: '#475569', fontFamily: LABEL_FONT, fontStyle: 'italic', fontSize: 13, marginTop: 18 }}>
-            This is a system-generated receipt and does not require a signature.
+          <div style={{ textAlign: 'center', color: '#475569', fontFamily: LABEL_FONT, fontStyle: 'italic', fontSize: 12.5, lineHeight: 1.4, marginTop: 18, padding: '0 8px' }}>
+            {receiptClosingLine(issuer.name)}
           </div>
         </div>
       </div>

@@ -14,7 +14,7 @@ import { toast } from '@/utils/toast';
 import { MdVisibility, MdDownload } from 'react-icons/md';
 import { formatDate } from '../../../utils';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
-import PaymentHistoryTable from '../../../components/common/PaymentHistoryTable';
+import PaymentHistoryTable, { hasReceipt } from '../../../components/common/PaymentHistoryTable';
 import {
   fetchMyBookingPayments, fetchMyBookingDueGrid, fetchMyPaymentReceipt, fetchMyCancelledReceipt, PortalPaymentRow,
 } from '../../../services/customerPortalService';
@@ -149,7 +149,7 @@ const CustomerPaymentHistoryPage: React.FC = () => {
               }))}
               // View / Download stay disabled until an admin approves the
               // payment (only then is there a receipt).
-              renderActions={(row) => row.is_approved ? (
+              renderActions={(row) => hasReceipt(row) ? (
                 <span className="inline-flex items-center gap-1.5">
                   <button type="button" title="View Receipt" aria-label="View Receipt" disabled={busyId === `p${row.id}`}
                     onClick={() => withReceipt(`p${row.id}`, () => fetchMyPaymentReceipt(row.id), (data) => setReceipt({ data, variant: 'payment' }))}
@@ -163,7 +163,7 @@ const CustomerPaymentHistoryPage: React.FC = () => {
                   </button>
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5" title="Receipt available after admin approval" style={{ opacity: 0.4 }}>
+                <span className="inline-flex items-center gap-1.5" title={row.is_approved ? 'This payment is from old records: your manual receipt applies' : 'Receipt available after admin approval'} style={{ opacity: 0.4 }}>
                   <button type="button" disabled aria-label="View Receipt (after approval)" style={{ ...iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff'), cursor: 'not-allowed' }}>
                     <MdVisibility size={14} />
                   </button>

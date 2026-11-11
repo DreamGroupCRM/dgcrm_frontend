@@ -16,7 +16,7 @@ import { fetchPaymentReceipt } from '../../services/paymentService';
 import { exportPaymentReceiptPdf } from '../../pages/Admin/CRM/Customer-Details/paymentPdfExport.lazy';
 import { CustomerFullDetail, CustomerPaymentRecord, PaymentReceipt } from '../../types';
 import { HistoryPopup, HistorySection, customerInfoItems, propertyInfoItems } from './HistoryPopup';
-import PaymentHistoryTable, { toPaymentHistoryRow } from './PaymentHistoryTable';
+import PaymentHistoryTable, { toPaymentHistoryRow, hasReceipt, noReceiptReason } from './PaymentHistoryTable';
 import { PaymentReceiptViewModal } from './PaymentReceiptViewModal';
 
 const CustomerPaymentHistoryModal: React.FC<{
@@ -82,8 +82,8 @@ const CustomerPaymentHistoryModal: React.FC<{
               // No receipt until an admin approves the payment, so View /
               // Download stay disabled for an unapproved one.
               renderActions={(row) => {
-                const off = !row.is_approved;
-                const tip = (label: string) => (off ? `${label} (available after admin approval)` : label);
+                const off = !hasReceipt(row);
+                const tip = (label: string) => (off ? `${label} (${noReceiptReason(row)})` : label);
                 const st = (base: React.CSSProperties): React.CSSProperties => (off ? { ...base, opacity: 0.4, cursor: 'not-allowed' } : base);
                 return (
                   <div className="flex items-center gap-1.5">
