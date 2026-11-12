@@ -43,6 +43,16 @@ export const toPaymentHistoryRow = (p: CustomerPaymentRecord): PaymentHistoryRow
   delete_requested: p.delete_requested,
 });
 
+/**
+ * V_29.0 — there is a receipt only for an approved payment that was given
+ * a receipt number. An old payment (Received Date before the Admin's
+ * "Receipts start from" date) is approved without one.
+ */
+export const hasReceipt = (row: { is_approved: boolean; receipt_number?: string | null }): boolean =>
+  row.is_approved && Boolean(row.receipt_number);
+export const noReceiptReason = (row: { is_approved: boolean }): string =>
+  row.is_approved ? 'old record — no system receipt' : 'available after admin approval';
+
 // V_26.0 — a delete request is waiting for Admin. The payment still counts
 // as paid until the Admin approves the delete.
 export const DeleteRequestedTag: React.FC = () => (

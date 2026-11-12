@@ -1141,7 +1141,17 @@ export interface PaymentReceiptCustomer {
   flat_no      : string | null;
 }
 
+// V_29.0 — who the receipt is issued by: the building's company. Dream
+// Builders keeps its printed header; another company shows what Company
+// Master holds for it (a line is left out when there is nothing).
+export interface ReceiptIssuer {
+  name         : string;
+  gstin        : string | null;
+  address_lines: string[];
+}
+
 export interface PaymentReceipt {
+  issuer?    : ReceiptIssuer | null;
   transaction: PaymentReceiptTransaction;
   customer   : PaymentReceiptCustomer;
   paid_emis  : number;

@@ -43,7 +43,9 @@ import { aadhaarError, panError, sanitizeDigits, sanitizeAlphanumericUpper } fro
 import { ValidationErrorSummary } from '../../../../components/common/ValidationErrorSummary';
 import { useCanChangeEmail, EMAIL_ADMIN_ONLY_MESSAGE } from '../../../../utils/emailPermission';
 import {
-  DOCUMENT_ACCEPT, IMAGE_ACCEPT, DOCUMENT_TYPE_LABELS, IMAGE_TYPE_LABELS,
+  // V_29.0 — customer documents are JPG / PNG / PDF only (previewable).
+  PREVIEWABLE_ACCEPT as DOCUMENT_ACCEPT, PREVIEWABLE_IMAGE_ACCEPT as IMAGE_ACCEPT,
+  PREVIEWABLE_TYPE_LABELS as DOCUMENT_TYPE_LABELS, PREVIEWABLE_IMAGE_LABELS as IMAGE_TYPE_LABELS,
   DOCUMENT_MAX_MB, IMAGE_MAX_MB, validateFileSelection,
 } from '../../../../constants/uploads';
 import { AccordionSection } from '../../../../components/common/Accordion';

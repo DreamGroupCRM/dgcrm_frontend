@@ -207,6 +207,12 @@ export async function exportPaymentHistoryPdf(
   pendingAmount: number | null
 ): Promise<void> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  // V_29.0 — amounts carry the ₹ sign: the embedded font has it (the
+  // built-in Helvetica does not, which is why this PDF used to say "Rs.").
+  const { useRupeeFont, RUPEE_FONT } = await import('../../../../utils/pdfRupeeFont');
+  useRupeeFont(doc);
+  // Non-breaking space, so "₹ 1,00,000" never splits over two lines.
+  const rupee = (n: number): string => `₹\u00A0${Math.round(n || 0).toLocaleString('en-IN')}`;
   const marginX = 40;
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = await drawBrandHeader(doc, marginX, 24);
@@ -216,7 +222,7 @@ export async function exportPaymentHistoryPdf(
   doc.setFillColor(...PDF_BRAND);
   doc.rect(marginX, y, pageWidth - marginX * 2, 30, 'F');
   doc.setFontSize(12.5);
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(RUPEE_FONT, 'bold');
   doc.setTextColor(255, 255, 255);
   doc.text(`Payments History - Total Transaction (${payments.length})`, marginX + 10, y + 20);
   doc.setTextColor(0, 0, 0);
@@ -232,7 +238,7 @@ export async function exportPaymentHistoryPdf(
       [customer.location ? 'Location' : '', customer.location || '', 'Pending Amount', pendingAmount != null ? rupee(pendingAmount) : '—'],
     ],
     theme: 'plain',
-    styles: { fontSize: 9.5, cellPadding: 4 },
+    styles: { font: RUPEE_FONT, fontSize: 9.5, cellPadding: 4 },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 }, 1: { cellWidth: 175 }, 2: { fontStyle: 'bold', cellWidth: 90 }, 3: { cellWidth: 165 } },
     margin: { left: marginX, right: marginX },
   });
@@ -262,9 +268,9 @@ export async function exportPaymentHistoryPdf(
     }),
     theme: 'grid',
     headStyles: { fillColor: PDF_BRAND, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
-    styles: { fontSize: 8.5, cellPadding: 5, lineColor: [203, 213, 225], lineWidth: 0.75, textColor: [17, 24, 39] },
+    styles: { font: RUPEE_FONT, fontSize: 8.5, cellPadding: 5, lineColor: [203, 213, 225], lineWidth: 0.75, textColor: [17, 24, 39] },
     // Amounts in dark text — red read as money owed.
-    columnStyles: { 5: { halign: 'right', fontStyle: 'bold' } },
+    columnStyles: { 5: { halign: 'right', fontStyle: 'bold', cellWidth: 68 } },
     margin: { left: marginX, right: marginX },
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -272,7 +278,7 @@ export async function exportPaymentHistoryPdf(
 
   if (y > 760) { doc.addPage(); y = 44; }
   doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(RUPEE_FONT, 'bold');
   doc.setTextColor(17, 24, 39);
   doc.text('Grand Total:', marginX, y);
   doc.text(rupee(grandTotal), pageWidth - marginX, y, { align: 'right' });
@@ -281,7 +287,7 @@ export async function exportPaymentHistoryPdf(
   if (awaiting > 0) {
     y += 16;
     doc.setFontSize(9.5);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(RUPEE_FONT, 'normal');
     doc.text(`Approved: ${rupee(grandTotal - awaiting)}   ·   Pending approval: ${rupee(awaiting)}`, pageWidth - marginX, y, { align: 'right' });
   }
   doc.setTextColor(0, 0, 0);

@@ -57,6 +57,7 @@ import { useRoleBasePath } from '../../../../hooks/useRoleBasePath';
 import { serverToday, toYmd, employeeReceivedMinYmd } from '../../../../utils/serverTime';
 import { BackdatedDot } from '../../../../components/common/BackdatedDot';
 import { ReceiptEmailSwitch } from '../../../../components/common/ReceiptEmailSwitch';
+import { ReceiptsStartControl } from '../../../../components/common/ReceiptsStartControl';
 import { DataScope, setDataScope } from '../../../../utils/dataScope';
 import DateInput from '../../../../components/common/DateInput';
 import { useAccessProfile } from '../../../../hooks/useAccessProfile';
@@ -305,7 +306,7 @@ const PaymentReceivedPage: React.FC = () => {
         if (res.success) setBankFilterOptions([
           ...(res.rows ?? []).map((b) => ({
             value: String(b.id),
-            label: [b.name, b.branch_name, b.account_number ? `••${String(b.account_number).slice(-4)}` : ''].filter(Boolean).join(' · '),
+            label: [b.name, b.account_holder_name, b.account_number ? `A/c ${b.account_number}` : ''].filter(Boolean).join(' – '),
           })),
           { value: 'none', label: 'Not recorded (older payments)' },
         ]);
@@ -897,6 +898,7 @@ const PaymentReceivedPage: React.FC = () => {
                 })}
               </div>
             )}
+            {paths.isAdmin && <ReceiptsStartControl t={t} />}
             {paths.isAdmin && <ReceiptEmailSwitch t={t} />}
             {/* V_25.0 — Export CSV is Admin-only. */}
             {paths.isAdmin && (
@@ -973,14 +975,15 @@ const PaymentReceivedPage: React.FC = () => {
                       </button>
                       {rowMenu.openId === r.id && rowMenu.pos && (
                         <RowActionMenu t={t} pos={rowMenu.pos} actions={[
-                          { key: 'view', label: r.is_approved ? 'View Receipt' : 'View', icon: <MdVisibility size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); handleViewReceipt(r); } },
+                          // V_29.0 — an old payment approved without a receipt has none to view or download.
+                          ...(r.is_approved && !r.receipt_number ? [] : [{ key: 'view', label: r.is_approved ? 'View Receipt' : 'View', icon: <MdVisibility size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); handleViewReceipt(r); } }]),
                           // V_25.0 — this booking's full payment history (same table as Customer Details).
                           { key: 'history', label: 'Payment History', icon: <MdHistory size={14} color="var(--brand-ink)" />, onClick: () => { rowMenu.close(); setHistoryFor({ id: r.customer_id, name: r.customer_name || 'Customer', code: r.customer_code, unit: [r.building_name, r.wing_name && `${wingLabel(r.wing_name)}`, r.flat_no && `Flat ${r.flat_no}`].filter(Boolean).join(' - ') }); } },
                           // No receipt exists until approval, so Download is
                           // only offered on approved rows; Approve only on
                           // unapproved ones (admin).
                           ...(r.is_approved
-                            ? [{ key: 'download', label: 'Download Receipt', icon: <MdDownload size={14} color="#16a34a" />, disabled: downloadingId === r.id, onClick: () => { rowMenu.close(); handleDownloadReceipt(r); } }]
+                            ? !r.receipt_number ? [] : [{ key: 'download', label: 'Download Receipt', icon: <MdDownload size={14} color="#16a34a" />, disabled: downloadingId === r.id, onClick: () => { rowMenu.close(); handleDownloadReceipt(r); } }]
                             : paths.isAdmin
                               ? [{ key: 'approve', label: 'Approve', icon: <MdCheckCircle size={14} color="#16a34a" />, disabled: approvingId === r.id, onClick: () => { rowMenu.close(); handleApprove(r); } }]
                               : []),

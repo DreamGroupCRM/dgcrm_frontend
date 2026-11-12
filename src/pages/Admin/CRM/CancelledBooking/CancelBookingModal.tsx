@@ -17,7 +17,7 @@ import PaymentHistoryTable, { toPaymentHistoryRow } from '../../../../components
 import { Customer, CustomerPaymentRecord } from '../../../../types';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
-const ACCEPT = 'image/*,.pdf';
+const ACCEPT = '.jpg,.jpeg,.png,.pdf'; // V_29.0 — previewable types only (server: uploadTypes 'previewable')
 
 type FileKey = 'cancel_letter' | 'acceptance_letter' | 'cancel_documents' | 'returned_documents';
 const FILE_LABELS: Record<FileKey, string> = {

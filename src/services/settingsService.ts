@@ -13,3 +13,19 @@ export const saveReceiptEmailsOn = async (on: boolean): Promise<boolean> => {
   const { data } = await axiosInstance.put('/settings/receipt-emails', { on });
   return Boolean(data.on);
 };
+
+/**
+ * V_29.0 — GET /api/settings/receipts-start: the "Receipts start from"
+ * date (YYYY-MM-DD) or null. A payment whose Received Date is before it is
+ * approved without a receipt (old records already given a manual receipt).
+ */
+export const fetchReceiptsStart = async (): Promise<string | null> => {
+  const { data } = await axiosInstance.get('/settings/receipts-start');
+  return data.date ?? null;
+};
+
+/** PUT /api/settings/receipts-start — null clears it (every payment gets a receipt). */
+export const saveReceiptsStart = async (date: string | null): Promise<string | null> => {
+  const { data } = await axiosInstance.put('/settings/receipts-start', { date });
+  return data.date ?? null;
+};

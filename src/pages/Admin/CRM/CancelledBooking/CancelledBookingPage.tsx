@@ -337,8 +337,9 @@ const CancelledBookingPage: React.FC = () => {
 
   // ── Admin: Assign for Refund ─────────────────────────────────────────────
   // V_26.0 — a cancelled booking's refund goes to one Refund employee, who
-  // then sees it here. The customer's own (Recovery) assignment is kept as
-  // it was; that is the "Assigned Employee" column.
+  // then sees it here. V_29.0 — the "Refund Employee" column shows that
+  // Refund employee (Unassigned when there is none), not the customer's
+  // earlier Recovery employee, so an unassign shows at once.
   const canAssignRefund = isAdmin;
   const REFUND_UNASSIGNED = 'Unassigned';
   const [refundEmployees, setRefundEmployees] = useState<{ id: string; label: string }[]>([]);
@@ -749,7 +750,7 @@ const CancelledBookingPage: React.FC = () => {
                 <th style={{ padding: '10px 12px', width: 40 }}>
                   {canAssignRefund && <input type="checkbox" checked={allOnPage} onChange={toggleAll} disabled={rows.length === 0} title="Select all on this page" />}
                 </th>
-                {['Action', 'Customer ID', 'Customer Name', 'Contact Details', 'Company / Project', 'Building Details', 'Cancellation Date', 'Refund Amount', 'Balance Amount', 'Assigned Employee'].map((h) => (
+                {['Action', 'Customer ID', 'Customer Name', 'Contact Details', 'Company / Project', 'Building Details', 'Cancellation Date', 'Refund Amount', 'Balance Amount', 'Refund Employee'].map((h) => (
                   <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', ...(h === 'Action' ? { minWidth: 120 } : {}) }}>{h}</th>
                 ))}
               </tr>
@@ -829,7 +830,7 @@ const CancelledBookingPage: React.FC = () => {
                   </td>
                   {/* V_29.0 — Refund Date, Mode of Payment and Refund By moved off
                       the grid; they stay in each booking's refund history popup. */}
-                  <td style={td}>{c.assigned_employee_name || '—'}</td>
+                  <td style={td}>{c.refund_employee_name || 'Unassigned'}</td>
                 </tr>
               ))}
             </tbody>
@@ -851,8 +852,7 @@ const CancelledBookingPage: React.FC = () => {
           })}
           extra={{ title: 'Cancellation Details', items: [
             { label: 'Cancellation Date', value: refundFor.cancelled_at ? formatDate(refundFor.cancelled_at) : '—' },
-            { label: 'Assigned Employee', value: refundFor.assigned_employee_name || '—' },
-            { label: 'Refund By', value: refundFor.refund_employee_name || 'Not assigned' },
+            { label: 'Refund Employee', value: refundFor.refund_employee_name || 'Unassigned' },
             { label: 'Reason', value: refundFor.cancellation_reason || '—' },
             { label: 'Original Docs Returned', value: refundFor.original_documents_returned ? 'Yes' : 'No' },
             { label: 'Documents', value: docLinks(refundFor).length ? <span className="inline-flex gap-3 flex-wrap">{docLinks(refundFor)}</span> : '—' },
