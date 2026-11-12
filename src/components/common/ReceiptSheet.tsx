@@ -90,7 +90,6 @@ export function receiptFields(data: PaymentReceipt, variant: ReceiptVariant = 'p
     date: formatDMY(tx.payment_date || tx.date || tx.created_at),
     receivedFrom: `${customer.customer_name || ''}${customer.customer_code ? `  (${customer.customer_code})` : ''}`.trim(),
     sum: amountText(total),
-    gst: '',
     total: amountText(total),
     inWords: total ? numberToIndianWords(total) : '',
     cashOrCheque: isCheque ? (tx.cheque_number || 'Cheque') : (mode || ''),
@@ -180,8 +179,6 @@ export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => v
           <Row>
             <Label>THE SUM OF RUPEES</Label>
             <Blank value={f.sum} flex={1.1} />
-            <Label>+ GST</Label>
-            <Blank value={f.gst} flex={1} />
             <Label>TOTAL</Label>
             <Blank value={f.total} flex={1} />
           </Row>
