@@ -36,7 +36,7 @@ import { ValidationErrorSummary } from '../../../../components/common/Validation
 import { AccordionSection } from '../../../../components/common/Accordion';
 import { useCanChangeEmail, EMAIL_ADMIN_ONLY_MESSAGE } from '../../../../utils/emailPermission';
 import {
-  DOCUMENT_ACCEPT, IMAGE_ACCEPT, DOCUMENT_TYPE_LABELS, IMAGE_TYPE_LABELS,
+  DOCUMENT_ACCEPT, IMAGE_ACCEPT, DOCUMENT_TYPE_LABELS, IMAGE_TYPE_LABELS, PREVIEWABLE_ACCEPT, PREVIEWABLE_TYPE_LABELS,
   DOCUMENT_MAX_MB, IMAGE_MAX_MB, validateFileSelection,
 } from '../../../../constants/uploads';
 import './EmployeeDetails.css';
@@ -293,7 +293,7 @@ const FileUploadBox: React.FC<{
           const isImageOnly = accept === IMAGE_ACCEPT;
           const problem = validateFileSelection(
             picked, accept,
-            isImageOnly ? IMAGE_TYPE_LABELS : DOCUMENT_TYPE_LABELS,
+            isImageOnly ? IMAGE_TYPE_LABELS : accept === PREVIEWABLE_ACCEPT ? PREVIEWABLE_TYPE_LABELS : DOCUMENT_TYPE_LABELS,
             isImageOnly ? IMAGE_MAX_MB : DOCUMENT_MAX_MB
           );
           if (problem) { toast.error(problem); e.target.value = ''; return; }
@@ -1602,7 +1602,10 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                   href={existingUrls.passbook_photo} target="_blank" rel="noopener noreferrer"
                   className="block rounded-xl overflow-hidden" style={{ border: `1px solid ${t.surfaceBorder}`, maxWidth: 280 }}
                 >
-                  <img src={existingUrls.passbook_photo} alt="Bank Passbook" style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />
+                  {/\.pdf(\?|$)/i.test(existingUrls.passbook_photo)
+                    // V_29.0 (19 Nov) — the passbook may be a PDF: show a link, not a broken image.
+                    ? <div style={{ padding: '14px 16px', fontWeight: 600, color: t.textPrimary }}>📄 View passbook (PDF)</div>
+                    : <img src={existingUrls.passbook_photo} alt="Bank Passbook" style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />}
                 </a>
               ) : (
                 <p className="emp-hint-text">Not uploaded.</p>
@@ -1753,7 +1756,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
           <Field t={t} label="Date of Birth" required error={errorFor('date_of_birth')} fieldRef={setFieldRef('date_of_birth') as React.Ref<HTMLDivElement>}>
             <DobPicker theme={t} value={form.date_of_birth} disabled={isView} onChange={(v) => set('date_of_birth', v)} />
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload Profile Photo" hint="JPG, PNG (Max 5MB)" accept={IMAGE_ACCEPT} required
+          <FileUploadBox t={t} isView={isView} label="Upload Profile Photo" hint="Photo only: JPG, PNG (Max 5MB). PDF not accepted." accept={IMAGE_ACCEPT} required
             file={files.profile_photo} existingUrl={existingUrls.profile_photo} onChange={setFile('profile_photo')} onView={openPreview}
             fieldRef={setFieldRef('profile_photo') as React.Ref<HTMLDivElement>} />
         </div>
@@ -1903,7 +1906,7 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
             <input type="text" placeholder="Enter branch name" value={form.branch} readOnly={isView} disabled={isView}
               onChange={(e) => set('branch', e.target.value)} className={fieldClass} />
           </Field>
-          <FileUploadBox t={t} isView={isView} label="Upload Bank Passbook Photo" hint="JPG, PNG (Max 5MB)" accept={IMAGE_ACCEPT} required
+          <FileUploadBox t={t} isView={isView} label="Upload Bank Passbook Photo" hint="JPG, PNG, PDF (Max 5MB)" accept={PREVIEWABLE_ACCEPT} required
             file={files.passbook_photo} existingUrl={existingUrls.passbook_photo} onChange={setFile('passbook_photo')} onView={openPreview}
             fieldRef={setFieldRef('passbook_photo') as React.Ref<HTMLDivElement>} />
         </div>
