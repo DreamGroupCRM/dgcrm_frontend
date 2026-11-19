@@ -179,7 +179,8 @@ const PaymentRemindersPage: React.FC = () => {
         <div className="rounded-2xl p-4" style={{ background: t.surfaceBg, border: `1px solid ${t.surfaceBorder}` }}>
           <div className="flex items-center gap-2" style={{ fontWeight: 800, fontSize: 13.5, color: t.textPrimary }}><MdEmail size={18} color="#15803d" /> Payment received</div>
           <p style={{ fontSize: 11.5, color: t.textSecondary, margin: '10px 0' }}>
-            When an Admin approves a payment, its receipt (PDF) is emailed to the customer.
+            When an Admin approves a payment received on or after 1 Nov 2026, its receipt (PDF) is emailed to the customer automatically.
+            Payments received before that have no system receipt.
           </p>
           <ReceiptEmailSwitch t={t} />
         </div>

@@ -12,11 +12,15 @@ import Swal from 'sweetalert2';
 import { MdReceiptLong } from 'react-icons/md';
 import { toast } from '@/utils/toast';
 import { AppTheme } from '../../styles/theme';
+import { useAppSelector } from '../../hooks';
 import { fetchReceiptsStart, saveReceiptsStart } from '../../services/settingsService';
 
 const dmy = (ymd: string): string => ymd.split('-').reverse().join('/');
 
 export const ReceiptsStartControl: React.FC<{ t: AppTheme }> = ({ t }) => {
+  // V_29.0 (19 Nov) — Super Admin only: it confused Admins. The rule runs on
+  // its own (receipts from 1 Nov 2026, emailed); the server refuses others too.
+  const isSuperAdmin = useAppSelector((st) => st.auth.role) === 'superadmin';
   const [date, setDate] = useState<string | null | undefined>(undefined);
   const [saving, setSaving] = useState(false);
 
@@ -51,7 +55,7 @@ export const ReceiptsStartControl: React.FC<{ t: AppTheme }> = ({ t }) => {
     }
   };
 
-  if (date === undefined) return null;
+  if (!isSuperAdmin || date === undefined) return null;
   return (
     <button type="button" onClick={change} disabled={saving}
       title={date ? `Payments received before ${dmy(date)} get no receipt` : 'Every approved payment gets a receipt'}
