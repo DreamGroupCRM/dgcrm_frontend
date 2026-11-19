@@ -50,8 +50,11 @@ export const toPaymentHistoryRow = (p: CustomerPaymentRecord): PaymentHistoryRow
  */
 export const hasReceipt = (row: { is_approved: boolean; receipt_number?: string | null }): boolean =>
   row.is_approved && Boolean(row.receipt_number);
+/** V_29.0 (18 Nov) — shown for an approved payment that has no system receipt (old records). */
+export const OLD_PAYMENT_NO_RECEIPT = 'Receipt not available for this payment. Please contact the office.';
+
 export const noReceiptReason = (row: { is_approved: boolean }): string =>
-  row.is_approved ? 'old record — no system receipt' : 'available after admin approval';
+  row.is_approved ? OLD_PAYMENT_NO_RECEIPT : 'available after admin approval';
 
 // V_26.0 — a delete request is waiting for Admin. The payment still counts
 // as paid until the Admin approves the delete.

@@ -177,25 +177,21 @@ export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => v
             <Blank value={f.receivedFrom} big />
           </Row>
           <Row>
+            {/* V_29.0 (18 Nov) — one amount, written as "1,50,000/-" like the ₹ box. */}
             <Label>THE SUM OF RUPEES</Label>
-            <Blank value={f.sum} flex={1.1} />
-            <Label>TOTAL</Label>
-            <Blank value={f.total} flex={1} />
+            <Blank value={f.sum ? `${f.sum}/-` : ''} />
           </Row>
           <Row>
             <Label>IN WORDS</Label>
             <Blank value={f.inWords} />
           </Row>
           <Row>
+            {/* V_29.0 (18 Nov) — DATED and BANK blanks removed at the client's request. */}
             <Label>BY CASH / CHEQUE NO.</Label>
-            <Blank value={f.cashOrCheque} flex={1.1} />
-            <Label>DATED :</Label>
-            <Blank value={f.dated} flex={0.9} />
-            <Label>BANK :</Label>
-            <Blank value={f.bank} flex={0.9} />
+            <Blank value={f.cashOrCheque} />
           </Row>
 
-          {/* ── Footer: ₹ box (left), "For <COMPANY>" (right) ── */}
+          {/* ── Footer: ₹ box. V_29.0 (18 Nov) — no "For <COMPANY>": the name is in the header. ── */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: 4 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'stretch', border: `2.5px solid ${BLUE}`, width: 320, height: 60 }}>
@@ -205,12 +201,6 @@ export const ReceiptSheet: React.FC<{ data: PaymentReceipt; onLogoLoad?: () => v
                 </div>
               </div>
               <div style={{ color: '#1e293b', fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 15, marginTop: 8, paddingLeft: 26 }}>Cheques are subject to realisation</div>
-            </div>
-            <div style={{ textAlign: 'center', paddingRight: 4, paddingTop: 0 }}>
-              <div style={{ color: BLUE, whiteSpace: 'nowrap' }}>
-                <span style={{ fontFamily: LABEL_FONT, fontWeight: 700, fontSize: 16 }}>For </span>
-                <span style={{ fontFamily: TITLE_FONT, fontSize: company.length > 18 ? 17 : 22, letterSpacing: 1 }}>{company}</span>
-              </div>
             </div>
           </div>
           {/* V_26.0 — system generated: no signature line. */}

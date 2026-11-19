@@ -41,7 +41,10 @@ const fullCustomerName = (c: { name?: string | null; middle_name?: string | null
   [c.name, c.middle_name, c.last_name].filter(Boolean).join(' ') || c.customer_code || '—';
 
 // ── Payment Schedule PDF (matches the reference "EMI SCHEDULE" PDF) ──────
-export async function exportPaymentSchedulePdf(data: CustomerSchemeData): Promise<void> {
+// V_29.0 (18 Nov) — `statuses` (optional): one label per schedule row, Before
+// Possession rows first and then After Possession, e.g. "Paid" / "Unpaid".
+// When given, the schedule tables get a Status column.
+export async function exportPaymentSchedulePdf(data: CustomerSchemeData, statuses?: string[]): Promise<void> {
   const c = data.customer;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const marginX = 40;
@@ -135,7 +138,9 @@ export async function exportPaymentSchedulePdf(data: CustomerSchemeData): Promis
   // printed above the table, the header row only on the table's first page
   // and the totals only on its last page (they used to repeat on every page
   // the table ran onto).
-  const scheduleTable = (rows: CustomerSchemeData['scheduleA'], heading: string, totalLabel: string, total: number, fill: [number, number, number], ink: [number, number, number], extraFootRows: [string, string][] = []) => {
+  const withStatus = Array.isArray(statuses) && statuses.length > 0;
+  const scheduleTable = (rows: CustomerSchemeData['scheduleA'], heading: string, totalLabel: string, total: number, fill: [number, number, number], ink: [number, number, number], extraFootRows: [string, string][] = [], statusOffset = 0) => {
+    const span = withStatus ? 4 : 3;
     if (y > 700) { doc.addPage(); y = 44; }
     doc.setFontSize(11.5);
     doc.setFont('helvetica', 'bold');
@@ -143,12 +148,14 @@ export async function exportPaymentSchedulePdf(data: CustomerSchemeData): Promis
     y += 8;
     autoTable(doc, {
       startY: y,
-      head: [['Sr No', 'Inst Date', 'Mode Of Payment', 'Amount']],
-      body: rows.map((r) => [String(r.sr), formatDMY(r.date), pdfText(r.label), rupee(r.amount)]),
+      head: [withStatus ? ['Sr No', 'Inst Date', 'Mode Of Payment', 'Status', 'Amount'] : ['Sr No', 'Inst Date', 'Mode Of Payment', 'Amount']],
+      body: rows.map((r, i) => withStatus
+        ? [String(r.sr), formatDMY(r.date), pdfText(r.label), statuses![statusOffset + i] ?? 'Unpaid', rupee(r.amount)]
+        : [String(r.sr), formatDMY(r.date), pdfText(r.label), rupee(r.amount)]),
       foot: [
-        [{ content: totalLabel, colSpan: 3, styles: { fontStyle: 'bold', fillColor: fill, textColor: ink } }, { content: rupee(total), styles: { fontStyle: 'bold', fillColor: fill, textColor: ink } }],
+        [{ content: totalLabel, colSpan: span, styles: { fontStyle: 'bold', fillColor: fill, textColor: ink } }, { content: rupee(total), styles: { fontStyle: 'bold', fillColor: fill, textColor: ink } }],
         ...extraFootRows.map(([label, value]) => [
-          { content: label, colSpan: 3, styles: { fontStyle: 'bold' as const, fillColor: GRAND_FILL, textColor: GRAND_TEXT } },
+          { content: label, colSpan: span, styles: { fontStyle: 'bold' as const, fillColor: GRAND_FILL, textColor: GRAND_TEXT } },
           { content: value, styles: { fontStyle: 'bold' as const, fillColor: GRAND_FILL, textColor: GRAND_TEXT } },
         ]),
       ],
@@ -158,7 +165,15 @@ export async function exportPaymentSchedulePdf(data: CustomerSchemeData): Promis
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9.5 },
       footStyles: { fontSize: 9.5 },
       styles: { fontSize: 9, cellPadding: 5.5, lineColor: [203, 213, 225], lineWidth: 0.75 },
-      columnStyles: { 0: { cellWidth: 44 }, 1: { cellWidth: 80 }, 3: { halign: 'right', cellWidth: 90 } },
+      columnStyles: withStatus
+        ? { 0: { cellWidth: 44 }, 1: { cellWidth: 80 }, 3: { cellWidth: 72, fontStyle: 'bold' }, 4: { halign: 'right', cellWidth: 90 } }
+        : { 0: { cellWidth: 44 }, 1: { cellWidth: 80 }, 3: { halign: 'right', cellWidth: 90 } },
+      // Paid in green, anything not fully paid in red.
+      didParseCell: (cell) => {
+        if (!withStatus || cell.section !== 'body' || cell.column.index !== 3) return;
+        const v = String(cell.cell.raw);
+        cell.cell.styles.textColor = v.startsWith('Paid') ? [4, 120, 87] : v === '—' ? [100, 116, 139] : [220, 38, 38];
+      },
       margin: { left: marginX, right: marginX },
       didDrawPage: () => { y = 44; },
     });
@@ -167,7 +182,7 @@ export async function exportPaymentSchedulePdf(data: CustomerSchemeData): Promis
   };
 
   scheduleTable(data.scheduleA, 'A) Before Possession', 'Total (A)', data.totalA, TOTAL_A_FILL, TOTAL_A_TEXT);
-  scheduleTable(data.scheduleB, 'B) After Possession', 'Total (B)', data.totalB, TOTAL_B_FILL, TOTAL_B_TEXT, [['Total (A + B)', rupee(data.grandTotal)]]);
+  scheduleTable(data.scheduleB, 'B) After Possession', 'Total (B)', data.totalB, TOTAL_B_FILL, TOTAL_B_TEXT, [['Total (A + B)', rupee(data.grandTotal)]], data.scheduleA.length);
 
   // ── Terms and Conditions + signature ─────────────────────────────────
   if (y > 620) { doc.addPage(); y = 44; }

@@ -306,7 +306,7 @@ const PaymentReceivedPage: React.FC = () => {
         if (res.success) setBankFilterOptions([
           ...(res.rows ?? []).map((b) => ({
             value: String(b.id),
-            label: [b.name, b.account_holder_name, b.account_number ? `A/c ${b.account_number}` : ''].filter(Boolean).join(' – '),
+            label: [b.name, b.account_number ? String(b.account_number).replace(/\s+/g, '').slice(-4) : ''].filter(Boolean).join(' – '), // "Kotak Bank – 2145"
           })),
           { value: 'none', label: 'Not recorded (older payments)' },
         ]);
