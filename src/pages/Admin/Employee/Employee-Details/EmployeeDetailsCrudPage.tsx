@@ -1597,19 +1597,13 @@ const EmployeeDetailsCrudPage: React.FC<Props> = ({ mode }) => {
                 duplicated in the Documents section below. */}
             <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${t.divider}` }}>
               <div className="emp-view-label" style={{ marginBottom: 8 }}>Bank Passbook</div>
-              {existingUrls.passbook_photo ? (
-                <a
-                  href={existingUrls.passbook_photo} target="_blank" rel="noopener noreferrer"
-                  className="block rounded-xl overflow-hidden" style={{ border: `1px solid ${t.surfaceBorder}`, maxWidth: 280 }}
-                >
-                  {/\.pdf(\?|$)/i.test(existingUrls.passbook_photo)
-                    // V_29.0 (19 Nov) — the passbook may be a PDF: show a link, not a broken image.
-                    ? <div style={{ padding: '14px 16px', fontWeight: 600, color: t.textPrimary }}>📄 View passbook (PDF)</div>
-                    : <img src={existingUrls.passbook_photo} alt="Bank Passbook" style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />}
-                </a>
-              ) : (
-                <p className="emp-hint-text">Not uploaded.</p>
-              )}
+              {/* V_29.0 (19 Nov) — the same card as the documents below: it opens the
+                  file through the signed-in session (the old plain link/image used
+                  the bare file address and showed broken), and works for a photo or
+                  a PDF, with Quick View and Download. */}
+              <div style={{ maxWidth: 320 }}>
+                <DocumentCard t={t} label="Bank Passbook" url={existingUrls.passbook_photo} onQuickView={openPreview} />
+              </div>
             </div>
           </div>
 
