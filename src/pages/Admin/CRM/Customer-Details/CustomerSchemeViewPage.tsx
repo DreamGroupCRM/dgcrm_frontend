@@ -333,7 +333,7 @@ const CustomerSchemeViewPage: React.FC<{ from?: 'cancelled' }> = ({ from }) => {
             <InfoField t={t} icon={<MdLocationOn size={15} />} label="Address" value={c.address} />
             <InfoField t={t} icon={<MdApartment size={15} />} label="Building / Wing" value={[c.building_name, c.wing_name].filter(Boolean).join(' / ')} />
             <InfoField t={t} icon={<MdBadge size={15} />} label="Flat" value={[c.flat_no, c.flat_type].filter(Boolean).join(' · ')} />
-            <InfoField t={t} icon={<MdApartment size={15} />} label="Area (Sq.Ft.)" value={c.area_sqft} />
+            <InfoField t={t} icon={<MdApartment size={15} />} label="Area (Sq Mt)" value={c.area_sqft} />
             <InfoField t={t} icon={<MdPerson size={15} />} label="Booking Date" value={formatDMY(c.booking_date)} />
           </div>
         </div>

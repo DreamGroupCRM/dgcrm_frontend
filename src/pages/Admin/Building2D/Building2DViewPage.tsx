@@ -148,7 +148,7 @@ export const UnitBlock: React.FC<{
   >
     <div style={{ fontSize: 11, fontWeight: 800, lineHeight: 1.1 }}>{no}</div>
     <div style={{ fontSize: 9, fontWeight: 600, opacity: 0.92, marginTop: 1 }}>
-      {area != null ? `${area} sqft` : '—'}
+      {area != null ? `${area} Sq Mt` : '—'}
     </div>
   </div>
 );
@@ -563,7 +563,7 @@ const Building2DViewPage: React.FC = () => {
                   ['Wing', selectedUnit.kind === 'shop' ? '— (Shops)' : selectedUnit.wingName || '—'],
                   ['Floor', selectedUnit.floorLabel || '—'],
                   ['Unit Type', selectedUnit.typeLabel || '—'],
-                  ['Area', selectedUnit.areaSqft != null ? `${selectedUnit.areaSqft.toLocaleString('en-IN')} sq.ft` : '—'],
+                  ['Area', selectedUnit.areaSqft != null ? `${selectedUnit.areaSqft.toLocaleString('en-IN')} Sq Mt` : '—'],
                   ['Price', '—'],
                 ] as const).map(([k, v]) => (
                   <div key={k} className="fp-details-row"><span>{k}</span><span>{v}</span></div>

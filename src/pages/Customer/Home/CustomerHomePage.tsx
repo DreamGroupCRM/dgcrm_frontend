@@ -91,7 +91,7 @@ const CustomerHomePage: React.FC = () => {
           {propertySub && <div className="cp-person-sub">{propertySub}</div>}
           <div className="cp-home-chips">
             {!isShop && detail.flat?.flat_type && <span className="cp-home-chip">{detail.flat.flat_type}</span>}
-            {area != null && <span className="cp-home-chip">{area} Sq.ft</span>}
+            {area != null && <span className="cp-home-chip">{area} Sq Mt</span>}
             {!isShop && detail.flat?.floor?.name && <span className="cp-home-chip">{detail.flat.floor.name}</span>}
             <span className={`cp-home-chip ${detail.possession_granted ? 'ok' : 'wait'}`}>
               <MdVerifiedUser size={12} /> Possession {detail.possession_granted ? 'granted' : 'pending'}
