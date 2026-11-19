@@ -9,10 +9,14 @@ import React, { useEffect, useState } from 'react';
 import { MdEmail } from 'react-icons/md';
 import { toast } from '@/utils/toast';
 import { AppTheme } from '../../styles/theme';
+import { useAppSelector } from '../../hooks';
 import { showAlert } from '../../utils';
 import { fetchReceiptEmailsOn, saveReceiptEmailsOn } from '../../services/settingsService';
 
 export const ReceiptEmailSwitch: React.FC<{ t: AppTheme }> = ({ t }) => {
+  // V_29.0 (19 Nov) — Super Admin only: it confused Admins. The rule runs on
+  // its own (receipts from 1 Nov 2026, emailed); the server refuses others too.
+  const isSuperAdmin = useAppSelector((st) => st.auth.role) === 'superadmin';
   const [on, setOn] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -41,7 +45,7 @@ export const ReceiptEmailSwitch: React.FC<{ t: AppTheme }> = ({ t }) => {
     }
   };
 
-  if (on == null) return null;
+  if (!isSuperAdmin || on == null) return null;
   return (
     <button type="button" role="switch" aria-checked={on} onClick={toggle} disabled={saving}
       title={on ? 'Receipt emails are ON for new payments' : 'Receipt emails are OFF for new payments'}
