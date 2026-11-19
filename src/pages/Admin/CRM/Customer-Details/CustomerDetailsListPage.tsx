@@ -67,7 +67,7 @@ const SearchableSelect: React.FC<{
   // Overrides only the DISPLAYED text of each dropdown option — filtering,
   // the stored value, and what lands in the input box on selection all
   // still work off the plain option string. Used by the Flat No filter to
-  // show "A-101 · 2 BHK · 850 Sqft" per option while still filtering
+  // show "A-101 · 2 BHK · 850 Sq Mt" per option while still filtering
   // customers by the bare flat number underneath.
   labelFor?: (opt: string) => string;
   // Fired once the field's dropdown closes with a committed value — either
@@ -773,12 +773,12 @@ const CustomerDetailsListPage: React.FC = () => {
     return v.mobile_number ? `${v.mobile_country_code ?? ''} ${v.mobile_number}`.trim() : '';
   };
   const flatNoOptions = useMemo(() => Array.from(new Set(flatsInScope.map((fl) => fl.flat_no))), [flatsInScope]);
-  // "A-101" -> "A-101 · 2 BHK · 850 Sqft" for the Flat No dropdown's option
+  // "A-101" -> "A-101 · 2 BHK · 850 Sq Mt" for the Flat No dropdown's option
   // text — filtering/selection still work off the bare flat_no.
   const flatLabelFor = (flatNo: string): string => {
     const fl = flatsInScope.find((f) => f.flat_no === flatNo);
     if (!fl) return flatNo;
-    const parts = [flatNo, fl.flat_type, fl.area_sqft != null ? `${fl.area_sqft} Sqft` : null].filter(Boolean);
+    const parts = [flatNo, fl.flat_type, fl.area_sqft != null ? `${fl.area_sqft} Sq Mt` : null].filter(Boolean);
     return parts.join(' · ');
   };
 
@@ -1149,8 +1149,8 @@ const CustomerDetailsListPage: React.FC = () => {
         c.unit_type === 'shop' ? 'Shop' : c.wing_name,
         c.unit_type === 'shop' ? (c.shop_no || '') : c.flat_no,
         c.unit_type === 'shop'
-          ? `Shop${c.shop_area != null ? ` / ${c.shop_area} Sqft` : ''}`
-          : `${c.flat_type || ''}${c.area_sqft != null ? ` / ${c.area_sqft} Sqft` : ''}`,
+          ? `Shop${c.shop_area != null ? ` / ${c.shop_area} Sq Mt` : ''}`
+          : `${c.flat_type || ''}${c.area_sqft != null ? ` / ${c.area_sqft} Sq Mt` : ''}`,
         formatDate(c.booking_date), c.monthly_emi ?? '',
         c.monthly_installment_date ? dayOfMonthLabel(c.monthly_installment_date, c.installment_day) : '',
       ]);
@@ -1572,8 +1572,8 @@ const CustomerDetailsListPage: React.FC = () => {
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>
                       {c.unit_type === 'shop'
-                        ? `Shop${c.shop_area != null ? ` / ${c.shop_area} Sqft` : ''}`
-                        : `${c.flat_type || '—'}${c.area_sqft != null ? ` / ${c.area_sqft} Sqft` : ''}`}
+                        ? `Shop${c.shop_area != null ? ` / ${c.shop_area} Sq Mt` : ''}`
+                        : `${c.flat_type || '—'}${c.area_sqft != null ? ` / ${c.area_sqft} Sq Mt` : ''}`}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: 11.5, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>{formatDate(c.booking_date)}</td>
                     <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap' }}>

@@ -57,7 +57,7 @@ const FlatTooltip: React.FC<{ t: AppTheme; hover: HoverState | null }> = ({ t, h
       </div>
       <div className="bv-tip-row"><span>{flat.kind === 'shop' ? 'Location' : 'Wing / Floor'}</span><b>{flat.kind === 'shop' ? `${flat.floorLabel} · Shops` : `${flat.wingName} · ${flat.floorLabel}`}</b></div>
       <div className="bv-tip-row"><span>Unit Type</span><b>{flat.type || '—'}</b></div>
-      <div className="bv-tip-row"><span>Area</span><b>{flat.areaSqft != null ? `${flat.areaSqft.toLocaleString('en-IN')} sq.ft` : '—'}</b></div>
+      <div className="bv-tip-row"><span>Area</span><b>{flat.areaSqft != null ? `${flat.areaSqft.toLocaleString('en-IN')} Sq Mt` : '—'}</b></div>
       <div className="bv-tip-row"><span>Price</span><b>—</b></div>
     </div>,
     document.body,

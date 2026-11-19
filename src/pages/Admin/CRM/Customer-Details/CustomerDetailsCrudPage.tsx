@@ -322,7 +322,7 @@ const SearchableSelect: React.FC<{
   // Overrides only the DISPLAYED text of each dropdown option — filtering,
   // the stored value, and what lands in the input box on selection all
   // still work off the plain option string. Used by the Flat No select to
-  // show "A-101 · 2 BHK · 850 Sqft" per option.
+  // show "A-101 · 2 BHK · 850 Sq Mt" per option.
   labelFor?: (opt: string) => string;
   // Item 1.2 — a flat marked Disabled/Unavailable in the Building Master
   // still appears in this list (so it's clear it exists and clear why it
@@ -1910,8 +1910,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
               <ViewValue label={unitType === 'shop' ? 'Shop No' : 'Flat No'} value={unitType === 'shop' ? (selectedShop?.shop_no || shopNo) : (selectedFlat?.flat_no || flatNo)} />
               <ViewValue label={unitType === 'shop' ? 'Unit Type' : 'Flat Type'} value={unitType === 'shop' ? 'Shop' : selectedFlat?.flat_type} />
               <ViewValue label={unitType === 'shop' ? 'Shop Area' : 'Flat Area'} value={unitType === 'shop'
-                ? (selectedShop?.area_sqft != null ? `${selectedShop.area_sqft} Sqft` : '')
-                : (selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : '')} />
+                ? (selectedShop?.area_sqft != null ? `${selectedShop.area_sqft} Sq Mt` : '')
+                : (selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sq Mt` : '')} />
               <ViewValue label="Parking" value={wantsParking === 'yes' ? `Yes${parkingNo ? ` · ${parkingNo}` : ''}` : 'No'} />
             </div>
           </div>
@@ -2260,7 +2260,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
                   labelFor={(no) => {
                     const fl = selectedFloor?.flats.find((f) => f.flat_no === no);
                     if (!fl) return no;
-                    return [no, fl.flat_type, fl.area_sqft != null ? `${fl.area_sqft} Sqft` : null].filter(Boolean).join(' · ');
+                    return [no, fl.flat_type, fl.area_sqft != null ? `${fl.area_sqft} Sq Mt` : null].filter(Boolean).join(' · ');
                   }}
                   // Item 1.2 — a flat marked Disabled/Unavailable in the
                   // Building Master (is_active: false) still shows in the
@@ -2282,7 +2282,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
                 <input type="text" readOnly value={selectedFlat?.flat_type || '—'} className="cust-field cust-field-view" />
               </Field>
               <Field t={t} label="Flat Area">
-                <input type="text" readOnly value={selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : '—'} className="cust-field cust-field-view" />
+                <input type="text" readOnly value={selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sq Mt` : '—'} className="cust-field cust-field-view" />
               </Field>
             </>
           ) : (
@@ -2294,7 +2294,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
                   labelFor={(no) => {
                     const s = buildingDetail?.shops?.find((x) => x.shop_no === no);
                     if (!s) return no;
-                    return [no, s.area_sqft != null ? `${s.area_sqft} Sqft` : null].filter(Boolean).join(' · ');
+                    return [no, s.area_sqft != null ? `${s.area_sqft} Sq Mt` : null].filter(Boolean).join(' · ');
                   }}
                   // Same two guards as Flat No above: disabled in the
                   // Building Master, or already booked by another customer.
@@ -2309,7 +2309,7 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
                 />
               </Field>
               <Field t={t} label="Shop Area">
-                <input type="text" readOnly value={selectedShop?.area_sqft != null ? `${selectedShop.area_sqft} Sqft` : '—'} className="cust-field cust-field-view" />
+                <input type="text" readOnly value={selectedShop?.area_sqft != null ? `${selectedShop.area_sqft} Sq Mt` : '—'} className="cust-field cust-field-view" />
               </Field>
             </>
           )}
@@ -2585,8 +2585,8 @@ const CustomerDetailsCrudPage: React.FC<Props> = ({ mode, from }) => {
             flatNo: unitType === 'shop' ? (selectedShop?.shop_no || shopNo) : (selectedFlat?.flat_no || flatNo),
             flatType: unitType === 'shop' ? 'Shop' : (selectedFlat?.flat_type || ''),
             flatArea: unitType === 'shop'
-              ? (selectedShop?.area_sqft != null ? `${selectedShop.area_sqft} Sqft` : '')
-              : (selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sqft` : ''),
+              ? (selectedShop?.area_sqft != null ? `${selectedShop.area_sqft} Sq Mt` : '')
+              : (selectedFlat?.area_sqft != null ? `${selectedFlat.area_sqft} Sq Mt` : ''),
             parking: wantsParking === 'yes' ? `Yes${parkingNo ? ` · ${parkingNo}` : ''}` : 'No',
             totalCost, bookingDate, bookingAmount, remainingAmount: remainingBookingAmount, remainingDate: remainingBookingDate,
             possessionAmount, installmentDate, emiBefore: monthlyEmiBeforePossession, emiAfter: monthlyEmiAfterPossession, tenure: totalEmiTenure,

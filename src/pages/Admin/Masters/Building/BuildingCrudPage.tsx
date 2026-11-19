@@ -284,10 +284,10 @@ const FloorAccordionItem: React.FC<{
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
               <thead>
                 <tr className="master-table-header-gradient" style={{ background: t.tableHeaderBg }}>
-                  {['Flat No.', 'Flat Type', 'Area (Sq Ft)', 'Status', ...(readOnly ? [] : [''])].map((h) => (
+                  {['Flat No.', 'Flat Type', 'Area (Sq Mt)', 'Status', ...(readOnly ? [] : ['Delete'])].map((h) => (
                     <th key={h} style={{
                       padding: '8px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                       textTransform: 'uppercase', letterSpacing: '0.04em', color: t.textSecondary,
@@ -358,15 +358,17 @@ const FloorAccordionItem: React.FC<{
                       {/* V_29.0 (G1) — Delete only for a flat never booked; a
                           booked one keeps its history and can only be disabled. */}
                       {!readOnly && (
-                        <td style={{ padding: '8px 8px', width: 44, textAlign: 'center' }}>
+                        <td style={{ padding: '8px 8px', width: 96, textAlign: 'left', whiteSpace: 'nowrap' }}>
                           {flat.has_history ? (
                             <span title="This flat has a booking history, so it cannot be deleted. Disable it instead." style={{ display: 'inline-flex', color: t.textMuted }}>
                               <MdLock size={16} />
                             </span>
                           ) : (
-                            <button type="button" onClick={() => onDeleteFlat(flat.id)} title="Delete flat" aria-label={`Delete flat ${flat.flat_no}`}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', display: 'inline-flex', padding: 4 }}>
-                              <MdDelete size={16} />
+                            // V_29.0 (19 Nov) — labelled, so it is not missed next to the Status toggle:
+                            // for a flat that does not exist (Disable is for one that is not for sale).
+                            <button type="button" onClick={() => onDeleteFlat(flat.id)} title="Delete this flat (it does not exist)" aria-label={`Delete flat ${flat.flat_no}`}
+                              style={{ background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, cursor: 'pointer', color: '#dc2626', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>
+                              <MdDelete size={15} /> Delete
                             </button>
                           )}
                         </td>
@@ -423,7 +425,7 @@ const SeriesConfigCard: React.FC<{
       </select>
 
       <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: t.textSecondary, marginBottom: 4 }}>
-        Flat Area (Sq Ft)
+        Flat Area (Sq Mt)
       </label>
       {/* Manually entered — no hardcoded preset list. */}
       <input
@@ -1514,7 +1516,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                         style={{ ...shopFieldStyle, marginBottom: 7 }}
                       />
 
-                      <label style={shopLabelStyle}>Shop Area (Sq Ft)</label>
+                      <label style={shopLabelStyle}>Shop Area (Sq Mt)</label>
                       <input
                         type="number" value={shop.area_sqft}
                         readOnly={fieldsDisabled} disabled={fieldsDisabled}
