@@ -14,13 +14,13 @@ import { toast } from '@/utils/toast';
 import { MdVisibility, MdDownload } from 'react-icons/md';
 import { formatDate } from '../../../utils';
 import { useAppearanceTokens } from '../../../styles/appearanceTokens';
-import PaymentHistoryTable, { hasReceipt } from '../../../components/common/PaymentHistoryTable';
+import PaymentHistoryTable, { hasReceipt, OLD_PAYMENT_NO_RECEIPT } from '../../../components/common/PaymentHistoryTable';
 import {
   fetchMyBookingPayments, fetchMyBookingDueGrid, fetchMyPaymentReceipt, fetchMyCancelledReceipt, PortalPaymentRow,
 } from '../../../services/customerPortalService';
 import { PaymentReceiptViewModal } from '../../../components/common/PaymentReceiptViewModal';
-import { exportPaymentReceiptPdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport.lazy';
-import { PaymentReceipt } from '../../../types/index';
+import { exportPaymentReceiptPdf, exportPaymentHistoryPdf } from '../../Admin/CRM/Customer-Details/paymentPdfExport.lazy';
+import { PaymentReceipt, Customer, CustomerPaymentRecord } from '../../../types/index';
 import { HistoryCard, HistorySection, customerInfoItems, propertyInfoItems } from '../../../components/common/HistoryPopup';
 import RefundHistoryTable from '../../../components/common/RefundHistoryTable';
 import { useCustomerPortal } from '../CustomerPortalContext';
@@ -89,6 +89,35 @@ const CustomerPaymentHistoryPage: React.FC = () => {
     }
   };
 
+  // V_29.0 (18 Nov) — the customer can download their own payment history,
+  // the same PDF the office downloads.
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const downloadHistory = async () => {
+    setHistoryBusy(true);
+    try {
+      const unitNo = selected?.unit_type === 'shop' ? selected?.shop_no : selected?.flat_no;
+      const customer = {
+        id: String(selectedId ?? ''), customer_code: selected?.customer_code ?? '',
+        customer_name: detail ? [detail.name, detail.middle_name, detail.last_name].filter(Boolean).join(' ') : '',
+        address: detail?.address ?? '', email: detail?.email ?? '',
+        mobile_number: detail?.mobile_number ? `${detail.mobile_country_code || ''} ${detail.mobile_number}`.trim() : '',
+        building_name: selected?.building_name ?? '', wing_name: selected?.unit_type === 'shop' ? '' : (selected?.wing_name ?? ''),
+        flat_no: unitNo ?? '', location: detail?.building?.location ?? '',
+      } as unknown as Customer;
+      const payments: CustomerPaymentRecord[] = sorted.map((r) => ({
+        id: String(r.id), paid_on: String(r.payment_date ?? r.date ?? r.created_at ?? ''), inst_date: r.inst_date ?? undefined,
+        amount: Number(r.amount || 0), mode: r.mode_of_payment ?? undefined, is_approved: r.is_approved,
+        payment_type: r.payment_type, payment_tag: r.payment_tag ?? null, receipt_number: r.receipt_number,
+        company: r.company ?? undefined, received_by: r.received_by ?? null, is_after_possession_emi: r.is_after_possession_emi,
+      }));
+      await exportPaymentHistoryPdf(customer, payments, totals?.totalCost ?? null, isCancelled ? null : (totals?.pending ?? null));
+    } catch {
+      toast.error('We could not download your payment history. Please try again.');
+    } finally {
+      setHistoryBusy(false);
+    }
+  };
+
   const iconBtn = (color: string, bg: string): React.CSSProperties => ({
     width: 28, height: 28, border: 'none', borderRadius: 8, cursor: 'pointer', color, background: bg,
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -123,6 +152,15 @@ const CustomerPaymentHistoryPage: React.FC = () => {
   return (
     <>
       <PageHead title="Payment History & Receipt" />
+      {selectedId != null && sorted.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+          <button type="button" onClick={downloadHistory} disabled={historyBusy}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: 'none', cursor: historyBusy ? 'wait' : 'pointer',
+              background: 'var(--brand, #0f766e)', color: '#fff', fontWeight: 700, fontSize: 13, opacity: historyBusy ? 0.7 : 1 }}>
+            <MdDownload size={16} /> {historyBusy ? 'Preparing…' : 'Download Payment History'}
+          </button>
+        </div>
+      )}
 
       {/* V_29.0 (C4) — no summary boxes here (they are on Home); a cancelled
           booking says so in one line at the top instead of its own box. */}
@@ -162,8 +200,14 @@ const CustomerPaymentHistoryPage: React.FC = () => {
                     <MdDownload size={14} />
                   </button>
                 </span>
+              ) : row.is_approved ? (
+                // V_29.0 (18 Nov) — an old payment entered without a system receipt.
+                <span title={OLD_PAYMENT_NO_RECEIPT}
+                  style={{ fontSize: 11, color: t.textSecondary, lineHeight: 1.3, display: 'inline-block', width: 96, whiteSpace: 'normal' }}>
+                  No receipt. Please contact the office.
+                </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5" title={row.is_approved ? 'This payment is from old records: your manual receipt applies' : 'Receipt available after admin approval'} style={{ opacity: 0.4 }}>
+                <span className="inline-flex items-center gap-1.5" title="Receipt available after admin approval" style={{ opacity: 0.4 }}>
                   <button type="button" disabled aria-label="View Receipt (after approval)" style={{ ...iconBtn('var(--brand-ink)', isDark ? 'rgba(0,0,255,0.18)' : '#e0f2ff'), cursor: 'not-allowed' }}>
                     <MdVisibility size={14} />
                   </button>

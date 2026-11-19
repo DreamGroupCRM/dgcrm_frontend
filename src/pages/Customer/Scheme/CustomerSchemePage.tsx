@@ -68,6 +68,18 @@ const SchemeSection: React.FC<{ heading: string; rows: CustomerSchemeSummaryRow[
 // row on page load), with a "View all" toggle.
 const SCHEDULE_PREVIEW_ROWS = 8;
 
+// V_29.0 (18 Nov) — Paid / Unpaid for each schedule row in the downloaded
+// PDF, the same rows and order as the on-screen list (A rows, then B rows).
+const scheduleStatusLabels = (scheme: CustomerSchemeData, gridRows: DueGridRow[]): string[] =>
+  [...scheme.scheduleA, ...scheme.scheduleB].map((r, i) => {
+    const g = gridRows[i];
+    if (!(r.amount > 0)) return '—';
+    if (g?.settled_via_extra_pay) return 'Paid (Adv.)';
+    if (g?.status === 'paid') return 'Paid';
+    if (typeof g?.due_amount === 'number' && g.due_amount > 0 && g.due_amount < r.amount) return 'Part paid';
+    return 'Unpaid';
+  });
+
 const ScheduleList: React.FC<{ scheme: CustomerSchemeData; gridRows: DueGridRow[] }> = ({ scheme, gridRows }) => {
   const [expanded, setExpanded] = useState(false);
   const all = useMemo(() => [
@@ -195,7 +207,7 @@ const CustomerSchemePage: React.FC = () => {
       <AwaitingNote amount={totals?.awaiting} />
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-        <button type="button" className="cp-btn cp-btn-primary" onClick={() => exportPaymentSchedulePdf(scheme)}>
+        <button type="button" className="cp-btn cp-btn-primary" onClick={() => exportPaymentSchedulePdf(scheme, scheduleStatusLabels(scheme, gridRows))}>
           <MdDownload size={14} /> Download Scheme and Schedule PDF
         </button>
       </div>
