@@ -1290,8 +1290,10 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                     </span>
                   </div>
                   {!isView && (
-                    <div className="flex items-center gap-2">
-                      <span style={{ fontSize: 15, color: t.textSecondary, whiteSpace: 'nowrap' }}>Enter number of flats on each floor</span>
+                    // Wraps on a phone: on one line the Generate Flats button was pushed past
+                    // the panel's edge and hidden (the panel clips what overflows).
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span style={{ fontSize: 15, color: t.textSecondary }}>Enter number of flats on each floor</span>
                       <input
                         type="number" min={0} value={activeWing.flatsPerFloorInput}
                         onChange={(e) => updateWing(activeWing.id, { flatsPerFloorInput: e.target.value })}
