@@ -141,6 +141,13 @@ const floorsSummary = (withGround: boolean, noOfFloorsRaw: string): string => {
   return withGround ? `Ground + ${n} Floors` : `${n} Floors`;
 };
 
+// "A" -> "A wing", but "A WING" stays "A WING" (no "A WING wing").
+const wingLabel = (name: string, idx: number): string => {
+  const n = name.trim();
+  if (!n) return `Wing ${idx + 1}`;
+  return /\bwing\b/i.test(n) ? n : `${n} wing`;
+};
+
 const makeWing = (id: string): WingRow => ({
   id,
   name: '',
@@ -283,6 +290,11 @@ const FloorAccordionItem: React.FC<{
             No flats yet — set a count above and click &quot;Generate Flats&quot;.
           </div>
         ) : (
+          <>
+          {/* On a phone only Flat No. and Flat Type fit; say the rest is a swipe away. */}
+          <div className="sm:hidden" style={{ padding: '0 16px 6px', fontSize: 11, color: t.textSecondary }}>
+            Swipe left on the table to see Area, Status{readOnly ? '' : ' and Delete'} →
+          </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
               <thead>
@@ -379,6 +391,7 @@ const FloorAccordionItem: React.FC<{
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </div>
@@ -1175,10 +1188,13 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             </div>
           </div>
           {!isView && (
+            // Tablet / desktop: beside the title. A phone gets the same
+            // button below the wing boxes instead (see further down), where
+            // it is seen after typing the floor counts.
             <button
               onClick={generateFloors}
               disabled={wings.length === 0}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+              className="hidden sm:flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
               style={{
                 background: wings.length === 0 ? '#93c5fd' : accent,
                 border: 'none', cursor: wings.length === 0 ? 'not-allowed' : 'pointer',
@@ -1198,7 +1214,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
               <div className="flex items-center gap-2 mb-3">
                 <MdApartment size={17} style={{ color: WING_COLORS[idx % WING_COLORS.length] }} />
                 <span style={{ fontWeight: 700, fontSize: 13, color: t.textPrimary }}>
-                  {w.name ? `${w.name} wing` : `Wing ${idx + 1}`}
+                  {wingLabel(w.name, idx)}
                 </span>
               </div>
               <label style={labelStyle}>No. of Floors <span style={{ color: t.accentText }}>*</span></label>
@@ -1230,6 +1246,15 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
             <p style={{ color: t.textSecondary, fontSize: 12 }}>Add a wing in Step 2 first.</p>
           )}
         </div>
+        {!isView && wings.length > 0 && (
+          <button
+            onClick={generateFloors}
+            className="sm:hidden w-full flex items-center justify-center gap-1.5 px-4 py-2.5 mt-4 rounded-xl text-sm font-semibold text-white"
+            style={{ background: accent, border: 'none', cursor: 'pointer' }}
+          >
+            <MdLayers size={17} /> Generate Floors
+          </button>
+        )}
       </SectionCard>
 
       {/* ── Step 4: Flats on Each Floor ──────────────────────────────────── */}
@@ -1259,7 +1284,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 }}
               >
                 <div style={{ fontWeight: 700, fontSize: 12.5, color: w.id === activeWingId ? accent : t.textPrimary }}>
-                  {w.name ? `${w.name} wing` : `Wing ${idx + 1}`}
+                  {wingLabel(w.name, idx)}
                 </div>
                 <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 2 }}>
                   {floorsSummary(w.with_ground_floor, w.no_of_floors)}
@@ -1282,7 +1307,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                 <div className="flex flex-wrap items-center justify-between gap-3" style={{ padding: '14px 16px', background: t.insetBg, borderBottom: `1px solid ${t.divider}` }}>
                   <div>
                     <span style={{ fontWeight: 700, color: accent, fontSize: 13 }}>
-                      {activeWing.name ? `${activeWing.name} wing` : 'Wing'}
+                      {activeWing.name.trim() ? wingLabel(activeWing.name, 0) : 'Wing'}
                     </span>
                     <span style={{ fontSize: 11, color: t.textSecondary, marginLeft: 8 }}>
                       ({activeWing.with_ground_floor ? 'With Ground Floor' : 'Without Ground Floor'}
@@ -1290,8 +1315,10 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                     </span>
                   </div>
                   {!isView && (
-                    <div className="flex items-center gap-2">
-                      <span style={{ fontSize: 15, color: t.textSecondary, whiteSpace: 'nowrap' }}>Enter number of flats on each floor</span>
+                    // Wraps on a phone: on one line the Generate Flats button was pushed past
+                    // the panel's edge and hidden (the panel clips what overflows).
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span style={{ fontSize: 15, color: t.textSecondary }}>Enter number of flats on each floor</span>
                       <input
                         type="number" min={0} value={activeWing.flatsPerFloorInput}
                         onChange={(e) => updateWing(activeWing.id, { flatsPerFloorInput: e.target.value })}
@@ -1461,7 +1488,7 @@ const BuildingCrudPage: React.FC<Props> = ({ mode }) => {
                     border: 'none', cursor: !shopCountInput || parseInt(shopCountInput, 10) <= 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                   }}
                 >
-                  <MdAdd size={17} /> Generate Shop
+                  <MdAdd size={17} /> Generate Shops
                 </button>
               )}
             </div>
